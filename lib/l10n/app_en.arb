@@ -2,24 +2,74 @@
   "@@locale": "en",
 
   "appTitle": "myapp",
-  "@appTitle": {"description": "Application name shown in window title and welcome screen"},
-
   "underConstruction": "Under construction",
-  "@underConstruction": {"description": "Big headline on the welcome screen while the project is being built"},
-
   "comingSoonSubtitle": "We are building something great. Come back soon.",
-  "@comingSoonSubtitle": {"description": "Subtitle under the 'Under construction' headline"},
-
   "languageSelectorTooltip": "Change language",
   "themeSelectorTooltip": "Change theme",
   "signInTooltip": "Sign in",
-
   "themeSystem": "System",
   "themeLight": "Light",
   "themeDark": "Dark",
-
   "languageCurrent": "Current language: {language}",
-  "@languageCurrent": {
-    "placeholders": {"language": {"type": "String"}}
-  }
+  "@languageCurrent": {"placeholders": {"language": {"type": "String"}}},
+
+  "fieldUsername": "Username",
+  "fieldEmail": "Email",
+  "fieldPassword": "Password",
+  "fieldPasswordConfirm": "Repeat password",
+
+  "actionCreateAccount": "Create account",
+  "actionSignIn": "Sign in",
+  "actionSignOut": "Sign out",
+  "actionContinue": "Continue",
+  "actionResend": "Resend email",
+  "actionBackToLogin": "Back to sign in",
+  "actionGoHome": "Go to home",
+
+  "registerTitle": "Create your account",
+  "registerSubtitle": "Join us and start your journey.",
+  "registerAcceptTerms": "I accept the Terms of Service and the Privacy Policy.",
+  "registerHaveAccount": "Already have an account?",
+
+  "loginTitle": "Welcome back",
+  "loginSubtitle": "Sign in to continue.",
+  "loginForgotPassword": "Forgot password?",
+  "loginNoAccount": "Don't have an account?",
+  "loginCreateOne": "Create one",
+
+  "verifyEmailSentTitle": "Check your inbox",
+  "verifyEmailSentSubtitle": "We sent a verification link to {email}. Click the link to activate your account.",
+  "@verifyEmailSentSubtitle": {"placeholders": {"email": {"type": "String"}}},
+  "verifyEmailSentResendHint": "Didn't receive it? Check spam or resend.",
+  "verifyEmailResent": "Verification email sent again.",
+
+  "verifyEmailVerifiedTitle": "Account verified!",
+  "verifyEmailVerifiedSubtitle": "Your email has been confirmed. You can now sign in.",
+
+  "verifyEmailCallbackProcessing": "Verifying your email…",
+  "verifyEmailCallbackError": "We couldn't verify the link. It may have expired.",
+
+  "errorRequired": "This field is required",
+  "errorEmailInvalid": "Invalid email address",
+  "errorEmailTooLong": "Email is too long",
+  "errorUsernameTooShort": "At least {count} characters",
+  "@errorUsernameTooShort": {"placeholders": {"count": {"type": "int"}}},
+  "errorUsernameTooLong": "At most {count} characters",
+  "@errorUsernameTooLong": {"placeholders": {"count": {"type": "int"}}},
+  "errorUsernameInvalidChars": "Use letters, numbers, '.', '_' or '-'",
+  "errorPasswordTooShort": "At least 8 characters",
+  "errorPasswordMissingLower": "Must contain a lowercase letter",
+  "errorPasswordMissingUpper": "Must contain an uppercase letter",
+  "errorPasswordMissingDigit": "Must contain a digit",
+  "errorPasswordMissingSpecial": "Must contain a special character",
+  "errorPasswordMismatch": "Passwords do not match",
+  "errorAcceptTerms": "You must accept the terms to continue",
+
+  "authErrorUserExists": "An account with this email already exists.",
+  "authErrorWeakPassword": "This password is too weak.",
+  "authErrorEmailNotConfirmed": "Please verify your email before signing in.",
+  "authErrorInvalidCredentials": "Invalid email or password.",
+  "authErrorRateLimited": "Too many attempts. Please try again later.",
+  "authErrorNetwork": "Network error. Check your connection.",
+  "authErrorUnknown": "Something went wrong. Please try again."
 }

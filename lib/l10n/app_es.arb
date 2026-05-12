@@ -10,5 +10,62 @@
   "themeSystem": "Sistema",
   "themeLight": "Claro",
   "themeDark": "Oscuro",
-  "languageCurrent": "Idioma actual: {language}"
+  "languageCurrent": "Idioma actual: {language}",
+
+  "fieldUsername": "Nombre de usuario",
+  "fieldEmail": "Correo electrónico",
+  "fieldPassword": "Contraseña",
+  "fieldPasswordConfirm": "Repetir contraseña",
+
+  "actionCreateAccount": "Crear cuenta",
+  "actionSignIn": "Iniciar sesión",
+  "actionSignOut": "Cerrar sesión",
+  "actionContinue": "Continuar",
+  "actionResend": "Reenviar email",
+  "actionBackToLogin": "Volver a iniciar sesión",
+  "actionGoHome": "Ir al inicio",
+
+  "registerTitle": "Crea tu cuenta",
+  "registerSubtitle": "Únete y empieza tu camino.",
+  "registerAcceptTerms": "Acepto los Términos del Servicio y la Política de Privacidad.",
+  "registerHaveAccount": "¿Ya tienes una cuenta?",
+
+  "loginTitle": "Bienvenido",
+  "loginSubtitle": "Inicia sesión para continuar.",
+  "loginForgotPassword": "¿Olvidaste tu contraseña?",
+  "loginNoAccount": "¿No tienes una cuenta?",
+  "loginCreateOne": "Crea una",
+
+  "verifyEmailSentTitle": "Revisa tu correo",
+  "verifyEmailSentSubtitle": "Hemos enviado un enlace de verificación a {email}. Pulsa el enlace para activar tu cuenta.",
+  "verifyEmailSentResendHint": "¿No lo recibiste? Revisa el spam o reenvíalo.",
+  "verifyEmailResent": "Email de verificación reenviado.",
+
+  "verifyEmailVerifiedTitle": "¡Cuenta verificada!",
+  "verifyEmailVerifiedSubtitle": "Tu correo ha sido confirmado. Ya puedes iniciar sesión.",
+
+  "verifyEmailCallbackProcessing": "Verificando tu correo…",
+  "verifyEmailCallbackError": "No pudimos verificar el enlace. Puede haber caducado.",
+
+  "errorRequired": "Este campo es obligatorio",
+  "errorEmailInvalid": "Correo no válido",
+  "errorEmailTooLong": "El correo es demasiado largo",
+  "errorUsernameTooShort": "Al menos {count} caracteres",
+  "errorUsernameTooLong": "Como máximo {count} caracteres",
+  "errorUsernameInvalidChars": "Usa letras, números, '.', '_' o '-'",
+  "errorPasswordTooShort": "Al menos 8 caracteres",
+  "errorPasswordMissingLower": "Debe contener una minúscula",
+  "errorPasswordMissingUpper": "Debe contener una mayúscula",
+  "errorPasswordMissingDigit": "Debe contener un número",
+  "errorPasswordMissingSpecial": "Debe contener un carácter especial",
+  "errorPasswordMismatch": "Las contraseñas no coinciden",
+  "errorAcceptTerms": "Debes aceptar los términos para continuar",
+
+  "authErrorUserExists": "Ya existe una cuenta con este correo.",
+  "authErrorWeakPassword": "Esta contraseña es demasiado débil.",
+  "authErrorEmailNotConfirmed": "Verifica tu correo antes de iniciar sesión.",
+  "authErrorInvalidCredentials": "Correo o contraseña incorrectos.",
+  "authErrorRateLimited": "Demasiados intentos. Inténtalo más tarde.",
+  "authErrorNetwork": "Error de red. Comprueba tu conexión.",
+  "authErrorUnknown": "Algo salió mal. Inténtalo de nuevo."
 }

@@ -10,5 +10,62 @@
   "themeSystem": "Sistema",
   "themeLight": "Chiaro",
   "themeDark": "Scuro",
-  "languageCurrent": "Lingua attuale: {language}"
+  "languageCurrent": "Lingua attuale: {language}",
+
+  "fieldUsername": "Nome utente",
+  "fieldEmail": "Email",
+  "fieldPassword": "Password",
+  "fieldPasswordConfirm": "Ripeti password",
+
+  "actionCreateAccount": "Crea account",
+  "actionSignIn": "Accedi",
+  "actionSignOut": "Esci",
+  "actionContinue": "Continua",
+  "actionResend": "Invia di nuovo",
+  "actionBackToLogin": "Torna all'accesso",
+  "actionGoHome": "Vai alla home",
+
+  "registerTitle": "Crea il tuo account",
+  "registerSubtitle": "Unisciti e inizia il tuo viaggio.",
+  "registerAcceptTerms": "Accetto i Termini di Servizio e la Privacy Policy.",
+  "registerHaveAccount": "Hai già un account?",
+
+  "loginTitle": "Bentornato",
+  "loginSubtitle": "Accedi per continuare.",
+  "loginForgotPassword": "Password dimenticata?",
+  "loginNoAccount": "Non hai un account?",
+  "loginCreateOne": "Crealo",
+
+  "verifyEmailSentTitle": "Controlla la tua casella di posta",
+  "verifyEmailSentSubtitle": "Abbiamo inviato un link di verifica a {email}. Clicca sul link per attivare il tuo account.",
+  "verifyEmailSentResendHint": "Non l'hai ricevuto? Controlla lo spam o invialo di nuovo.",
+  "verifyEmailResent": "Email di verifica inviata di nuovo.",
+
+  "verifyEmailVerifiedTitle": "Account verificato!",
+  "verifyEmailVerifiedSubtitle": "La tua email è stata confermata. Ora puoi accedere.",
+
+  "verifyEmailCallbackProcessing": "Verifica della tua email…",
+  "verifyEmailCallbackError": "Non siamo riusciti a verificare il link. Potrebbe essere scaduto.",
+
+  "errorRequired": "Questo campo è obbligatorio",
+  "errorEmailInvalid": "Email non valida",
+  "errorEmailTooLong": "L'email è troppo lunga",
+  "errorUsernameTooShort": "Almeno {count} caratteri",
+  "errorUsernameTooLong": "Al massimo {count} caratteri",
+  "errorUsernameInvalidChars": "Usa lettere, numeri, '.', '_' o '-'",
+  "errorPasswordTooShort": "Almeno 8 caratteri",
+  "errorPasswordMissingLower": "Deve contenere una minuscola",
+  "errorPasswordMissingUpper": "Deve contenere una maiuscola",
+  "errorPasswordMissingDigit": "Deve contenere un numero",
+  "errorPasswordMissingSpecial": "Deve contenere un carattere speciale",
+  "errorPasswordMismatch": "Le password non corrispondono",
+  "errorAcceptTerms": "Devi accettare i termini per continuare",
+
+  "authErrorUserExists": "Esiste già un account con questa email.",
+  "authErrorWeakPassword": "Questa password è troppo debole.",
+  "authErrorEmailNotConfirmed": "Verifica la tua email prima di accedere.",
+  "authErrorInvalidCredentials": "Email o password non valide.",
+  "authErrorRateLimited": "Troppi tentativi. Riprova più tardi.",
+  "authErrorNetwork": "Errore di rete. Controlla la connessione.",
+  "authErrorUnknown": "Qualcosa è andato storto. Riprova."
 }

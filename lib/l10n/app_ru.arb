@@ -10,5 +10,62 @@
   "themeSystem": "Системная",
   "themeLight": "Светлая",
   "themeDark": "Тёмная",
-  "languageCurrent": "Текущий язык: {language}"
+  "languageCurrent": "Текущий язык: {language}",
+
+  "fieldUsername": "Имя пользователя",
+  "fieldEmail": "Электронная почта",
+  "fieldPassword": "Пароль",
+  "fieldPasswordConfirm": "Повторите пароль",
+
+  "actionCreateAccount": "Создать аккаунт",
+  "actionSignIn": "Войти",
+  "actionSignOut": "Выйти",
+  "actionContinue": "Продолжить",
+  "actionResend": "Отправить ещё раз",
+  "actionBackToLogin": "Назад ко входу",
+  "actionGoHome": "На главную",
+
+  "registerTitle": "Создайте аккаунт",
+  "registerSubtitle": "Присоединяйтесь и начните свой путь.",
+  "registerAcceptTerms": "Я принимаю Условия использования и Политику конфиденциальности.",
+  "registerHaveAccount": "Уже есть аккаунт?",
+
+  "loginTitle": "С возвращением",
+  "loginSubtitle": "Войдите, чтобы продолжить.",
+  "loginForgotPassword": "Забыли пароль?",
+  "loginNoAccount": "Нет аккаунта?",
+  "loginCreateOne": "Создать",
+
+  "verifyEmailSentTitle": "Проверьте почту",
+  "verifyEmailSentSubtitle": "Мы отправили ссылку для подтверждения на {email}. Нажмите на ссылку, чтобы активировать аккаунт.",
+  "verifyEmailSentResendHint": "Не получили? Проверьте спам или отправьте ещё раз.",
+  "verifyEmailResent": "Письмо для подтверждения отправлено повторно.",
+
+  "verifyEmailVerifiedTitle": "Аккаунт подтверждён!",
+  "verifyEmailVerifiedSubtitle": "Ваш email подтверждён. Теперь вы можете войти.",
+
+  "verifyEmailCallbackProcessing": "Проверка вашего email…",
+  "verifyEmailCallbackError": "Не удалось проверить ссылку. Возможно, она истекла.",
+
+  "errorRequired": "Это поле обязательно",
+  "errorEmailInvalid": "Некорректный email",
+  "errorEmailTooLong": "Email слишком длинный",
+  "errorUsernameTooShort": "Не менее {count} символов",
+  "errorUsernameTooLong": "Не более {count} символов",
+  "errorUsernameInvalidChars": "Используйте буквы, цифры, '.', '_' или '-'",
+  "errorPasswordTooShort": "Не менее 8 символов",
+  "errorPasswordMissingLower": "Должен содержать строчную букву",
+  "errorPasswordMissingUpper": "Должен содержать заглавную букву",
+  "errorPasswordMissingDigit": "Должен содержать цифру",
+  "errorPasswordMissingSpecial": "Должен содержать спецсимвол",
+  "errorPasswordMismatch": "Пароли не совпадают",
+  "errorAcceptTerms": "Для продолжения необходимо принять условия",
+
+  "authErrorUserExists": "Аккаунт с этим email уже существует.",
+  "authErrorWeakPassword": "Этот пароль слишком слабый.",
+  "authErrorEmailNotConfirmed": "Подтвердите email перед входом.",
+  "authErrorInvalidCredentials": "Неверный email или пароль.",
+  "authErrorRateLimited": "Слишком много попыток. Попробуйте позже.",
+  "authErrorNetwork": "Сетевая ошибка. Проверьте подключение.",
+  "authErrorUnknown": "Что-то пошло не так. Попробуйте снова."
 }

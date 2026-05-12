@@ -10,5 +10,62 @@
   "themeSystem": "System",
   "themeLight": "Hell",
   "themeDark": "Dunkel",
-  "languageCurrent": "Aktuelle Sprache: {language}"
+  "languageCurrent": "Aktuelle Sprache: {language}",
+
+  "fieldUsername": "Benutzername",
+  "fieldEmail": "E-Mail",
+  "fieldPassword": "Passwort",
+  "fieldPasswordConfirm": "Passwort wiederholen",
+
+  "actionCreateAccount": "Konto erstellen",
+  "actionSignIn": "Anmelden",
+  "actionSignOut": "Abmelden",
+  "actionContinue": "Weiter",
+  "actionResend": "E-Mail erneut senden",
+  "actionBackToLogin": "Zurück zur Anmeldung",
+  "actionGoHome": "Zur Startseite",
+
+  "registerTitle": "Konto erstellen",
+  "registerSubtitle": "Tritt bei und starte deine Reise.",
+  "registerAcceptTerms": "Ich akzeptiere die Nutzungsbedingungen und die Datenschutzerklärung.",
+  "registerHaveAccount": "Du hast bereits ein Konto?",
+
+  "loginTitle": "Willkommen zurück",
+  "loginSubtitle": "Melde dich an, um fortzufahren.",
+  "loginForgotPassword": "Passwort vergessen?",
+  "loginNoAccount": "Noch kein Konto?",
+  "loginCreateOne": "Erstellen",
+
+  "verifyEmailSentTitle": "Überprüfe dein Postfach",
+  "verifyEmailSentSubtitle": "Wir haben einen Bestätigungslink an {email} gesendet. Klicke auf den Link, um dein Konto zu aktivieren.",
+  "verifyEmailSentResendHint": "Nicht erhalten? Überprüfe den Spam oder sende erneut.",
+  "verifyEmailResent": "Bestätigungs-E-Mail wurde erneut gesendet.",
+
+  "verifyEmailVerifiedTitle": "Konto bestätigt!",
+  "verifyEmailVerifiedSubtitle": "Deine E-Mail wurde bestätigt. Du kannst dich jetzt anmelden.",
+
+  "verifyEmailCallbackProcessing": "E-Mail wird überprüft…",
+  "verifyEmailCallbackError": "Wir konnten den Link nicht überprüfen. Er ist möglicherweise abgelaufen.",
+
+  "errorRequired": "Dieses Feld ist erforderlich",
+  "errorEmailInvalid": "Ungültige E-Mail-Adresse",
+  "errorEmailTooLong": "E-Mail ist zu lang",
+  "errorUsernameTooShort": "Mindestens {count} Zeichen",
+  "errorUsernameTooLong": "Höchstens {count} Zeichen",
+  "errorUsernameInvalidChars": "Verwende Buchstaben, Zahlen, '.', '_' oder '-'",
+  "errorPasswordTooShort": "Mindestens 8 Zeichen",
+  "errorPasswordMissingLower": "Muss einen Kleinbuchstaben enthalten",
+  "errorPasswordMissingUpper": "Muss einen Großbuchstaben enthalten",
+  "errorPasswordMissingDigit": "Muss eine Ziffer enthalten",
+  "errorPasswordMissingSpecial": "Muss ein Sonderzeichen enthalten",
+  "errorPasswordMismatch": "Passwörter stimmen nicht überein",
+  "errorAcceptTerms": "Du musst die Bedingungen akzeptieren, um fortzufahren",
+
+  "authErrorUserExists": "Ein Konto mit dieser E-Mail existiert bereits.",
+  "authErrorWeakPassword": "Dieses Passwort ist zu schwach.",
+  "authErrorEmailNotConfirmed": "Bitte bestätige deine E-Mail vor der Anmeldung.",
+  "authErrorInvalidCredentials": "Ungültige E-Mail oder Passwort.",
+  "authErrorRateLimited": "Zu viele Versuche. Bitte später erneut versuchen.",
+  "authErrorNetwork": "Netzwerkfehler. Überprüfe deine Verbindung.",
+  "authErrorUnknown": "Etwas ist schiefgelaufen. Bitte erneut versuchen."
 }

@@ -10,5 +10,62 @@
   "themeSystem": "Système",
   "themeLight": "Clair",
   "themeDark": "Sombre",
-  "languageCurrent": "Langue actuelle : {language}"
+  "languageCurrent": "Langue actuelle : {language}",
+
+  "fieldUsername": "Nom d'utilisateur",
+  "fieldEmail": "E-mail",
+  "fieldPassword": "Mot de passe",
+  "fieldPasswordConfirm": "Confirmer le mot de passe",
+
+  "actionCreateAccount": "Créer un compte",
+  "actionSignIn": "Se connecter",
+  "actionSignOut": "Se déconnecter",
+  "actionContinue": "Continuer",
+  "actionResend": "Renvoyer l'e-mail",
+  "actionBackToLogin": "Retour à la connexion",
+  "actionGoHome": "Aller à l'accueil",
+
+  "registerTitle": "Créer votre compte",
+  "registerSubtitle": "Rejoignez-nous et commencez votre aventure.",
+  "registerAcceptTerms": "J'accepte les Conditions d'utilisation et la Politique de confidentialité.",
+  "registerHaveAccount": "Vous avez déjà un compte ?",
+
+  "loginTitle": "Bon retour",
+  "loginSubtitle": "Connectez-vous pour continuer.",
+  "loginForgotPassword": "Mot de passe oublié ?",
+  "loginNoAccount": "Pas de compte ?",
+  "loginCreateOne": "En créer un",
+
+  "verifyEmailSentTitle": "Vérifiez votre boîte mail",
+  "verifyEmailSentSubtitle": "Nous avons envoyé un lien de vérification à {email}. Cliquez sur le lien pour activer votre compte.",
+  "verifyEmailSentResendHint": "Pas reçu ? Vérifiez les spams ou renvoyez.",
+  "verifyEmailResent": "E-mail de vérification renvoyé.",
+
+  "verifyEmailVerifiedTitle": "Compte vérifié !",
+  "verifyEmailVerifiedSubtitle": "Votre e-mail a été confirmé. Vous pouvez maintenant vous connecter.",
+
+  "verifyEmailCallbackProcessing": "Vérification de votre e-mail…",
+  "verifyEmailCallbackError": "Nous n'avons pas pu vérifier le lien. Il a peut-être expiré.",
+
+  "errorRequired": "Ce champ est obligatoire",
+  "errorEmailInvalid": "Adresse e-mail invalide",
+  "errorEmailTooLong": "L'e-mail est trop long",
+  "errorUsernameTooShort": "Au moins {count} caractères",
+  "errorUsernameTooLong": "Au plus {count} caractères",
+  "errorUsernameInvalidChars": "Utilisez lettres, chiffres, '.', '_' ou '-'",
+  "errorPasswordTooShort": "Au moins 8 caractères",
+  "errorPasswordMissingLower": "Doit contenir une minuscule",
+  "errorPasswordMissingUpper": "Doit contenir une majuscule",
+  "errorPasswordMissingDigit": "Doit contenir un chiffre",
+  "errorPasswordMissingSpecial": "Doit contenir un caractère spécial",
+  "errorPasswordMismatch": "Les mots de passe ne correspondent pas",
+  "errorAcceptTerms": "Vous devez accepter les conditions pour continuer",
+
+  "authErrorUserExists": "Un compte avec cet e-mail existe déjà.",
+  "authErrorWeakPassword": "Ce mot de passe est trop faible.",
+  "authErrorEmailNotConfirmed": "Veuillez vérifier votre e-mail avant de vous connecter.",
+  "authErrorInvalidCredentials": "E-mail ou mot de passe invalide.",
+  "authErrorRateLimited": "Trop de tentatives. Veuillez réessayer plus tard.",
+  "authErrorNetwork": "Erreur réseau. Vérifiez votre connexion.",
+  "authErrorUnknown": "Une erreur est survenue. Veuillez réessayer."
 }

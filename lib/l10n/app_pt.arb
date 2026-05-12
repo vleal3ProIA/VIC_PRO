@@ -10,5 +10,62 @@
   "themeSystem": "Sistema",
   "themeLight": "Claro",
   "themeDark": "Escuro",
-  "languageCurrent": "Idioma atual: {language}"
+  "languageCurrent": "Idioma atual: {language}",
+
+  "fieldUsername": "Nome de utilizador",
+  "fieldEmail": "E-mail",
+  "fieldPassword": "Palavra-passe",
+  "fieldPasswordConfirm": "Repetir palavra-passe",
+
+  "actionCreateAccount": "Criar conta",
+  "actionSignIn": "Entrar",
+  "actionSignOut": "Terminar sessão",
+  "actionContinue": "Continuar",
+  "actionResend": "Reenviar e-mail",
+  "actionBackToLogin": "Voltar ao início de sessão",
+  "actionGoHome": "Ir para o início",
+
+  "registerTitle": "Cria a tua conta",
+  "registerSubtitle": "Junta-te a nós e começa a tua jornada.",
+  "registerAcceptTerms": "Aceito os Termos de Serviço e a Política de Privacidade.",
+  "registerHaveAccount": "Já tens uma conta?",
+
+  "loginTitle": "Bem-vindo de volta",
+  "loginSubtitle": "Inicia sessão para continuar.",
+  "loginForgotPassword": "Esqueceste-te da palavra-passe?",
+  "loginNoAccount": "Não tens uma conta?",
+  "loginCreateOne": "Cria uma",
+
+  "verifyEmailSentTitle": "Verifica a tua caixa de entrada",
+  "verifyEmailSentSubtitle": "Enviámos um link de verificação para {email}. Clica no link para ativar a tua conta.",
+  "verifyEmailSentResendHint": "Não recebeste? Verifica o spam ou reenvia.",
+  "verifyEmailResent": "E-mail de verificação reenviado.",
+
+  "verifyEmailVerifiedTitle": "Conta verificada!",
+  "verifyEmailVerifiedSubtitle": "O teu e-mail foi confirmado. Já podes iniciar sessão.",
+
+  "verifyEmailCallbackProcessing": "A verificar o teu e-mail…",
+  "verifyEmailCallbackError": "Não conseguimos verificar o link. Pode ter expirado.",
+
+  "errorRequired": "Este campo é obrigatório",
+  "errorEmailInvalid": "E-mail inválido",
+  "errorEmailTooLong": "O e-mail é demasiado longo",
+  "errorUsernameTooShort": "Pelo menos {count} caracteres",
+  "errorUsernameTooLong": "No máximo {count} caracteres",
+  "errorUsernameInvalidChars": "Usa letras, números, '.', '_' ou '-'",
+  "errorPasswordTooShort": "Pelo menos 8 caracteres",
+  "errorPasswordMissingLower": "Deve conter uma minúscula",
+  "errorPasswordMissingUpper": "Deve conter uma maiúscula",
+  "errorPasswordMissingDigit": "Deve conter um número",
+  "errorPasswordMissingSpecial": "Deve conter um caractere especial",
+  "errorPasswordMismatch": "As palavras-passe não coincidem",
+  "errorAcceptTerms": "Tens de aceitar os termos para continuar",
+
+  "authErrorUserExists": "Já existe uma conta com este e-mail.",
+  "authErrorWeakPassword": "Esta palavra-passe é demasiado fraca.",
+  "authErrorEmailNotConfirmed": "Verifica o teu e-mail antes de iniciar sessão.",
+  "authErrorInvalidCredentials": "E-mail ou palavra-passe inválidos.",
+  "authErrorRateLimited": "Demasiadas tentativas. Tenta novamente mais tarde.",
+  "authErrorNetwork": "Erro de rede. Verifica a tua ligação.",
+  "authErrorUnknown": "Algo correu mal. Tenta novamente."
 }

@@ -10,5 +10,62 @@
   "themeSystem": "Системна",
   "themeLight": "Світла",
   "themeDark": "Темна",
-  "languageCurrent": "Поточна мова: {language}"
+  "languageCurrent": "Поточна мова: {language}",
+
+  "fieldUsername": "Ім'я користувача",
+  "fieldEmail": "Електронна пошта",
+  "fieldPassword": "Пароль",
+  "fieldPasswordConfirm": "Повторіть пароль",
+
+  "actionCreateAccount": "Створити акаунт",
+  "actionSignIn": "Увійти",
+  "actionSignOut": "Вийти",
+  "actionContinue": "Продовжити",
+  "actionResend": "Надіслати знову",
+  "actionBackToLogin": "Назад до входу",
+  "actionGoHome": "На головну",
+
+  "registerTitle": "Створіть акаунт",
+  "registerSubtitle": "Приєднуйтеся та починайте свою подорож.",
+  "registerAcceptTerms": "Я приймаю Умови використання та Політику конфіденційності.",
+  "registerHaveAccount": "Вже маєте акаунт?",
+
+  "loginTitle": "Раді бачити вас знову",
+  "loginSubtitle": "Увійдіть, щоб продовжити.",
+  "loginForgotPassword": "Забули пароль?",
+  "loginNoAccount": "Немає акаунта?",
+  "loginCreateOne": "Створити",
+
+  "verifyEmailSentTitle": "Перевірте поштову скриньку",
+  "verifyEmailSentSubtitle": "Ми надіслали посилання для підтвердження на {email}. Натисніть на посилання, щоб активувати акаунт.",
+  "verifyEmailSentResendHint": "Не отримали? Перевірте спам або надішліть знову.",
+  "verifyEmailResent": "Лист для підтвердження надіслано знову.",
+
+  "verifyEmailVerifiedTitle": "Акаунт підтверджено!",
+  "verifyEmailVerifiedSubtitle": "Вашу електронну пошту підтверджено. Тепер ви можете увійти.",
+
+  "verifyEmailCallbackProcessing": "Перевірка вашої пошти…",
+  "verifyEmailCallbackError": "Не вдалося перевірити посилання. Можливо, воно прострочене.",
+
+  "errorRequired": "Це поле обов'язкове",
+  "errorEmailInvalid": "Некоректна електронна адреса",
+  "errorEmailTooLong": "Email занадто довгий",
+  "errorUsernameTooShort": "Мінімум {count} символів",
+  "errorUsernameTooLong": "Максимум {count} символів",
+  "errorUsernameInvalidChars": "Використовуйте літери, цифри, '.', '_' або '-'",
+  "errorPasswordTooShort": "Мінімум 8 символів",
+  "errorPasswordMissingLower": "Має містити малу літеру",
+  "errorPasswordMissingUpper": "Має містити велику літеру",
+  "errorPasswordMissingDigit": "Має містити цифру",
+  "errorPasswordMissingSpecial": "Має містити спеціальний символ",
+  "errorPasswordMismatch": "Паролі не співпадають",
+  "errorAcceptTerms": "Ви повинні прийняти умови, щоб продовжити",
+
+  "authErrorUserExists": "Акаунт з цією електронною адресою вже існує.",
+  "authErrorWeakPassword": "Цей пароль занадто слабкий.",
+  "authErrorEmailNotConfirmed": "Підтвердьте електронну пошту перед входом.",
+  "authErrorInvalidCredentials": "Невірна електронна пошта або пароль.",
+  "authErrorRateLimited": "Забагато спроб. Спробуйте пізніше.",
+  "authErrorNetwork": "Помилка мережі. Перевірте підключення.",
+  "authErrorUnknown": "Щось пішло не так. Спробуйте ще раз."
 }

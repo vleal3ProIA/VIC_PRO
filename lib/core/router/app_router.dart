@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/router/route_names.dart';
-import 'package:myapp/features/auth/presentation/pages/login_placeholder_page.dart';
+import 'package:myapp/features/auth/presentation/pages/auth_callback_page.dart';
+import 'package:myapp/features/auth/presentation/pages/email_verified_page.dart';
+import 'package:myapp/features/auth/presentation/pages/login_page.dart';
+import 'package:myapp/features/auth/presentation/pages/register_page.dart';
+import 'package:myapp/features/auth/presentation/pages/verify_email_sent_page.dart';
 import 'package:myapp/features/welcome/presentation/pages/welcome_page.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -19,7 +23,30 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RoutePaths.login,
         name: RouteNames.login,
-        builder: (_, __) => const LoginPlaceholderPage(),
+        builder: (_, __) => const LoginPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.register,
+        name: RouteNames.register,
+        builder: (_, __) => const RegisterPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.verifyEmailSent,
+        name: RouteNames.verifyEmailSent,
+        builder: (_, state) {
+          final email = state.uri.queryParameters['email'] ?? '';
+          return VerifyEmailSentPage(email: email);
+        },
+      ),
+      GoRoute(
+        path: RoutePaths.emailVerified,
+        name: RouteNames.emailVerified,
+        builder: (_, __) => const EmailVerifiedPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.authCallback,
+        name: RouteNames.authCallback,
+        builder: (_, __) => const AuthCallbackPage(),
       ),
     ],
     errorBuilder: (_, state) => _NotFoundPage(error: state.error),
