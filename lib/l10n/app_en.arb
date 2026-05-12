@@ -29,6 +29,8 @@
   "actionSendResetEmail": "Send reset link",
   "actionUpdatePassword": "Update password",
   "actionSendMagicLink": "Send magic link",
+  "actionSendOtp": "Send code",
+  "actionVerifyOtp": "Verify code",
 
   "registerTitle": "Create your account",
   "registerSubtitle": "Join us and start your journey.",
@@ -50,6 +52,15 @@
   "@magicLinkSentSubtitle": {"placeholders": {"email": {"type": "String"}}},
   "magicLinkSentHint": "Didn't receive it? Check spam or resend.",
   "actionUsePassword": "Use email + password instead",
+
+  "loginWithOtp": "Sign in with a code",
+  "otpRequestTitle": "Sign in with a one-time code",
+  "otpRequestSubtitle": "Enter your email and we'll send you a 6-digit code.",
+  "otpVerifyTitle": "Enter your code",
+  "otpVerifySubtitle": "We sent a 6-digit code to {email}. It expires in 10 minutes.",
+  "@otpVerifySubtitle": {"placeholders": {"email": {"type": "String"}}},
+  "otpHint": "Paste or type the 6 digits.",
+  "otpResent": "Code sent again.",
 
   "forgotPasswordTitle": "Reset your password",
   "forgotPasswordSubtitle": "Enter your email and we'll send you a link to reset your password.",

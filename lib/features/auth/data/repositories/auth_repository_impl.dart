@@ -128,6 +128,54 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  @override
+  Future<Either<AuthFailure, Unit>> requestEmailOtp(String email) async {
+    try {
+      await _dataSource.sendEmailOtp(
+        email: email,
+        // Si el usuario pulsa el link en lugar de meter el código, también
+        // funciona — caemos en el callback como magic link.
+        redirectTo: AuthRedirect.resolve(AuthRedirectType.magiclink),
+      );
+      return const Right(unit);
+    } on AuthException catch (e, st) {
+      return Left(_mapAuthException(e, st));
+    } catch (e) {
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<AuthFailure, Unit>> verifyEmailOtp({
+    required String email,
+    required String token,
+  }) async {
+    try {
+      await _dataSource.verifyEmailOtp(email: email, token: token);
+      return const Right(unit);
+    } on AuthException catch (e, st) {
+      AppLogger.w('verifyEmailOtp AuthException: ${e.code} ${e.message}');
+      return Left(_mapOtpAuthException(e, st));
+    } catch (e, st) {
+      AppLogger.e('verifyEmailOtp unknown', error: e, stackTrace: st);
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+  }
+
+  /// El token OTP, cuando es incorrecto, devuelve `otp_expired` o
+  /// `invalid_credentials` según el caso; los normalizamos al mismo failure
+  /// para que la UI muestre "código no válido".
+  AuthFailure _mapOtpAuthException(AuthException e, StackTrace st) {
+    final code = e.code ?? '';
+    if (code == 'otp_expired' ||
+        code == 'invalid_otp' ||
+        code == 'invalid_token' ||
+        e.message.toLowerCase().contains('token')) {
+      return AuthInvalidCredentials(cause: e);
+    }
+    return _mapAuthException(e, st);
+  }
+
   AuthFailure _mapAuthException(AuthException e, StackTrace st) {
     final code = e.code ?? '';
     final msg = e.message.toLowerCase();

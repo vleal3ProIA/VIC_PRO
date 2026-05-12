@@ -28,6 +28,8 @@
   "actionSendResetEmail": "Enviar link de redefinição",
   "actionUpdatePassword": "Atualizar palavra-passe",
   "actionSendMagicLink": "Enviar magic link",
+  "actionSendOtp": "Enviar código",
+  "actionVerifyOtp": "Verificar código",
 
   "registerTitle": "Cria a tua conta",
   "registerSubtitle": "Junta-te a nós e começa a tua jornada.",
@@ -48,6 +50,14 @@
   "magicLinkSentSubtitle": "Enviámos um magic link para {email}. Abre-o neste dispositivo para iniciar sessão.",
   "magicLinkSentHint": "Não recebeste? Verifica o spam ou reenvia.",
   "actionUsePassword": "Usar e-mail + palavra-passe",
+
+  "loginWithOtp": "Entrar com um código",
+  "otpRequestTitle": "Entrar com um código de uso único",
+  "otpRequestSubtitle": "Introduz o teu e-mail e enviamos-te um código de 6 dígitos.",
+  "otpVerifyTitle": "Introduz o teu código",
+  "otpVerifySubtitle": "Enviámos um código de 6 dígitos para {email}. Expira em 10 minutos.",
+  "otpHint": "Cola ou escreve os 6 dígitos.",
+  "otpResent": "Código reenviado.",
 
   "forgotPasswordTitle": "Redefine a tua palavra-passe",
   "forgotPasswordSubtitle": "Introduz o teu e-mail e enviamos-te um link para redefinir.",

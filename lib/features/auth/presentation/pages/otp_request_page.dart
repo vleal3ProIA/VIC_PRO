@@ -2,15 +2,13 @@ import 'package:flutter/material.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/widgets/auth_card.dart';
-import 'package:myapp/features/auth/presentation/widgets/login_form.dart';
+import 'package:myapp/features/auth/presentation/widgets/otp_request_form.dart';
 import 'package:myapp/features/welcome/presentation/widgets/top_bar.dart';
 
-class LoginPage extends StatelessWidget {
-  const LoginPage({super.key});
+class OtpRequestPage extends StatelessWidget {
+  const OtpRequestPage({super.key});
 
-  // Altura reservada para no mover la card al aparecer/desaparecer errores.
-  // Acomoda divider + 2 botones outlined (magic link + OTP).
-  static const double _reservedHeight = 820;
+  static const double _reservedHeight = 580;
 
   @override
   Widget build(BuildContext context) {
@@ -21,13 +19,13 @@ class LoginPage extends StatelessWidget {
         child: AuthCard(
           reservedHeight: _reservedHeight,
           leading: Icon(
-            Icons.lock_open_outlined,
+            Icons.pin_outlined,
             size: 56,
             color: context.colors.primary,
           ),
-          title: context.l10n.loginTitle,
-          subtitle: context.l10n.loginSubtitle,
-          child: const LoginForm(),
+          title: context.l10n.otpRequestTitle,
+          subtitle: context.l10n.otpRequestSubtitle,
+          child: const OtpRequestForm(),
         ),
       ),
     );

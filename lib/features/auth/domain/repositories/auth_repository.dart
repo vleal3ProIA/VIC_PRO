@@ -30,4 +30,13 @@ abstract class AuthRepository {
   /// Envía un Magic Link al email indicado. El link abre sesión vía PKCE
   /// callback y redirige al usuario a `/home`.
   Future<Either<AuthFailure, Unit>> signInWithMagicLink(String email);
+
+  /// Envía un código OTP de 6 dígitos al email indicado.
+  Future<Either<AuthFailure, Unit>> requestEmailOtp(String email);
+
+  /// Verifica el código OTP. Si es válido abre sesión activa.
+  Future<Either<AuthFailure, Unit>> verifyEmailOtp({
+    required String email,
+    required String token,
+  });
 }

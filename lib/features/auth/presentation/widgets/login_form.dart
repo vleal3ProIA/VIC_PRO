@@ -138,6 +138,17 @@ class _LoginFormState extends ConsumerState<LoginForm> {
             icon: const Icon(Icons.auto_awesome_outlined, size: 18),
             label: Text(l.loginWithMagicLink),
           ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: state.isSubmitting
+                ? null
+                : () => context.goNamed(RouteNames.otpRequest),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
+            icon: const Icon(Icons.pin_outlined, size: 18),
+            label: Text(l.loginWithOtp),
+          ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,

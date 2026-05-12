@@ -15,12 +15,17 @@ class FakeAuthRepository implements AuthRepository {
   Either<AuthFailure, Unit> resendResult = const Right(unit);
   Either<AuthFailure, Unit> signOutResult = const Right(unit);
   Either<AuthFailure, Unit> magicLinkResult = const Right(unit);
+  Either<AuthFailure, Unit> requestOtpResult = const Right(unit);
+  Either<AuthFailure, Unit> verifyOtpResult = const Right(unit);
 
   String? lastSignInEmail;
   String? lastSignInPassword;
   String? lastResetEmail;
   String? lastUpdatedPassword;
   String? lastMagicLinkEmail;
+  String? lastOtpRequestEmail;
+  String? lastOtpVerifyEmail;
+  String? lastOtpVerifyToken;
 
   @override
   Future<Either<AuthFailure, SignUpResult>> signUp(SignUpRequest request) async {
@@ -61,5 +66,21 @@ class FakeAuthRepository implements AuthRepository {
   Future<Either<AuthFailure, Unit>> signInWithMagicLink(String email) async {
     lastMagicLinkEmail = email;
     return magicLinkResult;
+  }
+
+  @override
+  Future<Either<AuthFailure, Unit>> requestEmailOtp(String email) async {
+    lastOtpRequestEmail = email;
+    return requestOtpResult;
+  }
+
+  @override
+  Future<Either<AuthFailure, Unit>> verifyEmailOtp({
+    required String email,
+    required String token,
+  }) async {
+    lastOtpVerifyEmail = email;
+    lastOtpVerifyToken = token;
+    return verifyOtpResult;
   }
 }
