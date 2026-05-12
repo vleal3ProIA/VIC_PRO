@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "myapp · development (Chrome)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "args": ["--dart-define=ENV=development", "--web-port=5000"]
+    },
+    {
+      "name": "myapp · staging (Chrome)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "args": ["--dart-define=ENV=staging", "--web-port=5001"]
+    },
+    {
+      "name": "myapp · production (Chrome, profile)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "flutterMode": "profile",
+      "args": ["--dart-define=ENV=production"]
+    },
+    {
+      "name": "myapp · tests",
+      "request": "launch",
+      "type": "dart",
+      "program": "test/"
+    }
+  ]
+}

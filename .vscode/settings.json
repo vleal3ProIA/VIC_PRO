@@ -1,0 +1,40 @@
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "editor.rulers": [80, 100],
+  "editor.tabSize": 2,
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  "dart.lineLength": 100,
+  "dart.previewFlutterUiGuides": true,
+  "dart.previewFlutterUiGuidesCustomTracking": true,
+  "dart.runPubGetOnPubspecChanges": "always",
+  "dart.showInspectorNotificationsForWidgetErrors": true,
+
+  "[dart]": {
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.rulers": [80, 100],
+    "editor.selectionHighlight": false,
+    "editor.suggestSelection": "first",
+    "editor.tabCompletion": "onlySnippets",
+    "editor.wordBasedSuggestions": "off"
+  },
+
+  "files.associations": {
+    "*.arb": "json"
+  },
+
+  "search.exclude": {
+    "**/.dart_tool": true,
+    "**/.fvm": true,
+    "**/build": true,
+    "**/*.g.dart": true,
+    "**/*.freezed.dart": true,
+    "**/generated/**": true
+  }
+}

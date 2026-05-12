@@ -1,0 +1,14 @@
+{
+  "@@locale": "de",
+
+  "appTitle": "myapp",
+  "underConstruction": "Im Aufbau",
+  "comingSoonSubtitle": "Wir bauen etwas Großartiges. Schau bald wieder vorbei.",
+  "languageSelectorTooltip": "Sprache ändern",
+  "themeSelectorTooltip": "Design ändern",
+  "signInTooltip": "Anmelden",
+  "themeSystem": "System",
+  "themeLight": "Hell",
+  "themeDark": "Dunkel",
+  "languageCurrent": "Aktuelle Sprache: {language}"
+}

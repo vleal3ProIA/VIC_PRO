@@ -1,0 +1,14 @@
+{
+  "@@locale": "uk",
+
+  "appTitle": "myapp",
+  "underConstruction": "В розробці",
+  "comingSoonSubtitle": "Ми створюємо щось грандіозне. Завітайте пізніше.",
+  "languageSelectorTooltip": "Змінити мову",
+  "themeSelectorTooltip": "Змінити тему",
+  "signInTooltip": "Увійти",
+  "themeSystem": "Системна",
+  "themeLight": "Світла",
+  "themeDark": "Темна",
+  "languageCurrent": "Поточна мова: {language}"
+}

@@ -1,0 +1,14 @@
+{
+  "@@locale": "ru",
+
+  "appTitle": "myapp",
+  "underConstruction": "На стадии разработки",
+  "comingSoonSubtitle": "Мы создаём кое-что великое. Загляните позже.",
+  "languageSelectorTooltip": "Сменить язык",
+  "themeSelectorTooltip": "Сменить тему",
+  "signInTooltip": "Войти",
+  "themeSystem": "Системная",
+  "themeLight": "Светлая",
+  "themeDark": "Тёмная",
+  "languageCurrent": "Текущий язык: {language}"
+}

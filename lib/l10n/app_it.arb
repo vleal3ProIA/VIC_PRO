@@ -1,0 +1,14 @@
+{
+  "@@locale": "it",
+
+  "appTitle": "myapp",
+  "underConstruction": "In costruzione",
+  "comingSoonSubtitle": "Stiamo costruendo qualcosa di grande. Torna presto.",
+  "languageSelectorTooltip": "Cambia lingua",
+  "themeSelectorTooltip": "Cambia tema",
+  "signInTooltip": "Accedi",
+  "themeSystem": "Sistema",
+  "themeLight": "Chiaro",
+  "themeDark": "Scuro",
+  "languageCurrent": "Lingua attuale: {language}"
+}

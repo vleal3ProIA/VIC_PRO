@@ -1,0 +1,25 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "myapp",
+  "@appTitle": {"description": "Application name shown in window title and welcome screen"},
+
+  "underConstruction": "Under construction",
+  "@underConstruction": {"description": "Big headline on the welcome screen while the project is being built"},
+
+  "comingSoonSubtitle": "We are building something great. Come back soon.",
+  "@comingSoonSubtitle": {"description": "Subtitle under the 'Under construction' headline"},
+
+  "languageSelectorTooltip": "Change language",
+  "themeSelectorTooltip": "Change theme",
+  "signInTooltip": "Sign in",
+
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+
+  "languageCurrent": "Current language: {language}",
+  "@languageCurrent": {
+    "placeholders": {"language": {"type": "String"}}
+  }
+}
