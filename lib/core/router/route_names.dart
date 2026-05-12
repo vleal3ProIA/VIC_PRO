@@ -11,6 +11,8 @@ class RouteNames {
   static const String verifyEmailSent = 'verify_email_sent';
   static const String emailVerified = 'email_verified';
   static const String authCallback = 'auth_callback';
+  static const String magicLink = 'magic_link';
+  static const String magicLinkSent = 'magic_link_sent';
   static const String home = 'home';
   static const String notFound = 'not_found';
 }
@@ -28,5 +30,7 @@ class RoutePaths {
   static const String verifyEmailSent = '/verify-email-sent';
   static const String emailVerified = '/email-verified';
   static const String authCallback = '/auth/callback';
+  static const String magicLink = '/magic-link';
+  static const String magicLinkSent = '/magic-link-sent';
   static const String home = '/home';
 }

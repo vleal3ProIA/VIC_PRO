@@ -113,6 +113,33 @@ class _LoginFormState extends ConsumerState<LoginForm> {
           ),
           const SizedBox(height: 16),
           Row(
+            children: [
+              const Expanded(child: Divider()),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  l.loginOrDivider,
+                  style: context.textTheme.labelSmall?.copyWith(
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              const Expanded(child: Divider()),
+            ],
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: state.isSubmitting
+                ? null
+                : () => context.goNamed(RouteNames.magicLink),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
+            icon: const Icon(Icons.auto_awesome_outlined, size: 18),
+            label: Text(l.loginWithMagicLink),
+          ),
+          const SizedBox(height: 16),
+          Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(l.loginNoAccount, style: context.textTheme.bodyMedium),
