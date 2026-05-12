@@ -16,6 +16,7 @@
   "fieldEmail": "E-mail",
   "fieldPassword": "Palavra-passe",
   "fieldPasswordConfirm": "Repetir palavra-passe",
+  "fieldNewPassword": "Nova palavra-passe",
 
   "actionCreateAccount": "Criar conta",
   "actionSignIn": "Entrar",
@@ -24,6 +25,8 @@
   "actionResend": "Reenviar e-mail",
   "actionBackToLogin": "Voltar ao início de sessão",
   "actionGoHome": "Ir para o início",
+  "actionSendResetEmail": "Enviar link de redefinição",
+  "actionUpdatePassword": "Atualizar palavra-passe",
 
   "registerTitle": "Cria a tua conta",
   "registerSubtitle": "Junta-te a nós e começa a tua jornada.",
@@ -36,6 +39,16 @@
   "loginNoAccount": "Não tens uma conta?",
   "loginCreateOne": "Cria uma",
 
+  "forgotPasswordTitle": "Redefine a tua palavra-passe",
+  "forgotPasswordSubtitle": "Introduz o teu e-mail e enviamos-te um link para redefinir.",
+  "forgotPasswordSentTitle": "Verifica a tua caixa de entrada",
+  "forgotPasswordSentSubtitle": "Enviámos um link de redefinição para {email}. Abre-o a partir deste dispositivo.",
+
+  "setNewPasswordTitle": "Escolhe uma nova palavra-passe",
+  "setNewPasswordSubtitle": "Escolhe uma palavra-passe forte que não uses noutros sítios.",
+  "passwordUpdatedTitle": "Palavra-passe atualizada",
+  "passwordUpdatedSubtitle": "Já podes iniciar sessão com a tua nova palavra-passe.",
+
   "verifyEmailSentTitle": "Verifica a tua caixa de entrada",
   "verifyEmailSentSubtitle": "Enviámos um link de verificação para {email}. Clica no link para ativar a tua conta.",
   "verifyEmailSentResendHint": "Não recebeste? Verifica o spam ou reenvia.",
@@ -46,6 +59,10 @@
 
   "verifyEmailCallbackProcessing": "A verificar o teu e-mail…",
   "verifyEmailCallbackError": "Não conseguimos verificar o link. Pode ter expirado.",
+
+  "homeWelcomeUser": "Bem-vindo, {name}",
+  "homeSignedInAs": "Sessão iniciada como {email}",
+  "homePlaceholder": "A tua área privada estará aqui. Mais novidades em breve.",
 
   "errorRequired": "Este campo é obrigatório",
   "errorEmailInvalid": "E-mail inválido",

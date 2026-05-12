@@ -16,6 +16,7 @@
   "fieldEmail": "E-mail",
   "fieldPassword": "Mot de passe",
   "fieldPasswordConfirm": "Confirmer le mot de passe",
+  "fieldNewPassword": "Nouveau mot de passe",
 
   "actionCreateAccount": "Créer un compte",
   "actionSignIn": "Se connecter",
@@ -24,6 +25,8 @@
   "actionResend": "Renvoyer l'e-mail",
   "actionBackToLogin": "Retour à la connexion",
   "actionGoHome": "Aller à l'accueil",
+  "actionSendResetEmail": "Envoyer le lien",
+  "actionUpdatePassword": "Mettre à jour le mot de passe",
 
   "registerTitle": "Créer votre compte",
   "registerSubtitle": "Rejoignez-nous et commencez votre aventure.",
@@ -36,6 +39,16 @@
   "loginNoAccount": "Pas de compte ?",
   "loginCreateOne": "En créer un",
 
+  "forgotPasswordTitle": "Réinitialiser le mot de passe",
+  "forgotPasswordSubtitle": "Saisissez votre e-mail et nous vous enverrons un lien de réinitialisation.",
+  "forgotPasswordSentTitle": "Vérifiez votre boîte mail",
+  "forgotPasswordSentSubtitle": "Nous avons envoyé un lien de réinitialisation à {email}. Ouvrez-le depuis cet appareil.",
+
+  "setNewPasswordTitle": "Choisissez un nouveau mot de passe",
+  "setNewPasswordSubtitle": "Choisissez un mot de passe fort que vous n'utilisez nulle part ailleurs.",
+  "passwordUpdatedTitle": "Mot de passe mis à jour",
+  "passwordUpdatedSubtitle": "Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.",
+
   "verifyEmailSentTitle": "Vérifiez votre boîte mail",
   "verifyEmailSentSubtitle": "Nous avons envoyé un lien de vérification à {email}. Cliquez sur le lien pour activer votre compte.",
   "verifyEmailSentResendHint": "Pas reçu ? Vérifiez les spams ou renvoyez.",
@@ -46,6 +59,10 @@
 
   "verifyEmailCallbackProcessing": "Vérification de votre e-mail…",
   "verifyEmailCallbackError": "Nous n'avons pas pu vérifier le lien. Il a peut-être expiré.",
+
+  "homeWelcomeUser": "Bienvenue, {name}",
+  "homeSignedInAs": "Connecté en tant que {email}",
+  "homePlaceholder": "Votre espace privé se trouvera ici. Plus à venir bientôt.",
 
   "errorRequired": "Ce champ est obligatoire",
   "errorEmailInvalid": "Adresse e-mail invalide",

@@ -7,9 +7,7 @@ class AuthSupabaseDataSource {
 
   final SupabaseClient _client;
 
-  /// `redirectTo` es la URL absoluta a la que Supabase devolverá al usuario
-  /// tras pulsar el botón del email de verificación. En web debe estar en
-  /// la lista de Redirect URLs del proyecto.
+  /// Registro de usuario nuevo.
   Future<AuthResponse> signUp({
     required String email,
     required String password,
@@ -28,6 +26,21 @@ class AuthSupabaseDataSource {
     );
   }
 
+  /// Login email + password.
+  Future<AuthResponse> signInWithPassword({
+    required String email,
+    required String password,
+  }) {
+    return _client.auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
+  }
+
+  /// Cierra la sesión activa.
+  Future<void> signOut() => _client.auth.signOut();
+
+  /// Reenvía el email de verificación de signup.
   Future<ResendResponse> resendSignupConfirmation({
     required String email,
     required String redirectTo,
@@ -36,6 +49,26 @@ class AuthSupabaseDataSource {
       type: OtpType.signup,
       email: email,
       emailRedirectTo: redirectTo,
+    );
+  }
+
+  /// Envía el email de recuperación de contraseña.
+  Future<void> sendPasswordReset({
+    required String email,
+    required String redirectTo,
+  }) {
+    return _client.auth.resetPasswordForEmail(
+      email,
+      redirectTo: redirectTo,
+    );
+  }
+
+  /// Actualiza la contraseña del usuario actualmente autenticado.
+  /// Se llama desde la pantalla `set_new_password` tras intercambiar el
+  /// `code` del link de recovery por una sesión activa.
+  Future<UserResponse> updatePassword(String newPassword) {
+    return _client.auth.updateUser(
+      UserAttributes(password: newPassword),
     );
   }
 }

@@ -16,6 +16,7 @@
   "fieldEmail": "Электронная почта",
   "fieldPassword": "Пароль",
   "fieldPasswordConfirm": "Повторите пароль",
+  "fieldNewPassword": "Новый пароль",
 
   "actionCreateAccount": "Создать аккаунт",
   "actionSignIn": "Войти",
@@ -24,6 +25,8 @@
   "actionResend": "Отправить ещё раз",
   "actionBackToLogin": "Назад ко входу",
   "actionGoHome": "На главную",
+  "actionSendResetEmail": "Отправить ссылку",
+  "actionUpdatePassword": "Обновить пароль",
 
   "registerTitle": "Создайте аккаунт",
   "registerSubtitle": "Присоединяйтесь и начните свой путь.",
@@ -36,6 +39,16 @@
   "loginNoAccount": "Нет аккаунта?",
   "loginCreateOne": "Создать",
 
+  "forgotPasswordTitle": "Сброс пароля",
+  "forgotPasswordSubtitle": "Введите email и мы отправим ссылку для сброса пароля.",
+  "forgotPasswordSentTitle": "Проверьте почту",
+  "forgotPasswordSentSubtitle": "Мы отправили ссылку для сброса на {email}. Откройте её на этом устройстве.",
+
+  "setNewPasswordTitle": "Выберите новый пароль",
+  "setNewPasswordSubtitle": "Выберите надёжный пароль, который не используете в других местах.",
+  "passwordUpdatedTitle": "Пароль обновлён",
+  "passwordUpdatedSubtitle": "Теперь вы можете войти с новым паролем.",
+
   "verifyEmailSentTitle": "Проверьте почту",
   "verifyEmailSentSubtitle": "Мы отправили ссылку для подтверждения на {email}. Нажмите на ссылку, чтобы активировать аккаунт.",
   "verifyEmailSentResendHint": "Не получили? Проверьте спам или отправьте ещё раз.",
@@ -46,6 +59,10 @@
 
   "verifyEmailCallbackProcessing": "Проверка вашего email…",
   "verifyEmailCallbackError": "Не удалось проверить ссылку. Возможно, она истекла.",
+
+  "homeWelcomeUser": "Добро пожаловать, {name}",
+  "homeSignedInAs": "Вход выполнен как {email}",
+  "homePlaceholder": "Здесь будет ваша личная зона. Скоро больше.",
 
   "errorRequired": "Это поле обязательно",
   "errorEmailInvalid": "Некорректный email",

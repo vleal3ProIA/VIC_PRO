@@ -16,6 +16,7 @@
   "fieldEmail": "E-Mail",
   "fieldPassword": "Passwort",
   "fieldPasswordConfirm": "Passwort wiederholen",
+  "fieldNewPassword": "Neues Passwort",
 
   "actionCreateAccount": "Konto erstellen",
   "actionSignIn": "Anmelden",
@@ -24,6 +25,8 @@
   "actionResend": "E-Mail erneut senden",
   "actionBackToLogin": "Zurück zur Anmeldung",
   "actionGoHome": "Zur Startseite",
+  "actionSendResetEmail": "Reset-Link senden",
+  "actionUpdatePassword": "Passwort aktualisieren",
 
   "registerTitle": "Konto erstellen",
   "registerSubtitle": "Tritt bei und starte deine Reise.",
@@ -36,6 +39,16 @@
   "loginNoAccount": "Noch kein Konto?",
   "loginCreateOne": "Erstellen",
 
+  "forgotPasswordTitle": "Passwort zurücksetzen",
+  "forgotPasswordSubtitle": "Gib deine E-Mail ein und wir senden dir einen Link zum Zurücksetzen.",
+  "forgotPasswordSentTitle": "Überprüfe dein Postfach",
+  "forgotPasswordSentSubtitle": "Wir haben einen Reset-Link an {email} gesendet. Öffne ihn auf diesem Gerät.",
+
+  "setNewPasswordTitle": "Wähle ein neues Passwort",
+  "setNewPasswordSubtitle": "Wähle ein starkes Passwort, das du nirgendwo sonst verwendest.",
+  "passwordUpdatedTitle": "Passwort aktualisiert",
+  "passwordUpdatedSubtitle": "Du kannst dich nun mit deinem neuen Passwort anmelden.",
+
   "verifyEmailSentTitle": "Überprüfe dein Postfach",
   "verifyEmailSentSubtitle": "Wir haben einen Bestätigungslink an {email} gesendet. Klicke auf den Link, um dein Konto zu aktivieren.",
   "verifyEmailSentResendHint": "Nicht erhalten? Überprüfe den Spam oder sende erneut.",
@@ -46,6 +59,10 @@
 
   "verifyEmailCallbackProcessing": "E-Mail wird überprüft…",
   "verifyEmailCallbackError": "Wir konnten den Link nicht überprüfen. Er ist möglicherweise abgelaufen.",
+
+  "homeWelcomeUser": "Willkommen, {name}",
+  "homeSignedInAs": "Angemeldet als {email}",
+  "homePlaceholder": "Hier wird dein privater Bereich sein. Mehr folgt bald.",
 
   "errorRequired": "Dieses Feld ist erforderlich",
   "errorEmailInvalid": "Ungültige E-Mail-Adresse",
