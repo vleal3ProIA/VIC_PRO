@@ -28,6 +28,8 @@
   "actionSendResetEmail": "Отправить ссылку",
   "actionUpdatePassword": "Обновить пароль",
   "actionSendMagicLink": "Отправить magic link",
+  "actionSendOtp": "Отправить код",
+  "actionVerifyOtp": "Проверить код",
 
   "registerTitle": "Создайте аккаунт",
   "registerSubtitle": "Присоединяйтесь и начните свой путь.",
@@ -48,6 +50,14 @@
   "magicLinkSentSubtitle": "Мы отправили magic link на {email}. Откройте его на этом устройстве для входа.",
   "magicLinkSentHint": "Не получили? Проверьте спам или отправьте ещё раз.",
   "actionUsePassword": "Использовать email + пароль",
+
+  "loginWithOtp": "Войти по коду",
+  "otpRequestTitle": "Вход по одноразовому коду",
+  "otpRequestSubtitle": "Введите email и мы отправим 6-значный код.",
+  "otpVerifyTitle": "Введите код",
+  "otpVerifySubtitle": "Мы отправили 6-значный код на {email}. Он действителен 10 минут.",
+  "otpHint": "Вставьте или введите 6 цифр.",
+  "otpResent": "Код отправлен снова.",
 
   "forgotPasswordTitle": "Сброс пароля",
   "forgotPasswordSubtitle": "Введите email и мы отправим ссылку для сброса пароля.",

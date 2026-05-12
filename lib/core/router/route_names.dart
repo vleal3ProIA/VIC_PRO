@@ -13,6 +13,8 @@ class RouteNames {
   static const String authCallback = 'auth_callback';
   static const String magicLink = 'magic_link';
   static const String magicLinkSent = 'magic_link_sent';
+  static const String otpRequest = 'otp_request';
+  static const String otpVerify = 'otp_verify';
   static const String home = 'home';
   static const String notFound = 'not_found';
 }
@@ -32,5 +34,7 @@ class RoutePaths {
   static const String authCallback = '/auth/callback';
   static const String magicLink = '/magic-link';
   static const String magicLinkSent = '/magic-link-sent';
+  static const String otpRequest = '/otp';
+  static const String otpVerify = '/otp/verify';
   static const String home = '/home';
 }

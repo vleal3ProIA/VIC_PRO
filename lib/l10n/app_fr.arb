@@ -28,6 +28,8 @@
   "actionSendResetEmail": "Envoyer le lien",
   "actionUpdatePassword": "Mettre à jour le mot de passe",
   "actionSendMagicLink": "Envoyer le magic link",
+  "actionSendOtp": "Envoyer le code",
+  "actionVerifyOtp": "Vérifier le code",
 
   "registerTitle": "Créer votre compte",
   "registerSubtitle": "Rejoignez-nous et commencez votre aventure.",
@@ -48,6 +50,14 @@
   "magicLinkSentSubtitle": "Nous avons envoyé un magic link à {email}. Ouvrez-le sur cet appareil pour vous connecter.",
   "magicLinkSentHint": "Pas reçu ? Vérifiez les spams ou renvoyez.",
   "actionUsePassword": "Utiliser e-mail + mot de passe",
+
+  "loginWithOtp": "Se connecter avec un code",
+  "otpRequestTitle": "Connexion avec un code à usage unique",
+  "otpRequestSubtitle": "Saisissez votre e-mail et nous vous enverrons un code à 6 chiffres.",
+  "otpVerifyTitle": "Saisissez votre code",
+  "otpVerifySubtitle": "Nous avons envoyé un code à 6 chiffres à {email}. Il expire dans 10 minutes.",
+  "otpHint": "Collez ou saisissez les 6 chiffres.",
+  "otpResent": "Code renvoyé.",
 
   "forgotPasswordTitle": "Réinitialiser le mot de passe",
   "forgotPasswordSubtitle": "Saisissez votre e-mail et nous vous enverrons un lien de réinitialisation.",

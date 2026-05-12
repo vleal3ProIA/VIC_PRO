@@ -1,11 +1,12 @@
 <!--
   Plantilla de email para "Magic Link" (Authentication → Email Templates).
-  Reemplaza la plantilla por defecto de Supabase.
+  Una sola plantilla cubre dos flujos de cliente:
+    1. Magic Link  → el usuario pulsa el botón
+    2. OTP         → el usuario copia el código en la app
 
   Variables disponibles:
     {{ .ConfirmationURL }}  → URL para abrir sesión
-    {{ .Token }}            → Código OTP de 6 dígitos (no usado aquí, será su
-                              propia plantilla cuando hagamos OTP en Paso 3b)
+    {{ .Token }}            → Código OTP de 6 dígitos
     {{ .SiteURL }}          → URL configurada en Site URL
     {{ .Email }}            → Email del destinatario
 
@@ -46,7 +47,7 @@
 
             <!-- CTA -->
             <tr>
-              <td style="padding:8px 40px 24px;text-align:center;">
+              <td style="padding:8px 40px 12px;text-align:center;">
                 <a href="{{ .ConfirmationURL }}"
                    style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 28px;border-radius:12px;">
                   Sign in to myapp
@@ -54,11 +55,23 @@
               </td>
             </tr>
 
+            <!-- OTP code (alternative) -->
+            <tr>
+              <td style="padding:24px 40px 8px;text-align:center;">
+                <p style="margin:0 0 8px;font-size:13px;color:#64748b;">
+                  Or enter this 6-digit code in the app:
+                </p>
+                <div style="display:inline-block;background:#f1f5f9;border-radius:12px;padding:14px 24px;letter-spacing:8px;font-family:'SF Mono','Roboto Mono','Menlo',Consolas,monospace;font-size:28px;font-weight:700;color:#0f172a;">
+                  {{ .Token }}
+                </div>
+              </td>
+            </tr>
+
             <!-- Fallback link -->
             <tr>
-              <td style="padding:8px 40px 24px;">
+              <td style="padding:16px 40px 24px;">
                 <p style="margin:0 0 8px;font-size:13px;color:#64748b;text-align:center;">
-                  Or paste this link into your browser:
+                  Trouble with the button? Paste this link into your browser:
                 </p>
                 <p style="margin:0;font-size:12px;color:#475569;word-break:break-all;background:#f1f5f9;padding:12px;border-radius:8px;text-align:center;">
                   {{ .ConfirmationURL }}
@@ -70,7 +83,7 @@
             <tr>
               <td style="padding:16px 40px 32px;border-top:1px solid #e2e8f0;">
                 <p style="margin:16px 0 0;font-size:12px;color:#64748b;text-align:center;">
-                  This link expires in 1 hour and can only be used once. If you didn't request it, you can safely ignore this email.
+                  Both the link and the code expire in 1 hour and can only be used once. If you didn't request this, you can safely ignore this email.
                 </p>
               </td>
             </tr>

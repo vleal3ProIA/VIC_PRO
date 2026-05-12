@@ -56,13 +56,18 @@ Click **Save**.
 2. **Message body (HTML)**: pegar el de
    `supabase/templates/email/reset_password.html`.
 
-### 3.3 · Magic Link
+### 3.3 · Magic Link + OTP (misma plantilla, dos flujos)
 
 **Dashboard → Authentication → Email Templates → Magic Link**
 
 1. **Subject**: cambiar a → `Your sign-in link · myapp`
 2. **Message body (HTML)**: pegar el de
    `supabase/templates/email/magic_link.html`.
+
+> Esta plantilla muestra **tanto el botón del link** como el **código OTP
+> de 6 dígitos**. El usuario que viene del flujo `/magic-link` pulsa el
+> botón; el que viene del flujo `/otp` copia el código en la app. Una sola
+> plantilla cubre ambos casos.
 
 > (Opcional) Cambiar **Sender name** a `myapp` en *Project Settings →
 > Auth → SMTP Settings* (con SMTP custom; el SMTP por defecto de Supabase
@@ -126,6 +131,19 @@ flutter run -d chrome --web-port=5000 --dart-define=ENV=development
 
 > Si el email aún no estaba registrado, el magic link **lo crea
 > automáticamente** y abre sesión. Es signup + login en un mismo flujo.
+
+### 5.5 · OTP (código de 6 dígitos)
+
+1. Login → **"Sign in with a code"** → introduce tu email → **Send code**.
+2. → pantalla **"Enter your code"** con 6 cajas.
+3. Abre el email "Your sign-in link · myapp" — bajo el botón verás el
+   **código de 6 dígitos** en grande.
+4. Pega el código en las cajas (o tecléalo). Se verifica automáticamente
+   al introducir el 6.º dígito → **`/home`**.
+
+> Mismo backend que magic link, distinta UI. Si te equivocas en el código,
+> el borde se pone rojo y puedes reintentarlo. Si pulsas "Resend email"
+> recibes uno nuevo.
 
 ### Si algo falla
 

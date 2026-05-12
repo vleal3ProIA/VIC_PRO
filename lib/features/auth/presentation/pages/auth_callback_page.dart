@@ -48,6 +48,9 @@ class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
         case AuthRedirectType.recovery:
           context.goNamed(RouteNames.setNewPassword);
         case AuthRedirectType.magiclink:
+        case AuthRedirectType.otp:
+          // Si el usuario llegó por OTP pero pulsó el link en lugar de meter
+          // el código, lo tratamos como magic link → sesión ya activa → home.
           context.goNamed(RouteNames.home);
         case AuthRedirectType.signup:
           context.goNamed(RouteNames.emailVerified);

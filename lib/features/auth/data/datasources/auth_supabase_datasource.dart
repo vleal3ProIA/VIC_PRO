@@ -88,4 +88,35 @@ class AuthSupabaseDataSource {
       shouldCreateUser: shouldCreateUser,
     );
   }
+
+  /// Envía un código OTP de 6 dígitos al email indicado.
+  ///
+  /// Backend: comparte método con magic link (`signInWithOtp`). La plantilla
+  /// de email muestra tanto el link como el código; el usuario usa el que
+  /// prefiera. En la app, el flujo OTP redirige a la pantalla de verificar
+  /// código y el del magic link al callback.
+  Future<void> sendEmailOtp({
+    required String email,
+    required String redirectTo,
+    bool shouldCreateUser = true,
+  }) {
+    return _client.auth.signInWithOtp(
+      email: email,
+      emailRedirectTo: redirectTo,
+      shouldCreateUser: shouldCreateUser,
+    );
+  }
+
+  /// Verifica un código OTP de 6 dígitos. Devuelve la sesión activa si es
+  /// válido.
+  Future<AuthResponse> verifyEmailOtp({
+    required String email,
+    required String token,
+  }) {
+    return _client.auth.verifyOTP(
+      type: OtpType.email,
+      email: email,
+      token: token,
+    );
+  }
 }

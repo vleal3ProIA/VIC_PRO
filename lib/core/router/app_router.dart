@@ -10,6 +10,8 @@ import 'package:myapp/features/auth/presentation/pages/forgot_password_page.dart
 import 'package:myapp/features/auth/presentation/pages/login_page.dart';
 import 'package:myapp/features/auth/presentation/pages/magic_link_page.dart';
 import 'package:myapp/features/auth/presentation/pages/magic_link_sent_page.dart';
+import 'package:myapp/features/auth/presentation/pages/otp_request_page.dart';
+import 'package:myapp/features/auth/presentation/pages/otp_verify_page.dart';
 import 'package:myapp/features/auth/presentation/pages/password_reset_sent_page.dart';
 import 'package:myapp/features/auth/presentation/pages/password_updated_page.dart';
 import 'package:myapp/features/auth/presentation/pages/register_page.dart';
@@ -98,6 +100,19 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: RoutePaths.otpRequest,
+        name: RouteNames.otpRequest,
+        builder: (_, __) => const OtpRequestPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.otpVerify,
+        name: RouteNames.otpVerify,
+        builder: (_, state) {
+          final email = state.uri.queryParameters['email'] ?? '';
+          return OtpVerifyPage(email: email);
+        },
+      ),
+      GoRoute(
         path: RoutePaths.home,
         name: RouteNames.home,
         builder: (_, __) => const HomePage(),
@@ -134,6 +149,8 @@ const _publicOnly = <String>{
   RoutePaths.passwordResetSent,
   RoutePaths.magicLink,
   RoutePaths.magicLinkSent,
+  RoutePaths.otpRequest,
+  RoutePaths.otpVerify,
 };
 
 String? _redirect(Ref ref, GoRouterState state) {
