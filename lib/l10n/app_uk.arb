@@ -16,6 +16,7 @@
   "fieldEmail": "Електронна пошта",
   "fieldPassword": "Пароль",
   "fieldPasswordConfirm": "Повторіть пароль",
+  "fieldNewPassword": "Новий пароль",
 
   "actionCreateAccount": "Створити акаунт",
   "actionSignIn": "Увійти",
@@ -24,6 +25,8 @@
   "actionResend": "Надіслати знову",
   "actionBackToLogin": "Назад до входу",
   "actionGoHome": "На головну",
+  "actionSendResetEmail": "Надіслати посилання",
+  "actionUpdatePassword": "Оновити пароль",
 
   "registerTitle": "Створіть акаунт",
   "registerSubtitle": "Приєднуйтеся та починайте свою подорож.",
@@ -36,6 +39,16 @@
   "loginNoAccount": "Немає акаунта?",
   "loginCreateOne": "Створити",
 
+  "forgotPasswordTitle": "Скинути пароль",
+  "forgotPasswordSubtitle": "Введіть email і ми надішлемо посилання для скидання пароля.",
+  "forgotPasswordSentTitle": "Перевірте поштову скриньку",
+  "forgotPasswordSentSubtitle": "Ми надіслали посилання для скидання на {email}. Відкрийте його з цього пристрою.",
+
+  "setNewPasswordTitle": "Виберіть новий пароль",
+  "setNewPasswordSubtitle": "Виберіть надійний пароль, який не використовуєте в інших місцях.",
+  "passwordUpdatedTitle": "Пароль оновлено",
+  "passwordUpdatedSubtitle": "Тепер ви можете увійти з новим паролем.",
+
   "verifyEmailSentTitle": "Перевірте поштову скриньку",
   "verifyEmailSentSubtitle": "Ми надіслали посилання для підтвердження на {email}. Натисніть на посилання, щоб активувати акаунт.",
   "verifyEmailSentResendHint": "Не отримали? Перевірте спам або надішліть знову.",
@@ -46,6 +59,10 @@
 
   "verifyEmailCallbackProcessing": "Перевірка вашої пошти…",
   "verifyEmailCallbackError": "Не вдалося перевірити посилання. Можливо, воно прострочене.",
+
+  "homeWelcomeUser": "Ласкаво просимо, {name}",
+  "homeSignedInAs": "Вхід виконано як {email}",
+  "homePlaceholder": "Тут буде ваша особиста зона. Скоро більше.",
 
   "errorRequired": "Це поле обов'язкове",
   "errorEmailInvalid": "Некоректна електронна адреса",

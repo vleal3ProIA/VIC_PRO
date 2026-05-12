@@ -38,18 +38,29 @@ Click **Save**.
 
 ---
 
-## 3 · Plantilla del email "Confirm signup"
+## 3 · Plantillas de email
+
+### 3.1 · Confirm signup
 
 **Dashboard → Authentication → Email Templates → Confirm signup**
 
 1. **Subject**: cambiar a → `Verify your account · myapp`
 2. **Message body (HTML)**: borrar el contenido por defecto y pegar el de
    `supabase/templates/email/confirm_signup.html`.
-3. (Opcional) Cambiar **Sender name** a `myapp` en *Project Settings →
-   Auth → SMTP Settings* (con SMTP custom; el SMTP por defecto de Supabase
-   tiene rate limit de **3 emails/hora** — suficiente para desarrollo).
 
-Click **Save**.
+### 3.2 · Reset password
+
+**Dashboard → Authentication → Email Templates → Reset password**
+
+1. **Subject**: cambiar a → `Reset your password · myapp`
+2. **Message body (HTML)**: pegar el de
+   `supabase/templates/email/reset_password.html`.
+
+> (Opcional) Cambiar **Sender name** a `myapp` en *Project Settings →
+> Auth → SMTP Settings* (con SMTP custom; el SMTP por defecto de Supabase
+> tiene rate limit de **3 emails/hora** — suficiente para desarrollo).
+
+Click **Save** en cada plantilla.
 
 ---
 
@@ -64,21 +75,38 @@ Valores por defecto razonables para empezar (luego los apretamos más):
 
 ---
 
-## 5 · Verificar el flujo
+## 5 · Verificar los flujos
 
-1. Arranca la app:
-   ```powershell
-   cd C:\VIC_PRO\myapp
-   flutter run -d chrome --web-port=5000 --dart-define=ENV=development
-   ```
-2. Welcome → 🔑 (entrar) → "Create one" → pantalla de **Registro**.
-3. Rellena: username (≥3 chars), email, contraseña fuerte (8+ con
-   mayúscula/minúscula/dígito/especial), repetir, checkbox términos →
-   **Create account**.
-4. Debe navegar a **"Check your inbox"** mostrando tu email.
-5. Abre tu inbox → email **"Verify your account · myapp"** con botón azul.
-6. Click → vuelves a la app en `/auth/callback` → spinner → **"Account
-   verified!"** → botón **Sign in** → vuelves al login.
+```powershell
+cd C:\VIC_PRO\myapp
+flutter run -d chrome --web-port=5000 --dart-define=ENV=development
+```
+
+### 5.1 · Registro + verificación
+
+1. Welcome → 🔑 → "Create one" → **Registro**.
+2. Rellena los 4 campos + acepta términos → **Create account**.
+3. → **"Check your inbox"** con tu email.
+4. Abre el email → click en el botón azul.
+5. → `/auth/callback?type=signup` → spinner → **"Account verified!"** →
+   **Sign in** → vuelves al login.
+
+### 5.2 · Login
+
+1. En la pantalla de login mete el email + password verificados.
+2. **Sign in** → el guard del router te lleva a `/home`.
+3. En `/home` debes ver: avatar + "Bienvenido, {username}" + tu email +
+   botón de **Sign out** en la app bar.
+4. Sign out → vuelves a `/welcome`.
+
+### 5.3 · Recuperar contraseña
+
+1. Login → **"Forgot password?"** → introduce tu email → **Send reset link**.
+2. → **"Check your inbox"**.
+3. Abre el email **"Reset your password · myapp"** → botón **Reset my password**.
+4. → `/auth/callback?type=recovery` → spinner → **"Choose a new password"**.
+5. Introduce contraseña nueva + confirmar → **Update password**.
+6. → **"Password updated"** → **Sign in** → entra con la nueva contraseña.
 
 ### Si algo falla
 
@@ -95,7 +123,8 @@ Valores por defecto razonables para empezar (luego los apretamos más):
 ## 6 · Próximos pasos automáticos
 
 Cuando todo lo anterior funcione, abriremos la siguiente iteración:
-- Login real (email+password) sobre la misma estructura de card fija.
-- Recuperar contraseña + plantilla `reset_password.html`.
-- Cambio de email + cambio de password en el panel privado.
-- Magic Link → OTP → MFA → OAuth Google/Apple.
+- Panel privado completo (settings: idioma + tema persistente en
+  `profiles.locale` y `profiles.theme_mode`).
+- Cambio de email + cambio de password desde el panel privado.
+- Magic Link → OTP → MFA → OAuth Google/Apple → biometría (WebAuthn).
+- GDPR: borrado de cuenta + export de datos.

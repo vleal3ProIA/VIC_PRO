@@ -16,6 +16,7 @@
   "fieldEmail": "Correo electrónico",
   "fieldPassword": "Contraseña",
   "fieldPasswordConfirm": "Repetir contraseña",
+  "fieldNewPassword": "Nueva contraseña",
 
   "actionCreateAccount": "Crear cuenta",
   "actionSignIn": "Iniciar sesión",
@@ -24,6 +25,8 @@
   "actionResend": "Reenviar email",
   "actionBackToLogin": "Volver a iniciar sesión",
   "actionGoHome": "Ir al inicio",
+  "actionSendResetEmail": "Enviar enlace de cambio",
+  "actionUpdatePassword": "Actualizar contraseña",
 
   "registerTitle": "Crea tu cuenta",
   "registerSubtitle": "Únete y empieza tu camino.",
@@ -36,6 +39,16 @@
   "loginNoAccount": "¿No tienes una cuenta?",
   "loginCreateOne": "Crea una",
 
+  "forgotPasswordTitle": "Recupera tu contraseña",
+  "forgotPasswordSubtitle": "Introduce tu correo y te enviaremos un enlace para cambiar tu contraseña.",
+  "forgotPasswordSentTitle": "Revisa tu correo",
+  "forgotPasswordSentSubtitle": "Hemos enviado un enlace de cambio a {email}. Ábrelo desde este dispositivo.",
+
+  "setNewPasswordTitle": "Elige una nueva contraseña",
+  "setNewPasswordSubtitle": "Elige una contraseña segura que no uses en otros sitios.",
+  "passwordUpdatedTitle": "Contraseña actualizada",
+  "passwordUpdatedSubtitle": "Ya puedes iniciar sesión con tu nueva contraseña.",
+
   "verifyEmailSentTitle": "Revisa tu correo",
   "verifyEmailSentSubtitle": "Hemos enviado un enlace de verificación a {email}. Pulsa el enlace para activar tu cuenta.",
   "verifyEmailSentResendHint": "¿No lo recibiste? Revisa el spam o reenvíalo.",
@@ -46,6 +59,10 @@
 
   "verifyEmailCallbackProcessing": "Verificando tu correo…",
   "verifyEmailCallbackError": "No pudimos verificar el enlace. Puede haber caducado.",
+
+  "homeWelcomeUser": "Bienvenido, {name}",
+  "homeSignedInAs": "Sesión iniciada como {email}",
+  "homePlaceholder": "Aquí estará tu zona privada. Más cosas en camino.",
 
   "errorRequired": "Este campo es obligatorio",
   "errorEmailInvalid": "Correo no válido",

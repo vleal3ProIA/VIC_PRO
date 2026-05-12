@@ -16,6 +16,7 @@
   "fieldEmail": "Email",
   "fieldPassword": "Password",
   "fieldPasswordConfirm": "Ripeti password",
+  "fieldNewPassword": "Nuova password",
 
   "actionCreateAccount": "Crea account",
   "actionSignIn": "Accedi",
@@ -24,6 +25,8 @@
   "actionResend": "Invia di nuovo",
   "actionBackToLogin": "Torna all'accesso",
   "actionGoHome": "Vai alla home",
+  "actionSendResetEmail": "Invia link di reset",
+  "actionUpdatePassword": "Aggiorna password",
 
   "registerTitle": "Crea il tuo account",
   "registerSubtitle": "Unisciti e inizia il tuo viaggio.",
@@ -36,6 +39,16 @@
   "loginNoAccount": "Non hai un account?",
   "loginCreateOne": "Crealo",
 
+  "forgotPasswordTitle": "Reimposta la password",
+  "forgotPasswordSubtitle": "Inserisci la tua email e ti invieremo un link per reimpostare la password.",
+  "forgotPasswordSentTitle": "Controlla la tua casella di posta",
+  "forgotPasswordSentSubtitle": "Abbiamo inviato un link di reset a {email}. Aprilo da questo dispositivo.",
+
+  "setNewPasswordTitle": "Scegli una nuova password",
+  "setNewPasswordSubtitle": "Scegli una password forte che non usi altrove.",
+  "passwordUpdatedTitle": "Password aggiornata",
+  "passwordUpdatedSubtitle": "Ora puoi accedere con la tua nuova password.",
+
   "verifyEmailSentTitle": "Controlla la tua casella di posta",
   "verifyEmailSentSubtitle": "Abbiamo inviato un link di verifica a {email}. Clicca sul link per attivare il tuo account.",
   "verifyEmailSentResendHint": "Non l'hai ricevuto? Controlla lo spam o invialo di nuovo.",
@@ -46,6 +59,10 @@
 
   "verifyEmailCallbackProcessing": "Verifica della tua email…",
   "verifyEmailCallbackError": "Non siamo riusciti a verificare il link. Potrebbe essere scaduto.",
+
+  "homeWelcomeUser": "Benvenuto, {name}",
+  "homeSignedInAs": "Accesso effettuato come {email}",
+  "homePlaceholder": "Qui sarà la tua area privata. Altre novità in arrivo.",
 
   "errorRequired": "Questo campo è obbligatorio",
   "errorEmailInvalid": "Email non valida",
