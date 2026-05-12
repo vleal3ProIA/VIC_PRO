@@ -26,4 +26,8 @@ abstract class AuthRepository {
   /// Cambia la contraseña del usuario actual. Requiere sesión activa
   /// (se obtiene del callback de recovery o del panel privado).
   Future<Either<AuthFailure, Unit>> updatePassword(String newPassword);
+
+  /// Envía un Magic Link al email indicado. El link abre sesión vía PKCE
+  /// callback y redirige al usuario a `/home`.
+  Future<Either<AuthFailure, Unit>> signInWithMagicLink(String email);
 }

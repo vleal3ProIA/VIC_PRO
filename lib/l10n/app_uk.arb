@@ -27,6 +27,7 @@
   "actionGoHome": "На головну",
   "actionSendResetEmail": "Надіслати посилання",
   "actionUpdatePassword": "Оновити пароль",
+  "actionSendMagicLink": "Надіслати magic link",
 
   "registerTitle": "Створіть акаунт",
   "registerSubtitle": "Приєднуйтеся та починайте свою подорож.",
@@ -38,6 +39,15 @@
   "loginForgotPassword": "Забули пароль?",
   "loginNoAccount": "Немає акаунта?",
   "loginCreateOne": "Створити",
+  "loginWithMagicLink": "Увійти за magic link",
+  "loginOrDivider": "або",
+
+  "magicLinkTitle": "Увійти за magic link",
+  "magicLinkSubtitle": "Введіть email і ми надішлемо одноразове посилання для входу.",
+  "magicLinkSentTitle": "Перевірте поштову скриньку",
+  "magicLinkSentSubtitle": "Ми надіслали magic link на {email}. Відкрийте його на цьому пристрої, щоб увійти.",
+  "magicLinkSentHint": "Не отримали? Перевірте спам або надішліть знову.",
+  "actionUsePassword": "Використати email + пароль",
 
   "forgotPasswordTitle": "Скинути пароль",
   "forgotPasswordSubtitle": "Введіть email і ми надішлемо посилання для скидання пароля.",

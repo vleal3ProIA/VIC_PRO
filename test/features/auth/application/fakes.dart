@@ -14,11 +14,13 @@ class FakeAuthRepository implements AuthRepository {
   Either<AuthFailure, Unit> updatePasswordResult = const Right(unit);
   Either<AuthFailure, Unit> resendResult = const Right(unit);
   Either<AuthFailure, Unit> signOutResult = const Right(unit);
+  Either<AuthFailure, Unit> magicLinkResult = const Right(unit);
 
   String? lastSignInEmail;
   String? lastSignInPassword;
   String? lastResetEmail;
   String? lastUpdatedPassword;
+  String? lastMagicLinkEmail;
 
   @override
   Future<Either<AuthFailure, SignUpResult>> signUp(SignUpRequest request) async {
@@ -53,5 +55,11 @@ class FakeAuthRepository implements AuthRepository {
   Future<Either<AuthFailure, Unit>> updatePassword(String newPassword) async {
     lastUpdatedPassword = newPassword;
     return updatePasswordResult;
+  }
+
+  @override
+  Future<Either<AuthFailure, Unit>> signInWithMagicLink(String email) async {
+    lastMagicLinkEmail = email;
+    return magicLinkResult;
   }
 }

@@ -113,6 +113,21 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  @override
+  Future<Either<AuthFailure, Unit>> signInWithMagicLink(String email) async {
+    try {
+      await _dataSource.sendMagicLink(
+        email: email,
+        redirectTo: AuthRedirect.resolve(AuthRedirectType.magiclink),
+      );
+      return const Right(unit);
+    } on AuthException catch (e, st) {
+      return Left(_mapAuthException(e, st));
+    } catch (e) {
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+  }
+
   AuthFailure _mapAuthException(AuthException e, StackTrace st) {
     final code = e.code ?? '';
     final msg = e.message.toLowerCase();

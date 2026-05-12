@@ -28,6 +28,7 @@
   "actionGoHome": "Go to home",
   "actionSendResetEmail": "Send reset link",
   "actionUpdatePassword": "Update password",
+  "actionSendMagicLink": "Send magic link",
 
   "registerTitle": "Create your account",
   "registerSubtitle": "Join us and start your journey.",
@@ -39,6 +40,16 @@
   "loginForgotPassword": "Forgot password?",
   "loginNoAccount": "Don't have an account?",
   "loginCreateOne": "Create one",
+  "loginWithMagicLink": "Sign in with magic link",
+  "loginOrDivider": "or",
+
+  "magicLinkTitle": "Sign in with magic link",
+  "magicLinkSubtitle": "Enter your email and we'll send you a one-time login link.",
+  "magicLinkSentTitle": "Check your inbox",
+  "magicLinkSentSubtitle": "We sent a magic link to {email}. Open it on this device to sign in.",
+  "@magicLinkSentSubtitle": {"placeholders": {"email": {"type": "String"}}},
+  "magicLinkSentHint": "Didn't receive it? Check spam or resend.",
+  "actionUsePassword": "Use email + password instead",
 
   "forgotPasswordTitle": "Reset your password",
   "forgotPasswordSubtitle": "Enter your email and we'll send you a link to reset your password.",

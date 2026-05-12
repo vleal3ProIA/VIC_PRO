@@ -27,6 +27,7 @@
   "actionGoHome": "На главную",
   "actionSendResetEmail": "Отправить ссылку",
   "actionUpdatePassword": "Обновить пароль",
+  "actionSendMagicLink": "Отправить magic link",
 
   "registerTitle": "Создайте аккаунт",
   "registerSubtitle": "Присоединяйтесь и начните свой путь.",
@@ -38,6 +39,15 @@
   "loginForgotPassword": "Забыли пароль?",
   "loginNoAccount": "Нет аккаунта?",
   "loginCreateOne": "Создать",
+  "loginWithMagicLink": "Войти по magic link",
+  "loginOrDivider": "или",
+
+  "magicLinkTitle": "Войти по magic link",
+  "magicLinkSubtitle": "Введите email и мы отправим одноразовую ссылку для входа.",
+  "magicLinkSentTitle": "Проверьте почту",
+  "magicLinkSentSubtitle": "Мы отправили magic link на {email}. Откройте его на этом устройстве для входа.",
+  "magicLinkSentHint": "Не получили? Проверьте спам или отправьте ещё раз.",
+  "actionUsePassword": "Использовать email + пароль",
 
   "forgotPasswordTitle": "Сброс пароля",
   "forgotPasswordSubtitle": "Введите email и мы отправим ссылку для сброса пароля.",

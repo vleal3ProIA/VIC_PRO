@@ -8,13 +8,14 @@ import 'package:myapp/core/utils/app_logger.dart';
 import 'package:myapp/features/auth/application/auth_redirect.dart';
 
 /// Pantalla a la que Supabase devuelve al usuario tras pulsar el link del
-/// email (signup confirmation o recovery de password).
+/// email (signup confirmation, recovery de password o magic link).
 ///
 /// El SDK intercepta el `?code=...` y abre sesión vía PKCE; nosotros leemos
 /// `?type=` para ramificar:
-///   - `signup`   → `/email-verified`
-///   - `recovery` → `/set-new-password`
-///   - default    → `/email-verified`
+///   - `signup`    → `/email-verified`
+///   - `recovery`  → `/set-new-password`
+///   - `magiclink` → `/home`  (la sesión ya está activa)
+///   - default     → `/email-verified`
 class AuthCallbackPage extends ConsumerStatefulWidget {
   const AuthCallbackPage({super.key});
 
@@ -46,6 +47,8 @@ class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
       switch (type) {
         case AuthRedirectType.recovery:
           context.goNamed(RouteNames.setNewPassword);
+        case AuthRedirectType.magiclink:
+          context.goNamed(RouteNames.home);
         case AuthRedirectType.signup:
           context.goNamed(RouteNames.emailVerified);
       }
@@ -60,6 +63,8 @@ class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
     switch (raw) {
       case 'recovery':
         return AuthRedirectType.recovery;
+      case 'magiclink':
+        return AuthRedirectType.magiclink;
       case 'signup':
         return AuthRedirectType.signup;
       default:

@@ -71,4 +71,21 @@ class AuthSupabaseDataSource {
       UserAttributes(password: newPassword),
     );
   }
+
+  /// Envía un magic link (passwordless email).
+  ///
+  /// Si `shouldCreateUser` es `true`, se crea el usuario al firmar por
+  /// primera vez. Lo dejamos en `true` por defecto para que el magic link
+  /// sirva tanto para login como para signup sin contraseña.
+  Future<void> sendMagicLink({
+    required String email,
+    required String redirectTo,
+    bool shouldCreateUser = true,
+  }) {
+    return _client.auth.signInWithOtp(
+      email: email,
+      emailRedirectTo: redirectTo,
+      shouldCreateUser: shouldCreateUser,
+    );
+  }
 }

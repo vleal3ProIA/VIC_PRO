@@ -27,6 +27,7 @@
   "actionGoHome": "Aller à l'accueil",
   "actionSendResetEmail": "Envoyer le lien",
   "actionUpdatePassword": "Mettre à jour le mot de passe",
+  "actionSendMagicLink": "Envoyer le magic link",
 
   "registerTitle": "Créer votre compte",
   "registerSubtitle": "Rejoignez-nous et commencez votre aventure.",
@@ -38,6 +39,15 @@
   "loginForgotPassword": "Mot de passe oublié ?",
   "loginNoAccount": "Pas de compte ?",
   "loginCreateOne": "En créer un",
+  "loginWithMagicLink": "Se connecter avec un magic link",
+  "loginOrDivider": "ou",
+
+  "magicLinkTitle": "Se connecter avec un magic link",
+  "magicLinkSubtitle": "Saisissez votre e-mail et nous vous enverrons un lien de connexion à usage unique.",
+  "magicLinkSentTitle": "Vérifiez votre boîte mail",
+  "magicLinkSentSubtitle": "Nous avons envoyé un magic link à {email}. Ouvrez-le sur cet appareil pour vous connecter.",
+  "magicLinkSentHint": "Pas reçu ? Vérifiez les spams ou renvoyez.",
+  "actionUsePassword": "Utiliser e-mail + mot de passe",
 
   "forgotPasswordTitle": "Réinitialiser le mot de passe",
   "forgotPasswordSubtitle": "Saisissez votre e-mail et nous vous enverrons un lien de réinitialisation.",

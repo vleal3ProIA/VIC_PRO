@@ -8,6 +8,8 @@ import 'package:myapp/features/auth/presentation/pages/auth_callback_page.dart';
 import 'package:myapp/features/auth/presentation/pages/email_verified_page.dart';
 import 'package:myapp/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:myapp/features/auth/presentation/pages/login_page.dart';
+import 'package:myapp/features/auth/presentation/pages/magic_link_page.dart';
+import 'package:myapp/features/auth/presentation/pages/magic_link_sent_page.dart';
 import 'package:myapp/features/auth/presentation/pages/password_reset_sent_page.dart';
 import 'package:myapp/features/auth/presentation/pages/password_updated_page.dart';
 import 'package:myapp/features/auth/presentation/pages/register_page.dart';
@@ -83,6 +85,19 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const AuthCallbackPage(),
       ),
       GoRoute(
+        path: RoutePaths.magicLink,
+        name: RouteNames.magicLink,
+        builder: (_, __) => const MagicLinkPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.magicLinkSent,
+        name: RouteNames.magicLinkSent,
+        builder: (_, state) {
+          final email = state.uri.queryParameters['email'] ?? '';
+          return MagicLinkSentPage(email: email);
+        },
+      ),
+      GoRoute(
         path: RoutePaths.home,
         name: RouteNames.home,
         builder: (_, __) => const HomePage(),
@@ -117,6 +132,8 @@ const _publicOnly = <String>{
   RoutePaths.register,
   RoutePaths.forgotPassword,
   RoutePaths.passwordResetSent,
+  RoutePaths.magicLink,
+  RoutePaths.magicLinkSent,
 };
 
 String? _redirect(Ref ref, GoRouterState state) {

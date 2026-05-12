@@ -56,6 +56,14 @@ Click **Save**.
 2. **Message body (HTML)**: pegar el de
    `supabase/templates/email/reset_password.html`.
 
+### 3.3 · Magic Link
+
+**Dashboard → Authentication → Email Templates → Magic Link**
+
+1. **Subject**: cambiar a → `Your sign-in link · myapp`
+2. **Message body (HTML)**: pegar el de
+   `supabase/templates/email/magic_link.html`.
+
 > (Opcional) Cambiar **Sender name** a `myapp` en *Project Settings →
 > Auth → SMTP Settings* (con SMTP custom; el SMTP por defecto de Supabase
 > tiene rate limit de **3 emails/hora** — suficiente para desarrollo).
@@ -108,6 +116,17 @@ flutter run -d chrome --web-port=5000 --dart-define=ENV=development
 5. Introduce contraseña nueva + confirmar → **Update password**.
 6. → **"Password updated"** → **Sign in** → entra con la nueva contraseña.
 
+### 5.4 · Magic Link (passwordless)
+
+1. Login → **"Sign in with magic link"** → introduce tu email → **Send magic link**.
+2. → **"Check your inbox"**.
+3. Abre el email **"Your sign-in link · myapp"** → botón **Sign in to myapp**.
+4. → `/auth/callback?type=magiclink` → spinner → directamente a **`/home`**
+   (sin pasar por login, la sesión ya está activa).
+
+> Si el email aún no estaba registrado, el magic link **lo crea
+> automáticamente** y abre sesión. Es signup + login en un mismo flujo.
+
 ### Si algo falla
 
 - **No llega el email**: revisa spam. Si sigues sin recibirlo, el SMTP
@@ -122,9 +141,11 @@ flutter run -d chrome --web-port=5000 --dart-define=ENV=development
 
 ## 6 · Próximos pasos automáticos
 
-Cuando todo lo anterior funcione, abriremos la siguiente iteración:
+- OTP (código de 6 dígitos por email) — comparte backend con Magic Link.
+- MFA (TOTP con Google Authenticator/Authy).
+- OAuth Google + Apple.
+- WebAuthn / Passkeys (la "biometría" del web).
 - Panel privado completo (settings: idioma + tema persistente en
   `profiles.locale` y `profiles.theme_mode`).
-- Cambio de email + cambio de password desde el panel privado.
-- Magic Link → OTP → MFA → OAuth Google/Apple → biometría (WebAuthn).
+- Cambio de email desde el panel privado.
 - GDPR: borrado de cuenta + export de datos.
