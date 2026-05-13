@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:myapp/app.dart';
 import 'package:myapp/core/config/env_config.dart';
 import 'package:myapp/core/providers/preferences_provider.dart';
@@ -14,6 +15,14 @@ Future<void> main() async {
   await runZonedGuarded<Future<void>>(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+
+      // En Flutter web: URLs limpias (sin `#`).
+      // Imprescindible para que los emails de Supabase con
+      // `http://host/auth/callback?...` aterricen en la ruta correcta del
+      // router en lugar de en `/` (welcome).
+      if (kIsWeb) {
+        usePathUrlStrategy();
+      }
 
       const envName = String.fromEnvironment('ENV', defaultValue: 'development');
       final env = switch (envName) {
