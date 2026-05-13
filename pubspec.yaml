@@ -50,6 +50,7 @@ dependencies:
 
   # Auth helpers
   local_auth: ^2.3.0
+  qr_flutter: ^4.1.0
 
   # Logging
   logger: ^2.4.0

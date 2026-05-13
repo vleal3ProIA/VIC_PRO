@@ -91,6 +91,12 @@ class HomePage extends ConsumerWidget {
                     color: context.colors.onSurfaceVariant,
                   ),
                 ),
+                const SizedBox(height: 32),
+                OutlinedButton.icon(
+                  onPressed: () => context.goNamed(RouteNames.mfaSetup),
+                  icon: const Icon(Icons.shield_outlined, size: 18),
+                  label: Text(l.actionEnableMfa),
+                ),
               ],
             ),
           ),

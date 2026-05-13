@@ -119,4 +119,64 @@ class AuthSupabaseDataSource {
       token: token,
     );
   }
+
+  // ----- MFA TOTP ------------------------------------------------------------
+
+  /// Inicia enrollment de un factor TOTP (Google Authenticator/Authy/etc.).
+  /// Devuelve el secret, QR y factorId. NO completa el enrollment — el
+  /// usuario debe verificar con un challenge después.
+  Future<AuthMFAEnrollResponse> enrollTotp({String? friendlyName}) {
+    return _client.auth.mfa.enroll(
+      factorType: FactorType.totp,
+      friendlyName: friendlyName,
+    );
+  }
+
+  /// Lanza un challenge sobre un factor (genera un challengeId interno
+  /// que el usuario tiene que satisfacer con su código TOTP).
+  Future<AuthMFAChallengeResponse> challengeMfaFactor(String factorId) {
+    return _client.auth.mfa.challenge(factorId: factorId);
+  }
+
+  /// Verifica el código de 6 dígitos contra el challenge.
+  Future<AuthMFAVerifyResponse> verifyMfaFactor({
+    required String factorId,
+    required String challengeId,
+    required String code,
+  }) {
+    return _client.auth.mfa.verify(
+      factorId: factorId,
+      challengeId: challengeId,
+      code: code,
+    );
+  }
+
+  /// Atajo: challenge + verify en una sola llamada. Lo usa el login flow
+  /// para que el usuario solo introduzca el código y nosotros gestionemos
+  /// el challengeId internamente.
+  Future<AuthMFAVerifyResponse> challengeAndVerifyMfa({
+    required String factorId,
+    required String code,
+  }) {
+    return _client.auth.mfa.challengeAndVerify(
+      factorId: factorId,
+      code: code,
+    );
+  }
+
+  /// Desenrola un factor (delete del lado de Supabase).
+  Future<AuthMFAUnenrollResponse> unenrollMfaFactor(String factorId) {
+    return _client.auth.mfa.unenroll(factorId);
+  }
+
+  /// Lista de factores enrollados (verificados o no).
+  Future<AuthMFAListFactorsResponse> listMfaFactors() {
+    return _client.auth.mfa.listFactors();
+  }
+
+  /// AAL actual y nivel siguiente requerido. Si `current < next`, el
+  /// usuario tiene MFA pendiente de verificar.
+  AuthMFAGetAuthenticatorAssuranceLevelResponse getAal() {
+    return _client.auth.mfa.getAuthenticatorAssuranceLevel();
+  }
 }

@@ -1,4 +1,5 @@
 import 'package:fpdart/fpdart.dart';
+import 'package:myapp/features/auth/domain/entities/mfa_enrollment.dart';
 import 'package:myapp/features/auth/domain/entities/sign_up_request.dart';
 import 'package:myapp/features/auth/domain/failures/auth_failure.dart';
 import 'package:myapp/features/auth/domain/repositories/auth_repository.dart';
@@ -83,4 +84,64 @@ class FakeAuthRepository implements AuthRepository {
     lastOtpVerifyToken = token;
     return verifyOtpResult;
   }
+
+  // ----- MFA -----
+  Either<AuthFailure, MfaTotpEnrollment> enrollTotpResult = const Right(
+    MfaTotpEnrollment(
+      factorId: 'fake-factor',
+      secret: 'JBSWY3DPEHPK3PXP',
+      qrCodeSvg: '<svg/>',
+      uri: 'otpauth://totp/myapp:test@example.com?secret=JBSWY3DPEHPK3PXP',
+    ),
+  );
+  Either<AuthFailure, Unit> verifyMfaEnrollmentResult = const Right(unit);
+  Either<AuthFailure, Unit> challengeMfaResult = const Right(unit);
+  Either<AuthFailure, List<MfaFactor>> listFactorsResult = const Right([]);
+  Either<AuthFailure, Unit> unenrollMfaResult = const Right(unit);
+  bool mfaChallengePending = false;
+
+  String? lastEnrollTotpName;
+  String? lastVerifyMfaFactorId;
+  String? lastVerifyMfaCode;
+  String? lastChallengeMfaFactorId;
+  String? lastChallengeMfaCode;
+
+  @override
+  Future<Either<AuthFailure, MfaTotpEnrollment>> enrollTotp({
+    String? friendlyName,
+  }) async {
+    lastEnrollTotpName = friendlyName;
+    return enrollTotpResult;
+  }
+
+  @override
+  Future<Either<AuthFailure, Unit>> verifyMfaEnrollment({
+    required String factorId,
+    required String code,
+  }) async {
+    lastVerifyMfaFactorId = factorId;
+    lastVerifyMfaCode = code;
+    return verifyMfaEnrollmentResult;
+  }
+
+  @override
+  Future<Either<AuthFailure, Unit>> challengeAndVerifyMfa({
+    required String factorId,
+    required String code,
+  }) async {
+    lastChallengeMfaFactorId = factorId;
+    lastChallengeMfaCode = code;
+    return challengeMfaResult;
+  }
+
+  @override
+  Future<Either<AuthFailure, List<MfaFactor>>> listMfaFactors() async =>
+      listFactorsResult;
+
+  @override
+  Future<Either<AuthFailure, Unit>> unenrollMfa(String factorId) async =>
+      unenrollMfaResult;
+
+  @override
+  bool isMfaChallengePending() => mfaChallengePending;
 }

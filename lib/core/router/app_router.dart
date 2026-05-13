@@ -4,12 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/features/auth/application/mfa_providers.dart';
 import 'package:myapp/features/auth/presentation/pages/auth_callback_page.dart';
 import 'package:myapp/features/auth/presentation/pages/email_verified_page.dart';
 import 'package:myapp/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:myapp/features/auth/presentation/pages/login_page.dart';
 import 'package:myapp/features/auth/presentation/pages/magic_link_page.dart';
 import 'package:myapp/features/auth/presentation/pages/magic_link_sent_page.dart';
+import 'package:myapp/features/auth/presentation/pages/mfa_challenge_page.dart';
+import 'package:myapp/features/auth/presentation/pages/mfa_setup_page.dart';
 import 'package:myapp/features/auth/presentation/pages/otp_request_page.dart';
 import 'package:myapp/features/auth/presentation/pages/otp_verify_page.dart';
 import 'package:myapp/features/auth/presentation/pages/password_reset_sent_page.dart';
@@ -113,6 +116,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: RoutePaths.mfaSetup,
+        name: RouteNames.mfaSetup,
+        builder: (_, __) => const MfaSetupPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.mfaChallenge,
+        name: RouteNames.mfaChallenge,
+        builder: (_, __) => const MfaChallengePage(),
+      ),
+      GoRoute(
         path: RoutePaths.home,
         name: RouteNames.home,
         builder: (_, __) => const HomePage(),
@@ -139,6 +152,7 @@ const _excludedFromGuard = <String>{
 /// Rutas privadas (requieren sesión activa).
 const _privateRoutes = <String>{
   RoutePaths.home,
+  RoutePaths.mfaSetup,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.
@@ -158,12 +172,30 @@ String? _redirect(Ref ref, GoRouterState state) {
   if (_excludedFromGuard.contains(loc)) return null;
 
   final isAuthed = ref.read(isAuthenticatedProvider);
+
+  // 1) No autenticado y la ruta requiere sesión → login.
   if (!isAuthed && _privateRoutes.contains(loc)) {
     return RoutePaths.login;
   }
+
+  // 2) Si está autenticado pero su AAL no es el requerido (MFA pendiente),
+  //    cualquier ruta lleva a /mfa-challenge salvo la propia /mfa-challenge.
+  if (isAuthed && loc != RoutePaths.mfaChallenge) {
+    final pending = ref.read(mfaChallengePendingProvider);
+    if (pending) return RoutePaths.mfaChallenge;
+  }
+
+  // 3) Autenticado (y sin MFA pendiente) en ruta solo para invitados.
   if (isAuthed && _publicOnly.contains(loc)) {
     return RoutePaths.home;
   }
+
+  // 4) Si ya completó MFA y está en /mfa-challenge → /home.
+  if (isAuthed && loc == RoutePaths.mfaChallenge) {
+    final pending = ref.read(mfaChallengePendingProvider);
+    if (!pending) return RoutePaths.home;
+  }
+
   return null;
 }
 

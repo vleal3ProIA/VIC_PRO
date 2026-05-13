@@ -157,13 +157,48 @@ flutter run -d chrome --web-port=5000 --dart-define=ENV=development
 
 ---
 
-## 6 · Próximos pasos automáticos
+## 6 · MFA TOTP (autenticación en 2 pasos)
 
-- OTP (código de 6 dígitos por email) — comparte backend con Magic Link.
-- MFA (TOTP con Google Authenticator/Authy).
+Soporte para verificación con código de 6 dígitos de una app autenticadora
+(Google Authenticator, Authy, 1Password, etc.).
+
+### 6.1 · Activar MFA en Supabase (probablemente ya está)
+
+**Dashboard → Authentication → Providers → Phone** (sí, Phone — Supabase
+agrupa todos los factores de MFA bajo "Multi-Factor Authentication" en
+algunas versiones del dashboard).
+
+Asegúrate de que está marcado **TOTP** como factor permitido. Por defecto
+viene ON en proyectos nuevos.
+
+### 6.2 · Flujo desde la app
+
+**Activar 2FA** (desde Home):
+1. Login → Home → botón **"Activar verificación en dos pasos"**.
+2. → `/mfa-setup` → ves un QR code + clave alfanumérica.
+3. Abre tu app autenticadora (Google Authenticator/Authy/1Password) →
+   "Add account" → escanea el QR (o pega la clave manualmente).
+4. La app muestra un código de 6 dígitos que cambia cada 30 segundos.
+5. Pega ese código en las 6 cajas de la app → **Verify**.
+6. → confirmación "Two-factor authentication enabled" → vuelve a Home.
+
+**Login con MFA activado**:
+1. Email + password → la sesión queda en AAL=1 (no completa).
+2. El guard del router detecta `mfaChallengePending=true` → redirige a
+   `/mfa-challenge`.
+3. Abres tu app autenticadora → metes el código actual → **Verify**.
+4. AAL sube a 2 → guard redirige a `/home`.
+
+> El icono de logout en la app bar de `/mfa-challenge` te deja salir si
+> pierdes el dispositivo (la sesión queda activa pero con AAL=1; en una
+> futura iteración añadiremos recovery codes para no quedarte fuera).
+
+## 7 · Próximos pasos
+
 - OAuth Google + Apple.
 - WebAuthn / Passkeys (la "biometría" del web).
 - Panel privado completo (settings: idioma + tema persistente en
   `profiles.locale` y `profiles.theme_mode`).
 - Cambio de email desde el panel privado.
+- Recovery codes para MFA (backup si pierdes el dispositivo).
 - GDPR: borrado de cuenta + export de datos.
