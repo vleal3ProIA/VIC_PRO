@@ -25,6 +25,7 @@ class AuthCallbackPage extends ConsumerStatefulWidget {
 
 class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
   String? _error;
+  String? _errorDetails;
 
   @override
   void initState() {
@@ -36,12 +37,34 @@ class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
     final client = ref.read(supabaseClientProvider);
     final uri = Uri.base;
     final code = uri.queryParameters['code'];
+    final errorCode = uri.queryParameters['error_code'];
+    final errorDescription = uri.queryParameters['error_description'];
     final typeRaw = uri.queryParameters['type'];
     final type = _parseType(typeRaw);
+
+    AppLogger.i(
+      'auth callback: type=$typeRaw code=${code != null ? "present" : "missing"} '
+      'errorCode=$errorCode',
+    );
+
+    // Si Supabase devolvió error en query (ej. link expirado), lo mostramos
+    // antes de intentar el exchange.
+    if (errorCode != null) {
+      setState(() {
+        _error = context.l10n.verifyEmailCallbackError;
+        _errorDetails = errorDescription ?? errorCode;
+      });
+      return;
+    }
 
     try {
       if (code != null) {
         await client.auth.exchangeCodeForSession(code);
+      } else {
+        // Sin code Y sin error — flujo inesperado, no podemos abrir sesión.
+        // Probablemente el SDK ya consumió tokens del fragment (#) en una
+        // versión vieja del flow; intentamos seguir confiando en la sesión.
+        AppLogger.w('auth callback without code or error — fallback');
       }
       if (!mounted) return;
       switch (type) {
@@ -58,7 +81,10 @@ class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
     } catch (e, st) {
       AppLogger.e('auth callback failed', error: e, stackTrace: st);
       if (!mounted) return;
-      setState(() => _error = context.l10n.verifyEmailCallbackError);
+      setState(() {
+        _error = context.l10n.verifyEmailCallbackError;
+        _errorDetails = e.toString();
+      });
     }
   }
 
@@ -99,7 +125,36 @@ class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
                   color: context.colors.error,
                 ),
                 const SizedBox(height: 16),
-                Text(_error!, style: context.textTheme.bodyLarge),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: Column(
+                    children: [
+                      Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: context.textTheme.bodyLarge,
+                      ),
+                      if (_errorDetails != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: context.colors.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _errorDetails!,
+                            textAlign: TextAlign.center,
+                            style: context.textTheme.bodySmall?.copyWith(
+                              color: context.colors.onSurfaceVariant,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 24),
                 FilledButton(
                   onPressed: () => context.goNamed(RouteNames.login),
