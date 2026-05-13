@@ -61,7 +61,7 @@ class _OtpVerifyFormState extends ConsumerState<OtpVerifyForm> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          l.otpHint,
+          l.otpHint(state.codeLength),
           textAlign: TextAlign.center,
           style: context.textTheme.bodySmall?.copyWith(
             color: context.colors.onSurfaceVariant,
@@ -73,6 +73,7 @@ class _OtpVerifyFormState extends ConsumerState<OtpVerifyForm> {
           onCompleted: (_) => notifier.submit(),
           enabled: !state.isSubmitting,
           hasError: state.failure != null,
+          length: state.codeLength,
         ),
         GeneralErrorSlot(message: generalError),
         const SizedBox(height: 8),

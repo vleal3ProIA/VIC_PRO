@@ -55,11 +55,13 @@
 
   "loginWithOtp": "Sign in with a code",
   "otpRequestTitle": "Sign in with a one-time code",
-  "otpRequestSubtitle": "Enter your email and we'll send you a 6-digit code.",
+  "otpRequestSubtitle": "Enter your email and we'll send you a {count}-digit code.",
+  "@otpRequestSubtitle": {"placeholders": {"count": {"type": "int"}}},
   "otpVerifyTitle": "Enter your code",
-  "otpVerifySubtitle": "We sent a 6-digit code to {email}. It expires in 10 minutes.",
-  "@otpVerifySubtitle": {"placeholders": {"email": {"type": "String"}}},
-  "otpHint": "Paste or type the 6 digits.",
+  "otpVerifySubtitle": "We sent a {count}-digit code to {email}. It expires in 10 minutes.",
+  "@otpVerifySubtitle": {"placeholders": {"count": {"type": "int"}, "email": {"type": "String"}}},
+  "otpHint": "Paste or type the {count} digits.",
+  "@otpHint": {"placeholders": {"count": {"type": "int"}}},
   "otpResent": "Code sent again.",
 
   "forgotPasswordTitle": "Reset your password",

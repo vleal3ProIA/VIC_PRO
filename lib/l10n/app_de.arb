@@ -53,10 +53,10 @@
 
   "loginWithOtp": "Mit Code anmelden",
   "otpRequestTitle": "Anmelden mit Einmal-Code",
-  "otpRequestSubtitle": "Gib deine E-Mail ein und wir senden dir einen 6-stelligen Code.",
+  "otpRequestSubtitle": "Gib deine E-Mail ein und wir senden dir einen {count}-stelligen Code.",
   "otpVerifyTitle": "Gib deinen Code ein",
-  "otpVerifySubtitle": "Wir haben einen 6-stelligen Code an {email} gesendet. Er läuft in 10 Minuten ab.",
-  "otpHint": "Füge die 6 Ziffern ein oder tippe sie ab.",
+  "otpVerifySubtitle": "Wir haben einen {count}-stelligen Code an {email} gesendet. Er läuft in 10 Minuten ab.",
+  "otpHint": "Füge die {count} Ziffern ein oder tippe sie ab.",
   "otpResent": "Code erneut gesendet.",
 
   "forgotPasswordTitle": "Passwort zurücksetzen",

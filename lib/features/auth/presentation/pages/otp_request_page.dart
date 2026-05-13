@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:myapp/core/config/env_config.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/widgets/auth_card.dart';
 import 'package:myapp/features/auth/presentation/widgets/otp_request_form.dart';
@@ -24,7 +25,7 @@ class OtpRequestPage extends StatelessWidget {
             color: context.colors.primary,
           ),
           title: context.l10n.otpRequestTitle,
-          subtitle: context.l10n.otpRequestSubtitle,
+          subtitle: context.l10n.otpRequestSubtitle(EnvConfig.otpCodeLength),
           child: const OtpRequestForm(),
         ),
       ),
