@@ -37,8 +37,15 @@ Future<void> main() async {
         url: EnvConfig.supabaseUrl,
         anonKey: EnvConfig.supabaseAnonKey,
         debug: !EnvConfig.isProduction,
+        // Implicit flow para web SPA:
+        // - Tokens llegan en fragment URL (#access_token=…) en lugar de
+        //   ?code= con code_verifier en localStorage.
+        // - El SDK los procesa automáticamente al inicializarse
+        //   (`detectSessionInUri` por defecto).
+        // - Elimina la causa raíz de los timeouts y los errores
+        //   "Code verifier could not be found": no hay verifier que mantener.
         authOptions: const FlutterAuthClientOptions(
-          authFlowType: AuthFlowType.pkce,
+          authFlowType: AuthFlowType.implicit,
           autoRefreshToken: true,
         ),
       );

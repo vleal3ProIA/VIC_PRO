@@ -61,10 +61,16 @@ class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
     final typeRaw = uri.queryParameters['type'];
     final type = _parseType(typeRaw);
 
+    // Diagnóstico: implicit flow envía tokens en el fragment.
+    // Si el fragment está vacío y no hay code, no hay nada que procesar.
+    final hasFragment = uri.fragment.isNotEmpty;
+    final hasCode = uri.queryParameters.containsKey('code');
+
     AppLogger.i(
       'auth callback: type=$typeRaw '
       'session=${client.auth.currentSession != null ? "present" : "absent"} '
-      'errorCode=$errorCode',
+      'hasFragment=$hasFragment hasCode=$hasCode errorCode=$errorCode '
+      'origin=${uri.origin}',
     );
 
     // Supabase a veces devuelve errores en query (link expirado/usado).
@@ -76,14 +82,24 @@ class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
       return;
     }
 
-    // Si la sesión ya está activa (el SDK procesó el code mientras se
-    // construía la pantalla), redirigimos inmediato.
+    // Si la sesión ya está activa (SDK la procesó en initialize()),
+    // redirigimos inmediato.
     if (client.auth.currentSession != null) {
       _redirectByType(type);
       return;
     }
 
-    // Si no, escuchamos el stream y redirigimos al primer evento con sesión.
+    // Si no hay sesión ni tokens en URL → error claro.
+    if (!hasFragment && !hasCode) {
+      setState(() {
+        _error = context.l10n.verifyEmailCallbackError;
+        _errorDetails = 'No auth tokens found in URL. The link may have '
+            'expired or been used already.';
+      });
+      return;
+    }
+
+    // Hay tokens en URL pero el SDK aún no procesó → escuchamos el stream.
     _sub = client.auth.onAuthStateChange.listen((event) {
       AppLogger.i('auth callback: stream event=${event.event}');
       if (event.session != null) {
