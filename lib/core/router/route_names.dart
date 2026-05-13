@@ -15,6 +15,8 @@ class RouteNames {
   static const String magicLinkSent = 'magic_link_sent';
   static const String otpRequest = 'otp_request';
   static const String otpVerify = 'otp_verify';
+  static const String mfaSetup = 'mfa_setup';
+  static const String mfaChallenge = 'mfa_challenge';
   static const String home = 'home';
   static const String notFound = 'not_found';
 }
@@ -39,5 +41,7 @@ class RoutePaths {
   // `/otp/verify` es ruta plana mientras existe `/otp` como ruta plana
   // independiente — dispara `assert(uri.path.startsWith(matchedLocation))`.
   static const String otpVerify = '/otp-verify';
+  static const String mfaSetup = '/mfa-setup';
+  static const String mfaChallenge = '/mfa-challenge';
   static const String home = '/home';
 }

@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:myapp/core/utils/app_logger.dart';
 import 'package:myapp/features/auth/application/auth_redirect.dart';
 import 'package:myapp/features/auth/data/datasources/auth_supabase_datasource.dart';
+import 'package:myapp/features/auth/domain/entities/mfa_enrollment.dart';
 import 'package:myapp/features/auth/domain/entities/sign_up_request.dart';
 import 'package:myapp/features/auth/domain/failures/auth_failure.dart';
 import 'package:myapp/features/auth/domain/repositories/auth_repository.dart';
@@ -160,6 +161,131 @@ class AuthRepositoryImpl implements AuthRepository {
       AppLogger.e('verifyEmailOtp unknown', error: e, stackTrace: st);
       return Left(AuthUnknown(cause: e, message: e.toString()));
     }
+  }
+
+  // ----- MFA TOTP ----------------------------------------------------------
+
+  @override
+  Future<Either<AuthFailure, MfaTotpEnrollment>> enrollTotp({
+    String? friendlyName,
+  }) async {
+    try {
+      final res = await _dataSource.enrollTotp(friendlyName: friendlyName);
+      final totp = res.totp;
+      if (totp == null) {
+        return const Left(
+          AuthUnknown(message: 'Supabase did not return a TOTP payload.'),
+        );
+      }
+      return Right(
+        MfaTotpEnrollment(
+          factorId: res.id,
+          secret: totp.secret,
+          qrCodeSvg: totp.qrCode,
+          uri: totp.uri,
+        ),
+      );
+    } on AuthException catch (e, st) {
+      AppLogger.w('enrollTotp ${e.code} ${e.message}');
+      return Left(_mapAuthException(e, st));
+    } catch (e, st) {
+      AppLogger.e('enrollTotp unknown', error: e, stackTrace: st);
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<AuthFailure, Unit>> verifyMfaEnrollment({
+    required String factorId,
+    required String code,
+  }) async {
+    try {
+      await _dataSource.challengeAndVerifyMfa(
+        factorId: factorId,
+        code: code,
+      );
+      return const Right(unit);
+    } on AuthException catch (e, st) {
+      AppLogger.w('verifyMfaEnrollment ${e.code} ${e.message}');
+      return Left(_mapMfaAuthException(e, st));
+    } catch (e) {
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<AuthFailure, Unit>> challengeAndVerifyMfa({
+    required String factorId,
+    required String code,
+  }) async {
+    try {
+      await _dataSource.challengeAndVerifyMfa(
+        factorId: factorId,
+        code: code,
+      );
+      return const Right(unit);
+    } on AuthException catch (e, st) {
+      AppLogger.w('challengeAndVerifyMfa ${e.code} ${e.message}');
+      return Left(_mapMfaAuthException(e, st));
+    } catch (e) {
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<AuthFailure, List<MfaFactor>>> listMfaFactors() async {
+    try {
+      final res = await _dataSource.listMfaFactors();
+      final factors = [
+        ...res.totp.map(
+          (f) => MfaFactor(
+            id: f.id,
+            type: f.factorType.name,
+            status: f.status.name,
+            friendlyName: f.friendlyName,
+          ),
+        ),
+      ];
+      return Right(factors);
+    } on AuthException catch (e, st) {
+      return Left(_mapAuthException(e, st));
+    } catch (e) {
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<AuthFailure, Unit>> unenrollMfa(String factorId) async {
+    try {
+      await _dataSource.unenrollMfaFactor(factorId);
+      return const Right(unit);
+    } on AuthException catch (e, st) {
+      return Left(_mapAuthException(e, st));
+    } catch (e) {
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+  }
+
+  @override
+  bool isMfaChallengePending() {
+    final aal = _dataSource.getAal();
+    final current = aal.currentLevel;
+    final next = aal.nextLevel;
+    if (current == null || next == null) return false;
+    return current != next;
+  }
+
+  AuthFailure _mapMfaAuthException(AuthException e, StackTrace st) {
+    final code = e.code ?? '';
+    final msg = e.message.toLowerCase();
+    if (code == 'invalid_credentials' ||
+        code == 'mfa_verification_failed' ||
+        msg.contains('invalid') ||
+        msg.contains('mfa') ||
+        msg.contains('totp')) {
+      return AuthMfaInvalid(cause: e);
+    }
+    return _mapAuthException(e, st);
   }
 
   /// El token OTP, cuando es incorrecto/expirado/ya usado, devuelve

@@ -1,0 +1,91 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:fpdart/fpdart.dart';
+import 'package:myapp/features/auth/application/auth_providers.dart';
+import 'package:myapp/features/auth/application/mfa_challenge_notifier.dart';
+import 'package:myapp/features/auth/domain/entities/mfa_enrollment.dart';
+import 'package:myapp/features/auth/domain/failures/auth_failure.dart';
+
+import 'fakes.dart';
+
+void main() {
+  late FakeAuthRepository repo;
+  late ProviderContainer container;
+
+  setUp(() {
+    repo = FakeAuthRepository();
+    repo.listFactorsResult = const Right([
+      MfaFactor(
+        id: 'factor-1',
+        type: 'totp',
+        status: 'verified',
+        friendlyName: 'myapp',
+      ),
+    ]);
+    container = ProviderContainer(
+      overrides: [authRepositoryProvider.overrideWithValue(repo)],
+    );
+    addTearDown(container.dispose);
+  });
+
+  MfaChallengeNotifier notifier() =>
+      container.read(mfaChallengeNotifierProvider.notifier);
+  MfaChallengeState state() => container.read(mfaChallengeNotifierProvider);
+
+  test('on build, loads the first verified TOTP factor', () async {
+    notifier(); // forces build
+    // wait microtask to let _loadFactor complete
+    await Future.microtask(() {});
+    await Future.microtask(() {});
+    expect(state().status, MfaChallengeStatus.ready);
+    expect(state().factor?.id, 'factor-1');
+  });
+
+  test('verify with valid code calls repo and emits success', () async {
+    notifier();
+    await Future.microtask(() {});
+    await Future.microtask(() {});
+
+    notifier().codeChanged('123456');
+    await notifier().verify();
+    expect(state().status, MfaChallengeStatus.success);
+    expect(repo.lastChallengeMfaFactorId, 'factor-1');
+    expect(repo.lastChallengeMfaCode, '123456');
+  });
+
+  test('verify with <6 digits is no-op', () async {
+    notifier();
+    await Future.microtask(() {});
+    await Future.microtask(() {});
+
+    notifier().codeChanged('123');
+    await notifier().verify();
+    expect(state().status, MfaChallengeStatus.ready);
+    expect(repo.lastChallengeMfaCode, isNull);
+  });
+
+  test('AuthMfaInvalid backend → status=failure', () async {
+    notifier();
+    await Future.microtask(() {});
+    await Future.microtask(() {});
+
+    repo.challengeMfaResult = const Left(AuthMfaInvalid());
+    notifier().codeChanged('000000');
+    await notifier().verify();
+    expect(state().status, MfaChallengeStatus.failure);
+    expect(state().failure, isA<AuthMfaInvalid>());
+  });
+
+  test('typing again after failure clears the failure', () async {
+    notifier();
+    await Future.microtask(() {});
+    await Future.microtask(() {});
+
+    repo.challengeMfaResult = const Left(AuthMfaInvalid());
+    notifier().codeChanged('000000');
+    await notifier().verify();
+    expect(state().failure, isNotNull);
+    notifier().codeChanged('111111');
+    expect(state().failure, isNull);
+  });
+}

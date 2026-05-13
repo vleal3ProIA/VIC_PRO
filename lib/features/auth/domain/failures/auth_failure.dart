@@ -36,6 +36,12 @@ class AuthOtpInvalid extends AuthFailure {
   const AuthOtpInvalid({super.cause});
 }
 
+/// El código de MFA (TOTP de la app autenticadora) es incorrecto. Distinto
+/// del OTP por email: aquí la app del usuario es la fuente del código.
+class AuthMfaInvalid extends AuthFailure {
+  const AuthMfaInvalid({super.cause});
+}
+
 class AuthUnknown extends AuthFailure {
   const AuthUnknown({super.cause, this.message});
   final String? message;

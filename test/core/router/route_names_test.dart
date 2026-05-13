@@ -21,6 +21,8 @@ void main() {
         RoutePaths.magicLinkSent,
         RoutePaths.otpRequest,
         RoutePaths.otpVerify,
+        RoutePaths.mfaSetup,
+        RoutePaths.mfaChallenge,
         RoutePaths.home,
         // authCallback queda exento: usa "/auth/callback" pero no existe
         // ninguna otra ruta que empiece por "/auth".
