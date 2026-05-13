@@ -50,6 +50,7 @@
   "magicLinkSentTitle": "Перевірте поштову скриньку",
   "magicLinkSentSubtitle": "Ми надіслали magic link на {email}. Відкрийте його на цьому пристрої, щоб увійти.",
   "magicLinkSentHint": "Не отримали? Перевірте спам або надішліть знову.",
+  "magicLinkSentInstruction": "Просто натисніть на синю кнопку в email — повертатися сюди не потрібно.",
   "actionUsePassword": "Використати email + пароль",
 
   "loginWithOtp": "Увійти за кодом",
@@ -58,6 +59,7 @@
   "otpVerifyTitle": "Введіть код",
   "otpVerifySubtitle": "Ми надіслали {count}-значний код на {email}. Дійсний 10 хвилин.",
   "otpHint": "Вставте або введіть {count} цифр.",
+  "otpVerifyTip": "Використовуйте лише код нижче. Якщо натиснете на кнопку в email — увійдете автоматично. Не робіть обидва.",
   "otpResent": "Код надіслано знову.",
 
   "forgotPasswordTitle": "Скинути пароль",

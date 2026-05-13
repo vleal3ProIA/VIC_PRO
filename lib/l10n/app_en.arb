@@ -52,6 +52,7 @@
   "magicLinkSentSubtitle": "We sent a magic link to {email}. Open it on this device to sign in.",
   "@magicLinkSentSubtitle": {"placeholders": {"email": {"type": "String"}}},
   "magicLinkSentHint": "Didn't receive it? Check spam or resend.",
+  "magicLinkSentInstruction": "Just click the blue button in the email — no need to come back here.",
   "actionUsePassword": "Use email + password instead",
 
   "loginWithOtp": "Sign in with a code",
@@ -63,6 +64,7 @@
   "@otpVerifySubtitle": {"placeholders": {"count": {"type": "int"}, "email": {"type": "String"}}},
   "otpHint": "Paste or type the {count} digits.",
   "@otpHint": {"placeholders": {"count": {"type": "int"}}},
+  "otpVerifyTip": "Use only the code below. If you click the button in the email instead, you'll be signed in automatically — don't do both.",
   "otpResent": "Code sent again.",
 
   "forgotPasswordTitle": "Reset your password",

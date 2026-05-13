@@ -50,6 +50,7 @@
   "magicLinkSentTitle": "Überprüfe dein Postfach",
   "magicLinkSentSubtitle": "Wir haben einen Magic Link an {email} gesendet. Öffne ihn auf diesem Gerät, um dich anzumelden.",
   "magicLinkSentHint": "Nicht erhalten? Überprüfe den Spam oder sende erneut.",
+  "magicLinkSentInstruction": "Klicke einfach auf den blauen Button in der E-Mail — du musst nicht hierher zurückkommen.",
   "actionUsePassword": "E-Mail + Passwort verwenden",
 
   "loginWithOtp": "Mit Code anmelden",
@@ -58,6 +59,7 @@
   "otpVerifyTitle": "Gib deinen Code ein",
   "otpVerifySubtitle": "Wir haben einen {count}-stelligen Code an {email} gesendet. Er läuft in 10 Minuten ab.",
   "otpHint": "Füge die {count} Ziffern ein oder tippe sie ab.",
+  "otpVerifyTip": "Verwende nur den Code unten. Wenn du auf den Button in der E-Mail klickst, wirst du automatisch angemeldet — mach nicht beides.",
   "otpResent": "Code erneut gesendet.",
 
   "forgotPasswordTitle": "Passwort zurücksetzen",
