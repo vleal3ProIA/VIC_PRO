@@ -7,6 +7,7 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:myapp/app.dart';
 import 'package:myapp/core/config/env_config.dart';
 import 'package:myapp/core/providers/preferences_provider.dart';
+import 'package:myapp/core/storage/remember_aware_local_storage.dart';
 import 'package:myapp/core/utils/app_logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -33,6 +34,11 @@ Future<void> main() async {
 
       await EnvConfig.load(env: env);
 
+      // Necesario ANTES de Supabase.initialize porque pasamos un
+      // LocalStorage custom que lee de SharedPreferences.
+      final prefs = await SharedPreferences.getInstance();
+      final rememberStorage = RememberAwareLocalStorage(prefs);
+
       await Supabase.initialize(
         url: EnvConfig.supabaseUrl,
         anonKey: EnvConfig.supabaseAnonKey,
@@ -40,17 +46,18 @@ Future<void> main() async {
         // Implicit flow para web SPA:
         // - Tokens llegan en fragment URL (#access_token=…) en lugar de
         //   ?code= con code_verifier en localStorage.
-        // - El SDK los procesa automáticamente al inicializarse
-        //   (`detectSessionInUri` por defecto).
-        // - Elimina la causa raíz de los timeouts y los errores
-        //   "Code verifier could not be found": no hay verifier que mantener.
-        authOptions: const FlutterAuthClientOptions(
+        // - El SDK los procesa automáticamente al inicializarse.
+        //
+        // Storage custom:
+        // - En web, sessionStorage por defecto (sesión se cierra al cerrar
+        //   pestaña). localStorage si el usuario marcó "Recordar sesión".
+        // - En no-web, el SDK usa su storage default persistente.
+        authOptions: FlutterAuthClientOptions(
           authFlowType: AuthFlowType.implicit,
           autoRefreshToken: true,
+          localStorage: rememberStorage,
         ),
       );
-
-      final prefs = await SharedPreferences.getInstance();
 
       FlutterError.onError = (details) {
         AppLogger.e(

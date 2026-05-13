@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:formz/formz.dart';
 
+import 'package:myapp/core/storage/storage_providers.dart';
 import 'package:myapp/core/validation/email.dart';
 import 'package:myapp/features/auth/application/auth_providers.dart';
 import 'package:myapp/features/auth/domain/failures/auth_failure.dart';
@@ -28,6 +29,7 @@ class LoginState {
   const LoginState({
     this.email = const Email.pure(),
     this.password = const LoginPasswordInput.pure(),
+    this.rememberMe = false,
     this.status = LoginStatus.initial,
     this.failure,
     this.showErrors = false,
@@ -35,6 +37,7 @@ class LoginState {
 
   final Email email;
   final LoginPasswordInput password;
+  final bool rememberMe;
   final LoginStatus status;
   final AuthFailure? failure;
   final bool showErrors;
@@ -49,6 +52,7 @@ class LoginState {
   LoginState copyWith({
     Email? email,
     LoginPasswordInput? password,
+    bool? rememberMe,
     LoginStatus? status,
     AuthFailure? failure,
     bool? showErrors,
@@ -57,6 +61,7 @@ class LoginState {
     return LoginState(
       email: email ?? this.email,
       password: password ?? this.password,
+      rememberMe: rememberMe ?? this.rememberMe,
       status: status ?? this.status,
       failure: clearFailure ? null : (failure ?? this.failure),
       showErrors: showErrors ?? this.showErrors,
@@ -82,9 +87,19 @@ class LoginNotifier extends Notifier<LoginState> {
     );
   }
 
+  void rememberMeChanged({required bool value}) {
+    state = state.copyWith(rememberMe: value, clearFailure: true);
+  }
+
   Future<void> submit() async {
     state = state.copyWith(showErrors: true, clearFailure: true);
     if (!state.isValid) return;
+
+    // Aplicamos la preferencia ANTES del signIn para que la primera
+    // llamada a `persistSession` use el backend correcto.
+    await ref
+        .read(rememberAwareStorageProvider)
+        .setRememberMe(value: state.rememberMe);
 
     state = state.copyWith(status: LoginStatus.submitting);
     final repo = ref.read(authRepositoryProvider);

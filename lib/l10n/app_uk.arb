@@ -30,6 +30,7 @@
   "actionSendMagicLink": "Надіслати magic link",
   "actionSendOtp": "Надіслати код",
   "actionVerifyOtp": "Перевірити код",
+  "actionRememberMe": "Запам'ятати мене",
 
   "registerTitle": "Створіть акаунт",
   "registerSubtitle": "Приєднуйтеся та починайте свою подорож.",

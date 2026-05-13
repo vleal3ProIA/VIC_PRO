@@ -87,14 +87,47 @@ class _LoginFormState extends ConsumerState<LoginForm> {
             onSubmitted: (_) => notifier.submit(),
             enabled: !state.isSubmitting,
           ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: state.isSubmitting
-                  ? null
-                  : () => context.goNamed(RouteNames.forgotPassword),
-              child: Text(l.loginForgotPassword),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              InkWell(
+                onTap: state.isSubmitting
+                    ? null
+                    : () => notifier.rememberMeChanged(
+                          value: !state.rememberMe,
+                        ),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 4,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Checkbox(
+                        value: state.rememberMe,
+                        onChanged: state.isSubmitting
+                            ? null
+                            : (v) => notifier.rememberMeChanged(
+                                  value: v ?? false,
+                                ),
+                      ),
+                      Text(
+                        l.actionRememberMe,
+                        style: context.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: state.isSubmitting
+                    ? null
+                    : () => context.goNamed(RouteNames.forgotPassword),
+                child: Text(l.loginForgotPassword),
+              ),
+            ],
           ),
           GeneralErrorSlot(message: generalError),
           const SizedBox(height: 8),
