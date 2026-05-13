@@ -53,10 +53,10 @@
 
   "loginWithOtp": "Se connecter avec un code",
   "otpRequestTitle": "Connexion avec un code à usage unique",
-  "otpRequestSubtitle": "Saisissez votre e-mail et nous vous enverrons un code à 6 chiffres.",
+  "otpRequestSubtitle": "Saisissez votre e-mail et nous vous enverrons un code à {count} chiffres.",
   "otpVerifyTitle": "Saisissez votre code",
-  "otpVerifySubtitle": "Nous avons envoyé un code à 6 chiffres à {email}. Il expire dans 10 minutes.",
-  "otpHint": "Collez ou saisissez les 6 chiffres.",
+  "otpVerifySubtitle": "Nous avons envoyé un code à {count} chiffres à {email}. Il expire dans 10 minutes.",
+  "otpHint": "Collez ou saisissez les {count} chiffres.",
   "otpResent": "Code renvoyé.",
 
   "forgotPasswordTitle": "Réinitialiser le mot de passe",

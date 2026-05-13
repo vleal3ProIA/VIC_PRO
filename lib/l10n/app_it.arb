@@ -53,10 +53,10 @@
 
   "loginWithOtp": "Accedi con un codice",
   "otpRequestTitle": "Accedi con un codice usa e getta",
-  "otpRequestSubtitle": "Inserisci la tua email e ti invieremo un codice di 6 cifre.",
+  "otpRequestSubtitle": "Inserisci la tua email e ti invieremo un codice di {count} cifre.",
   "otpVerifyTitle": "Inserisci il tuo codice",
-  "otpVerifySubtitle": "Abbiamo inviato un codice di 6 cifre a {email}. Scade in 10 minuti.",
-  "otpHint": "Incolla o digita le 6 cifre.",
+  "otpVerifySubtitle": "Abbiamo inviato un codice di {count} cifre a {email}. Scade in 10 minuti.",
+  "otpHint": "Incolla o digita le {count} cifre.",
   "otpResent": "Codice inviato di nuovo.",
 
   "forgotPasswordTitle": "Reimposta la password",

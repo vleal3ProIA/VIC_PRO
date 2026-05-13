@@ -1,3 +1,4 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
@@ -12,6 +13,13 @@ void main() {
   late ProviderContainer container;
   const email = 'jane@example.com';
 
+  setUpAll(() {
+    // El notifier lee EnvConfig.otpCodeLength desde dotenv. En tests no
+    // cargamos el .env real; vacío + fallback="6" basta para validar la
+    // lógica del notifier sin tocar IO.
+    dotenv.testLoad(fileInput: 'OTP_CODE_LENGTH=6');
+  });
+
   setUp(() {
     repo = FakeAuthRepository();
     container = ProviderContainer(
@@ -24,21 +32,21 @@ void main() {
       container.read(otpVerifyNotifierProvider(email).notifier);
   OtpVerifyState state() => container.read(otpVerifyNotifierProvider(email));
 
-  test('initial state holds the email and is invalid', () {
+  test('initial state holds the email + codeLength=6 + invalid', () {
     expect(state().email, email);
+    expect(state().codeLength, 6);
     expect(state().code, '');
     expect(state().isValid, isFalse);
   });
 
-  test('submit with <6 digits does NOT call repo', () async {
+  test('submit with <codeLength digits does NOT call repo', () async {
     notifier().codeChanged('1234');
     await notifier().submit();
     expect(state().status, OtpVerifyStatus.initial);
     expect(repo.lastOtpVerifyToken, isNull);
   });
 
-  test('submit with valid 6-digit code calls repo and emits success',
-      () async {
+  test('submit with full-length code calls repo and emits success', () async {
     notifier().codeChanged('123456');
     await notifier().submit();
     expect(repo.lastOtpVerifyEmail, email);
@@ -74,5 +82,23 @@ void main() {
       container.read(otpVerifyNotifierProvider('other@example.com')).code,
       '9',
     );
+  });
+
+  group('codeLength=8', () {
+    setUpAll(() {
+      dotenv.testLoad(fileInput: 'OTP_CODE_LENGTH=8');
+    });
+
+    test('isValid requires exactly 8 digits', () {
+      // Force re-build with new env.
+      container.invalidate(otpVerifyNotifierProvider(email));
+      final n = container.read(otpVerifyNotifierProvider(email).notifier);
+      expect(container.read(otpVerifyNotifierProvider(email)).codeLength, 8);
+
+      n.codeChanged('1234567');
+      expect(container.read(otpVerifyNotifierProvider(email)).isValid, isFalse);
+      n.codeChanged('12345678');
+      expect(container.read(otpVerifyNotifierProvider(email)).isValid, isTrue);
+    });
   });
 }

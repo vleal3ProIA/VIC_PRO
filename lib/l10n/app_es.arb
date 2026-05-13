@@ -53,10 +53,10 @@
 
   "loginWithOtp": "Entrar con código",
   "otpRequestTitle": "Entra con un código de un solo uso",
-  "otpRequestSubtitle": "Introduce tu correo y te enviaremos un código de 6 dígitos.",
+  "otpRequestSubtitle": "Introduce tu correo y te enviaremos un código de {count} dígitos.",
   "otpVerifyTitle": "Introduce tu código",
-  "otpVerifySubtitle": "Hemos enviado un código de 6 dígitos a {email}. Caduca en 10 minutos.",
-  "otpHint": "Pega o escribe los 6 dígitos.",
+  "otpVerifySubtitle": "Hemos enviado un código de {count} dígitos a {email}. Caduca en 10 minutos.",
+  "otpHint": "Pega o escribe los {count} dígitos.",
   "otpResent": "Código reenviado.",
 
   "forgotPasswordTitle": "Recupera tu contraseña",

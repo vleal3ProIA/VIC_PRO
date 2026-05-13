@@ -18,6 +18,13 @@ class EnvConfig {
   static String get supabaseAnonKey =>
       dotenv.get('SUPABASE_ANON_KEY', fallback: '');
 
+  // Auth — coincidir con Supabase Dashboard → Auth → Email OTP Length.
+  // Clamp [4, 10] para no aceptar valores absurdos por error de tipeo.
+  static int get otpCodeLength {
+    final raw = int.tryParse(dotenv.get('OTP_CODE_LENGTH', fallback: '6')) ?? 6;
+    return raw.clamp(4, 10);
+  }
+
   // Feature flags
   static bool get enableLogging =>
       dotenv.get('ENABLE_LOGGING', fallback: 'true').toLowerCase() == 'true';

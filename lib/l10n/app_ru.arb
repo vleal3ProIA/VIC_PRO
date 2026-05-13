@@ -53,10 +53,10 @@
 
   "loginWithOtp": "Войти по коду",
   "otpRequestTitle": "Вход по одноразовому коду",
-  "otpRequestSubtitle": "Введите email и мы отправим 6-значный код.",
+  "otpRequestSubtitle": "Введите email и мы отправим {count}-значный код.",
   "otpVerifyTitle": "Введите код",
-  "otpVerifySubtitle": "Мы отправили 6-значный код на {email}. Он действителен 10 минут.",
-  "otpHint": "Вставьте или введите 6 цифр.",
+  "otpVerifySubtitle": "Мы отправили {count}-значный код на {email}. Он действителен 10 минут.",
+  "otpHint": "Вставьте или введите {count} цифр.",
   "otpResent": "Код отправлен снова.",
 
   "forgotPasswordTitle": "Сброс пароля",
