@@ -102,6 +102,7 @@
   "authErrorWeakPassword": "Цей пароль занадто слабкий.",
   "authErrorEmailNotConfirmed": "Підтвердьте електронну пошту перед входом.",
   "authErrorInvalidCredentials": "Невірна електронна пошта або пароль.",
+  "authErrorOtpInvalid": "Код невірний, прострочений або вже використаний. Використайте останній надісланий код.",
   "authErrorRateLimited": "Забагато спроб. Спробуйте пізніше.",
   "authErrorNetwork": "Помилка мережі. Перевірте підключення.",
   "authErrorUnknown": "Щось пішло не так. Спробуйте ще раз."

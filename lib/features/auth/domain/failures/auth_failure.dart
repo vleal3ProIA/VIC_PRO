@@ -29,6 +29,13 @@ class AuthNetworkError extends AuthFailure {
   const AuthNetworkError({super.cause});
 }
 
+/// El código OTP introducido es incorrecto, expirado o ya usado.
+/// Se diferencia de `AuthInvalidCredentials` porque éste se refiere a
+/// email+password, no a OTP — el mensaje al usuario es distinto.
+class AuthOtpInvalid extends AuthFailure {
+  const AuthOtpInvalid({super.cause});
+}
+
 class AuthUnknown extends AuthFailure {
   const AuthUnknown({super.cause, this.message});
   final String? message;

@@ -102,6 +102,7 @@
   "authErrorWeakPassword": "Ce mot de passe est trop faible.",
   "authErrorEmailNotConfirmed": "Veuillez vérifier votre e-mail avant de vous connecter.",
   "authErrorInvalidCredentials": "E-mail ou mot de passe invalide.",
+  "authErrorOtpInvalid": "Le code est invalide, expiré ou déjà utilisé. Utilisez le dernier code que nous avons envoyé.",
   "authErrorRateLimited": "Trop de tentatives. Veuillez réessayer plus tard.",
   "authErrorNetwork": "Erreur réseau. Vérifiez votre connexion.",
   "authErrorUnknown": "Une erreur est survenue. Veuillez réessayer."

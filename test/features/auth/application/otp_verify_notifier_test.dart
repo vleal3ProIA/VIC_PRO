@@ -54,16 +54,16 @@ void main() {
     expect(state().status, OtpVerifyStatus.success);
   });
 
-  test('invalid code from backend surfaces AuthInvalidCredentials', () async {
-    repo.verifyOtpResult = const Left(AuthInvalidCredentials());
+  test('invalid code from backend surfaces AuthOtpInvalid', () async {
+    repo.verifyOtpResult = const Left(AuthOtpInvalid());
     notifier().codeChanged('000000');
     await notifier().submit();
     expect(state().status, OtpVerifyStatus.failure);
-    expect(state().failure, isA<AuthInvalidCredentials>());
+    expect(state().failure, isA<AuthOtpInvalid>());
   });
 
   test('typing again after failure clears the previous failure', () async {
-    repo.verifyOtpResult = const Left(AuthInvalidCredentials());
+    repo.verifyOtpResult = const Left(AuthOtpInvalid());
     notifier().codeChanged('000000');
     await notifier().submit();
     expect(state().failure, isNotNull);
