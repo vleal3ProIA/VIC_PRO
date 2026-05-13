@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
-import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/widgets/error_text_slot.dart';
 import 'package:myapp/core/widgets/pin_code_input.dart';
 import 'package:myapp/features/auth/application/auth_providers.dart';
@@ -41,12 +39,11 @@ class _OtpVerifyFormState extends ConsumerState<OtpVerifyForm> {
   Widget build(BuildContext context) {
     final familyProvider = otpVerifyNotifierProvider(widget.email);
 
-    ref.listen<OtpVerifyState>(familyProvider, (prev, next) {
-      if (prev?.status != OtpVerifyStatus.success &&
-          next.status == OtpVerifyStatus.success) {
-        context.goNamed(RouteNames.home);
-      }
-    });
+    // Nota: NO navegamos manualmente al éxito. Cuando `verifyEmailOtp`
+    // abre sesión, el `authStateChangesProvider` emite, el router refresca
+    // y los guards detectan `/otp-verify` ∈ _publicOnly + isAuthed=true →
+    // redirige a /home automáticamente. Hacerlo manualmente aquí dispara
+    // una race con el guard que puede acabar empujando al usuario a /login.
 
     final state = ref.watch(familyProvider);
     final notifier = ref.read(familyProvider.notifier);
