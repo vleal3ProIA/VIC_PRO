@@ -126,42 +126,50 @@ class _PinCodeInputState extends State<PinCodeInput> {
           borderSide: BorderSide(color: c, width: w),
         );
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(widget.length, (i) {
-        return SizedBox(
-          width: 48,
-          height: 56,
-          child: Focus(
-            onKeyEvent: (_, e) => _handleKey(i, e),
-            child: TextField(
-              controller: _controllers[i],
-              focusNode: _focusNodes[i],
-              enabled: widget.enabled,
-              autofocus: widget.autofocus && i == 0,
-              textAlign: TextAlign.center,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-              ],
-              maxLength: null,
-              style: context.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
+    // Cajas adaptativas: cada una toma 1/N del ancho disponible, con un
+    // separador entre cajas. Así caben 4..10 cajas sin overflow.
+    const cellHeight = 56.0;
+    const gap = 8.0;
+
+    return SizedBox(
+      height: cellHeight,
+      child: Row(
+        children: List.generate(widget.length, (i) {
+          final isLast = i == widget.length - 1;
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: isLast ? 0 : gap),
+              child: Focus(
+                onKeyEvent: (_, e) => _handleKey(i, e),
+                child: TextField(
+                  controller: _controllers[i],
+                  focusNode: _focusNodes[i],
+                  enabled: widget.enabled,
+                  autofocus: widget.autofocus && i == 0,
+                  textAlign: TextAlign.center,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
+                  style: context.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                  autofillHints: const [AutofillHints.oneTimeCode],
+                  decoration: InputDecoration(
+                    counterText: '',
+                    contentPadding: EdgeInsets.zero,
+                    enabledBorder: border(borderColor),
+                    focusedBorder: border(focusedColor, w: 1.6),
+                    errorBorder: border(context.colors.error),
+                    focusedErrorBorder: border(context.colors.error, w: 1.6),
+                  ),
+                  onChanged: (v) => _handleInput(i, v),
+                ),
               ),
-              autofillHints: const [AutofillHints.oneTimeCode],
-              decoration: InputDecoration(
-                counterText: '',
-                contentPadding: EdgeInsets.zero,
-                enabledBorder: border(borderColor),
-                focusedBorder: border(focusedColor, w: 1.6),
-                errorBorder: border(context.colors.error),
-                focusedErrorBorder: border(context.colors.error, w: 1.6),
-              ),
-              onChanged: (v) => _handleInput(i, v),
             ),
-          ),
-        );
-      }),
+          );
+        }),
+      ),
     );
   }
 }
