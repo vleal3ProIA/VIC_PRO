@@ -102,6 +102,7 @@
   "authErrorWeakPassword": "Esta palavra-passe é demasiado fraca.",
   "authErrorEmailNotConfirmed": "Verifica o teu e-mail antes de iniciar sessão.",
   "authErrorInvalidCredentials": "E-mail ou palavra-passe inválidos.",
+  "authErrorOtpInvalid": "O código é inválido, expirou ou já foi usado. Usa o último código que te enviámos.",
   "authErrorRateLimited": "Demasiadas tentativas. Tenta novamente mais tarde.",
   "authErrorNetwork": "Erro de rede. Verifica a tua ligação.",
   "authErrorUnknown": "Algo correu mal. Tenta novamente."

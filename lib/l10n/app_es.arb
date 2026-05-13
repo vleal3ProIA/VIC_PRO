@@ -102,6 +102,7 @@
   "authErrorWeakPassword": "Esta contraseña es demasiado débil.",
   "authErrorEmailNotConfirmed": "Verifica tu correo antes de iniciar sesión.",
   "authErrorInvalidCredentials": "Correo o contraseña incorrectos.",
+  "authErrorOtpInvalid": "El código no es válido, ha caducado o ya se ha usado. Usa el último que te enviamos.",
   "authErrorRateLimited": "Demasiados intentos. Inténtalo más tarde.",
   "authErrorNetwork": "Error de red. Comprueba tu conexión.",
   "authErrorUnknown": "Algo salió mal. Inténtalo de nuevo."

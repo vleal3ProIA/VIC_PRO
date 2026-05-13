@@ -162,16 +162,21 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  /// El token OTP, cuando es incorrecto, devuelve `otp_expired` o
-  /// `invalid_credentials` según el caso; los normalizamos al mismo failure
-  /// para que la UI muestre "código no válido".
+  /// El token OTP, cuando es incorrecto/expirado/ya usado, devuelve
+  /// `otp_expired`, `invalid_otp`, `invalid_token` o simplemente
+  /// `invalid_credentials`. Lo normalizamos a `AuthOtpInvalid` para que la
+  /// UI muestre un mensaje específico de OTP (no "email o contraseña
+  /// incorrectos" — que confunde al usuario).
   AuthFailure _mapOtpAuthException(AuthException e, StackTrace st) {
     final code = e.code ?? '';
+    final msg = e.message.toLowerCase();
     if (code == 'otp_expired' ||
         code == 'invalid_otp' ||
         code == 'invalid_token' ||
-        e.message.toLowerCase().contains('token')) {
-      return AuthInvalidCredentials(cause: e);
+        code == 'invalid_credentials' ||
+        msg.contains('token') ||
+        msg.contains('otp')) {
+      return AuthOtpInvalid(cause: e);
     }
     return _mapAuthException(e, st);
   }

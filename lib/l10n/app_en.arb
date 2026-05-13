@@ -113,6 +113,7 @@
   "authErrorWeakPassword": "This password is too weak.",
   "authErrorEmailNotConfirmed": "Please verify your email before signing in.",
   "authErrorInvalidCredentials": "Invalid email or password.",
+  "authErrorOtpInvalid": "The code is invalid, expired, or already used. Use the latest code we sent.",
   "authErrorRateLimited": "Too many attempts. Please try again later.",
   "authErrorNetwork": "Network error. Check your connection.",
   "authErrorUnknown": "Something went wrong. Please try again."
