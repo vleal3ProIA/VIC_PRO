@@ -30,6 +30,7 @@
   "actionSendMagicLink": "Invia magic link",
   "actionSendOtp": "Invia codice",
   "actionVerifyOtp": "Verifica codice",
+  "actionRememberMe": "Ricordami",
 
   "registerTitle": "Crea il tuo account",
   "registerSubtitle": "Unisciti e inizia il tuo viaggio.",
