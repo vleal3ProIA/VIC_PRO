@@ -50,6 +50,7 @@
   "magicLinkSentTitle": "Vérifiez votre boîte mail",
   "magicLinkSentSubtitle": "Nous avons envoyé un magic link à {email}. Ouvrez-le sur cet appareil pour vous connecter.",
   "magicLinkSentHint": "Pas reçu ? Vérifiez les spams ou renvoyez.",
+  "magicLinkSentInstruction": "Cliquez simplement sur le bouton bleu dans l'e-mail — pas besoin de revenir ici.",
   "actionUsePassword": "Utiliser e-mail + mot de passe",
 
   "loginWithOtp": "Se connecter avec un code",
@@ -58,6 +59,7 @@
   "otpVerifyTitle": "Saisissez votre code",
   "otpVerifySubtitle": "Nous avons envoyé un code à {count} chiffres à {email}. Il expire dans 10 minutes.",
   "otpHint": "Collez ou saisissez les {count} chiffres.",
+  "otpVerifyTip": "Utilisez uniquement le code ci-dessous. Si vous cliquez sur le bouton de l'e-mail, vous serez connecté automatiquement — ne faites pas les deux.",
   "otpResent": "Code renvoyé.",
 
   "forgotPasswordTitle": "Réinitialiser le mot de passe",

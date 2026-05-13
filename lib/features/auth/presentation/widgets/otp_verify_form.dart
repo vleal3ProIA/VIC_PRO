@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/widgets/error_text_slot.dart';
+import 'package:myapp/core/widgets/info_banner.dart';
 import 'package:myapp/core/widgets/pin_code_input.dart';
 import 'package:myapp/features/auth/application/auth_providers.dart';
 import 'package:myapp/features/auth/application/otp_verify_notifier.dart';
@@ -57,6 +58,8 @@ class _OtpVerifyFormState extends ConsumerState<OtpVerifyForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
+        InfoBanner(message: l.otpVerifyTip),
+        const SizedBox(height: 14),
         Text(
           l.otpHint(state.codeLength),
           textAlign: TextAlign.center,
@@ -64,7 +67,7 @@ class _OtpVerifyFormState extends ConsumerState<OtpVerifyForm> {
             color: context.colors.onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         PinCodeInput(
           onChanged: notifier.codeChanged,
           onCompleted: (_) => notifier.submit(),

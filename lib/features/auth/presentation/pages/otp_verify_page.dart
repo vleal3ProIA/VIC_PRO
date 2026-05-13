@@ -12,7 +12,7 @@ class OtpVerifyPage extends ConsumerWidget {
 
   final String email;
 
-  static const double _reservedHeight = 620;
+  static const double _reservedHeight = 720;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

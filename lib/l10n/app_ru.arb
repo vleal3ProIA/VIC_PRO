@@ -50,6 +50,7 @@
   "magicLinkSentTitle": "Проверьте почту",
   "magicLinkSentSubtitle": "Мы отправили magic link на {email}. Откройте его на этом устройстве для входа.",
   "magicLinkSentHint": "Не получили? Проверьте спам или отправьте ещё раз.",
+  "magicLinkSentInstruction": "Просто нажмите на синюю кнопку в письме — возвращаться сюда не нужно.",
   "actionUsePassword": "Использовать email + пароль",
 
   "loginWithOtp": "Войти по коду",
@@ -58,6 +59,7 @@
   "otpVerifyTitle": "Введите код",
   "otpVerifySubtitle": "Мы отправили {count}-значный код на {email}. Он действителен 10 минут.",
   "otpHint": "Вставьте или введите {count} цифр.",
+  "otpVerifyTip": "Используйте только код ниже. Если нажмёте на кнопку в письме — войдёте автоматически. Не делайте и то, и другое.",
   "otpResent": "Код отправлен снова.",
 
   "forgotPasswordTitle": "Сброс пароля",

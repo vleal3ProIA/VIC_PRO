@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/widgets/auth_card.dart';
+import 'package:myapp/core/widgets/info_banner.dart';
 import 'package:myapp/features/auth/application/auth_providers.dart';
 import 'package:myapp/features/auth/presentation/widgets/auth_failure_message.dart';
 import 'package:myapp/features/welcome/presentation/widgets/top_bar.dart';
@@ -42,7 +43,7 @@ class _MagicLinkSentPageState extends ConsumerState<MagicLinkSentPage> {
       appBar: const PublicTopBar(),
       body: SafeArea(
         child: AuthCard(
-          reservedHeight: 560,
+          reservedHeight: 640,
           leading: Icon(
             Icons.mark_email_read_outlined,
             size: 64,
@@ -54,6 +55,11 @@ class _MagicLinkSentPageState extends ConsumerState<MagicLinkSentPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 8),
+              InfoBanner(
+                kind: InfoBannerKind.success,
+                message: l.magicLinkSentInstruction,
+              ),
+              const SizedBox(height: 12),
               Text(
                 l.magicLinkSentHint,
                 textAlign: TextAlign.center,
@@ -61,7 +67,7 @@ class _MagicLinkSentPageState extends ConsumerState<MagicLinkSentPage> {
                   color: context.colors.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               FilledButton.tonal(
                 onPressed: _sending ? null : _resend,
                 style: FilledButton.styleFrom(
