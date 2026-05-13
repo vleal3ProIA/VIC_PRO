@@ -35,6 +35,9 @@ class RoutePaths {
   static const String magicLink = '/magic-link';
   static const String magicLinkSent = '/magic-link-sent';
   static const String otpRequest = '/otp';
-  static const String otpVerify = '/otp/verify';
+  // NO usar paths anidados sin GoRoute padre. go_router se confunde si
+  // `/otp/verify` es ruta plana mientras existe `/otp` como ruta plana
+  // independiente — dispara `assert(uri.path.startsWith(matchedLocation))`.
+  static const String otpVerify = '/otp-verify';
   static const String home = '/home';
 }
