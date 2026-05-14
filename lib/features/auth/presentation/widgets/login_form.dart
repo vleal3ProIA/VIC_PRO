@@ -40,6 +40,19 @@ class _LoginFormState extends ConsumerState<LoginForm> {
 
   @override
   Widget build(BuildContext context) {
+    // Navegación explícita al hacer login con éxito. No dependemos solo del
+    // guard del router: el evento de `onAuthStateChange` llega de forma
+    // asíncrona y podía retrasar (o, combinado con rebuilds, "perder") la
+    // primera navegación —de ahí el "hay que pulsar dos veces". Al navegar
+    // aquí, el guard de `/home` lee la sesión fresca del cliente y la deja
+    // pasar.
+    ref.listen<LoginState>(loginNotifierProvider, (prev, next) {
+      if (prev?.status != LoginStatus.success &&
+          next.status == LoginStatus.success) {
+        context.goNamed(RouteNames.home);
+      }
+    });
+
     final state = ref.watch(loginNotifierProvider);
     final notifier = ref.read(loginNotifierProvider.notifier);
     final oauthState = ref.watch(oauthNotifierProvider);
