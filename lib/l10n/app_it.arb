@@ -171,5 +171,36 @@
   "authErrorOtpInvalid": "Il codice non è valido, è scaduto o è già stato usato. Usa l'ultimo codice che ti abbiamo inviato.",
   "authErrorRateLimited": "Troppi tentativi. Riprova più tardi.",
   "authErrorNetwork": "Errore di rete. Controlla la connessione.",
-  "authErrorUnknown": "Qualcosa è andato storto. Riprova."
+  "authErrorUnknown": "Qualcosa è andato storto. Riprova.",
+
+  "legalLastUpdated": "Ultimo aggiornamento: {date}",
+  "legalDraftNotice": "Questo documento è un modello in attesa di revisione legale. Non costituisce consulenza legale.",
+
+  "termsTitle": "Termini di Servizio",
+  "termsS1Title": "1. Accettazione dei termini",
+  "termsS1Body": "Creando un account o usando myapp, accetti questi Termini di Servizio. Se non sei d'accordo, non usare il servizio.",
+  "termsS2Title": "2. Il servizio",
+  "termsS2Body": "myapp è un'applicazione web attualmente in sviluppo. Le funzioni possono cambiare, essere aggiunte o rimosse in qualsiasi momento senza preavviso.",
+  "termsS3Title": "3. Il tuo account",
+  "termsS3Body": "Sei responsabile della sicurezza delle tue credenziali e di ogni attività sul tuo account. Fornisci informazioni accurate al momento della registrazione.",
+  "termsS4Title": "4. Uso accettabile",
+  "termsS4Body": "Non usare il servizio per scopi illeciti, non tentare di interromperlo e non accedere ai dati di altri utenti senza autorizzazione.",
+  "termsS5Title": "5. Responsabilità",
+  "termsS5Body": "Il servizio è fornito \"così com'è\", senza garanzie. Nei limiti consentiti dalla legge, non siamo responsabili per danni indiretti o incidentali.",
+  "termsS6Title": "6. Modifiche e contatti",
+  "termsS6Body": "Possiamo aggiornare questi termini; le modifiche significative saranno annunciate nell'app. Per domande, usa i contatti indicati nell'Informativa sulla Privacy.",
+
+  "privacyTitle": "Informativa sulla Privacy",
+  "privacyS1Title": "1. Titolare del trattamento",
+  "privacyS1Body": "Il gestore di myapp è il titolare del trattamento dei dati personali trattati tramite questa applicazione.",
+  "privacyS2Title": "2. Dati che raccogliamo",
+  "privacyS2Body": "I dati dell'account che fornisci (nome utente, email) e i dati tecnici necessari per gestire il servizio, come le informazioni di autenticazione e sessione.",
+  "privacyS3Title": "3. Finalità e base giuridica",
+  "privacyS3Body": "Trattiamo i tuoi dati per fornire e proteggere il servizio, sulla base dell'esecuzione del nostro contratto con te e del nostro legittimo interesse a mantenere il servizio sicuro.",
+  "privacyS4Title": "4. Responsabili e conservazione",
+  "privacyS4Body": "L'autenticazione e l'archiviazione sono fornite da Supabase, che agisce come nostro responsabile del trattamento. Conserviamo i tuoi dati finché il tuo account è attivo e li eliminiamo su richiesta.",
+  "privacyS5Title": "5. I tuoi diritti",
+  "privacyS5Body": "Puoi accedere, rettificare, cancellare o esportare i tuoi dati e opporti al loro trattamento. Puoi eliminare il tuo account in qualsiasi momento dalle Impostazioni.",
+  "privacyS6Title": "6. Contatti",
+  "privacyS6Body": "Per esercitare i tuoi diritti o porre domande su questa informativa, scrivici all'indirizzo email indicato nell'app. Puoi anche presentare reclamo all'autorità per la protezione dei dati."
 }

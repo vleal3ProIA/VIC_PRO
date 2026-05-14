@@ -183,5 +183,37 @@
   "authErrorOtpInvalid": "The code is invalid, expired, or already used. Use the latest code we sent.",
   "authErrorRateLimited": "Too many attempts. Please try again later.",
   "authErrorNetwork": "Network error. Check your connection.",
-  "authErrorUnknown": "Something went wrong. Please try again."
+  "authErrorUnknown": "Something went wrong. Please try again.",
+
+  "legalLastUpdated": "Last updated: {date}",
+  "@legalLastUpdated": {"placeholders": {"date": {"type": "String"}}},
+  "legalDraftNotice": "This document is a template pending legal review. It does not constitute legal advice.",
+
+  "termsTitle": "Terms of Service",
+  "termsS1Title": "1. Acceptance of terms",
+  "termsS1Body": "By creating an account or using myapp, you agree to these Terms of Service. If you do not agree, please do not use the service.",
+  "termsS2Title": "2. The service",
+  "termsS2Body": "myapp is a web application currently under development. Features may change, be added, or be removed at any time without notice.",
+  "termsS3Title": "3. Your account",
+  "termsS3Body": "You are responsible for keeping your credentials secure and for all activity under your account. Provide accurate information when registering.",
+  "termsS4Title": "4. Acceptable use",
+  "termsS4Body": "Do not use the service for unlawful purposes, attempt to disrupt it, or access other users' data without authorization.",
+  "termsS5Title": "5. Liability",
+  "termsS5Body": "The service is provided \"as is\", without warranties. To the extent permitted by law, we are not liable for indirect or incidental damages.",
+  "termsS6Title": "6. Changes and contact",
+  "termsS6Body": "We may update these terms; significant changes will be announced in the app. For questions, use the contact details in the Privacy Policy.",
+
+  "privacyTitle": "Privacy Policy",
+  "privacyS1Title": "1. Data controller",
+  "privacyS1Body": "The operator of myapp is the data controller for the personal data processed through this application.",
+  "privacyS2Title": "2. Data we collect",
+  "privacyS2Body": "Account data you provide (username, email) and technical data needed to run the service, such as authentication and session information.",
+  "privacyS3Title": "3. Purpose and legal basis",
+  "privacyS3Body": "We process your data to provide and secure the service, based on the performance of our contract with you and our legitimate interest in keeping the service safe.",
+  "privacyS4Title": "4. Processors and retention",
+  "privacyS4Body": "Authentication and storage are provided by Supabase, acting as our data processor. We keep your data while your account is active and delete it on request.",
+  "privacyS5Title": "5. Your rights",
+  "privacyS5Body": "You may access, rectify, delete, or export your data and object to its processing. You can delete your account at any time from Settings.",
+  "privacyS6Title": "6. Contact",
+  "privacyS6Body": "To exercise your rights or ask about this policy, contact us at the email address shown in the app. You may also lodge a complaint with your data protection authority."
 }

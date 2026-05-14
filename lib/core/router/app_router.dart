@@ -27,6 +27,8 @@ import 'package:myapp/features/auth/presentation/pages/register_page.dart';
 import 'package:myapp/features/auth/presentation/pages/set_new_password_page.dart';
 import 'package:myapp/features/auth/presentation/pages/verify_email_sent_page.dart';
 import 'package:myapp/features/home/presentation/pages/home_page.dart';
+import 'package:myapp/features/legal/presentation/pages/privacy_page.dart';
+import 'package:myapp/features/legal/presentation/pages/terms_page.dart';
 import 'package:myapp/features/welcome/presentation/pages/welcome_page.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -169,6 +171,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: RouteNames.emailChanged,
         builder: (_, __) => const EmailChangedPage(),
       ),
+      GoRoute(
+        path: RoutePaths.terms,
+        name: RouteNames.terms,
+        builder: (_, __) => const TermsPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.privacy,
+        name: RouteNames.privacy,
+        builder: (_, __) => const PrivacyPage(),
+      ),
     ],
     errorBuilder: (_, state) => _NotFoundPage(error: state.error),
   );
@@ -180,6 +192,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 ///   redirigir a /home al detectar sesión.
 /// - `/password-updated` cierra sesión al entrar, así que debe poder mostrarse.
 /// - `/email-verified` igualmente: visible sin importar el estado.
+/// - `/terms` y `/privacy` son documentos legales: accesibles siempre, con o
+///   sin sesión (se enlazan desde el registro y el footer público).
 const _excludedFromGuard = <String>{
   RoutePaths.authCallback,
   RoutePaths.setNewPassword,
@@ -187,6 +201,8 @@ const _excludedFromGuard = <String>{
   RoutePaths.emailVerified,
   RoutePaths.verifyEmailSent,
   RoutePaths.emailChanged,
+  RoutePaths.terms,
+  RoutePaths.privacy,
 };
 
 /// Rutas privadas (requieren sesión activa).
