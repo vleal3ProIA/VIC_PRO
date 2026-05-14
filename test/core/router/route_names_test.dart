@@ -25,6 +25,11 @@ void main() {
         RoutePaths.mfaChallenge,
         RoutePaths.home,
         RoutePaths.accountSettings,
+        RoutePaths.changePassword,
+        RoutePaths.changePasswordDone,
+        RoutePaths.changeEmail,
+        RoutePaths.changeEmailSent,
+        RoutePaths.emailChanged,
         // authCallback queda exento: usa "/auth/callback" pero no existe
         // ninguna otra ruta que empiece por "/auth".
       ];

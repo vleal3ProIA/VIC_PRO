@@ -71,4 +71,18 @@ abstract class AuthRepository {
   /// `true` si el usuario actual tiene MFA pendiente de verificar
   /// (currentLevel = aal1, nextLevel = aal2).
   bool isMfaChallengePending();
+
+  // ----- Cambios desde el panel privado ------------------------------------
+
+  /// Cambia la contraseña del usuario autenticado. Primero reautentica con
+  /// la contraseña actual (Supabase `updateUser` no la valida por sí solo)
+  /// y, si es correcta, aplica la nueva.
+  Future<Either<AuthFailure, Unit>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
+
+  /// Inicia el cambio de email. Supabase envía email(s) de confirmación;
+  /// el cambio se aplica al confirmar.
+  Future<Either<AuthFailure, Unit>> changeEmail(String newEmail);
 }

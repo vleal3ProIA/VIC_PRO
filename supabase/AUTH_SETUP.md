@@ -193,12 +193,34 @@ viene ON en proyectos nuevos.
 > pierdes el dispositivo (la sesión queda activa pero con AAL=1; en una
 > futura iteración añadiremos recovery codes para no quedarte fuera).
 
-## 7 · Próximos pasos
+## 7 · Cambio de email y contraseña (panel privado)
+
+Disponibles desde **Settings → Seguridad**.
+
+### 7.1 · Cambio de contraseña
+
+El usuario introduce su contraseña actual + la nueva + repetir. La app
+**reautentica** con la actual (Supabase `updateUser` no la valida por sí
+solo) y, si es correcta, aplica la nueva. No requiere email.
+
+### 7.2 · Cambio de email
+
+1. Settings → Seguridad → "Cambiar email" → introduce el nuevo.
+2. Supabase envía email(s) de confirmación según **"Secure email change"**
+   del dashboard:
+   - **ON** (recomendado): DOS emails — al correo actual y al nuevo. El
+     cambio se aplica cuando ambos se confirman.
+   - **OFF**: un solo email al nuevo correo.
+3. El usuario pulsa el link → `/auth/callback?type=email_change` →
+   pantalla "Email confirmed".
+
+**Plantilla "Change Email Address"**: Dashboard → Authentication → Email
+Templates → Change Email Address. Por ahora vale la plantilla por defecto
+de Supabase.
+
+## 8 · Próximos pasos
 
 - OAuth Google + Apple.
 - WebAuthn / Passkeys (la "biometría" del web).
-- Panel privado completo (settings: idioma + tema persistente en
-  `profiles.locale` y `profiles.theme_mode`).
-- Cambio de email desde el panel privado.
 - Recovery codes para MFA (backup si pierdes el dispositivo).
 - GDPR: borrado de cuenta + export de datos.

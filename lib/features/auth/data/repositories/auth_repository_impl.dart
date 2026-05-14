@@ -115,6 +115,56 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Either<AuthFailure, Unit>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final email = _dataSource.currentEmail;
+    if (email == null) {
+      return const Left(AuthUnknown(message: 'No active session'));
+    }
+    try {
+      // 1) Reautenticar: Supabase updateUser no valida la contraseña
+      //    actual, así que lo hacemos nosotros con un signIn silencioso.
+      await _dataSource.signInWithPassword(
+        email: email,
+        password: currentPassword,
+      );
+    } on AuthException catch (e, st) {
+      AppLogger.w('changePassword reauth failed: ${e.code}');
+      // Contraseña actual incorrecta.
+      return Left(_mapAuthException(e, st));
+    } catch (e) {
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+    try {
+      // 2) Actualizar a la nueva.
+      await _dataSource.updatePassword(newPassword);
+      return const Right(unit);
+    } on AuthException catch (e, st) {
+      return Left(_mapAuthException(e, st));
+    } catch (e) {
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<AuthFailure, Unit>> changeEmail(String newEmail) async {
+    try {
+      await _dataSource.updateEmail(
+        newEmail: newEmail,
+        redirectTo: AuthRedirect.resolve(AuthRedirectType.emailChange),
+      );
+      return const Right(unit);
+    } on AuthException catch (e, st) {
+      AppLogger.w('changeEmail failed: ${e.code} ${e.message}');
+      return Left(_mapAuthException(e, st));
+    } catch (e) {
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<AuthFailure, Unit>> signInWithMagicLink(String email) async {
     try {
       await _dataSource.sendMagicLink(
