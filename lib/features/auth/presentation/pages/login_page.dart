@@ -9,8 +9,8 @@ class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
 
   // Altura reservada para no mover la card al aparecer/desaparecer errores.
-  // Acomoda divider + 3 botones outlined (Google + magic link + OTP).
-  static const double _reservedHeight = 884;
+  // Acomoda divider + 4 botones outlined (Google + Apple + magic link + OTP).
+  static const double _reservedHeight = 940;
 
   @override
   Widget build(BuildContext context) {

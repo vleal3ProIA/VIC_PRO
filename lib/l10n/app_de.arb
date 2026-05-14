@@ -63,6 +63,7 @@
 
   "loginWithOtp": "Mit Code anmelden",
   "continueWithGoogle": "Mit Google fortfahren",
+  "continueWithApple": "Mit Apple fortfahren",
   "otpRequestTitle": "Anmelden mit Einmal-Code",
   "otpRequestSubtitle": "Gib deine E-Mail ein und wir senden dir einen {count}-stelligen Code.",
   "otpVerifyTitle": "Gib deinen Code ein",

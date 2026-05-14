@@ -13,6 +13,7 @@ class SocialSignInButton extends StatelessWidget {
     required this.onPressed,
     super.key,
     this.busy = false,
+    this.iconColor,
   });
 
   /// Texto del botón (p. ej. "Continuar con Google").
@@ -26,6 +27,11 @@ class SocialSignInButton extends StatelessWidget {
 
   /// Muestra un spinner en lugar del logo.
   final bool busy;
+
+  /// Si se indica, tiñe el logo con este color (útil para logos monocromos
+  /// como el de Apple, que debe seguir el tema). Si es `null` el SVG se
+  /// dibuja con sus colores originales (p. ej. la "G" multicolor de Google).
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +51,9 @@ class SocialSignInButton extends StatelessWidget {
               height: 18,
               width: 18,
               semanticsLabel: label,
+              colorFilter: iconColor == null
+                  ? null
+                  : ColorFilter.mode(iconColor!, BlendMode.srcIn),
             ),
       label: Text(label),
     );

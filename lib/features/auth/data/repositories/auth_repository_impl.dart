@@ -104,6 +104,22 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Either<AuthFailure, Unit>> signInWithApple() async {
+    try {
+      await _dataSource.signInWithApple(
+        redirectTo: AuthRedirect.resolve(AuthRedirectType.oauth),
+      );
+      return const Right(unit);
+    } on AuthException catch (e, st) {
+      AppLogger.w('signInWithApple AuthException: ${e.code} ${e.message}');
+      return Left(_mapAuthException(e, st));
+    } catch (e, st) {
+      AppLogger.e('signInWithApple unknown', error: e, stackTrace: st);
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<AuthFailure, Unit>> sendPasswordReset(String email) async {
     try {
       await _dataSource.sendPasswordReset(

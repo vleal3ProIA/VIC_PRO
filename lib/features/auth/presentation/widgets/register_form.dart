@@ -210,8 +210,20 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
           SocialSignInButton(
             label: l.continueWithGoogle,
             iconAsset: 'assets/icons/google.svg',
-            busy: oauthState.isBusy,
-            onPressed: busy ? null : oauthNotifier.signInWithGoogle,
+            busy: oauthState.isBusyWith(SocialProvider.google),
+            onPressed: busy
+                ? null
+                : () => oauthNotifier.signIn(SocialProvider.google),
+          ),
+          const SizedBox(height: 8),
+          SocialSignInButton(
+            label: l.continueWithApple,
+            iconAsset: 'assets/icons/apple.svg',
+            iconColor: context.colors.onSurface,
+            busy: oauthState.isBusyWith(SocialProvider.apple),
+            onPressed: busy
+                ? null
+                : () => oauthNotifier.signIn(SocialProvider.apple),
           ),
           const SizedBox(height: 16),
           Row(
