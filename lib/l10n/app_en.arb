@@ -40,6 +40,8 @@
   "actionSave": "Save",
   "actionRetry": "Retry",
   "actionSettings": "Settings",
+  "navDashboard": "Dashboard",
+  "navSettings": "Settings",
 
   "registerTitle": "Create your account",
   "registerSubtitle": "Join us and start your journey.",

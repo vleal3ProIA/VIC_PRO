@@ -30,6 +30,7 @@ import 'package:myapp/features/auth/presentation/pages/verify_email_sent_page.da
 import 'package:myapp/features/home/presentation/pages/home_page.dart';
 import 'package:myapp/features/legal/presentation/pages/privacy_page.dart';
 import 'package:myapp/features/legal/presentation/pages/terms_page.dart';
+import 'package:myapp/features/shell/presentation/widgets/private_shell.dart';
 import 'package:myapp/features/welcome/presentation/pages/welcome_page.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -134,15 +135,27 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: RouteNames.mfaChallenge,
         builder: (_, __) => const MfaChallengePage(),
       ),
-      GoRoute(
-        path: RoutePaths.home,
-        name: RouteNames.home,
-        builder: (_, __) => const HomePage(),
-      ),
-      GoRoute(
-        path: RoutePaths.accountSettings,
-        name: RouteNames.accountSettings,
-        builder: (_, __) => const AccountSettingsPage(),
+      // Zona privada con shell persistente (cabecera + navegación lateral).
+      // Solo envuelve los destinos "de navegación"; los flujos puntuales
+      // (cambio de password/email, borrado, MFA) van fuera, a pantalla
+      // completa.
+      ShellRoute(
+        builder: (context, state, child) => PrivateShell(
+          location: state.uri.path,
+          child: child,
+        ),
+        routes: [
+          GoRoute(
+            path: RoutePaths.home,
+            name: RouteNames.home,
+            builder: (_, __) => const HomePage(),
+          ),
+          GoRoute(
+            path: RoutePaths.accountSettings,
+            name: RouteNames.accountSettings,
+            builder: (_, __) => const AccountSettingsPage(),
+          ),
+        ],
       ),
       GoRoute(
         path: RoutePaths.changePassword,

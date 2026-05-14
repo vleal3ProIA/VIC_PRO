@@ -39,6 +39,8 @@
   "actionSave": "Salva",
   "actionRetry": "Riprova",
   "actionSettings": "Impostazioni",
+  "navDashboard": "Pannello",
+  "navSettings": "Impostazioni",
 
   "registerTitle": "Crea il tuo account",
   "registerSubtitle": "Unisciti e inizia il tuo viaggio.",

@@ -39,6 +39,8 @@
   "actionSave": "Guardar",
   "actionRetry": "Reintentar",
   "actionSettings": "Ajustes",
+  "navDashboard": "Panel",
+  "navSettings": "Ajustes",
 
   "registerTitle": "Crea tu cuenta",
   "registerSubtitle": "Únete y empieza tu camino.",

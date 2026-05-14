@@ -39,6 +39,8 @@
   "actionSave": "Speichern",
   "actionRetry": "Erneut versuchen",
   "actionSettings": "Einstellungen",
+  "navDashboard": "Übersicht",
+  "navSettings": "Einstellungen",
 
   "registerTitle": "Konto erstellen",
   "registerSubtitle": "Tritt bei und starte deine Reise.",

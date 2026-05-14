@@ -39,6 +39,8 @@
   "actionSave": "Сохранить",
   "actionRetry": "Повторить",
   "actionSettings": "Настройки",
+  "navDashboard": "Панель",
+  "navSettings": "Настройки",
 
   "registerTitle": "Создайте аккаунт",
   "registerSubtitle": "Присоединяйтесь и начните свой путь.",
