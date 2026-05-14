@@ -13,6 +13,8 @@ class AuthSupabaseDataSource {
     required String password,
     required String username,
     required String redirectTo,
+    required String locale,
+    required String themeMode,
   }) {
     return _client.auth.signUp(
       email: email,
@@ -22,6 +24,10 @@ class AuthSupabaseDataSource {
         // Llega al trigger handle_new_user → tabla profiles.
         'username': username,
         'display_name': username,
+        // Idioma y tema activos al registrarse: así el perfil se crea con
+        // las preferencias correctas y no fuerza 'en' al primer login.
+        'locale': locale,
+        'theme_mode': themeMode,
       },
     );
   }

@@ -14,9 +14,16 @@ final authStateChangesProvider = StreamProvider<AuthState>((ref) {
 });
 
 /// Sesión actual (o null). Sincrónico, basado en el último evento del stream.
+///
+/// Toma la sesión del propio evento de `onAuthStateChange` cuando está
+/// disponible (es lo que dispara el cambio) y solo cae al getter
+/// `currentSession` como respaldo (p. ej. antes del primer evento). Así el
+/// guard del router ve la sesión nueva en el mismo ciclo en que el stream
+/// emite, sin depender de que el getter ya esté actualizado.
 final currentSessionProvider = Provider<Session?>((ref) {
-  ref.watch(authStateChangesProvider);
-  return ref.watch(supabaseClientProvider).auth.currentSession;
+  final authState = ref.watch(authStateChangesProvider);
+  final client = ref.watch(supabaseClientProvider);
+  return authState.valueOrNull?.session ?? client.auth.currentSession;
 });
 
 /// Usuario actual (o null). Derivado de la sesión.
