@@ -54,6 +54,18 @@ class AuthSupabaseDataSource {
     );
   }
 
+  /// Inicia el login con Apple (Sign in with Apple).
+  ///
+  /// Igual que Google: en web hace un *full-page redirect* al consentimiento
+  /// de Apple y la sesión llega de forma asíncrona por `onAuthStateChange`.
+  Future<bool> signInWithApple({required String redirectTo}) {
+    return _client.auth.signInWithOAuth(
+      OAuthProvider.apple,
+      redirectTo: redirectTo,
+      authScreenLaunchMode: LaunchMode.platformDefault,
+    );
+  }
+
   /// Reenvía el email de verificación de signup.
   Future<ResendResponse> resendSignupConfirmation({
     required String email,

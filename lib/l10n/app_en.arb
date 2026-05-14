@@ -65,6 +65,7 @@
 
   "loginWithOtp": "Sign in with a code",
   "continueWithGoogle": "Continue with Google",
+  "continueWithApple": "Continue with Apple",
   "otpRequestTitle": "Sign in with a one-time code",
   "otpRequestSubtitle": "Enter your email and we'll send you a {count}-digit code.",
   "@otpRequestSubtitle": {"placeholders": {"count": {"type": "int"}}},

@@ -26,6 +26,10 @@ abstract class AuthRepository {
   /// Devuelve `Right(unit)` si el redirect se lanzó correctamente.
   Future<Either<AuthFailure, Unit>> signInWithGoogle();
 
+  /// Inicia el login con Apple (OAuth). Mismo comportamiento que
+  /// [signInWithGoogle]: redirect de página completa en web.
+  Future<Either<AuthFailure, Unit>> signInWithApple();
+
   /// Envía el email de recuperación de contraseña.
   Future<Either<AuthFailure, Unit>> sendPasswordReset(String email);
 
