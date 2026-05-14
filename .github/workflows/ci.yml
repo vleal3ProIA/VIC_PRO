@@ -1,0 +1,73 @@
+name: CI
+
+# Corre en cada push a main y en cada PR contra main.
+# Si cualquier paso falla, el check sale en rojo y (con branch protection
+# configurada) bloquea el merge.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancela ejecuciones antiguas de la misma rama si llega un push nuevo.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze-test-build:
+    name: Analyze · Test · Build web
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.6
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # El build de web necesita que exista `.env` porque está listado como
+      # asset en pubspec.yaml. Valores dummy: el build NO ejecuta main(),
+      # solo necesita que el archivo exista. Las credenciales reales viven
+      # en el .env local (gitignored) y, para deploy, en secrets del repo.
+      - name: Create dummy .env for build assets
+        run: |
+          cat > .env <<'EOF'
+          APP_NAME=myapp
+          APP_ENV=ci
+          SUPABASE_URL=https://ci-placeholder.supabase.co
+          SUPABASE_ANON_KEY=ci-placeholder-anon-key
+          OTP_CODE_LENGTH=6
+          ENABLE_LOGGING=false
+          ENABLE_ANALYTICS=false
+          EOF
+
+      - name: Generate localizations
+        run: flutter gen-l10n
+
+      - name: Analyze (very_good_analysis)
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test --reporter expanded
+
+      - name: Build web (release)
+        run: flutter build web --release --dart-define=ENV=ci
+
+      - name: Upload web build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+          retention-days: 7
