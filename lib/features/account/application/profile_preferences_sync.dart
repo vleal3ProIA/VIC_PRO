@@ -24,9 +24,13 @@ class ProfilePreferencesSync extends ConsumerWidget {
       final profile = next.valueOrNull;
       if (profile == null) return;
 
-      // Idioma: solo aplicar si difiere del override actual.
-      final currentOverride = ref.read(localeNotifierProvider);
-      if (currentOverride?.languageCode != profile.locale) {
+      // Idioma: solo aplicar si el idioma EFECTIVO (override o sistema)
+      // difiere del guardado. Comparar contra el efectivo y no contra el
+      // override evita forzar un override redundante —y el rebuild de
+      // MaterialApp que conlleva— cuando el usuario ya está viendo el
+      // idioma correcto a través del locale del sistema.
+      final currentEffective = ref.read(effectiveLocaleProvider);
+      if (currentEffective.languageCode != profile.locale) {
         ref
             .read(localeNotifierProvider.notifier)
             .setLocale(profile.localeObj);

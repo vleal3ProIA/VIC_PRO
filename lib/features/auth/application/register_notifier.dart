@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:formz/formz.dart';
 
+import 'package:myapp/core/providers/locale_provider.dart';
+import 'package:myapp/core/providers/theme_provider.dart';
 import 'package:myapp/core/validation/email.dart';
 import 'package:myapp/core/validation/password.dart';
 import 'package:myapp/core/validation/password_confirmation.dart';
@@ -120,12 +122,21 @@ class RegisterNotifier extends Notifier<RegisterState> {
     if (!state.isValid) return;
 
     state = state.copyWith(status: RegisterStatus.submitting);
+
+    // Idioma y tema que el usuario está viendo ahora mismo: viajan en el
+    // signUp para que su perfil se cree con estas preferencias y el primer
+    // login no le cambie el idioma a 'en'.
+    final locale = ref.read(effectiveLocaleProvider).languageCode;
+    final themeMode = ref.read(themeNotifierProvider).name;
+
     final repo = ref.read(authRepositoryProvider);
     final result = await repo.signUp(
       SignUpRequest(
         username: state.username.value.trim(),
         email: state.email.value.trim(),
         password: state.password.value,
+        locale: locale,
+        themeMode: themeMode,
       ),
     );
     result.match(
