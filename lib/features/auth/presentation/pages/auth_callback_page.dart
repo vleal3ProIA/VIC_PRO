@@ -22,9 +22,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 ///   1. Detectamos errores en la URL (`?error_code=...`).
 ///   2. Esperamos a tener sesión activa (el SDK la pone en milisegundos).
 ///   3. Redirigimos según `?type=`:
-///        - `signup`    → `/email-verified`
+///        - `signup`    → cierra la sesión y va a `/email-verified` (confirmar
+///          el email NO debe iniciar sesión: el usuario entra a mano después)
 ///        - `recovery`  → `/set-new-password`
-///        - `magiclink` / `otp` → `/home`
+///        - `magiclink` / `otp` / `oauth` → `/home`
+///        - `emailChange` → `/email-changed`
 class AuthCallbackPage extends ConsumerStatefulWidget {
   const AuthCallbackPage({super.key});
 
@@ -85,7 +87,7 @@ class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
     // Si la sesión ya está activa (SDK la procesó en initialize()),
     // redirigimos inmediato.
     if (client.auth.currentSession != null) {
-      _redirectByType(type);
+      await _redirectByType(type);
       return;
     }
 
@@ -105,7 +107,7 @@ class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
       if (event.session != null) {
         _sub?.cancel();
         _timeout?.cancel();
-        if (mounted) _redirectByType(type);
+        if (mounted) unawaited(_redirectByType(type));
       }
     });
 
@@ -122,7 +124,7 @@ class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
     });
   }
 
-  void _redirectByType(AuthRedirectType type) {
+  Future<void> _redirectByType(AuthRedirectType type) async {
     switch (type) {
       case AuthRedirectType.recovery:
         context.goNamed(RouteNames.setNewPassword);
@@ -133,6 +135,11 @@ class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
       case AuthRedirectType.emailChange:
         context.goNamed(RouteNames.emailChanged);
       case AuthRedirectType.signup:
+        // Confirmar el email NO debe iniciar sesión automáticamente. El SDK
+        // crea una sesión al procesar el token del enlace, así que la
+        // cerramos: el usuario debe entrar a mano con email + contraseña.
+        await ref.read(supabaseClientProvider).auth.signOut();
+        if (!mounted) return;
         context.goNamed(RouteNames.emailVerified);
     }
   }
