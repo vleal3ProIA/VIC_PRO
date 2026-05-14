@@ -239,7 +239,13 @@ String? _redirect(Ref ref, GoRouterState state) {
   final loc = state.matchedLocation;
   if (_excludedFromGuard.contains(loc)) return null;
 
-  final isAuthed = ref.read(isAuthenticatedProvider);
+  // Leemos la sesión DIRECTAMENTE del cliente, no de `isAuthenticatedProvider`.
+  // Ese provider se alimenta del stream `onAuthStateChange`, que entrega los
+  // eventos de forma asíncrona: justo tras un `signIn` el provider aún puede
+  // estar "stale" (false) aunque la sesión ya exista. `currentSession` es la
+  // verdad en memoria del SDK y siempre está fresca. `_AuthRefreshNotifier`
+  // sigue disparando la re-evaluación; aquí solo cambiamos QUÉ se lee.
+  final isAuthed = ref.read(supabaseClientProvider).auth.currentSession != null;
 
   // 1) No autenticado y la ruta requiere sesión → login.
   if (!isAuthed && _privateRoutes.contains(loc)) {
