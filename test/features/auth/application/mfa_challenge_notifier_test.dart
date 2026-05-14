@@ -88,4 +88,52 @@ void main() {
     notifier().codeChanged('111111');
     expect(state().failure, isNull);
   });
+
+  // ----- Códigos de recuperación -----
+
+  test('toggleRecoveryMode cambia al modo de código de recuperación', () async {
+    notifier();
+    await Future.microtask(() {});
+    await Future.microtask(() {});
+
+    expect(state().useRecoveryCode, isFalse);
+    notifier().toggleRecoveryMode();
+    expect(state().useRecoveryCode, isTrue);
+  });
+
+  test('verify en modo recovery llama a repo.verifyRecoveryCode', () async {
+    notifier();
+    await Future.microtask(() {});
+    await Future.microtask(() {});
+
+    notifier().toggleRecoveryMode();
+    notifier().recoveryCodeChanged('aaaaa-11111');
+    await notifier().verify();
+    expect(repo.lastRecoveryCodeVerified, 'aaaaa-11111');
+    expect(state().status, MfaChallengeStatus.success);
+  });
+
+  test('verify en modo recovery con código vacío es no-op', () async {
+    notifier();
+    await Future.microtask(() {});
+    await Future.microtask(() {});
+
+    notifier().toggleRecoveryMode();
+    await notifier().verify();
+    expect(repo.lastRecoveryCodeVerified, isNull);
+    expect(state().status, MfaChallengeStatus.ready);
+  });
+
+  test('código de recuperación inválido → status=failure', () async {
+    notifier();
+    await Future.microtask(() {});
+    await Future.microtask(() {});
+
+    repo.verifyRecoveryCodeResult = const Left(AuthMfaInvalid());
+    notifier().toggleRecoveryMode();
+    notifier().recoveryCodeChanged('codigo-malo');
+    await notifier().verify();
+    expect(state().status, MfaChallengeStatus.failure);
+    expect(state().failure, isA<AuthMfaInvalid>());
+  });
 }

@@ -8,14 +8,17 @@ import 'package:myapp/features/auth/domain/failures/auth_failure.dart';
 /// Máquina de estados de la pantalla `/mfa-setup`:
 ///
 ///   loading ─┬─► alreadyEnabled ──(disable)──► unenrolling ──► disabled
-///            └─► qrCode ──(verify)──► verifying ──► done
-///                  ▲                     │
-///                  └──── failure ◄───────┘
+///            └─► qrCode ──(verify)──► verifying ──► generatingCodes
+///                  ▲                     │              │
+///                  └──── failure ◄───────┘              ▼
+///                                            recoveryCodes ──(ack)──► done
 enum MfaSetupStep {
   loading,
   alreadyEnabled,
   qrCode,
   verifying,
+  generatingCodes,
+  recoveryCodes,
   done,
   unenrolling,
   disabled,
@@ -28,6 +31,7 @@ class MfaSetupState {
     this.enrollment,
     this.existingFactorId,
     this.code = '',
+    this.recoveryCodes = const [],
     this.failure,
   });
 
@@ -39,6 +43,11 @@ class MfaSetupState {
   final String? existingFactorId;
 
   final String code;
+
+  /// Códigos de recuperación recién generados. Solo se muestran una vez, en
+  /// el paso `recoveryCodes`.
+  final List<String> recoveryCodes;
+
   final AuthFailure? failure;
 
   static const int codeLength = 6;
@@ -53,6 +62,7 @@ class MfaSetupState {
     MfaTotpEnrollment? enrollment,
     String? existingFactorId,
     String? code,
+    List<String>? recoveryCodes,
     AuthFailure? failure,
     bool clearFailure = false,
   }) {
@@ -61,6 +71,7 @@ class MfaSetupState {
       enrollment: enrollment ?? this.enrollment,
       existingFactorId: existingFactorId ?? this.existingFactorId,
       code: code ?? this.code,
+      recoveryCodes: recoveryCodes ?? this.recoveryCodes,
       failure: clearFailure ? null : (failure ?? this.failure),
     );
   }
@@ -118,6 +129,7 @@ class MfaSetupNotifier extends Notifier<MfaSetupState> {
   }
 
   /// Verifica el código del autenticador para completar el enrollment.
+  /// Si tiene éxito, encadena la generación de los códigos de recuperación.
   Future<void> verify() async {
     if (!state.canSubmit) return;
     state = state.copyWith(step: MfaSetupStep.verifying, clearFailure: true);
@@ -126,16 +138,44 @@ class MfaSetupNotifier extends Notifier<MfaSetupState> {
       factorId: state.enrollment!.factorId,
       code: state.code,
     );
+    final failure = result.fold<AuthFailure?>((l) => l, (_) => null);
+    if (failure != null) {
+      state = state.copyWith(step: MfaSetupStep.qrCode, failure: failure);
+      return;
+    }
+    // MFA ya está activo. Ahora generamos los códigos de recuperación.
+    ref.invalidate(mfaFactorsProvider);
+    await _generateRecoveryCodes();
+  }
+
+  Future<void> _generateRecoveryCodes() async {
+    state = state.copyWith(
+      step: MfaSetupStep.generatingCodes,
+      clearFailure: true,
+    );
+    final repo = ref.read(authRepositoryProvider);
+    final result = await repo.generateRecoveryCodes();
     result.match(
+      // Aunque falle, el MFA YA está activo: vamos igualmente al paso de
+      // códigos, pero mostrando el error y un botón de reintento.
       (failure) => state = state.copyWith(
-        step: MfaSetupStep.qrCode,
+        step: MfaSetupStep.recoveryCodes,
         failure: failure,
       ),
-      (_) {
-        state = state.copyWith(step: MfaSetupStep.done);
-        ref.invalidate(mfaFactorsProvider);
-      },
+      (codes) => state = state.copyWith(
+        step: MfaSetupStep.recoveryCodes,
+        recoveryCodes: codes,
+      ),
     );
+  }
+
+  /// Reintenta la generación de códigos (p. ej. si la Edge Function no
+  /// estaba desplegada la primera vez).
+  Future<void> retryGenerateRecoveryCodes() => _generateRecoveryCodes();
+
+  /// El usuario confirma que ha guardado los códigos → pantalla final.
+  void acknowledgeRecoveryCodes() {
+    state = state.copyWith(step: MfaSetupStep.done);
   }
 
   /// Desactiva (unenroll) el factor TOTP verificado existente.

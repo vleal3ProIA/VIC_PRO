@@ -17,7 +17,7 @@ import 'package:myapp/features/auth/presentation/widgets/auth_failure_message.da
 class MfaChallengePage extends ConsumerWidget {
   const MfaChallengePage({super.key});
 
-  static const double _reservedHeight = 580;
+  static const double _reservedHeight = 640;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -81,19 +81,39 @@ class MfaChallengePage extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 12),
-                  PinCodeInput(
-                    onChanged: notifier.codeChanged,
-                    onCompleted: (_) => notifier.verify(),
-                    enabled: !state.isVerifying && state.factor != null,
-                    hasError: state.failure != null,
-                  ),
+                  if (state.useRecoveryCode)
+                    TextField(
+                      autofocus: true,
+                      enabled: !state.isVerifying,
+                      onChanged: notifier.recoveryCodeChanged,
+                      onSubmitted: (_) => notifier.verify(),
+                      textAlign: TextAlign.center,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        letterSpacing: 1.5,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: l.mfaRecoveryCodeHint,
+                        prefixIcon: const Icon(Icons.vpn_key_outlined),
+                      ),
+                    )
+                  else
+                    PinCodeInput(
+                      onChanged: notifier.codeChanged,
+                      onCompleted: (_) => notifier.verify(),
+                      enabled: !state.isVerifying && state.factor != null,
+                      hasError: state.failure != null,
+                    ),
                   GeneralErrorSlot(message: generalError),
                   const SizedBox(height: 8),
                   FilledButton(
-                    onPressed:
-                        (state.isValid && !state.isVerifying && state.factor != null)
-                            ? notifier.verify
-                            : null,
+                    onPressed: (state.isValid &&
+                            !state.isVerifying &&
+                            (state.useRecoveryCode || state.factor != null))
+                        ? notifier.verify
+                        : null,
                     style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(48),
                     ),
@@ -104,6 +124,17 @@ class MfaChallengePage extends ConsumerWidget {
                             child: CircularProgressIndicator(strokeWidth: 2.4),
                           )
                         : Text(l.actionVerify),
+                  ),
+                  const SizedBox(height: 4),
+                  TextButton(
+                    onPressed: state.isVerifying
+                        ? null
+                        : notifier.toggleRecoveryMode,
+                    child: Text(
+                      state.useRecoveryCode
+                          ? l.mfaUseAuthenticatorInstead
+                          : l.mfaUseRecoveryCode,
+                    ),
                   ),
                 ],
               ),

@@ -242,4 +242,41 @@ class AuthSupabaseDataSource {
   AuthMFAGetAuthenticatorAssuranceLevelResponse getAal() {
     return _client.auth.mfa.getAuthenticatorAssuranceLevel();
   }
+
+  // ----- Códigos de recuperación de MFA --------------------------------------
+
+  /// Genera (y reemplaza) los códigos de recuperación. Invoca la Edge
+  /// Function `mfa-recovery`, que exige AAL2. Devuelve los códigos en claro.
+  Future<List<String>> generateRecoveryCodes() async {
+    final res = await _client.functions.invoke(
+      'mfa-recovery',
+      body: {'action': 'generate'},
+    );
+    if (res.status != 200) {
+      throw AuthException(
+        'mfa-recovery generate returned ${res.status}',
+        statusCode: '${res.status}',
+      );
+    }
+    final data = res.data;
+    final codes = (data is Map ? data['codes'] : null) as List?;
+    return codes?.map((e) => e.toString()).toList() ?? const [];
+  }
+
+  /// Verifica un código de recuperación. Si es válido, la Edge Function
+  /// elimina los factores MFA del usuario. Refresca la sesión para que el
+  /// AAL se reevalúe (ya no se requiere AAL2).
+  Future<void> verifyRecoveryCode(String code) async {
+    final res = await _client.functions.invoke(
+      'mfa-recovery',
+      body: {'action': 'verify', 'code': code},
+    );
+    if (res.status != 200) {
+      throw AuthException(
+        'mfa-recovery verify returned ${res.status}',
+        statusCode: '${res.status}',
+      );
+    }
+    await _client.auth.refreshSession();
+  }
 }

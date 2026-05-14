@@ -114,7 +114,13 @@ class FakeAuthRepository implements AuthRepository {
   Either<AuthFailure, Unit> challengeMfaResult = const Right(unit);
   Either<AuthFailure, List<MfaFactor>> listFactorsResult = const Right([]);
   Either<AuthFailure, Unit> unenrollMfaResult = const Right(unit);
+  Either<AuthFailure, List<String>> generateRecoveryCodesResult =
+      const Right(['aaaaa-11111', 'bbbbb-22222', 'ccccc-33333']);
+  Either<AuthFailure, Unit> verifyRecoveryCodeResult = const Right(unit);
   bool mfaChallengePending = false;
+
+  int generateRecoveryCodesCalls = 0;
+  String? lastRecoveryCodeVerified;
 
   String? lastEnrollTotpName;
   String? lastVerifyMfaFactorId;
@@ -160,6 +166,18 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   bool isMfaChallengePending() => mfaChallengePending;
+
+  @override
+  Future<Either<AuthFailure, List<String>>> generateRecoveryCodes() async {
+    generateRecoveryCodesCalls++;
+    return generateRecoveryCodesResult;
+  }
+
+  @override
+  Future<Either<AuthFailure, Unit>> verifyRecoveryCode(String code) async {
+    lastRecoveryCodeVerified = code;
+    return verifyRecoveryCodeResult;
+  }
 
   // ----- Cambios desde panel privado -----
   Either<AuthFailure, Unit> changePasswordResult = const Right(unit);

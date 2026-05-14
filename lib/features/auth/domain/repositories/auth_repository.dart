@@ -81,6 +81,15 @@ abstract class AuthRepository {
   /// (currentLevel = aal1, nextLevel = aal2).
   bool isMfaChallengePending();
 
+  /// Genera (y reemplaza) los códigos de recuperación de MFA. Requiere que el
+  /// usuario esté a AAL2. Devuelve los códigos en claro — solo se ven una vez.
+  Future<Either<AuthFailure, List<String>>> generateRecoveryCodes();
+
+  /// Verifica un código de recuperación durante el desafío MFA. Si es válido,
+  /// elimina los factores MFA del usuario (recupera el acceso) y refresca la
+  /// sesión. El usuario debería volver a configurar MFA después.
+  Future<Either<AuthFailure, Unit>> verifyRecoveryCode(String code);
+
   // ----- Cambios desde el panel privado ------------------------------------
 
   /// Cambia la contraseña del usuario autenticado. Primero reautentica con

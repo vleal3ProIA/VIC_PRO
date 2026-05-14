@@ -6,6 +6,7 @@ import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/widgets/auth_card.dart';
 import 'package:myapp/core/widgets/error_text_slot.dart';
+import 'package:myapp/core/widgets/info_banner.dart';
 import 'package:myapp/core/widgets/pin_code_input.dart';
 import 'package:myapp/features/auth/application/mfa_setup_notifier.dart';
 import 'package:myapp/features/auth/presentation/widgets/auth_failure_message.dart';
@@ -22,6 +23,15 @@ class MfaSetupPage extends ConsumerWidget {
     await Clipboard.setData(ClipboardData(text: secret));
     if (!context.mounted) return;
     context.showSnack(context.l10n.mfaSecretCopied);
+  }
+
+  Future<void> _copyRecoveryCodes(
+    BuildContext context,
+    List<String> codes,
+  ) async {
+    await Clipboard.setData(ClipboardData(text: codes.join('\n')));
+    if (!context.mounted) return;
+    context.showSnack(context.l10n.mfaRecoveryCodesCopied);
   }
 
   Future<void> _confirmDisable(
@@ -64,6 +74,10 @@ class MfaSetupPage extends ConsumerWidget {
       MfaSetupStep.alreadyEnabled => (
           l.mfaAlreadyEnabledTitle,
           l.mfaAlreadyEnabledSubtitle,
+        ),
+      MfaSetupStep.recoveryCodes => (
+          l.mfaRecoveryCodesTitle,
+          l.mfaRecoveryCodesSubtitle,
         ),
       MfaSetupStep.done => (
           l.mfaSetupSuccessTitle,
@@ -179,6 +193,110 @@ class MfaSetupPage extends ConsumerWidget {
                 minimumSize: const Size.fromHeight(48),
               ),
               child: Text(l.actionGoHome),
+            ),
+          ],
+        );
+
+      case MfaSetupStep.generatingCodes:
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 32),
+          child: Column(
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                l.mfaGeneratingRecoveryCodes,
+                textAlign: TextAlign.center,
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case MfaSetupStep.recoveryCodes:
+        final codes = state.recoveryCodes;
+        // La generación falló (p. ej. Edge Function no desplegada). El MFA
+        // YA está activo; ofrecemos reintentar o continuar sin códigos.
+        if (codes.isEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 8),
+              Icon(
+                Icons.warning_amber_outlined,
+                size: 48,
+                color: context.colors.error,
+              ),
+              GeneralErrorSlot(
+                message: state.failure != null
+                    ? authFailureMessage(context, state.failure!)
+                    : l.authErrorUnknown,
+              ),
+              const SizedBox(height: 8),
+              FilledButton.tonal(
+                onPressed: notifier.retryGenerateRecoveryCodes,
+                child: Text(l.actionRetry),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: notifier.acknowledgeRecoveryCodes,
+                child: Text(l.mfaRecoveryCodesSkip),
+              ),
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            InfoBanner(
+              message: l.mfaRecoveryCodesWarning,
+              kind: InfoBannerKind.warning,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              decoration: BoxDecoration(
+                color: context.colors.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: context.colors.outlineVariant),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  for (final code in codes)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: SelectableText(
+                        code,
+                        style: context.textTheme.bodyMedium?.copyWith(
+                          fontFamily: 'monospace',
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => _copyRecoveryCodes(context, codes),
+              icon: const Icon(Icons.copy_outlined, size: 18),
+              label: Text(l.mfaCopyRecoveryCodes),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: notifier.acknowledgeRecoveryCodes,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
+              child: Text(l.mfaRecoveryCodesSaved),
             ),
           ],
         );
