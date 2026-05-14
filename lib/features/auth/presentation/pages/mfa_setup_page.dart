@@ -13,56 +13,82 @@ import 'package:myapp/features/welcome/presentation/widgets/top_bar.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-class MfaSetupPage extends ConsumerStatefulWidget {
+class MfaSetupPage extends ConsumerWidget {
   const MfaSetupPage({super.key});
 
   static const double _reservedHeight = 820;
 
-  @override
-  ConsumerState<MfaSetupPage> createState() => _MfaSetupPageState();
-}
-
-class _MfaSetupPageState extends ConsumerState<MfaSetupPage> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Iniciar enrollment al entrar (un solo factor por sesión de setup).
-      ref.read(mfaSetupNotifierProvider.notifier).startEnrollment(
-            friendlyName: 'myapp',
-          );
-    });
-  }
-
-  Future<void> _copySecret(String secret) async {
+  Future<void> _copySecret(BuildContext context, String secret) async {
     await Clipboard.setData(ClipboardData(text: secret));
-    if (!mounted) return;
+    if (!context.mounted) return;
     context.showSnack(context.l10n.mfaSecretCopied);
   }
 
+  Future<void> _confirmDisable(
+    BuildContext context,
+    MfaSetupNotifier notifier,
+  ) async {
+    final l = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.mfaDisableConfirmTitle),
+        content: Text(l.mfaDisableConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.actionCancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: ctx.colors.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.actionDisableMfa),
+          ),
+        ],
+      ),
+    );
+    if (confirmed ?? false) {
+      await notifier.disable();
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(mfaSetupNotifierProvider);
     final notifier = ref.read(mfaSetupNotifierProvider.notifier);
     final l = context.l10n;
+
+    final (title, subtitle) = switch (state.step) {
+      MfaSetupStep.alreadyEnabled => (
+          l.mfaAlreadyEnabledTitle,
+          l.mfaAlreadyEnabledSubtitle,
+        ),
+      MfaSetupStep.done => (
+          l.mfaSetupSuccessTitle,
+          l.mfaSetupSuccessSubtitle,
+        ),
+      MfaSetupStep.disabled => (
+          l.mfaDisabledTitle,
+          l.mfaDisabledSubtitle,
+        ),
+      _ => (l.mfaSetupTitle, l.mfaSetupSubtitle),
+    };
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: const PublicTopBar(),
       body: SafeArea(
         child: AuthCard(
-          reservedHeight: MfaSetupPage._reservedHeight,
+          reservedHeight: _reservedHeight,
           leading: Icon(
             Icons.shield_outlined,
             size: 56,
             color: context.colors.primary,
           ),
-          title: state.step == MfaSetupStep.done
-              ? l.mfaSetupSuccessTitle
-              : l.mfaSetupTitle,
-          subtitle: state.step == MfaSetupStep.done
-              ? l.mfaSetupSuccessSubtitle
-              : l.mfaSetupSubtitle,
+          title: title,
+          subtitle: subtitle,
           child: _body(context, state, notifier, l),
         ),
       ),
@@ -76,11 +102,87 @@ class _MfaSetupPageState extends ConsumerState<MfaSetupPage> {
     AppLocalizations l,
   ) {
     switch (state.step) {
-      case MfaSetupStep.idle:
-        return const Padding(
-          padding: EdgeInsets.symmetric(vertical: 32),
-          child: Center(child: CircularProgressIndicator()),
+      case MfaSetupStep.loading:
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 32),
+          child: Column(
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                l.mfaCheckingStatus,
+                textAlign: TextAlign.center,
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         );
+
+      case MfaSetupStep.alreadyEnabled:
+      case MfaSetupStep.unenrolling:
+        final disabling = state.step == MfaSetupStep.unenrolling;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 8),
+            Icon(
+              Icons.verified_user_outlined,
+              size: 56,
+              color: context.colors.tertiary,
+            ),
+            GeneralErrorSlot(
+              message: state.failure != null
+                  ? authFailureMessage(context, state.failure!)
+                  : null,
+            ),
+            const SizedBox(height: 8),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: context.colors.error,
+                minimumSize: const Size.fromHeight(48),
+              ),
+              onPressed: disabling
+                  ? null
+                  : () => _confirmDisable(context, notifier),
+              child: disabling
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.4),
+                    )
+                  : Text(l.actionDisableMfa),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => context.goNamed(RouteNames.home),
+              child: Text(l.actionGoHome),
+            ),
+          ],
+        );
+
+      case MfaSetupStep.disabled:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 16),
+            Icon(
+              Icons.gpp_maybe_outlined,
+              size: 56,
+              color: context.colors.onSurfaceVariant,
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: () => context.goNamed(RouteNames.home),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
+              child: Text(l.actionGoHome),
+            ),
+          ],
+        );
+
       case MfaSetupStep.done:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -101,13 +203,12 @@ class _MfaSetupPageState extends ConsumerState<MfaSetupPage> {
             ),
           ],
         );
+
       case MfaSetupStep.qrCode:
       case MfaSetupStep.verifying:
       case MfaSetupStep.failure:
         final enrollment = state.enrollment;
         if (enrollment == null) {
-          // Failure antes de tener enrollment (raro): mostrar error +
-          // botón para reintentar.
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -118,9 +219,8 @@ class _MfaSetupPageState extends ConsumerState<MfaSetupPage> {
                     : l.authErrorUnknown,
               ),
               FilledButton.tonal(
-                onPressed: () =>
-                    notifier.startEnrollment(friendlyName: 'myapp'),
-                child: Text(l.actionContinue),
+                onPressed: notifier.retryEnrollment,
+                child: Text(l.actionRetry),
               ),
             ],
           );
@@ -140,8 +240,6 @@ class _MfaSetupPageState extends ConsumerState<MfaSetupPage> {
               ),
             ),
             const SizedBox(height: 16),
-            // QR generado localmente con `qr_flutter` desde el `otpauth://`
-            // URI — más fiable que el SVG remoto.
             Center(
               child: Container(
                 padding: const EdgeInsets.all(12),
@@ -165,7 +263,7 @@ class _MfaSetupPageState extends ConsumerState<MfaSetupPage> {
             const SizedBox(height: 6),
             Center(
               child: InkWell(
-                onTap: () => _copySecret(enrollment.secret),
+                onTap: () => _copySecret(context, enrollment.secret),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   padding:

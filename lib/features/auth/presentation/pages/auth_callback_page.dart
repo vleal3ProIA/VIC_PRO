@@ -130,6 +130,8 @@ class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
       case AuthRedirectType.otp:
       case AuthRedirectType.oauth:
         context.goNamed(RouteNames.home);
+      case AuthRedirectType.emailChange:
+        context.goNamed(RouteNames.emailChanged);
       case AuthRedirectType.signup:
         context.goNamed(RouteNames.emailVerified);
     }
@@ -145,6 +147,9 @@ class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
         return AuthRedirectType.otp;
       case 'oauth':
         return AuthRedirectType.oauth;
+      case 'emailChange':
+      case 'email_change':
+        return AuthRedirectType.emailChange;
       case 'signup':
         return AuthRedirectType.signup;
       default:

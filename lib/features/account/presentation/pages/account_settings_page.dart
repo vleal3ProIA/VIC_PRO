@@ -225,6 +225,21 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
                 child: Column(
                   children: [
                     ListTile(
+                      leading: const Icon(Icons.password_outlined),
+                      title: Text(l.settingsChangePassword),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () =>
+                          context.goNamed(RouteNames.changePassword),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.alternate_email),
+                      title: Text(l.settingsChangeEmail),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.goNamed(RouteNames.changeEmail),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
                       leading: const Icon(Icons.shield_outlined),
                       title: Text(context.l10n.actionEnableMfa),
                       subtitle: Text(l.settingsSecurityHint),

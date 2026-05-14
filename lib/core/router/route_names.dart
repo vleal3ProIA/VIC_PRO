@@ -19,6 +19,11 @@ class RouteNames {
   static const String mfaChallenge = 'mfa_challenge';
   static const String home = 'home';
   static const String accountSettings = 'account_settings';
+  static const String changePassword = 'change_password';
+  static const String changePasswordDone = 'change_password_done';
+  static const String changeEmail = 'change_email';
+  static const String changeEmailSent = 'change_email_sent';
+  static const String emailChanged = 'email_changed';
   static const String notFound = 'not_found';
 }
 
@@ -46,4 +51,9 @@ class RoutePaths {
   static const String mfaChallenge = '/mfa-challenge';
   static const String home = '/home';
   static const String accountSettings = '/account-settings';
+  static const String changePassword = '/change-password';
+  static const String changePasswordDone = '/change-password-done';
+  static const String changeEmail = '/change-email';
+  static const String changeEmailSent = '/change-email-sent';
+  static const String emailChanged = '/email-changed';
 }

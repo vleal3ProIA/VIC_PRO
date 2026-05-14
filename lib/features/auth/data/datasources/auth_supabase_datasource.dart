@@ -86,6 +86,22 @@ class AuthSupabaseDataSource {
     );
   }
 
+  /// Cambia el email del usuario actual. Supabase envía emails de
+  /// confirmación (uno o dos según "Secure email change" en el dashboard).
+  /// El cambio NO es inmediato: se aplica al confirmar.
+  Future<UserResponse> updateEmail({
+    required String newEmail,
+    required String redirectTo,
+  }) {
+    return _client.auth.updateUser(
+      UserAttributes(email: newEmail),
+      emailRedirectTo: redirectTo,
+    );
+  }
+
+  /// Email del usuario autenticado actual (para reautenticación).
+  String? get currentEmail => _client.auth.currentUser?.email;
+
   /// Envía un magic link (passwordless email).
   ///
   /// Si `shouldCreateUser` es `true`, se crea el usuario al firmar por

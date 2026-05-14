@@ -152,4 +152,28 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   bool isMfaChallengePending() => mfaChallengePending;
+
+  // ----- Cambios desde panel privado -----
+  Either<AuthFailure, Unit> changePasswordResult = const Right(unit);
+  Either<AuthFailure, Unit> changeEmailResult = const Right(unit);
+
+  String? lastChangePasswordCurrent;
+  String? lastChangePasswordNew;
+  String? lastChangeEmail;
+
+  @override
+  Future<Either<AuthFailure, Unit>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    lastChangePasswordCurrent = currentPassword;
+    lastChangePasswordNew = newPassword;
+    return changePasswordResult;
+  }
+
+  @override
+  Future<Either<AuthFailure, Unit>> changeEmail(String newEmail) async {
+    lastChangeEmail = newEmail;
+    return changeEmailResult;
+  }
 }
