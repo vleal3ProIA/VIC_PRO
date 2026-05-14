@@ -24,6 +24,7 @@ void main() {
         RoutePaths.mfaSetup,
         RoutePaths.mfaChallenge,
         RoutePaths.home,
+        RoutePaths.accountSettings,
         // authCallback queda exento: usa "/auth/callback" pero no existe
         // ninguna otra ruta que empiece por "/auth".
       ];

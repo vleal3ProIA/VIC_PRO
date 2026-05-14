@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/features/account/presentation/pages/account_settings_page.dart';
 import 'package:myapp/features/auth/application/mfa_providers.dart';
 import 'package:myapp/features/auth/presentation/pages/auth_callback_page.dart';
 import 'package:myapp/features/auth/presentation/pages/email_verified_page.dart';
@@ -130,6 +131,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: RouteNames.home,
         builder: (_, __) => const HomePage(),
       ),
+      GoRoute(
+        path: RoutePaths.accountSettings,
+        name: RouteNames.accountSettings,
+        builder: (_, __) => const AccountSettingsPage(),
+      ),
     ],
     errorBuilder: (_, state) => _NotFoundPage(error: state.error),
   );
@@ -153,6 +159,7 @@ const _excludedFromGuard = <String>{
 const _privateRoutes = <String>{
   RoutePaths.home,
   RoutePaths.mfaSetup,
+  RoutePaths.accountSettings,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.

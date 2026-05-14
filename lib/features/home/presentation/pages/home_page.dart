@@ -37,6 +37,11 @@ class HomePage extends ConsumerWidget {
           const LanguagePicker(),
           const ThemeToggle(),
           IconButton(
+            tooltip: l.actionSettings,
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.goNamed(RouteNames.accountSettings),
+          ),
+          IconButton(
             tooltip: l.actionSignOut,
             icon: const Icon(Icons.logout),
             onPressed: () async {
