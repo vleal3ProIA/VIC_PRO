@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-enum AuthRedirectType { signup, recovery, magiclink, otp }
+enum AuthRedirectType { signup, recovery, magiclink, otp, emailChange }
 
 /// URL absoluta a la que Supabase redirige tras el click en un email de auth.
 ///

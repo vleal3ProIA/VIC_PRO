@@ -7,6 +7,11 @@ import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/features/account/presentation/pages/account_settings_page.dart';
 import 'package:myapp/features/auth/application/mfa_providers.dart';
 import 'package:myapp/features/auth/presentation/pages/auth_callback_page.dart';
+import 'package:myapp/features/auth/presentation/pages/change_email_page.dart';
+import 'package:myapp/features/auth/presentation/pages/change_email_sent_page.dart';
+import 'package:myapp/features/auth/presentation/pages/change_password_done_page.dart';
+import 'package:myapp/features/auth/presentation/pages/change_password_page.dart';
+import 'package:myapp/features/auth/presentation/pages/email_changed_page.dart';
 import 'package:myapp/features/auth/presentation/pages/email_verified_page.dart';
 import 'package:myapp/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:myapp/features/auth/presentation/pages/login_page.dart';
@@ -136,6 +141,34 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: RouteNames.accountSettings,
         builder: (_, __) => const AccountSettingsPage(),
       ),
+      GoRoute(
+        path: RoutePaths.changePassword,
+        name: RouteNames.changePassword,
+        builder: (_, __) => const ChangePasswordPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.changePasswordDone,
+        name: RouteNames.changePasswordDone,
+        builder: (_, __) => const ChangePasswordDonePage(),
+      ),
+      GoRoute(
+        path: RoutePaths.changeEmail,
+        name: RouteNames.changeEmail,
+        builder: (_, __) => const ChangeEmailPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.changeEmailSent,
+        name: RouteNames.changeEmailSent,
+        builder: (_, state) {
+          final email = state.uri.queryParameters['email'] ?? '';
+          return ChangeEmailSentPage(email: email);
+        },
+      ),
+      GoRoute(
+        path: RoutePaths.emailChanged,
+        name: RouteNames.emailChanged,
+        builder: (_, __) => const EmailChangedPage(),
+      ),
     ],
     errorBuilder: (_, state) => _NotFoundPage(error: state.error),
   );
@@ -153,6 +186,7 @@ const _excludedFromGuard = <String>{
   RoutePaths.passwordUpdated,
   RoutePaths.emailVerified,
   RoutePaths.verifyEmailSent,
+  RoutePaths.emailChanged,
 };
 
 /// Rutas privadas (requieren sesión activa).
@@ -160,6 +194,10 @@ const _privateRoutes = <String>{
   RoutePaths.home,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
+  RoutePaths.changePassword,
+  RoutePaths.changePasswordDone,
+  RoutePaths.changeEmail,
+  RoutePaths.changeEmailSent,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.
