@@ -202,5 +202,15 @@
   "privacyS5Title": "5. Deine Rechte",
   "privacyS5Body": "Du kannst deine Daten einsehen, berichtigen, löschen oder exportieren und der Verarbeitung widersprechen. Du kannst dein Konto jederzeit in den Einstellungen löschen.",
   "privacyS6Title": "6. Kontakt",
-  "privacyS6Body": "Um deine Rechte auszuüben oder Fragen zu dieser Erklärung zu stellen, kontaktiere uns unter der in der App angegebenen E-Mail-Adresse. Du kannst dich auch bei deiner Datenschutzbehörde beschweren."
+  "privacyS6Body": "Um deine Rechte auszuüben oder Fragen zu dieser Erklärung zu stellen, kontaktiere uns unter der in der App angegebenen E-Mail-Adresse. Du kannst dich auch bei deiner Datenschutzbehörde beschweren.",
+
+  "settingsDeleteAccount": "Konto löschen",
+  "deleteAccountTitle": "Konto löschen",
+  "deleteAccountSubtitle": "Diese Aktion ist dauerhaft und kann nicht rückgängig gemacht werden.",
+  "deleteAccountWarning": "Das Löschen deines Kontos entfernt dein Profil, deine Einstellungen und deinen Zugang. Dies kann nicht wiederhergestellt werden.",
+  "deleteAccountAcknowledge": "Ich verstehe, dass diese Aktion dauerhaft ist.",
+  "actionDeleteAccount": "Mein Konto löschen",
+  "deleteAccountConfirmTitle": "Konto löschen?",
+  "deleteAccountConfirmBody": "Dein Konto und alle zugehörigen Daten werden dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
+  "deleteAccountDone": "Dein Konto wurde gelöscht."
 }

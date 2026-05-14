@@ -215,5 +215,15 @@
   "privacyS5Title": "5. Your rights",
   "privacyS5Body": "You may access, rectify, delete, or export your data and object to its processing. You can delete your account at any time from Settings.",
   "privacyS6Title": "6. Contact",
-  "privacyS6Body": "To exercise your rights or ask about this policy, contact us at the email address shown in the app. You may also lodge a complaint with your data protection authority."
+  "privacyS6Body": "To exercise your rights or ask about this policy, contact us at the email address shown in the app. You may also lodge a complaint with your data protection authority.",
+
+  "settingsDeleteAccount": "Delete account",
+  "deleteAccountTitle": "Delete account",
+  "deleteAccountSubtitle": "This action is permanent and cannot be undone.",
+  "deleteAccountWarning": "Deleting your account removes your profile, preferences, and access. This cannot be recovered.",
+  "deleteAccountAcknowledge": "I understand this action is permanent.",
+  "actionDeleteAccount": "Delete my account",
+  "deleteAccountConfirmTitle": "Delete account?",
+  "deleteAccountConfirmBody": "Your account and all associated data will be permanently deleted. This cannot be undone.",
+  "deleteAccountDone": "Your account has been deleted."
 }

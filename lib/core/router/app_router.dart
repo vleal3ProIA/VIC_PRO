@@ -11,6 +11,7 @@ import 'package:myapp/features/auth/presentation/pages/change_email_page.dart';
 import 'package:myapp/features/auth/presentation/pages/change_email_sent_page.dart';
 import 'package:myapp/features/auth/presentation/pages/change_password_done_page.dart';
 import 'package:myapp/features/auth/presentation/pages/change_password_page.dart';
+import 'package:myapp/features/auth/presentation/pages/delete_account_page.dart';
 import 'package:myapp/features/auth/presentation/pages/email_changed_page.dart';
 import 'package:myapp/features/auth/presentation/pages/email_verified_page.dart';
 import 'package:myapp/features/auth/presentation/pages/forgot_password_page.dart';
@@ -172,6 +173,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const EmailChangedPage(),
       ),
       GoRoute(
+        path: RoutePaths.deleteAccount,
+        name: RouteNames.deleteAccount,
+        builder: (_, __) => const DeleteAccountPage(),
+      ),
+      GoRoute(
         path: RoutePaths.terms,
         name: RouteNames.terms,
         builder: (_, __) => const TermsPage(),
@@ -214,6 +220,7 @@ const _privateRoutes = <String>{
   RoutePaths.changePasswordDone,
   RoutePaths.changeEmail,
   RoutePaths.changeEmailSent,
+  RoutePaths.deleteAccount,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.

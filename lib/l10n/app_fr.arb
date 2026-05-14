@@ -202,5 +202,15 @@
   "privacyS5Title": "5. Vos droits",
   "privacyS5Body": "Vous pouvez accéder à vos données, les rectifier, les supprimer ou les exporter, et vous opposer à leur traitement. Vous pouvez supprimer votre compte à tout moment depuis les Paramètres.",
   "privacyS6Title": "6. Contact",
-  "privacyS6Body": "Pour exercer vos droits ou poser des questions sur cette politique, contactez-nous à l'adresse e-mail indiquée dans l'application. Vous pouvez aussi déposer une réclamation auprès de votre autorité de protection des données."
+  "privacyS6Body": "Pour exercer vos droits ou poser des questions sur cette politique, contactez-nous à l'adresse e-mail indiquée dans l'application. Vous pouvez aussi déposer une réclamation auprès de votre autorité de protection des données.",
+
+  "settingsDeleteAccount": "Supprimer le compte",
+  "deleteAccountTitle": "Supprimer le compte",
+  "deleteAccountSubtitle": "Cette action est permanente et irréversible.",
+  "deleteAccountWarning": "Supprimer votre compte efface votre profil, vos préférences et votre accès. Cela ne peut pas être récupéré.",
+  "deleteAccountAcknowledge": "Je comprends que cette action est permanente.",
+  "actionDeleteAccount": "Supprimer mon compte",
+  "deleteAccountConfirmTitle": "Supprimer le compte ?",
+  "deleteAccountConfirmBody": "Votre compte et toutes les données associées seront définitivement supprimés. Cette action est irréversible.",
+  "deleteAccountDone": "Votre compte a été supprimé."
 }

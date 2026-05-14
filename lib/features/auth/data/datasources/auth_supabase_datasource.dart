@@ -114,6 +114,21 @@ class AuthSupabaseDataSource {
   /// Email del usuario autenticado actual (para reautenticación).
   String? get currentEmail => _client.auth.currentUser?.email;
 
+  /// Borra la cuenta del usuario autenticado invocando la Edge Function
+  /// `delete-account` (que usa la `service_role` key del lado servidor).
+  ///
+  /// El SDK adjunta automáticamente el JWT del usuario, así que la función
+  /// sabe a quién borrar. Lanza si la respuesta no es 200.
+  Future<void> deleteAccount() async {
+    final res = await _client.functions.invoke('delete-account');
+    if (res.status != 200) {
+      throw AuthException(
+        'delete-account returned ${res.status}',
+        statusCode: '${res.status}',
+      );
+    }
+  }
+
   /// Envía un magic link (passwordless email).
   ///
   /// Si `shouldCreateUser` es `true`, se crea el usuario al firmar por
