@@ -41,6 +41,11 @@
   "actionSettings": "Paramètres",
   "navDashboard": "Tableau de bord",
   "navSettings": "Paramètres",
+  "navAdmin": "Administration",
+  "adminTitle": "Administration",
+  "adminSubtitle": "Gérez les utilisateurs et les paramètres du système.",
+  "adminRoleBadge": "Votre rôle",
+  "adminPlaceholder": "La gestion des utilisateurs et les paramètres du système seront ici.",
 
   "registerTitle": "Créer votre compte",
   "registerSubtitle": "Rejoignez-nous et commencez votre aventure.",

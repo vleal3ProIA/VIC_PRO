@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:myapp/features/account/domain/entities/user_role.dart';
+
 /// Perfil del usuario, mapeado 1:1 con la fila de `public.profiles` en
 /// Supabase. El trigger `handle_new_user` la crea al registrarse.
 class Profile {
@@ -10,6 +12,7 @@ class Profile {
     this.username,
     this.displayName,
     this.avatarUrl,
+    this.role = UserRole.user,
   });
 
   factory Profile.fromMap(Map<String, dynamic> map) {
@@ -20,6 +23,7 @@ class Profile {
       avatarUrl: map['avatar_url'] as String?,
       locale: (map['locale'] as String?) ?? 'en',
       themeMode: (map['theme_mode'] as String?) ?? 'system',
+      role: UserRole.fromString(map['role'] as String?),
     );
   }
 
@@ -27,6 +31,9 @@ class Profile {
   final String? username;
   final String? displayName;
   final String? avatarUrl;
+
+  /// Rol del usuario (`admin` | `user`). Viene de `profiles.role`.
+  final UserRole role;
 
   /// Código ISO del idioma preferido ('es', 'en', …). Coincide con
   /// `profiles.locale`.
@@ -57,6 +64,7 @@ class Profile {
     String? avatarUrl,
     String? locale,
     String? themeMode,
+    UserRole? role,
   }) {
     return Profile(
       id: id,
@@ -65,6 +73,7 @@ class Profile {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       locale: locale ?? this.locale,
       themeMode: themeMode ?? this.themeMode,
+      role: role ?? this.role,
     );
   }
 }

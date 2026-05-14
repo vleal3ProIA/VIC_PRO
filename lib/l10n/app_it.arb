@@ -41,6 +41,11 @@
   "actionSettings": "Impostazioni",
   "navDashboard": "Pannello",
   "navSettings": "Impostazioni",
+  "navAdmin": "Amministrazione",
+  "adminTitle": "Amministrazione",
+  "adminSubtitle": "Gestisci utenti e impostazioni di sistema.",
+  "adminRoleBadge": "Il tuo ruolo",
+  "adminPlaceholder": "Qui ci saranno la gestione utenti e le impostazioni di sistema.",
 
   "registerTitle": "Crea il tuo account",
   "registerSubtitle": "Unisciti e inizia il tuo viaggio.",
