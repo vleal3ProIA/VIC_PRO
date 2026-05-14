@@ -394,6 +394,38 @@ class AuthRepositoryImpl implements AuthRepository {
     return current != next;
   }
 
+  @override
+  Future<Either<AuthFailure, List<String>>> generateRecoveryCodes() async {
+    try {
+      final codes = await _dataSource.generateRecoveryCodes();
+      return Right(codes);
+    } on AuthException catch (e, st) {
+      AppLogger.w('generateRecoveryCodes ${e.statusCode} ${e.message}');
+      return Left(_mapAuthException(e, st));
+    } catch (e, st) {
+      AppLogger.e('generateRecoveryCodes unknown', error: e, stackTrace: st);
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<AuthFailure, Unit>> verifyRecoveryCode(String code) async {
+    try {
+      await _dataSource.verifyRecoveryCode(code);
+      return const Right(unit);
+    } on AuthException catch (e, st) {
+      AppLogger.w('verifyRecoveryCode ${e.statusCode} ${e.message}');
+      // 401 de la Edge Function = código inválido o ya usado.
+      if (e.statusCode == '401') {
+        return Left(AuthMfaInvalid(cause: e));
+      }
+      return Left(_mapAuthException(e, st));
+    } catch (e, st) {
+      AppLogger.e('verifyRecoveryCode unknown', error: e, stackTrace: st);
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+  }
+
   AuthFailure _mapMfaAuthException(AuthException e, StackTrace st) {
     final code = e.code ?? '';
     final msg = e.message.toLowerCase();

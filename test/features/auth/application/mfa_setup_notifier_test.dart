@@ -41,12 +41,33 @@ void main() {
       expect(state().enrollment!.factorId, 'fake-factor');
     });
 
-    test('verify con código completo → step done', () async {
+    test('verify OK → genera códigos → step recoveryCodes', () async {
       await settle();
       notifier().codeChanged('123456');
       await notifier().verify();
-      expect(state().step, MfaSetupStep.done);
+      expect(state().step, MfaSetupStep.recoveryCodes);
+      expect(state().recoveryCodes, isNotEmpty);
       expect(repo.lastVerifyMfaFactorId, 'fake-factor');
+      expect(repo.generateRecoveryCodesCalls, 1);
+    });
+
+    test('acknowledgeRecoveryCodes → step done', () async {
+      await settle();
+      notifier().codeChanged('123456');
+      await notifier().verify();
+      notifier().acknowledgeRecoveryCodes();
+      expect(state().step, MfaSetupStep.done);
+    });
+
+    test('fallo al generar códigos → recoveryCodes con failure (MFA activo)',
+        () async {
+      await settle();
+      repo.generateRecoveryCodesResult = const Left(AuthUnknown());
+      notifier().codeChanged('123456');
+      await notifier().verify();
+      expect(state().step, MfaSetupStep.recoveryCodes);
+      expect(state().recoveryCodes, isEmpty);
+      expect(state().failure, isA<AuthUnknown>());
     });
 
     test('verify con <6 dígitos es no-op', () async {
