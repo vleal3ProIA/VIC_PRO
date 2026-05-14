@@ -39,6 +39,8 @@
   "actionSave": "Зберегти",
   "actionRetry": "Повторити",
   "actionSettings": "Налаштування",
+  "navDashboard": "Панель",
+  "navSettings": "Налаштування",
 
   "registerTitle": "Створіть акаунт",
   "registerSubtitle": "Приєднуйтеся та починайте свою подорож.",

@@ -39,6 +39,8 @@
   "actionSave": "Enregistrer",
   "actionRetry": "Réessayer",
   "actionSettings": "Paramètres",
+  "navDashboard": "Tableau de bord",
+  "navSettings": "Paramètres",
 
   "registerTitle": "Créer votre compte",
   "registerSubtitle": "Rejoignez-nous et commencez votre aventure.",

@@ -55,40 +55,31 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
       }
     });
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.goNamed(RouteNames.home),
+    return switch (state.status) {
+      ProfileSettingsStatus.loading => const Center(
+          child: CircularProgressIndicator(),
         ),
-        title: Text(l.settingsTitle),
-      ),
-      body: switch (state.status) {
-        ProfileSettingsStatus.loading => const Center(
-            child: CircularProgressIndicator(),
+      ProfileSettingsStatus.failure when state.profile == null => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 48,
+                color: context.colors.error,
+              ),
+              const SizedBox(height: 12),
+              Text(l.settingsLoadError),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: notifier.retry,
+                child: Text(l.actionRetry),
+              ),
+            ],
           ),
-        ProfileSettingsStatus.failure when state.profile == null => Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 48,
-                  color: context.colors.error,
-                ),
-                const SizedBox(height: 12),
-                Text(l.settingsLoadError),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: notifier.retry,
-                  child: Text(l.actionRetry),
-                ),
-              ],
-            ),
-          ),
-        _ => _content(context, state, notifier, email, l),
-      },
-    );
+        ),
+      _ => _content(context, state, notifier, email, l),
+    };
   }
 
   Widget _content(
@@ -107,6 +98,13 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Text(
+                l.settingsTitle,
+                style: context.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 20),
               // ----- Perfil -----
               _SectionHeader(l.settingsProfileSection),
               Card(

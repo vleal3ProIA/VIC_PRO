@@ -5,13 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/core/router/route_names.dart';
-import 'package:myapp/features/auth/application/auth_providers.dart';
-import 'package:myapp/features/welcome/presentation/widgets/language_picker.dart';
-import 'package:myapp/features/welcome/presentation/widgets/theme_toggle.dart';
 
-/// Zona privada placeholder. Muestra el nombre del usuario, su email y un
-/// botón de logout. Lo ampliaremos con el panel de ajustes (idioma + tema
-/// persistente en BD) y el cambio de password en el siguiente paso.
+/// Zona privada — destino "Dashboard" del shell. De momento es un placeholder
+/// de bienvenida; las tarjetas/estadísticas llegarán con el dashboard.
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
@@ -25,85 +21,77 @@ class HomePage extends ConsumerWidget {
             user?.email?.split('@').first ??
             'user';
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          context.l10n.appTitle,
-          style: context.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        actions: [
-          const LanguagePicker(),
-          const ThemeToggle(),
-          IconButton(
-            tooltip: l.actionSettings,
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => context.goNamed(RouteNames.accountSettings),
-          ),
-          IconButton(
-            tooltip: l.actionSignOut,
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await ref.read(authRepositoryProvider).signOut();
-              if (context.mounted) {
-                context.goNamed(RouteNames.welcome);
-              }
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Center(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircleAvatar(
-                  radius: 48,
-                  backgroundColor: context.colors.primaryContainer,
-                  child: Icon(
-                    Icons.person_outline,
-                    size: 48,
-                    color: context.colors.onPrimaryContainer,
-                  ),
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 16),
+              Text(
+                l.homeWelcomeUser(displayName),
+                style: context.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
                 ),
-                const SizedBox(height: 24),
+              ),
+              if (user?.email != null) ...[
+                const SizedBox(height: 4),
                 Text(
-                  l.homeWelcomeUser(displayName),
-                  textAlign: TextAlign.center,
-                  style: context.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (user?.email != null)
-                  Text(
-                    l.homeSignedInAs(user!.email!),
-                    textAlign: TextAlign.center,
-                    style: context.textTheme.bodyMedium?.copyWith(
-                      color: context.colors.onSurfaceVariant,
-                    ),
-                  ),
-                const SizedBox(height: 32),
-                Text(
-                  l.homePlaceholder,
-                  textAlign: TextAlign.center,
-                  style: context.textTheme.bodyLarge?.copyWith(
+                  l.homeSignedInAs(user!.email!),
+                  style: context.textTheme.bodyMedium?.copyWith(
                     color: context.colors.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 32),
-                OutlinedButton.icon(
-                  onPressed: () => context.goNamed(RouteNames.mfaSetup),
-                  icon: const Icon(Icons.shield_outlined, size: 18),
-                  label: Text(l.actionEnableMfa),
-                ),
               ],
-            ),
+              const SizedBox(height: 24),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.dashboard_outlined,
+                            color: context.colors.primary,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            l.navDashboard,
+                            style: context.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        l.homePlaceholder,
+                        style: context.textTheme.bodyLarge?.copyWith(
+                          color: context.colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                child: ListTile(
+                  leading: Icon(
+                    Icons.shield_outlined,
+                    color: context.colors.primary,
+                  ),
+                  title: Text(l.actionEnableMfa),
+                  subtitle: Text(l.settingsSecurityHint),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.goNamed(RouteNames.mfaSetup),
+                ),
+              ),
+            ],
           ),
         ),
       ),
