@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/features/account/application/profile_providers.dart';
 import 'package:myapp/features/account/presentation/pages/account_settings_page.dart';
+import 'package:myapp/features/admin/presentation/pages/admin_page.dart';
 import 'package:myapp/features/auth/application/mfa_providers.dart';
 import 'package:myapp/features/auth/presentation/pages/auth_callback_page.dart';
 import 'package:myapp/features/auth/presentation/pages/change_email_page.dart';
@@ -155,6 +157,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             name: RouteNames.accountSettings,
             builder: (_, __) => const AccountSettingsPage(),
           ),
+          GoRoute(
+            path: RoutePaths.admin,
+            name: RouteNames.admin,
+            builder: (_, __) => const AdminPage(),
+          ),
         ],
       ),
       GoRoute(
@@ -227,6 +234,7 @@ const _excludedFromGuard = <String>{
 /// Rutas privadas (requieren sesión activa).
 const _privateRoutes = <String>{
   RoutePaths.home,
+  RoutePaths.admin,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
   RoutePaths.changePassword,
@@ -234,6 +242,12 @@ const _privateRoutes = <String>{
   RoutePaths.changeEmail,
   RoutePaths.changeEmailSent,
   RoutePaths.deleteAccount,
+};
+
+/// Rutas que además requieren rol `admin`. Un usuario autenticado sin ese
+/// rol que las pida es redirigido a `/home`.
+const _adminRoutes = <String>{
+  RoutePaths.admin,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.
@@ -272,6 +286,11 @@ String? _redirect(Ref ref, GoRouterState state) {
     if (pending) return RoutePaths.mfaChallenge;
   }
 
+  // 2b) Ruta solo-admin y el usuario no tiene ese rol → /home.
+  if (isAuthed && _adminRoutes.contains(loc) && !ref.read(isAdminProvider)) {
+    return RoutePaths.home;
+  }
+
   // 3) Autenticado (y sin MFA pendiente) en ruta solo para invitados.
   if (isAuthed && _publicOnly.contains(loc)) {
     return RoutePaths.home;
@@ -291,18 +310,27 @@ String? _redirect(Ref ref, GoRouterState state) {
 /// auth, notificamos para que el router re-evalúe `redirect`.
 class _AuthRefreshNotifier extends ChangeNotifier {
   _AuthRefreshNotifier(this._ref) {
-    _sub = _ref.listen(
+    _authSub = _ref.listen(
       authStateChangesProvider,
+      (_, __) => notifyListeners(),
+    );
+    // El rol llega de forma asíncrona (al cargar el perfil). Re-evaluamos
+    // el redirect cuando cambia, para que el guard de rutas solo-admin no
+    // se quede con un rol "stale".
+    _roleSub = _ref.listen(
+      currentRoleProvider,
       (_, __) => notifyListeners(),
     );
   }
 
   final Ref _ref;
-  late final ProviderSubscription<dynamic> _sub;
+  late final ProviderSubscription<dynamic> _authSub;
+  late final ProviderSubscription<dynamic> _roleSub;
 
   @override
   void dispose() {
-    _sub.close();
+    _authSub.close();
+    _roleSub.close();
     super.dispose();
   }
 }

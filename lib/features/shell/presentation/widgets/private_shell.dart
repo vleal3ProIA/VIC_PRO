@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/features/account/application/profile_providers.dart';
 import 'package:myapp/features/shell/presentation/widgets/user_avatar_menu.dart';
 import 'package:myapp/features/welcome/presentation/widgets/language_picker.dart';
 import 'package:myapp/features/welcome/presentation/widgets/theme_toggle.dart';
@@ -32,7 +34,7 @@ class _Destination {
 /// - ancho  → `NavigationRail` fijo a la izquierda.
 ///
 /// Se monta vía `ShellRoute`, así que persiste al navegar entre destinos.
-class PrivateShell extends StatelessWidget {
+class PrivateShell extends ConsumerWidget {
   const PrivateShell({
     required this.location,
     required this.child,
@@ -44,8 +46,9 @@ class PrivateShell extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
+    final isAdmin = ref.watch(isAdminProvider);
     final destinations = <_Destination>[
       _Destination(
         path: RoutePaths.home,
@@ -61,6 +64,16 @@ class PrivateShell extends StatelessWidget {
         selectedIcon: Icons.settings,
         label: l.navSettings,
       ),
+      // El destino de administración solo aparece para admins. Aunque
+      // alguien forzara la ruta, el guard del router lo redirige.
+      if (isAdmin)
+        _Destination(
+          path: RoutePaths.admin,
+          routeName: RouteNames.admin,
+          icon: Icons.admin_panel_settings_outlined,
+          selectedIcon: Icons.admin_panel_settings,
+          label: l.navAdmin,
+        ),
     ];
 
     var selectedIndex = destinations.indexWhere((d) => location == d.path);

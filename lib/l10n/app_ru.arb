@@ -41,6 +41,11 @@
   "actionSettings": "Настройки",
   "navDashboard": "Панель",
   "navSettings": "Настройки",
+  "navAdmin": "Администрирование",
+  "adminTitle": "Администрирование",
+  "adminSubtitle": "Управление пользователями и настройками системы.",
+  "adminRoleBadge": "Ваша роль",
+  "adminPlaceholder": "Здесь появятся управление пользователями и настройки системы.",
 
   "registerTitle": "Создайте аккаунт",
   "registerSubtitle": "Присоединяйтесь и начните свой путь.",

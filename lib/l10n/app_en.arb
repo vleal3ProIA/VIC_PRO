@@ -42,6 +42,11 @@
   "actionSettings": "Settings",
   "navDashboard": "Dashboard",
   "navSettings": "Settings",
+  "navAdmin": "Admin",
+  "adminTitle": "Administration",
+  "adminSubtitle": "Manage users and system settings.",
+  "adminRoleBadge": "Your role",
+  "adminPlaceholder": "User management and system settings will live here.",
 
   "registerTitle": "Create your account",
   "registerSubtitle": "Join us and start your journey.",
