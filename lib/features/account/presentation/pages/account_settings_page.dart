@@ -246,6 +246,23 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => context.goNamed(RouteNames.mfaSetup),
                     ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: Icon(
+                        Icons.delete_forever_outlined,
+                        color: context.colors.error,
+                      ),
+                      title: Text(
+                        l.settingsDeleteAccount,
+                        style: TextStyle(color: context.colors.error),
+                      ),
+                      trailing: Icon(
+                        Icons.chevron_right,
+                        color: context.colors.error,
+                      ),
+                      onTap: () =>
+                          context.goNamed(RouteNames.deleteAccount),
+                    ),
                   ],
                 ),
               ),

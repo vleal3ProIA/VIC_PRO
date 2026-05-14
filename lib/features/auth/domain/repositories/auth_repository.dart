@@ -94,4 +94,12 @@ abstract class AuthRepository {
   /// Inicia el cambio de email. Supabase envía email(s) de confirmación;
   /// el cambio se aplica al confirmar.
   Future<Either<AuthFailure, Unit>> changeEmail(String newEmail);
+
+  /// Borra permanentemente la cuenta del usuario autenticado (derecho de
+  /// supresión del GDPR). Reautentica con [password] para confirmar la
+  /// identidad, invoca la Edge Function que elimina el usuario y cierra
+  /// sesión. La acción es irreversible.
+  Future<Either<AuthFailure, Unit>> deleteAccount({
+    required String password,
+  });
 }

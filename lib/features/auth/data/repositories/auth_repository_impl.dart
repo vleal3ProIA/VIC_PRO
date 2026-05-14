@@ -181,6 +181,41 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Either<AuthFailure, Unit>> deleteAccount({
+    required String password,
+  }) async {
+    final email = _dataSource.currentEmail;
+    if (email == null) {
+      return const Left(AuthUnknown(message: 'No active session'));
+    }
+    // 1) Reautenticar: confirma que es realmente el dueño de la cuenta.
+    try {
+      await _dataSource.signInWithPassword(email: email, password: password);
+    } on AuthException catch (e, st) {
+      AppLogger.w('deleteAccount reauth failed: ${e.code}');
+      return Left(_mapAuthException(e, st));
+    } catch (e) {
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+    // 2) Invocar la Edge Function que borra el usuario de auth.users.
+    try {
+      await _dataSource.deleteAccount();
+    } on AuthException catch (e, st) {
+      AppLogger.w('deleteAccount function failed: ${e.message}');
+      return Left(_mapAuthException(e, st));
+    } catch (e, st) {
+      AppLogger.e('deleteAccount unknown', error: e, stackTrace: st);
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+    // 3) Cerrar sesión local. El JWT ya no sirve, pero limpiamos el estado.
+    //    Un fallo aquí no es crítico: la cuenta ya no existe.
+    try {
+      await _dataSource.signOut();
+    } catch (_) {}
+    return const Right(unit);
+  }
+
+  @override
   Future<Either<AuthFailure, Unit>> changeEmail(String newEmail) async {
     try {
       await _dataSource.updateEmail(

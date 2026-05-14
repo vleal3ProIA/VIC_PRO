@@ -164,10 +164,13 @@ class FakeAuthRepository implements AuthRepository {
   // ----- Cambios desde panel privado -----
   Either<AuthFailure, Unit> changePasswordResult = const Right(unit);
   Either<AuthFailure, Unit> changeEmailResult = const Right(unit);
+  Either<AuthFailure, Unit> deleteAccountResult = const Right(unit);
 
   String? lastChangePasswordCurrent;
   String? lastChangePasswordNew;
   String? lastChangeEmail;
+  String? lastDeleteAccountPassword;
+  int deleteAccountCalls = 0;
 
   @override
   Future<Either<AuthFailure, Unit>> changePassword({
@@ -183,5 +186,14 @@ class FakeAuthRepository implements AuthRepository {
   Future<Either<AuthFailure, Unit>> changeEmail(String newEmail) async {
     lastChangeEmail = newEmail;
     return changeEmailResult;
+  }
+
+  @override
+  Future<Either<AuthFailure, Unit>> deleteAccount({
+    required String password,
+  }) async {
+    deleteAccountCalls++;
+    lastDeleteAccountPassword = password;
+    return deleteAccountResult;
   }
 }

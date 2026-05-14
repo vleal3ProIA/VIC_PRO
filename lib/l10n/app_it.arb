@@ -202,5 +202,15 @@
   "privacyS5Title": "5. I tuoi diritti",
   "privacyS5Body": "Puoi accedere, rettificare, cancellare o esportare i tuoi dati e opporti al loro trattamento. Puoi eliminare il tuo account in qualsiasi momento dalle Impostazioni.",
   "privacyS6Title": "6. Contatti",
-  "privacyS6Body": "Per esercitare i tuoi diritti o porre domande su questa informativa, scrivici all'indirizzo email indicato nell'app. Puoi anche presentare reclamo all'autorità per la protezione dei dati."
+  "privacyS6Body": "Per esercitare i tuoi diritti o porre domande su questa informativa, scrivici all'indirizzo email indicato nell'app. Puoi anche presentare reclamo all'autorità per la protezione dei dati.",
+
+  "settingsDeleteAccount": "Elimina account",
+  "deleteAccountTitle": "Elimina account",
+  "deleteAccountSubtitle": "Questa azione è permanente e non può essere annullata.",
+  "deleteAccountWarning": "Eliminare il tuo account rimuove il profilo, le preferenze e l'accesso. Non è recuperabile.",
+  "deleteAccountAcknowledge": "Capisco che questa azione è permanente.",
+  "actionDeleteAccount": "Elimina il mio account",
+  "deleteAccountConfirmTitle": "Eliminare l'account?",
+  "deleteAccountConfirmBody": "Il tuo account e tutti i dati associati saranno eliminati definitivamente. L'operazione non può essere annullata.",
+  "deleteAccountDone": "Il tuo account è stato eliminato."
 }

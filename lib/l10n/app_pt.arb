@@ -202,5 +202,15 @@
   "privacyS5Title": "5. Os teus direitos",
   "privacyS5Body": "Podes aceder, retificar, eliminar ou exportar os teus dados e opor-te ao seu tratamento. Podes eliminar a tua conta a qualquer momento nas Definições.",
   "privacyS6Title": "6. Contacto",
-  "privacyS6Body": "Para exercer os teus direitos ou colocar questões sobre esta política, contacta-nos através do endereço de e-mail indicado na app. Também podes apresentar reclamação à tua autoridade de proteção de dados."
+  "privacyS6Body": "Para exercer os teus direitos ou colocar questões sobre esta política, contacta-nos através do endereço de e-mail indicado na app. Também podes apresentar reclamação à tua autoridade de proteção de dados.",
+
+  "settingsDeleteAccount": "Eliminar conta",
+  "deleteAccountTitle": "Eliminar conta",
+  "deleteAccountSubtitle": "Esta ação é permanente e não pode ser anulada.",
+  "deleteAccountWarning": "Eliminar a tua conta remove o teu perfil, as tuas preferências e o teu acesso. Não pode ser recuperada.",
+  "deleteAccountAcknowledge": "Compreendo que esta ação é permanente.",
+  "actionDeleteAccount": "Eliminar a minha conta",
+  "deleteAccountConfirmTitle": "Eliminar a conta?",
+  "deleteAccountConfirmBody": "A tua conta e todos os dados associados serão eliminados permanentemente. Não pode ser anulado.",
+  "deleteAccountDone": "A tua conta foi eliminada."
 }
