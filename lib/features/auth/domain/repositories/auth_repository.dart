@@ -21,6 +21,11 @@ abstract class AuthRepository {
   /// Cierra sesión.
   Future<Either<AuthFailure, Unit>> signOut();
 
+  /// Inicia el login con Google (OAuth). En web dispara un redirect de página
+  /// completa; la sesión llega después por el callback `type=oauth`.
+  /// Devuelve `Right(unit)` si el redirect se lanzó correctamente.
+  Future<Either<AuthFailure, Unit>> signInWithGoogle();
+
   /// Envía el email de recuperación de contraseña.
   Future<Either<AuthFailure, Unit>> sendPasswordReset(String email);
 

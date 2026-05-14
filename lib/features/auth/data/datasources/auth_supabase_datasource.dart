@@ -40,6 +40,20 @@ class AuthSupabaseDataSource {
   /// Cierra la sesión activa.
   Future<void> signOut() => _client.auth.signOut();
 
+  /// Inicia el login con Google (OAuth 2.0).
+  ///
+  /// En web hace un *full-page redirect* al consentimiento de Google y, tras
+  /// aceptar, Supabase devuelve al navegador a `redirectTo` con la sesión en
+  /// el fragmento (flujo implicit). Por eso el método no devuelve sesión: el
+  /// resultado llega de forma asíncrona por `onAuthStateChange`.
+  Future<bool> signInWithGoogle({required String redirectTo}) {
+    return _client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: redirectTo,
+      authScreenLaunchMode: LaunchMode.platformDefault,
+    );
+  }
+
   /// Reenvía el email de verificación de signup.
   Future<ResendResponse> resendSignupConfirmation({
     required String email,

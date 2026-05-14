@@ -9,7 +9,9 @@ import 'package:myapp/core/validation/validation_messages.dart';
 import 'package:myapp/core/widgets/app_text_field.dart';
 import 'package:myapp/core/widgets/error_text_slot.dart';
 import 'package:myapp/features/auth/application/login_notifier.dart';
+import 'package:myapp/features/auth/application/oauth_notifier.dart';
 import 'package:myapp/features/auth/presentation/widgets/auth_failure_message.dart';
+import 'package:myapp/features/auth/presentation/widgets/social_sign_in_button.dart';
 
 class LoginForm extends ConsumerStatefulWidget {
   const LoginForm({super.key});
@@ -40,7 +42,13 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   Widget build(BuildContext context) {
     final state = ref.watch(loginNotifierProvider);
     final notifier = ref.read(loginNotifierProvider.notifier);
+    final oauthState = ref.watch(oauthNotifierProvider);
+    final oauthNotifier = ref.read(oauthNotifierProvider.notifier);
     final l = context.l10n;
+
+    // Cualquier acción en curso (login con password u OAuth redirigiendo)
+    // bloquea el resto de botones para evitar disparos simultáneos.
+    final busy = state.isSubmitting || oauthState.isBusy;
 
     String? errOrNull({required bool show, required String? msg}) =>
         show ? msg : null;
@@ -57,7 +65,9 @@ class _LoginFormState extends ConsumerState<LoginForm> {
 
     final generalError = state.failure != null
         ? authFailureMessage(context, state.failure!)
-        : null;
+        : oauthState.failure != null
+            ? authFailureMessage(context, oauthState.failure!)
+            : null;
 
     return AutofillGroup(
       child: Column(
@@ -132,7 +142,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
           GeneralErrorSlot(message: generalError),
           const SizedBox(height: 8),
           FilledButton(
-            onPressed: state.isSubmitting ? null : notifier.submit,
+            onPressed: busy ? null : notifier.submit,
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
             ),
@@ -161,8 +171,15 @@ class _LoginFormState extends ConsumerState<LoginForm> {
             ],
           ),
           const SizedBox(height: 8),
+          SocialSignInButton(
+            label: l.continueWithGoogle,
+            iconAsset: 'assets/icons/google.svg',
+            busy: oauthState.isBusy,
+            onPressed: busy ? null : oauthNotifier.signInWithGoogle,
+          ),
+          const SizedBox(height: 8),
           OutlinedButton.icon(
-            onPressed: state.isSubmitting
+            onPressed: busy
                 ? null
                 : () => context.goNamed(RouteNames.magicLink),
             style: OutlinedButton.styleFrom(
@@ -173,7 +190,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
-            onPressed: state.isSubmitting
+            onPressed: busy
                 ? null
                 : () => context.goNamed(RouteNames.otpRequest),
             style: OutlinedButton.styleFrom(
@@ -189,7 +206,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
               Text(l.loginNoAccount, style: context.textTheme.bodyMedium),
               const SizedBox(width: 4),
               TextButton(
-                onPressed: state.isSubmitting
+                onPressed: busy
                     ? null
                     : () => context.goNamed(RouteNames.register),
                 child: Text(l.loginCreateOne),

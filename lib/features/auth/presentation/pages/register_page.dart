@@ -10,8 +10,8 @@ class RegisterPage extends StatelessWidget {
 
   // Altura reservada para que la card NO cambie de tamaño cuando aparecen
   // o desaparecen los slots de error. Calculada para acomodar 4 inputs
-  // + slot general + checkbox + botones + link.
-  static const double _reservedHeight = 760;
+  // + slot general + checkbox + botones + divider + Google + link.
+  static const double _reservedHeight = 884;
 
   @override
   Widget build(BuildContext context) {
