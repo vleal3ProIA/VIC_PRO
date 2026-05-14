@@ -62,6 +62,7 @@
   "actionUsePassword": "Utiliser e-mail + mot de passe",
 
   "loginWithOtp": "Se connecter avec un code",
+  "continueWithGoogle": "Continuer avec Google",
   "otpRequestTitle": "Connexion avec un code à usage unique",
   "otpRequestSubtitle": "Saisissez votre e-mail et nous vous enverrons un code à {count} chiffres.",
   "otpVerifyTitle": "Saisissez votre code",

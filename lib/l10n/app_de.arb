@@ -62,6 +62,7 @@
   "actionUsePassword": "E-Mail + Passwort verwenden",
 
   "loginWithOtp": "Mit Code anmelden",
+  "continueWithGoogle": "Mit Google fortfahren",
   "otpRequestTitle": "Anmelden mit Einmal-Code",
   "otpRequestSubtitle": "Gib deine E-Mail ein und wir senden dir einen {count}-stelligen Code.",
   "otpVerifyTitle": "Gib deinen Code ein",

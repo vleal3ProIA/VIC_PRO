@@ -8,8 +8,10 @@ import 'package:myapp/core/validation/email.dart';
 import 'package:myapp/core/validation/validation_messages.dart';
 import 'package:myapp/core/widgets/app_text_field.dart';
 import 'package:myapp/core/widgets/error_text_slot.dart';
+import 'package:myapp/features/auth/application/oauth_notifier.dart';
 import 'package:myapp/features/auth/application/register_notifier.dart';
 import 'package:myapp/features/auth/presentation/widgets/auth_failure_message.dart';
+import 'package:myapp/features/auth/presentation/widgets/social_sign_in_button.dart';
 
 class RegisterForm extends ConsumerStatefulWidget {
   const RegisterForm({super.key});
@@ -63,7 +65,11 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
 
     final state = ref.watch(registerNotifierProvider);
     final notifier = ref.read(registerNotifierProvider.notifier);
+    final oauthState = ref.watch(oauthNotifierProvider);
+    final oauthNotifier = ref.read(oauthNotifierProvider.notifier);
     final l = context.l10n;
+
+    final busy = state.isSubmitting || oauthState.isBusy;
 
     String? errOrNull({required bool show, required String? msg}) =>
         show ? msg : null;
@@ -93,6 +99,8 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
     String? generalError;
     if (state.failure != null) {
       generalError = authFailureMessage(context, state.failure!);
+    } else if (oauthState.failure != null) {
+      generalError = authFailureMessage(context, oauthState.failure!);
     } else if (showErrors && !state.acceptTerms) {
       generalError = l.errorAcceptTerms;
     }
@@ -170,7 +178,7 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
           ),
           const SizedBox(height: 12),
           FilledButton(
-            onPressed: state.isSubmitting ? null : notifier.submit,
+            onPressed: busy ? null : notifier.submit,
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
             ),
@@ -184,6 +192,29 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
           ),
           const SizedBox(height: 16),
           Row(
+            children: [
+              const Expanded(child: Divider()),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  l.loginOrDivider,
+                  style: context.textTheme.labelSmall?.copyWith(
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              const Expanded(child: Divider()),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SocialSignInButton(
+            label: l.continueWithGoogle,
+            iconAsset: 'assets/icons/google.svg',
+            busy: oauthState.isBusy,
+            onPressed: busy ? null : oauthNotifier.signInWithGoogle,
+          ),
+          const SizedBox(height: 16),
+          Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
@@ -192,7 +223,7 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
               ),
               const SizedBox(width: 4),
               TextButton(
-                onPressed: state.isSubmitting
+                onPressed: busy
                     ? null
                     : () => context.goNamed(RouteNames.login),
                 child: Text(l.actionSignIn),

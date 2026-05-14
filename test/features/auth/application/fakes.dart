@@ -15,6 +15,7 @@ class FakeAuthRepository implements AuthRepository {
   Either<AuthFailure, Unit> updatePasswordResult = const Right(unit);
   Either<AuthFailure, Unit> resendResult = const Right(unit);
   Either<AuthFailure, Unit> signOutResult = const Right(unit);
+  Either<AuthFailure, Unit> signInWithGoogleResult = const Right(unit);
   Either<AuthFailure, Unit> magicLinkResult = const Right(unit);
   Either<AuthFailure, Unit> requestOtpResult = const Right(unit);
   Either<AuthFailure, Unit> verifyOtpResult = const Right(unit);
@@ -27,6 +28,7 @@ class FakeAuthRepository implements AuthRepository {
   String? lastOtpRequestEmail;
   String? lastOtpVerifyEmail;
   String? lastOtpVerifyToken;
+  int signInWithGoogleCalls = 0;
 
   @override
   Future<Either<AuthFailure, SignUpResult>> signUp(SignUpRequest request) async {
@@ -50,6 +52,12 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<Either<AuthFailure, Unit>> signOut() async => signOutResult;
+
+  @override
+  Future<Either<AuthFailure, Unit>> signInWithGoogle() async {
+    signInWithGoogleCalls++;
+    return signInWithGoogleResult;
+  }
 
   @override
   Future<Either<AuthFailure, Unit>> sendPasswordReset(String email) async {

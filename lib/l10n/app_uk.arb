@@ -62,6 +62,7 @@
   "actionUsePassword": "Використати email + пароль",
 
   "loginWithOtp": "Увійти за кодом",
+  "continueWithGoogle": "Продовжити з Google",
   "otpRequestTitle": "Вхід за одноразовим кодом",
   "otpRequestSubtitle": "Введіть email і ми надішлемо {count}-значний код.",
   "otpVerifyTitle": "Введіть код",

@@ -88,6 +88,22 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Either<AuthFailure, Unit>> signInWithGoogle() async {
+    try {
+      await _dataSource.signInWithGoogle(
+        redirectTo: AuthRedirect.resolve(AuthRedirectType.oauth),
+      );
+      return const Right(unit);
+    } on AuthException catch (e, st) {
+      AppLogger.w('signInWithGoogle AuthException: ${e.code} ${e.message}');
+      return Left(_mapAuthException(e, st));
+    } catch (e, st) {
+      AppLogger.e('signInWithGoogle unknown', error: e, stackTrace: st);
+      return Left(AuthUnknown(cause: e, message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<AuthFailure, Unit>> sendPasswordReset(String email) async {
     try {
       await _dataSource.sendPasswordReset(
