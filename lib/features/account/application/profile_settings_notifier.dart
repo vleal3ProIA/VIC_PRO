@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -88,6 +90,35 @@ class ProfileSettingsNotifier extends Notifier<ProfileSettingsState> {
   Future<void> changeThemeMode(ThemeMode mode) async {
     await ref.read(themeNotifierProvider.notifier).setMode(mode);
     await _update(themeMode: mode.name);
+  }
+
+  /// Sube una nueva imagen de avatar (bytes ya leídos por la UI) al Storage
+  /// y guarda su URL en el perfil.
+  Future<void> uploadAvatar(Uint8List bytes, String contentType) async {
+    final current = state.profile;
+    if (current == null) return;
+    state = state.copyWith(
+      status: ProfileSettingsStatus.saving,
+      clearFailure: true,
+    );
+    final result = await ref.read(profileRepositoryProvider).uploadAvatar(
+          bytes: bytes,
+          contentType: contentType,
+        );
+    result.match(
+      (failure) => state = state.copyWith(
+        status: ProfileSettingsStatus.ready,
+        failure: failure,
+      ),
+      (profile) {
+        state = state.copyWith(
+          status: ProfileSettingsStatus.ready,
+          profile: profile,
+          savedTick: state.savedTick + 1,
+        );
+        ref.invalidate(myProfileProvider);
+      },
+    );
   }
 
   Future<void> _update({

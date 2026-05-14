@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:fpdart/fpdart.dart';
 import 'package:myapp/core/utils/app_logger.dart';
 import 'package:myapp/features/account/data/datasources/profile_supabase_datasource.dart';
@@ -33,12 +35,14 @@ class ProfileRepositoryImpl implements ProfileRepository {
     String? displayName,
     String? locale,
     String? themeMode,
+    String? avatarUrl,
   }) async {
     try {
       final map = await _dataSource.updateMyProfile(
         displayName: displayName,
         locale: locale,
         themeMode: themeMode,
+        avatarUrl: avatarUrl,
       );
       return Right(Profile.fromMap(map));
     } on AuthException catch (e) {
@@ -47,6 +51,32 @@ class ProfileRepositoryImpl implements ProfileRepository {
       return Left(_mapPostgrest(e));
     } catch (e, st) {
       AppLogger.e('updateMyProfile unknown', error: e, stackTrace: st);
+      return Left(ProfileUnknown(cause: e, message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<ProfileFailure, Profile>> uploadAvatar({
+    required Uint8List bytes,
+    required String contentType,
+  }) async {
+    try {
+      final url = await _dataSource.uploadAvatar(
+        bytes: bytes,
+        contentType: contentType,
+      );
+      // Persistir la URL en el perfil y devolver la fila actualizada.
+      final map = await _dataSource.updateMyProfile(avatarUrl: url);
+      return Right(Profile.fromMap(map));
+    } on AuthException catch (e) {
+      return Left(ProfileNotFound(cause: e));
+    } on StorageException catch (e) {
+      AppLogger.w('uploadAvatar storage: ${e.statusCode} ${e.message}');
+      return Left(ProfileUnknown(cause: e, message: e.message));
+    } on PostgrestException catch (e) {
+      return Left(_mapPostgrest(e));
+    } catch (e, st) {
+      AppLogger.e('uploadAvatar unknown', error: e, stackTrace: st);
       return Left(ProfileUnknown(cause: e, message: e.toString()));
     }
   }
