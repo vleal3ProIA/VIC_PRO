@@ -146,6 +146,7 @@
   "settingsPreferencesSection": "Preferences",
   "settingsSecuritySection": "Security",
   "settingsFieldDisplayName": "Display name",
+  "settingsChangeAvatar": "Change photo",
   "settingsFieldUsername": "Username",
   "settingsFieldEmail": "Email",
   "settingsLanguage": "Language",

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:myapp/core/constants/supported_locales.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/features/account/application/profile_settings_notifier.dart';
 import 'package:myapp/features/account/presentation/widgets/profile_failure_message.dart';
+import 'package:myapp/features/account/presentation/widgets/user_avatar.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
 class AccountSettingsPage extends ConsumerStatefulWidget {
@@ -25,6 +27,28 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
   void dispose() {
     _displayNameCtrl.dispose();
     super.dispose();
+  }
+
+  /// Abre el selector de imágenes y sube la elegida como avatar.
+  Future<void> _pickAvatar(ProfileSettingsNotifier notifier) async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 85,
+    );
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    final contentType = file.mimeType ?? _guessContentType(file.name);
+    await notifier.uploadAvatar(bytes, contentType);
+  }
+
+  String _guessContentType(String fileName) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    return 'image/jpeg';
   }
 
   @override
@@ -113,6 +137,49 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      Center(
+                        child: Stack(
+                          children: [
+                            UserAvatar(
+                              name: profile.effectiveName,
+                              avatarUrl: profile.avatarUrl,
+                              radius: 44,
+                            ),
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Material(
+                                color: context.colors.primary,
+                                shape: const CircleBorder(),
+                                child: InkWell(
+                                  customBorder: const CircleBorder(),
+                                  onTap: state.isSaving
+                                      ? null
+                                      : () => _pickAvatar(notifier),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(6),
+                                    child: Icon(
+                                      Icons.camera_alt_outlined,
+                                      size: 16,
+                                      color: context.colors.onPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: TextButton(
+                          onPressed: state.isSaving
+                              ? null
+                              : () => _pickAvatar(notifier),
+                          child: Text(l.settingsChangeAvatar),
+                        ),
+                      ),
+                      const Divider(height: 24),
                       TextField(
                         controller: _displayNameCtrl,
                         enabled: !state.isSaving,

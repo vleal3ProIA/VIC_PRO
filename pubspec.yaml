@@ -42,6 +42,7 @@ dependencies:
   google_fonts: ^6.2.1
   flutter_svg: ^2.0.10+1
   cached_network_image: ^3.4.1
+  image_picker: ^1.1.2
   responsive_framework: ^1.5.1
   flex_color_scheme: ^8.0.0
 

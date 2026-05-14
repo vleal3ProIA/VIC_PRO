@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,11 +20,23 @@ class FakeProfileRepository implements ProfileRepository {
   Either<ProfileFailure, Profile> updateResult = const Right(
     Profile(id: 'u1', locale: 'en', themeMode: 'system', username: 'john'),
   );
+  Either<ProfileFailure, Profile> uploadAvatarResult = const Right(
+    Profile(
+      id: 'u1',
+      locale: 'en',
+      themeMode: 'system',
+      username: 'john',
+      avatarUrl: 'https://example.com/a.png?v=1',
+    ),
+  );
 
   String? lastDisplayName;
   String? lastLocale;
   String? lastThemeMode;
+  String? lastAvatarUrl;
   int updateCalls = 0;
+  int uploadAvatarCalls = 0;
+  String? lastAvatarContentType;
 
   @override
   Future<Either<ProfileFailure, Profile>> getMyProfile() async => getResult;
@@ -32,12 +46,24 @@ class FakeProfileRepository implements ProfileRepository {
     String? displayName,
     String? locale,
     String? themeMode,
+    String? avatarUrl,
   }) async {
     updateCalls++;
     lastDisplayName = displayName;
     lastLocale = locale;
     lastThemeMode = themeMode;
+    lastAvatarUrl = avatarUrl;
     return updateResult;
+  }
+
+  @override
+  Future<Either<ProfileFailure, Profile>> uploadAvatar({
+    required Uint8List bytes,
+    required String contentType,
+  }) async {
+    uploadAvatarCalls++;
+    lastAvatarContentType = contentType;
+    return uploadAvatarResult;
   }
 }
 
@@ -116,6 +142,25 @@ void main() {
     await notifier().saveDisplayName('whatever');
     expect(state().failure, isA<ProfileUsernameTaken>());
     expect(state().profile, isNotNull);
+    expect(state().status, ProfileSettingsStatus.ready);
+  });
+
+  test('uploadAvatar calls repo and updates the profile', () async {
+    await waitLoad();
+    final before = state().savedTick;
+    await notifier().uploadAvatar(Uint8List.fromList([1, 2, 3]), 'image/png');
+    expect(repo.uploadAvatarCalls, 1);
+    expect(repo.lastAvatarContentType, 'image/png');
+    expect(state().profile?.avatarUrl, 'https://example.com/a.png?v=1');
+    expect(state().savedTick, before + 1);
+    expect(state().status, ProfileSettingsStatus.ready);
+  });
+
+  test('uploadAvatar failure surfaces the failure', () async {
+    await waitLoad();
+    repo.uploadAvatarResult = const Left(ProfileUnknown());
+    await notifier().uploadAvatar(Uint8List.fromList([1]), 'image/jpeg');
+    expect(state().failure, isA<ProfileUnknown>());
     expect(state().status, ProfileSettingsStatus.ready);
   });
 }

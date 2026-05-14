@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/features/account/application/profile_providers.dart';
+import 'package:myapp/features/account/presentation/widgets/user_avatar.dart';
 import 'package:myapp/features/auth/application/auth_providers.dart';
 
 enum _AvatarAction { settings, signOut }
@@ -30,7 +32,7 @@ class UserAvatarMenu extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final name = _displayName(ref);
     final email = user?.email ?? '';
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    final avatarUrl = ref.watch(myProfileProvider).valueOrNull?.avatarUrl;
 
     return PopupMenuButton<_AvatarAction>(
       tooltip: name,
@@ -89,17 +91,7 @@ class UserAvatarMenu extends ConsumerWidget {
           ),
         ),
       ],
-      child: CircleAvatar(
-        radius: 16,
-        backgroundColor: context.colors.primaryContainer,
-        child: Text(
-          initial,
-          style: context.textTheme.titleSmall?.copyWith(
-            color: context.colors.onPrimaryContainer,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
+      child: UserAvatar(name: name, avatarUrl: avatarUrl, radius: 16),
     );
   }
 }

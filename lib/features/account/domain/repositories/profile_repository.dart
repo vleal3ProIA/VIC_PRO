@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:fpdart/fpdart.dart';
 
 import 'package:myapp/features/account/domain/entities/profile.dart';
@@ -12,5 +14,13 @@ abstract class ProfileRepository {
     String? displayName,
     String? locale,
     String? themeMode,
+    String? avatarUrl,
+  });
+
+  /// Sube una imagen de avatar al Storage y guarda su URL en el perfil.
+  /// Devuelve el perfil actualizado.
+  Future<Either<ProfileFailure, Profile>> uploadAvatar({
+    required Uint8List bytes,
+    required String contentType,
   });
 }
