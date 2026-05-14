@@ -168,9 +168,28 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(top: 12),
-                  child: Text(
-                    l.registerAcceptTerms,
-                    style: context.textTheme.bodySmall,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l.registerAcceptTerms,
+                        style: context.textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 16,
+                        children: [
+                          _LegalLink(
+                            label: l.termsTitle,
+                            routeName: RouteNames.terms,
+                          ),
+                          _LegalLink(
+                            label: l.privacyTitle,
+                            routeName: RouteNames.privacy,
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -243,6 +262,31 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Enlace compacto a un documento legal (`/terms`, `/privacy`).
+class _LegalLink extends StatelessWidget {
+  const _LegalLink({required this.label, required this.routeName});
+
+  final String label;
+  final String routeName;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => context.goNamed(routeName),
+      borderRadius: BorderRadius.circular(4),
+      child: Text(
+        label,
+        style: context.textTheme.bodySmall?.copyWith(
+          color: context.colors.primary,
+          fontWeight: FontWeight.w600,
+          decoration: TextDecoration.underline,
+          decorationColor: context.colors.primary,
+        ),
       ),
     );
   }

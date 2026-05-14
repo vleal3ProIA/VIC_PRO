@@ -171,5 +171,36 @@
   "authErrorOtpInvalid": "Le code est invalide, expiré ou déjà utilisé. Utilisez le dernier code que nous avons envoyé.",
   "authErrorRateLimited": "Trop de tentatives. Veuillez réessayer plus tard.",
   "authErrorNetwork": "Erreur réseau. Vérifiez votre connexion.",
-  "authErrorUnknown": "Une erreur est survenue. Veuillez réessayer."
+  "authErrorUnknown": "Une erreur est survenue. Veuillez réessayer.",
+
+  "legalLastUpdated": "Dernière mise à jour : {date}",
+  "legalDraftNotice": "Ce document est un modèle en attente de révision juridique. Il ne constitue pas un conseil juridique.",
+
+  "termsTitle": "Conditions d'utilisation",
+  "termsS1Title": "1. Acceptation des conditions",
+  "termsS1Body": "En créant un compte ou en utilisant myapp, vous acceptez ces Conditions d'utilisation. Si vous n'êtes pas d'accord, n'utilisez pas le service.",
+  "termsS2Title": "2. Le service",
+  "termsS2Body": "myapp est une application web actuellement en développement. Les fonctionnalités peuvent changer, être ajoutées ou supprimées à tout moment sans préavis.",
+  "termsS3Title": "3. Votre compte",
+  "termsS3Body": "Vous êtes responsable de la sécurité de vos identifiants et de toute activité sur votre compte. Fournissez des informations exactes lors de l'inscription.",
+  "termsS4Title": "4. Usage acceptable",
+  "termsS4Body": "N'utilisez pas le service à des fins illicites, n'essayez pas de le perturber et n'accédez pas aux données d'autres utilisateurs sans autorisation.",
+  "termsS5Title": "5. Responsabilité",
+  "termsS5Body": "Le service est fourni \"en l'état\", sans garantie. Dans la mesure permise par la loi, nous ne sommes pas responsables des dommages indirects ou accessoires.",
+  "termsS6Title": "6. Modifications et contact",
+  "termsS6Body": "Nous pouvons mettre à jour ces conditions ; les changements importants seront annoncés dans l'application. Pour toute question, utilisez les coordonnées de la Politique de confidentialité.",
+
+  "privacyTitle": "Politique de confidentialité",
+  "privacyS1Title": "1. Responsable du traitement",
+  "privacyS1Body": "L'exploitant de myapp est le responsable du traitement des données personnelles traitées via cette application.",
+  "privacyS2Title": "2. Données que nous collectons",
+  "privacyS2Body": "Les données de compte que vous fournissez (nom d'utilisateur, e-mail) et les données techniques nécessaires au fonctionnement du service, comme les informations d'authentification et de session.",
+  "privacyS3Title": "3. Finalité et base légale",
+  "privacyS3Body": "Nous traitons vos données pour fournir et sécuriser le service, sur la base de l'exécution de notre contrat avec vous et de notre intérêt légitime à maintenir le service sûr.",
+  "privacyS4Title": "4. Sous-traitants et conservation",
+  "privacyS4Body": "L'authentification et le stockage sont assurés par Supabase, agissant comme notre sous-traitant. Nous conservons vos données tant que votre compte est actif et les supprimons sur demande.",
+  "privacyS5Title": "5. Vos droits",
+  "privacyS5Body": "Vous pouvez accéder à vos données, les rectifier, les supprimer ou les exporter, et vous opposer à leur traitement. Vous pouvez supprimer votre compte à tout moment depuis les Paramètres.",
+  "privacyS6Title": "6. Contact",
+  "privacyS6Body": "Pour exercer vos droits ou poser des questions sur cette politique, contactez-nous à l'adresse e-mail indiquée dans l'application. Vous pouvez aussi déposer une réclamation auprès de votre autorité de protection des données."
 }

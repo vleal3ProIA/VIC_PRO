@@ -171,5 +171,36 @@
   "authErrorOtpInvalid": "El código no es válido, ha caducado o ya se ha usado. Usa el último que te enviamos.",
   "authErrorRateLimited": "Demasiados intentos. Inténtalo más tarde.",
   "authErrorNetwork": "Error de red. Comprueba tu conexión.",
-  "authErrorUnknown": "Algo salió mal. Inténtalo de nuevo."
+  "authErrorUnknown": "Algo salió mal. Inténtalo de nuevo.",
+
+  "legalLastUpdated": "Última actualización: {date}",
+  "legalDraftNotice": "Este documento es una plantilla pendiente de revisión legal. No constituye asesoramiento jurídico.",
+
+  "termsTitle": "Términos de Servicio",
+  "termsS1Title": "1. Aceptación de los términos",
+  "termsS1Body": "Al crear una cuenta o usar myapp, aceptas estos Términos de Servicio. Si no estás de acuerdo, no uses el servicio.",
+  "termsS2Title": "2. El servicio",
+  "termsS2Body": "myapp es una aplicación web actualmente en desarrollo. Las funciones pueden cambiar, añadirse o eliminarse en cualquier momento sin previo aviso.",
+  "termsS3Title": "3. Tu cuenta",
+  "termsS3Body": "Eres responsable de mantener tus credenciales seguras y de toda la actividad de tu cuenta. Facilita información veraz al registrarte.",
+  "termsS4Title": "4. Uso aceptable",
+  "termsS4Body": "No uses el servicio con fines ilícitos, no intentes interrumpirlo ni accedas a datos de otros usuarios sin autorización.",
+  "termsS5Title": "5. Responsabilidad",
+  "termsS5Body": "El servicio se ofrece \"tal cual\", sin garantías. En la medida permitida por la ley, no respondemos de daños indirectos o incidentales.",
+  "termsS6Title": "6. Cambios y contacto",
+  "termsS6Body": "Podemos actualizar estos términos; los cambios significativos se anunciarán en la app. Para dudas, usa los datos de contacto de la Política de Privacidad.",
+
+  "privacyTitle": "Política de Privacidad",
+  "privacyS1Title": "1. Responsable del tratamiento",
+  "privacyS1Body": "El operador de myapp es el responsable del tratamiento de los datos personales procesados a través de esta aplicación.",
+  "privacyS2Title": "2. Datos que recopilamos",
+  "privacyS2Body": "Datos de cuenta que facilitas (nombre de usuario, email) y datos técnicos necesarios para operar el servicio, como información de autenticación y sesión.",
+  "privacyS3Title": "3. Finalidad y base legal",
+  "privacyS3Body": "Tratamos tus datos para prestar y proteger el servicio, sobre la base de la ejecución de nuestro contrato contigo y de nuestro interés legítimo en mantener el servicio seguro.",
+  "privacyS4Title": "4. Encargados y conservación",
+  "privacyS4Body": "La autenticación y el almacenamiento los proporciona Supabase, que actúa como encargado del tratamiento. Conservamos tus datos mientras tu cuenta esté activa y los eliminamos cuando lo solicites.",
+  "privacyS5Title": "5. Tus derechos",
+  "privacyS5Body": "Puedes acceder, rectificar, suprimir o exportar tus datos y oponerte a su tratamiento. Puedes eliminar tu cuenta en cualquier momento desde Ajustes.",
+  "privacyS6Title": "6. Contacto",
+  "privacyS6Body": "Para ejercer tus derechos o consultar sobre esta política, escríbenos a la dirección de email indicada en la app. También puedes reclamar ante tu autoridad de protección de datos."
 }

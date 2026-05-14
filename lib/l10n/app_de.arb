@@ -171,5 +171,36 @@
   "authErrorOtpInvalid": "Der Code ist ungültig, abgelaufen oder bereits verwendet. Nutze den zuletzt gesendeten Code.",
   "authErrorRateLimited": "Zu viele Versuche. Bitte später erneut versuchen.",
   "authErrorNetwork": "Netzwerkfehler. Überprüfe deine Verbindung.",
-  "authErrorUnknown": "Etwas ist schiefgelaufen. Bitte erneut versuchen."
+  "authErrorUnknown": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
+
+  "legalLastUpdated": "Zuletzt aktualisiert: {date}",
+  "legalDraftNotice": "Dieses Dokument ist eine Vorlage und steht noch unter rechtlicher Prüfung. Es stellt keine Rechtsberatung dar.",
+
+  "termsTitle": "Nutzungsbedingungen",
+  "termsS1Title": "1. Annahme der Bedingungen",
+  "termsS1Body": "Indem du ein Konto erstellst oder myapp nutzt, stimmst du diesen Nutzungsbedingungen zu. Wenn du nicht einverstanden bist, nutze den Dienst bitte nicht.",
+  "termsS2Title": "2. Der Dienst",
+  "termsS2Body": "myapp ist eine Webanwendung, die sich derzeit in Entwicklung befindet. Funktionen können jederzeit ohne Vorankündigung geändert, hinzugefügt oder entfernt werden.",
+  "termsS3Title": "3. Dein Konto",
+  "termsS3Body": "Du bist dafür verantwortlich, deine Zugangsdaten sicher zu verwahren, und für alle Aktivitäten in deinem Konto. Gib bei der Registrierung korrekte Angaben an.",
+  "termsS4Title": "4. Zulässige Nutzung",
+  "termsS4Body": "Nutze den Dienst nicht für rechtswidrige Zwecke, versuche nicht, ihn zu stören, und greife nicht ohne Erlaubnis auf Daten anderer Nutzer zu.",
+  "termsS5Title": "5. Haftung",
+  "termsS5Body": "Der Dienst wird \"wie besehen\" und ohne Gewährleistung bereitgestellt. Soweit gesetzlich zulässig, haften wir nicht für indirekte oder beiläufige Schäden.",
+  "termsS6Title": "6. Änderungen und Kontakt",
+  "termsS6Body": "Wir können diese Bedingungen aktualisieren; wesentliche Änderungen werden in der App angekündigt. Bei Fragen nutze die Kontaktdaten in der Datenschutzerklärung.",
+
+  "privacyTitle": "Datenschutzerklärung",
+  "privacyS1Title": "1. Verantwortlicher",
+  "privacyS1Body": "Der Betreiber von myapp ist der Verantwortliche für die über diese Anwendung verarbeiteten personenbezogenen Daten.",
+  "privacyS2Title": "2. Welche Daten wir erheben",
+  "privacyS2Body": "Kontodaten, die du angibst (Benutzername, E-Mail), und technische Daten, die für den Betrieb des Dienstes nötig sind, etwa Authentifizierungs- und Sitzungsinformationen.",
+  "privacyS3Title": "3. Zweck und Rechtsgrundlage",
+  "privacyS3Body": "Wir verarbeiten deine Daten, um den Dienst bereitzustellen und abzusichern, auf Grundlage der Erfüllung unseres Vertrags mit dir und unseres berechtigten Interesses an einem sicheren Dienst.",
+  "privacyS4Title": "4. Auftragsverarbeiter und Speicherung",
+  "privacyS4Body": "Authentifizierung und Speicherung werden von Supabase als unserem Auftragsverarbeiter bereitgestellt. Wir speichern deine Daten, solange dein Konto aktiv ist, und löschen sie auf Anfrage.",
+  "privacyS5Title": "5. Deine Rechte",
+  "privacyS5Body": "Du kannst deine Daten einsehen, berichtigen, löschen oder exportieren und der Verarbeitung widersprechen. Du kannst dein Konto jederzeit in den Einstellungen löschen.",
+  "privacyS6Title": "6. Kontakt",
+  "privacyS6Body": "Um deine Rechte auszuüben oder Fragen zu dieser Erklärung zu stellen, kontaktiere uns unter der in der App angegebenen E-Mail-Adresse. Du kannst dich auch bei deiner Datenschutzbehörde beschweren."
 }
