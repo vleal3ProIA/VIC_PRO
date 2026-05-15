@@ -46,4 +46,62 @@ class BillingDataSource {
     if (raw is Map) return Entitlements(Map<String, dynamic>.from(raw));
     return const Entitlements.empty();
   }
+
+  /// Crea una sesión de Stripe Checkout y devuelve la URL. La UI redirige
+  /// al usuario a esa URL — Stripe maneja el pago y al terminar manda al
+  /// `successUrl` (o `cancelUrl` si abandona).
+  ///
+  /// Lanza [BillingException] con el `code` del backend si falla.
+  Future<({String url, String sessionId})> createCheckoutSession({
+    required String tenantId,
+    required String planSlug,
+    required String billingPeriod,
+    required String successUrl,
+    required String cancelUrl,
+  }) async {
+    final response = await _client.functions.invoke(
+      'stripe-checkout',
+      body: {
+        'tenant_id': tenantId,
+        'plan_slug': planSlug,
+        'billing_period': billingPeriod,
+        'success_url': successUrl,
+        'cancel_url': cancelUrl,
+      },
+    );
+    final payload = response.data as Map<String, dynamic>?;
+    if (payload == null) throw const BillingException('empty_response');
+    if (payload['error'] != null) {
+      throw BillingException(payload['error'] as String);
+    }
+    return (
+      url: payload['url'] as String,
+      sessionId: payload['session_id'] as String,
+    );
+  }
+
+  /// Crea una sesión del Customer Portal de Stripe y devuelve su URL.
+  Future<String> createCustomerPortalSession({
+    required String tenantId,
+    required String returnUrl,
+  }) async {
+    final response = await _client.functions.invoke(
+      'stripe-portal',
+      body: {'tenant_id': tenantId, 'return_url': returnUrl},
+    );
+    final payload = response.data as Map<String, dynamic>?;
+    if (payload == null) throw const BillingException('empty_response');
+    if (payload['error'] != null) {
+      throw BillingException(payload['error'] as String);
+    }
+    return payload['url'] as String;
+  }
+}
+
+/// Excepción con `code` para mapear a mensajes localizados en la UI.
+class BillingException implements Exception {
+  const BillingException(this.code);
+  final String code;
+  @override
+  String toString() => 'BillingException($code)';
 }

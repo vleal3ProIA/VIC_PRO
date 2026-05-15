@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/features/tenants/application/tenant_providers.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../application/billing_providers.dart';
+import '../../data/billing_datasource.dart';
 import '../../domain/plan.dart';
 
 /// Pantalla `/billing/plans` — catálogo de planes + indicador del actual.
@@ -35,7 +37,15 @@ class _PlansPageState extends ConsumerState<PlansPage> {
         ),
         title: Text(l.plansTitle),
         actions: [
-          // Toggle Monthly / Yearly.
+          if (currentPlan != null && !currentPlan.isFree)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: TextButton.icon(
+                icon: const Icon(Icons.credit_card_outlined, size: 18),
+                label: Text(l.plansManageBilling),
+                onPressed: () => _onManageBilling(context),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: SegmentedButton<bool>(
@@ -94,9 +104,35 @@ class _PlansPageState extends ConsumerState<PlansPage> {
       ),
     );
   }
+
+  /// Lanza el Customer Portal de Stripe en la pestaña actual.
+  Future<void> _onManageBilling(BuildContext context) async {
+    final tenantId = ref.read(currentTenantIdProvider);
+    if (tenantId == null) return;
+    try {
+      final url = await launchCustomerPortal(
+        ref,
+        tenantId: tenantId,
+        returnUrl: Uri.base.toString(),
+      );
+      if (url == null || !context.mounted) return;
+      await launchUrl(Uri.parse(url), webOnlyWindowName: '_self');
+    } on BillingException catch (e) {
+      if (!context.mounted) return;
+      context.showSnack(
+        e.code == 'stripe_not_configured'
+            ? context.l10n.plansStripeNotConfigured
+            : context.l10n.plansCheckoutFailed,
+        isError: true,
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      context.showSnack(context.l10n.plansCheckoutFailed, isError: true);
+    }
+  }
 }
 
-class _PlanCard extends StatelessWidget {
+class _PlanCard extends ConsumerWidget {
   const _PlanCard({
     required this.plan,
     required this.yearly,
@@ -107,7 +143,7 @@ class _PlanCard extends StatelessWidget {
   final bool isCurrent;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final priceText = plan.formatPrice(yearly: yearly);
     return Card(
@@ -211,13 +247,7 @@ class _PlanCard extends StatelessWidget {
                           },
                           child: Text(l.plansContactSales),
                         )
-                      : FilledButton(
-                          onPressed: () {
-                            // Stripe llega en 1.E — placeholder por ahora.
-                            context.showSnack(l.plansUpgradeComingSoon);
-                          },
-                          child: Text(l.plansUpgrade),
-                        ),
+                      : _UpgradeButton(plan: plan, yearly: yearly),
             ),
           ],
         ),
@@ -284,5 +314,93 @@ class _PlanCard extends StatelessWidget {
     if (boolVal('white_label') ?? false) out.add(l.planFeatureWhiteLabel);
 
     return out;
+  }
+}
+
+/// Botón "Upgrade" que invoca la Edge Function `stripe-checkout` y
+/// redirige al usuario a la URL de Stripe Checkout (en la misma pestaña).
+class _UpgradeButton extends ConsumerStatefulWidget {
+  const _UpgradeButton({required this.plan, required this.yearly});
+  final Plan plan;
+  final bool yearly;
+  @override
+  ConsumerState<_UpgradeButton> createState() => _UpgradeButtonState();
+}
+
+class _UpgradeButtonState extends ConsumerState<_UpgradeButton> {
+  bool _busy = false;
+
+  Future<void> _onPressed() async {
+    final tenantId = ref.read(currentTenantIdProvider);
+    if (tenantId == null) return;
+    setState(() => _busy = true);
+    try {
+      final base = Uri.base;
+      final success = Uri(
+        scheme: base.scheme,
+        host: base.host,
+        port: base.hasPort && base.port != 80 && base.port != 443
+            ? base.port
+            : null,
+        path: RoutePaths.billingSuccess,
+        queryParameters: const {'session_id': '{CHECKOUT_SESSION_ID}'},
+      ).toString();
+      final cancel = Uri(
+        scheme: base.scheme,
+        host: base.host,
+        port: base.hasPort && base.port != 80 && base.port != 443
+            ? base.port
+            : null,
+        path: RoutePaths.plans,
+      ).toString();
+
+      final url = await launchCheckout(
+        ref,
+        tenantId: tenantId,
+        planSlug: widget.plan.slug,
+        billingPeriod: widget.yearly ? 'yearly' : 'monthly',
+        successUrl: success,
+        cancelUrl: cancel,
+      );
+      if (url == null) return;
+      // Web: full-page redirect en la misma pestaña.
+      // url_launcher con webOnlyWindowName: '_self' lo logra.
+      await launchUrl(
+        Uri.parse(url),
+        webOnlyWindowName: '_self',
+      );
+    } on BillingException catch (e) {
+      if (!mounted) return;
+      context.showSnack(_mapError(e.code), isError: true);
+    } catch (_) {
+      if (!mounted) return;
+      context.showSnack(context.l10n.plansCheckoutFailed, isError: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  String _mapError(String code) {
+    final l = context.l10n;
+    return switch (code) {
+      'stripe_not_configured' => l.plansStripeNotConfigured,
+      'rate_limited' => l.plansRateLimited,
+      'not_admin' || 'not_member' => l.plansNotAdmin,
+      _ => l.plansCheckoutFailed,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton(
+      onPressed: _busy ? null : _onPressed,
+      child: _busy
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2.4),
+            )
+          : Text(context.l10n.plansUpgrade),
+    );
   }
 }
