@@ -31,6 +31,11 @@ class EnvConfig {
   static bool get enableAnalytics =>
       dotenv.get('ENABLE_ANALYTICS', fallback: 'false').toLowerCase() == 'true';
 
+  /// Si `true`, fuerza el modo JSON estructurado del logger incluso en dev.
+  /// Útil para probar el formato de logs en local sin desplegar.
+  static bool get forceStructuredLogs =>
+      dotenv.get('STRUCTURED_LOGS', fallback: 'false').toLowerCase() == 'true';
+
   static Future<void> load({Environment env = Environment.development}) async {
     _environment = env;
     await dotenv.load();

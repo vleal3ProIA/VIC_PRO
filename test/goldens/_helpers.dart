@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:myapp/core/constants/supported_locales.dart';
+import 'package:myapp/core/observability/analytics_service.dart';
 import 'package:myapp/core/providers/preferences_provider.dart';
 import 'package:myapp/features/audit/application/audit_logger.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
@@ -84,5 +85,8 @@ Future<List<Override>> defaultGoldenOverrides() async {
   return [
     sharedPreferencesProvider.overrideWithValue(prefs),
     auditLoggerProvider.overrideWithValue(const AuditLogger.noop()),
+    analyticsServiceProvider.overrideWithValue(
+      AnalyticsService(backend: const NoopAnalyticsBackend()),
+    ),
   ];
 }

@@ -25,6 +25,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -82,7 +83,7 @@ function jwtAal(token: string): string | null {
   }
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withSentry("mfa-recovery", async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -222,4 +223,4 @@ Deno.serve(async (req) => {
   } catch (e) {
     return json({ error: "internal_error", detail: String(e) }, 500);
   }
-});
+}));

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myapp/core/constants/app_constants.dart';
 import 'package:myapp/core/constants/supported_locales.dart';
+import 'package:myapp/core/observability/analytics_service.dart';
+import 'package:myapp/core/observability/sentry_user_sync.dart';
 import 'package:myapp/core/providers/locale_provider.dart';
 import 'package:myapp/core/providers/theme_provider.dart';
 import 'package:myapp/core/router/app_router.dart';
@@ -16,6 +18,11 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Side-effect-only: mantienen Sentry y Analytics sincronizados con la
+    // sesión de Supabase.
+    ref.watch(sentryUserSyncProvider);
+    ref.watch(analyticsUserSyncProvider);
+
     final router = ref.watch(goRouterProvider);
     final themeMode = ref.watch(themeNotifierProvider);
     final locale = ref.watch(effectiveLocaleProvider);

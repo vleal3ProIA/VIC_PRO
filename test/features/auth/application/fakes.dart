@@ -1,4 +1,5 @@
 import 'package:fpdart/fpdart.dart';
+import 'package:myapp/core/observability/analytics_service.dart';
 import 'package:myapp/features/audit/application/audit_logger.dart';
 import 'package:myapp/features/auth/domain/entities/mfa_enrollment.dart';
 import 'package:myapp/features/auth/domain/entities/sign_up_request.dart';
@@ -10,6 +11,24 @@ import 'package:myapp/features/auth/domain/repositories/auth_repository.dart';
 /// tests no hay Supabase. Este override hace que `log()` sea no-op.
 final auditLoggerNoopOverride =
     auditLoggerProvider.overrideWithValue(const AuditLogger.noop());
+
+/// Override que neutraliza el servicio de analytics en tests de unidad:
+/// el provider real lee `EnvConfig.enableAnalytics` (dotenv) y la mayoría
+/// de tests no inicializan dotenv. Este override usa el backend noop sin
+/// tocar el entorno.
+final analyticsNoopOverride = analyticsServiceProvider.overrideWithValue(
+  AnalyticsService(
+    backend: const NoopAnalyticsBackend(),
+  ),
+);
+
+/// Lista convencional de overrides "neutralizadores" que todo test de
+/// notifier que dispare analytics/audit/etc. debe incluir. Reduce el
+/// boilerplate en `setUp` de cada test.
+final commonNotifierOverrides = [
+  auditLoggerNoopOverride,
+  analyticsNoopOverride,
+];
 
 /// Fake controlable de `AuthRepository` para tests de notifiers.
 /// Cada método guarda los argumentos recibidos y devuelve la respuesta

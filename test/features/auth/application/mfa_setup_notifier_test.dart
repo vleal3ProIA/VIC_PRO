@@ -17,7 +17,7 @@ void main() {
     container = ProviderContainer(
       overrides: [
         authRepositoryProvider.overrideWithValue(repo),
-        auditLoggerNoopOverride,
+        ...commonNotifierOverrides,
       ],
     );
     addTearDown(container.dispose);

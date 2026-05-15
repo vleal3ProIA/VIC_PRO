@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:formz/formz.dart';
 
+import 'package:myapp/core/observability/analytics_event.dart';
+import 'package:myapp/core/observability/analytics_service.dart';
 import 'package:myapp/core/providers/locale_provider.dart';
 import 'package:myapp/core/providers/theme_provider.dart';
+import 'package:myapp/core/utils/log_context.dart';
 import 'package:myapp/core/validation/email.dart';
 import 'package:myapp/core/validation/password.dart';
 import 'package:myapp/core/validation/password_confirmation.dart';
@@ -121,33 +124,55 @@ class RegisterNotifier extends Notifier<RegisterState> {
     state = state.copyWith(showErrors: true, clearFailure: true);
     if (!state.isValid) return;
 
-    state = state.copyWith(status: RegisterStatus.submitting);
+    await LogContext.run(
+      tags: {'flow': 'signup'},
+      () async {
+        final analytics = ref.read(analyticsServiceProvider);
+        analytics.trackSync(AnalyticsEvents.signupStarted);
 
-    // Idioma y tema que el usuario está viendo ahora mismo: viajan en el
-    // signUp para que su perfil se cree con estas preferencias y el primer
-    // login no le cambie el idioma a 'en'.
-    final locale = ref.read(effectiveLocaleProvider).languageCode;
-    final themeMode = ref.read(themeNotifierProvider).name;
+        state = state.copyWith(status: RegisterStatus.submitting);
 
-    final repo = ref.read(authRepositoryProvider);
-    final result = await repo.signUp(
-      SignUpRequest(
-        username: state.username.value.trim(),
-        email: state.email.value.trim(),
-        password: state.password.value,
-        locale: locale,
-        themeMode: themeMode,
-      ),
-    );
-    result.match(
-      (failure) => state = state.copyWith(
-        status: RegisterStatus.failure,
-        failure: failure,
-      ),
-      (ok) => state = state.copyWith(
-        status: RegisterStatus.success,
-        signedUpEmail: ok.email,
-      ),
+        // Idioma y tema que el usuario está viendo ahora mismo: viajan en el
+        // signUp para que su perfil se cree con estas preferencias y el
+        // primer login no le cambie el idioma a 'en'.
+        final locale = ref.read(effectiveLocaleProvider).languageCode;
+        final themeMode = ref.read(themeNotifierProvider).name;
+
+        final repo = ref.read(authRepositoryProvider);
+        final result = await repo.signUp(
+          SignUpRequest(
+            username: state.username.value.trim(),
+            email: state.email.value.trim(),
+            password: state.password.value,
+            locale: locale,
+            themeMode: themeMode,
+          ),
+        );
+        result.match(
+          (failure) {
+            state = state.copyWith(
+              status: RegisterStatus.failure,
+              failure: failure,
+            );
+            analytics.trackSync(
+              AnalyticsEvents.signupFailed,
+              properties: {'reason': failure.runtimeType.toString()},
+            );
+          },
+          (ok) {
+            state = state.copyWith(
+              status: RegisterStatus.success,
+              signedUpEmail: ok.email,
+            );
+            analytics.trackSync(
+              AnalyticsEvents.signupSucceeded,
+              properties: {
+                'needs_email_confirmation': ok.needsEmailConfirmation,
+              },
+            );
+          },
+        );
+      },
     );
   }
 

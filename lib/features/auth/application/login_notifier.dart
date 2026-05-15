@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:formz/formz.dart';
 
+import 'package:myapp/core/observability/analytics_event.dart';
+import 'package:myapp/core/observability/analytics_service.dart';
 import 'package:myapp/core/storage/storage_providers.dart';
+import 'package:myapp/core/utils/log_context.dart';
 import 'package:myapp/core/validation/email.dart';
 import 'package:myapp/features/audit/application/audit_logger.dart';
 import 'package:myapp/features/audit/domain/audit_events.dart';
@@ -97,27 +100,45 @@ class LoginNotifier extends Notifier<LoginState> {
     state = state.copyWith(showErrors: true, clearFailure: true);
     if (!state.isValid) return;
 
-    // Aplicamos la preferencia ANTES del signIn para que la primera
-    // llamada a `persistSession` use el backend correcto.
-    await ref
-        .read(rememberAwareStorageProvider)
-        .setRememberMe(value: state.rememberMe);
+    // Toda la operación corre dentro de un LogContext único: cualquier log
+    // (cliente, auditoría, analytics, Sentry) se asocia al mismo
+    // `correlation_id` y a las mismas tags.
+    await LogContext.run(
+      tags: {'flow': 'login', 'method': 'password'},
+      () async {
+        final analytics = ref.read(analyticsServiceProvider);
+        analytics.trackSync(AnalyticsEvents.loginStarted);
 
-    state = state.copyWith(status: LoginStatus.submitting);
-    final repo = ref.read(authRepositoryProvider);
-    final result = await repo.signIn(
-      email: state.email.value.trim(),
-      password: state.password.value,
-    );
-    result.match(
-      (failure) => state = state.copyWith(
-        status: LoginStatus.failure,
-        failure: failure,
-      ),
-      (_) {
-        state = state.copyWith(status: LoginStatus.success);
-        // Audit trail (fire-and-forget; no bloquea el flujo de login).
-        ref.read(auditLoggerProvider).log(AuditEvents.loginPassword);
+        // Aplicamos la preferencia ANTES del signIn para que la primera
+        // llamada a `persistSession` use el backend correcto.
+        await ref
+            .read(rememberAwareStorageProvider)
+            .setRememberMe(value: state.rememberMe);
+
+        state = state.copyWith(status: LoginStatus.submitting);
+        final repo = ref.read(authRepositoryProvider);
+        final result = await repo.signIn(
+          email: state.email.value.trim(),
+          password: state.password.value,
+        );
+        result.match(
+          (failure) {
+            state = state.copyWith(
+              status: LoginStatus.failure,
+              failure: failure,
+            );
+            analytics.trackSync(
+              AnalyticsEvents.loginFailed,
+              properties: {'reason': failure.runtimeType.toString()},
+            );
+          },
+          (_) {
+            state = state.copyWith(status: LoginStatus.success);
+            // Audit trail (fire-and-forget; no bloquea el flujo de login).
+            ref.read(auditLoggerProvider).log(AuditEvents.loginPassword);
+            analytics.trackSync(AnalyticsEvents.loginSucceeded);
+          },
+        );
       },
     );
   }

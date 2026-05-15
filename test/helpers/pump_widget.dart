@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/core/constants/supported_locales.dart';
+import 'package:myapp/core/observability/analytics_service.dart';
 import 'package:myapp/core/providers/preferences_provider.dart';
 import 'package:myapp/features/audit/application/audit_logger.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
@@ -73,6 +74,11 @@ Future<void> pumpForTest(
         sharedPreferencesProvider.overrideWithValue(prefs),
         // Sin Supabase real en tests: el logger no toca BD.
         auditLoggerProvider.overrideWithValue(const AuditLogger.noop()),
+        // Sin dotenv en tests: forzamos backend de analytics noop para que
+        // el provider real no intente leer `ENABLE_ANALYTICS`.
+        analyticsServiceProvider.overrideWithValue(
+          AnalyticsService(backend: const NoopAnalyticsBackend()),
+        ),
         ...overrides,
       ],
       child: MaterialApp.router(
