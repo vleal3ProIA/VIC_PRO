@@ -16,6 +16,7 @@ String authFailureMessage(BuildContext context, AuthFailure failure) {
     AuthMfaInvalid() => l.authErrorMfaInvalid,
     AuthRateLimited() => l.authErrorRateLimited,
     AuthNetworkError() => l.authErrorNetwork,
+    AuthPasskeyFailed() => l.passkeyActionFailure,
     AuthUnknown() => l.authErrorUnknown,
   };
 }

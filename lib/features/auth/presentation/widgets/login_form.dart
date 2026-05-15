@@ -10,6 +10,7 @@ import 'package:myapp/core/widgets/app_text_field.dart';
 import 'package:myapp/core/widgets/error_text_slot.dart';
 import 'package:myapp/features/auth/application/login_notifier.dart';
 import 'package:myapp/features/auth/application/oauth_notifier.dart';
+import 'package:myapp/features/auth/application/passkey_notifier.dart';
 import 'package:myapp/features/auth/presentation/widgets/auth_failure_message.dart';
 import 'package:myapp/features/auth/presentation/widgets/social_sign_in_button.dart';
 
@@ -53,15 +54,27 @@ class _LoginFormState extends ConsumerState<LoginForm> {
       }
     });
 
+    // Tras un login con passkey, navegamos también explícitamente (la
+    // sesión ya está minteada, el guard de /home la verá fresca).
+    ref.listen<PasskeyActionState>(passkeyNotifierProvider, (prev, next) {
+      if (prev?.status != PasskeyActionStatus.success &&
+          next.status == PasskeyActionStatus.success) {
+        context.goNamed(RouteNames.home);
+      }
+    });
+
     final state = ref.watch(loginNotifierProvider);
     final notifier = ref.read(loginNotifierProvider.notifier);
     final oauthState = ref.watch(oauthNotifierProvider);
     final oauthNotifier = ref.read(oauthNotifierProvider.notifier);
+    final passkeyState = ref.watch(passkeyNotifierProvider);
+    final passkeyNotifier = ref.read(passkeyNotifierProvider.notifier);
     final l = context.l10n;
 
-    // Cualquier acción en curso (login con password u OAuth redirigiendo)
-    // bloquea el resto de botones para evitar disparos simultáneos.
-    final busy = state.isSubmitting || oauthState.isBusy;
+    // Cualquier acción en curso (login con password, OAuth, passkey) bloquea
+    // el resto de botones para evitar disparos simultáneos.
+    final busy =
+        state.isSubmitting || oauthState.isBusy || passkeyState.isBusy;
 
     String? errOrNull({required bool show, required String? msg}) =>
         show ? msg : null;
@@ -182,6 +195,21 @@ class _LoginFormState extends ConsumerState<LoginForm> {
               ),
               const Expanded(child: Divider()),
             ],
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: busy ? null : passkeyNotifier.login,
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
+            icon: passkeyState.isBusy
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2.4),
+                  )
+                : const Icon(Icons.fingerprint, size: 20),
+            label: Text(l.loginWithPasskey),
           ),
           const SizedBox(height: 8),
           SocialSignInButton(
