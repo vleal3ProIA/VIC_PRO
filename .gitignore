@@ -148,3 +148,7 @@ Desktop.ini
 .fvm/
 .fvmrc.local
 fvm_config.json
+
+# Supabase CLI local state (linkado, secrets locales, etc.). Es per-máquina.
+supabase/.temp/
+supabase/.branches/
