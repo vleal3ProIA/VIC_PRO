@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/features/billing/application/billing_providers.dart';
 
 import '../../application/team_providers.dart';
 import '../../application/tenant_providers.dart';
@@ -31,6 +32,17 @@ class TeamPage extends ConsumerWidget {
     final tenant = ref.watch(currentTenantProvider).valueOrNull;
     final membersAsync = ref.watch(currentTenantMembersProvider);
     final invitationsAsync = ref.watch(currentTenantInvitationsProvider);
+    final entitlements = ref.watch(currentEntitlementsProvider).valueOrNull;
+    final memberCount = membersAsync.valueOrNull?.length ?? 0;
+    final pendingCount =
+        invitationsAsync.valueOrNull?.where((i) => i.isPending).length ?? 0;
+    // members actuales + invitaciones pendientes cuentan para el límite,
+    // así no se puede sortear invitando a 100 personas que aún no aceptaron.
+    final atLimit = entitlements?.atOrOverLimit(
+          'max_members',
+          current: memberCount + pendingCount,
+        ) ??
+        false;
 
     return Scaffold(
       appBar: AppBar(
@@ -43,10 +55,15 @@ class TeamPage extends ConsumerWidget {
           if (tenant != null && _canInvite(ref))
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: FilledButton.icon(
-                onPressed: () => _onInvite(context, ref, tenant),
-                icon: const Icon(Icons.person_add_outlined, size: 18),
-                label: Text(l.teamInviteAction),
+              child: Tooltip(
+                message: atLimit ? l.teamInviteLimitReached : '',
+                child: FilledButton.icon(
+                  onPressed: atLimit
+                      ? null
+                      : () => _onInvite(context, ref, tenant),
+                  icon: const Icon(Icons.person_add_outlined, size: 18),
+                  label: Text(l.teamInviteAction),
+                ),
               ),
             ),
         ],
