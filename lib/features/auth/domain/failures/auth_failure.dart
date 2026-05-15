@@ -42,6 +42,14 @@ class AuthMfaInvalid extends AuthFailure {
   const AuthMfaInvalid({super.cause});
 }
 
+/// Cualquier fallo del flujo de passkeys (cancelado por el usuario, navegador
+/// sin soporte, firma inválida, etc.). El detalle interno queda en `cause` /
+/// `message`; la UI muestra un mensaje genérico.
+class AuthPasskeyFailed extends AuthFailure {
+  const AuthPasskeyFailed({super.cause, this.message});
+  final String? message;
+}
+
 class AuthUnknown extends AuthFailure {
   const AuthUnknown({super.cause, this.message});
   final String? message;

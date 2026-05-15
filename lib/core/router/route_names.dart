@@ -26,6 +26,7 @@ class RouteNames {
   static const String changeEmailSent = 'change_email_sent';
   static const String emailChanged = 'email_changed';
   static const String deleteAccount = 'delete_account';
+  static const String passkeys = 'passkeys';
   static const String terms = 'terms';
   static const String privacy = 'privacy';
   static const String notFound = 'not_found';
@@ -62,6 +63,7 @@ class RoutePaths {
   static const String changeEmailSent = '/change-email-sent';
   static const String emailChanged = '/email-changed';
   static const String deleteAccount = '/delete-account';
+  static const String passkeys = '/passkeys';
   static const String terms = '/terms';
   static const String privacy = '/privacy';
 }

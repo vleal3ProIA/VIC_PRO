@@ -24,6 +24,7 @@ import 'package:myapp/features/auth/presentation/pages/mfa_challenge_page.dart';
 import 'package:myapp/features/auth/presentation/pages/mfa_setup_page.dart';
 import 'package:myapp/features/auth/presentation/pages/otp_request_page.dart';
 import 'package:myapp/features/auth/presentation/pages/otp_verify_page.dart';
+import 'package:myapp/features/auth/presentation/pages/passkeys_page.dart';
 import 'package:myapp/features/auth/presentation/pages/password_reset_sent_page.dart';
 import 'package:myapp/features/auth/presentation/pages/password_updated_page.dart';
 import 'package:myapp/features/auth/presentation/pages/register_page.dart';
@@ -198,6 +199,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const DeleteAccountPage(),
       ),
       GoRoute(
+        path: RoutePaths.passkeys,
+        name: RouteNames.passkeys,
+        builder: (_, __) => const PasskeysPage(),
+      ),
+      GoRoute(
         path: RoutePaths.terms,
         name: RouteNames.terms,
         builder: (_, __) => const TermsPage(),
@@ -242,6 +248,7 @@ const _privateRoutes = <String>{
   RoutePaths.changeEmail,
   RoutePaths.changeEmailSent,
   RoutePaths.deleteAccount,
+  RoutePaths.passkeys,
 };
 
 /// Rutas que además requieren rol `admin`. Un usuario autenticado sin ese
