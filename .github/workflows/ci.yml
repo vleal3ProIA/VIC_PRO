@@ -115,8 +115,23 @@ jobs:
         continue-on-error: true
 
       # ----- Build -----------------------------------------------------------
+      # Las flags `--dart-define` bakean los valores en el bundle JS final.
+      # - `ENV=ci`         → EnvConfig lo trata como `development` (no
+      #                       contamina métricas de prod si alguien sirve
+      #                       este artifact).
+      # - `SENTRY_DSN`     → del secret SENTRY_DSN_WEB del repo. Si está
+      #                       vacío (PR de fork sin secrets, p.ej.) el
+      #                       SentryService queda en no-op sin romper nada.
+      # - `APP_VERSION`    → tag de release para agrupar eventos en Sentry.
       - name: Build web (release)
-        run: flutter build web --release --dart-define=ENV=ci
+        env:
+          SENTRY_DSN_WEB: ${{ secrets.SENTRY_DSN_WEB }}
+          APP_VERSION: ${{ secrets.APP_VERSION }}
+        run: |
+          flutter build web --release \
+            --dart-define=ENV=ci \
+            --dart-define=SENTRY_DSN="$SENTRY_DSN_WEB" \
+            --dart-define=APP_VERSION="$APP_VERSION"
 
       - name: Upload web build artifact
         uses: actions/upload-artifact@v4
