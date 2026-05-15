@@ -238,6 +238,10 @@
   "privacyS6Title": "6. Contatti",
   "privacyS6Body": "Per esercitare i tuoi diritti o porre domande su questa informativa, scrivici all'indirizzo email indicato nell'app. Puoi anche presentare reclamo all'autorità per la protezione dei dati.",
 
+  "settingsDownloadData": "Scarica i miei dati",
+  "settingsDownloadDataHint": "Una copia dei tuoi dati personali in JSON (GDPR).",
+  "dataExportStarted": "Download avviato",
+  "dataExportFailed": "Impossibile generare il download.",
   "settingsDeleteAccount": "Elimina account",
   "deleteAccountTitle": "Elimina account",
   "deleteAccountSubtitle": "Questa azione è permanente e non può essere annullata.",

@@ -238,6 +238,10 @@
   "privacyS6Title": "6. Kontakt",
   "privacyS6Body": "Um deine Rechte auszuüben oder Fragen zu dieser Erklärung zu stellen, kontaktiere uns unter der in der App angegebenen E-Mail-Adresse. Du kannst dich auch bei deiner Datenschutzbehörde beschweren.",
 
+  "settingsDownloadData": "Meine Daten herunterladen",
+  "settingsDownloadDataHint": "Eine Kopie deiner persönlichen Daten als JSON (DSGVO).",
+  "dataExportStarted": "Download gestartet",
+  "dataExportFailed": "Der Download konnte nicht erstellt werden.",
   "settingsDeleteAccount": "Konto löschen",
   "deleteAccountTitle": "Konto löschen",
   "deleteAccountSubtitle": "Diese Aktion ist dauerhaft und kann nicht rückgängig gemacht werden.",

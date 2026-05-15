@@ -238,6 +238,10 @@
   "privacyS6Title": "6. Contact",
   "privacyS6Body": "Pour exercer vos droits ou poser des questions sur cette politique, contactez-nous à l'adresse e-mail indiquée dans l'application. Vous pouvez aussi déposer une réclamation auprès de votre autorité de protection des données.",
 
+  "settingsDownloadData": "Télécharger mes données",
+  "settingsDownloadDataHint": "Une copie de vos données personnelles au format JSON (RGPD).",
+  "dataExportStarted": "Téléchargement lancé",
+  "dataExportFailed": "Impossible de générer le téléchargement.",
   "settingsDeleteAccount": "Supprimer le compte",
   "deleteAccountTitle": "Supprimer le compte",
   "deleteAccountSubtitle": "Cette action est permanente et irréversible.",
