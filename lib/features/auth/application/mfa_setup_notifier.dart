@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:myapp/features/audit/application/audit_logger.dart';
+import 'package:myapp/features/audit/domain/audit_events.dart';
 import 'package:myapp/features/auth/application/auth_providers.dart';
 import 'package:myapp/features/auth/application/mfa_providers.dart';
 import 'package:myapp/features/auth/domain/entities/mfa_enrollment.dart';
@@ -143,8 +147,9 @@ class MfaSetupNotifier extends Notifier<MfaSetupState> {
       state = state.copyWith(step: MfaSetupStep.qrCode, failure: failure);
       return;
     }
-    // MFA ya está activo. Ahora generamos los códigos de recuperación.
+    // MFA ya está activo. Audita el evento + genera los códigos de recuperación.
     ref.invalidate(mfaFactorsProvider);
+    unawaited(ref.read(auditLoggerProvider).log(AuditEvents.mfaEnabled));
     await _generateRecoveryCodes();
   }
 
@@ -196,6 +201,7 @@ class MfaSetupNotifier extends Notifier<MfaSetupState> {
       (_) {
         state = state.copyWith(step: MfaSetupStep.disabled);
         ref.invalidate(mfaFactorsProvider);
+        ref.read(auditLoggerProvider).log(AuditEvents.mfaDisabled);
       },
     );
   }

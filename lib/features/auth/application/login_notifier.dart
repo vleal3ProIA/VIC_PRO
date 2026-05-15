@@ -3,6 +3,8 @@ import 'package:formz/formz.dart';
 
 import 'package:myapp/core/storage/storage_providers.dart';
 import 'package:myapp/core/validation/email.dart';
+import 'package:myapp/features/audit/application/audit_logger.dart';
+import 'package:myapp/features/audit/domain/audit_events.dart';
 import 'package:myapp/features/auth/application/auth_providers.dart';
 import 'package:myapp/features/auth/domain/failures/auth_failure.dart';
 
@@ -112,7 +114,11 @@ class LoginNotifier extends Notifier<LoginState> {
         status: LoginStatus.failure,
         failure: failure,
       ),
-      (_) => state = state.copyWith(status: LoginStatus.success),
+      (_) {
+        state = state.copyWith(status: LoginStatus.success);
+        // Audit trail (fire-and-forget; no bloquea el flujo de login).
+        ref.read(auditLoggerProvider).log(AuditEvents.loginPassword);
+      },
     );
   }
 

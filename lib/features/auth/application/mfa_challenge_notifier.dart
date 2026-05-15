@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:myapp/features/audit/application/audit_logger.dart';
+import 'package:myapp/features/audit/domain/audit_events.dart';
 import 'package:myapp/features/auth/application/auth_providers.dart';
 import 'package:myapp/features/auth/domain/entities/mfa_enrollment.dart';
 import 'package:myapp/features/auth/domain/failures/auth_failure.dart';
@@ -147,7 +149,11 @@ class MfaChallengeNotifier extends Notifier<MfaChallengeState> {
         status: MfaChallengeStatus.failure,
         failure: failure,
       ),
-      (_) => state = state.copyWith(status: MfaChallengeStatus.success),
+      (_) {
+        state = state.copyWith(status: MfaChallengeStatus.success);
+        // Evento crítico: el recovery code eliminó el factor MFA del usuario.
+        ref.read(auditLoggerProvider).log(AuditEvents.loginMfaRecovery);
+      },
     );
   }
 }

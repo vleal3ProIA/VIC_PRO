@@ -3,6 +3,8 @@ import 'package:formz/formz.dart';
 
 import 'package:myapp/core/validation/password.dart';
 import 'package:myapp/core/validation/password_confirmation.dart';
+import 'package:myapp/features/audit/application/audit_logger.dart';
+import 'package:myapp/features/audit/domain/audit_events.dart';
 import 'package:myapp/features/auth/application/auth_providers.dart';
 import 'package:myapp/features/auth/domain/failures/auth_failure.dart';
 
@@ -112,7 +114,10 @@ class ChangePasswordNotifier extends Notifier<ChangePasswordState> {
         status: ChangePasswordStatus.failure,
         failure: failure,
       ),
-      (_) => state = state.copyWith(status: ChangePasswordStatus.success),
+      (_) {
+        state = state.copyWith(status: ChangePasswordStatus.success);
+        ref.read(auditLoggerProvider).log(AuditEvents.passwordChanged);
+      },
     );
   }
 

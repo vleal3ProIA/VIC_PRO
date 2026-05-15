@@ -22,6 +22,7 @@ void main() {
       overrides: [
         authRepositoryProvider.overrideWithValue(repo),
         sharedPreferencesProvider.overrideWithValue(prefs),
+        auditLoggerNoopOverride,
       ],
     );
     addTearDown(container.dispose);
