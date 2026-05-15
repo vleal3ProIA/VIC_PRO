@@ -10,6 +10,7 @@ import 'package:myapp/core/router/app_router.dart';
 import 'package:myapp/core/theme/app_theme.dart';
 import 'package:myapp/features/account/application/profile_preferences_sync.dart';
 import 'package:myapp/features/legal/presentation/widgets/cookie_consent_banner.dart';
+import 'package:myapp/features/tenants/application/tenant_sentry_sync.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 
@@ -19,9 +20,10 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Side-effect-only: mantienen Sentry y Analytics sincronizados con la
-    // sesión de Supabase.
+    // sesión de Supabase y con el tenant activo.
     ref.watch(sentryUserSyncProvider);
     ref.watch(analyticsUserSyncProvider);
+    ref.watch(tenantSentrySyncProvider);
 
     final router = ref.watch(goRouterProvider);
     final themeMode = ref.watch(themeNotifierProvider);
