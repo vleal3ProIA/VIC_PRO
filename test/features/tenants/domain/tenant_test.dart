@@ -5,7 +5,7 @@ import 'package:myapp/features/tenants/domain/tenant_member.dart';
 void main() {
   group('Tenant.fromMap', () {
     test('parses all fields correctly', () {
-      final tenant = Tenant.fromMap({
+      final tenant = Tenant.fromMap(const {
         'id': 'tenant-1',
         'name': 'Acme',
         'slug': 'acme',
@@ -22,7 +22,7 @@ void main() {
     });
 
     test('defaults is_personal to false when missing', () {
-      final tenant = Tenant.fromMap({
+      final tenant = Tenant.fromMap(const {
         'id': 'tenant-1',
         'name': 'X',
         'slug': 'x12',
@@ -34,7 +34,7 @@ void main() {
   });
 
   test('Tenant equality is by id', () {
-    final t1 = Tenant.fromMap({
+    final t1 = Tenant.fromMap(const {
       'id': 'same',
       'name': 'A',
       'slug': 'a-1',
@@ -42,7 +42,7 @@ void main() {
       'is_personal': true,
       'created_at': '2026-01-15T10:30:00Z',
     });
-    final t2 = Tenant.fromMap({
+    final t2 = Tenant.fromMap(const {
       'id': 'same',
       'name': 'DIFFERENT',
       'slug': 'b-2',
@@ -84,7 +84,7 @@ void main() {
 
   group('TenantMember.fromMap', () {
     test('parses fields', () {
-      final m = TenantMember.fromMap({
+      final m = TenantMember.fromMap(const {
         'tenant_id': 't1',
         'user_id': 'u1',
         'role': 'admin',

@@ -36,6 +36,8 @@ import 'package:myapp/features/legal/presentation/pages/cookies_page.dart';
 import 'package:myapp/features/legal/presentation/pages/privacy_page.dart';
 import 'package:myapp/features/legal/presentation/pages/terms_page.dart';
 import 'package:myapp/features/shell/presentation/widgets/private_shell.dart';
+import 'package:myapp/features/tenants/presentation/pages/accept_invite_page.dart';
+import 'package:myapp/features/tenants/presentation/pages/team_page.dart';
 import 'package:myapp/features/welcome/presentation/pages/welcome_page.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -211,6 +213,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const AuditLogPage(),
       ),
       GoRoute(
+        path: RoutePaths.team,
+        name: RouteNames.team,
+        builder: (_, __) => const TeamPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.acceptInvite,
+        name: RouteNames.acceptInvite,
+        builder: (_, state) => AcceptInvitePage(
+          token: state.uri.queryParameters['token'],
+        ),
+      ),
+      GoRoute(
         path: RoutePaths.terms,
         name: RouteNames.terms,
         builder: (_, __) => const TermsPage(),
@@ -263,6 +277,10 @@ const _privateRoutes = <String>{
   RoutePaths.deleteAccount,
   RoutePaths.passkeys,
   RoutePaths.auditLog,
+  RoutePaths.team,
+  // `acceptInvite` se gestiona dentro de la propia página: si no hay sesión,
+  // redirige al login él mismo. No la metemos como privada para que un
+  // usuario sin sesión pueda al menos VER el error si el link es inválido.
 };
 
 /// Rutas que además requieren rol `admin`. Un usuario autenticado sin ese
