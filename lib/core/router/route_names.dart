@@ -19,6 +19,7 @@ class RouteNames {
   static const String mfaChallenge = 'mfa_challenge';
   static const String home = 'home';
   static const String admin = 'admin';
+  static const String adminFlags = 'admin_flags';
   static const String accountSettings = 'account_settings';
   static const String changePassword = 'change_password';
   static const String changePasswordDone = 'change_password_done';
@@ -60,6 +61,7 @@ class RoutePaths {
   static const String mfaChallenge = '/mfa-challenge';
   static const String home = '/home';
   static const String admin = '/admin';
+  static const String adminFlags = '/admin/flags';
   static const String accountSettings = '/account-settings';
   static const String changePassword = '/change-password';
   static const String changePasswordDone = '/change-password-done';

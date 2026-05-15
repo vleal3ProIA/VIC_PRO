@@ -61,6 +61,11 @@
   "adminSubtitle": "Gestiona usuarios y la configuración del sistema.",
   "adminRoleBadge": "Tu rol",
   "adminPlaceholder": "Aquí irá la gestión de usuarios y los ajustes del sistema.",
+  "adminFlagsTitle": "Feature flags",
+  "adminFlagsHint": "Activa funcionalidades y haz rollout gradual.",
+  "adminFlagsEmpty": "Aún no hay feature flags definidas.",
+  "adminFlagsError": "No se pudieron cargar las feature flags.",
+  "adminFlagsRollout": "{percent}%",
 
   "registerTitle": "Crea tu cuenta",
   "registerSubtitle": "Únete y empieza tu camino.",

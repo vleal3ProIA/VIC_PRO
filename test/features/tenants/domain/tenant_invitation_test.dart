@@ -36,7 +36,7 @@ void main() {
       final inv = TenantInvitation.fromMap(base(
         acceptedAt: '2026-05-16T10:00:00Z',
         revokedAt: '2026-05-17T11:00:00Z',
-      ));
+      ),);
       expect(inv.acceptedAt, isNotNull);
       expect(inv.revokedAt, isNotNull);
     });
@@ -49,24 +49,27 @@ void main() {
     });
 
     test('false when accepted', () {
-      final inv = TenantInvitation.fromMap(base(
-        acceptedAt: '2026-05-16T10:00:00Z',
-      ));
+      final inv = TenantInvitation.fromMap(
+        base(acceptedAt: '2026-05-16T10:00:00Z'),
+      );
       expect(inv.isPending, isFalse);
     });
 
     test('false when revoked', () {
-      final inv = TenantInvitation.fromMap(base(
-        revokedAt: '2026-05-16T10:00:00Z',
-      ));
+      final inv = TenantInvitation.fromMap(
+        base(revokedAt: '2026-05-16T10:00:00Z'),
+      );
       expect(inv.isPending, isFalse);
     });
 
     test('false when expired', () {
-      final inv = TenantInvitation.fromMap(base(
-        expiresAt:
-            DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
-      ));
+      final inv = TenantInvitation.fromMap(
+        base(
+          expiresAt: DateTime.now()
+              .subtract(const Duration(days: 1))
+              .toIso8601String(),
+        ),
+      );
       expect(inv.isPending, isFalse);
       expect(inv.isExpired, isTrue);
     });

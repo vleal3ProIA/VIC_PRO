@@ -61,6 +61,11 @@
   "adminSubtitle": "Gere utilizadores e definições do sistema.",
   "adminRoleBadge": "O teu papel",
   "adminPlaceholder": "A gestão de utilizadores e as definições do sistema estarão aqui.",
+  "adminFlagsTitle": "Feature flags",
+  "adminFlagsHint": "Ativa funcionalidades e faz rollout gradual.",
+  "adminFlagsEmpty": "Ainda não há feature flags definidas.",
+  "adminFlagsError": "Não foi possível carregar as feature flags.",
+  "adminFlagsRollout": "{percent}%",
 
   "registerTitle": "Cria a tua conta",
   "registerSubtitle": "Junta-te a nós e começa a tua jornada.",

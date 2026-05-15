@@ -61,6 +61,11 @@
   "adminSubtitle": "Benutzer und Systemeinstellungen verwalten.",
   "adminRoleBadge": "Deine Rolle",
   "adminPlaceholder": "Benutzerverwaltung und Systemeinstellungen kommen hierher.",
+  "adminFlagsTitle": "Feature Flags",
+  "adminFlagsHint": "Funktionen aktivieren und stufenweise ausrollen.",
+  "adminFlagsEmpty": "Noch keine Feature Flags definiert.",
+  "adminFlagsError": "Feature Flags konnten nicht geladen werden.",
+  "adminFlagsRollout": "{percent}%",
 
   "registerTitle": "Konto erstellen",
   "registerSubtitle": "Tritt bei und starte deine Reise.",

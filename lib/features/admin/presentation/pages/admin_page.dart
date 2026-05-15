@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
+import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/features/account/application/profile_providers.dart';
 
 /// Área de administración — destino del shell visible solo para `admin`.
@@ -59,6 +61,16 @@ class AdminPage extends ConsumerWidget {
                   ),
                   title: Text(l.adminRoleBadge),
                   subtitle: Text(role.name),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.toggle_on_outlined),
+                  title: Text(l.adminFlagsTitle),
+                  subtitle: Text(l.adminFlagsHint),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.goNamed(RouteNames.adminFlags),
                 ),
               ),
               const SizedBox(height: 16),
