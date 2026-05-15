@@ -159,6 +159,17 @@ flutter build web --release --web-renderer canvaskit
 
 Variables sensibles en `.env` (ignorado por git). Plantilla en `.env.example`.
 
+### Observabilidad (opcional pero recomendada en staging/prod)
+
+| Variable | Mecanismo | Descripción |
+|---|---|---|
+| `SENTRY_DSN` | `--dart-define=SENTRY_DSN=https://…` | Si está, errores del cliente se envían a Sentry. Si no, no-op silencioso. |
+| `APP_VERSION` | `--dart-define=APP_VERSION=1.0.0+12` | Tag de release que se asocia a cada evento. |
+| `STRUCTURED_LOGS` | `.env` (`true`/`false`) | Fuerza el modo JSON del logger en dev. Por defecto: pretty en dev, JSON en staging/prod. |
+| `ENABLE_ANALYTICS` | `.env` (`true`/`false`) | Activa el `LoggingAnalyticsBackend` (logs JSON). Cuando se integre un SaaS real (PostHog, GA4) ese backend reemplaza al logging. |
+
+Para las Edge Functions, configura `SENTRY_DSN` en *Supabase Dashboard → Edge Functions → Secrets*. Las funciones envueltas con `withSentry(...)` lo cogen automáticamente; sin DSN quedan en no-op.
+
 ---
 
 ## Convenciones

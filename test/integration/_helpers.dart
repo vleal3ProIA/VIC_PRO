@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/core/constants/supported_locales.dart';
+import 'package:myapp/core/observability/analytics_service.dart';
 import 'package:myapp/core/providers/preferences_provider.dart';
 import 'package:myapp/features/audit/application/audit_logger.dart';
 import 'package:myapp/features/auth/application/auth_providers.dart';
@@ -109,6 +110,9 @@ Future<Widget> buildAppForIntegration({
       sharedPreferencesProvider.overrideWithValue(prefs),
       authRepositoryProvider.overrideWithValue(repo),
       auditLoggerProvider.overrideWithValue(const AuditLogger.noop()),
+      analyticsServiceProvider.overrideWithValue(
+        AnalyticsService(backend: const NoopAnalyticsBackend()),
+      ),
       ...extraOverrides,
     ],
     child: MaterialApp.router(

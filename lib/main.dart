@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:myapp/app.dart';
 import 'package:myapp/core/config/env_config.dart';
+import 'package:myapp/core/observability/sentry_service.dart';
 import 'package:myapp/core/providers/preferences_provider.dart';
 import 'package:myapp/core/storage/remember_aware_local_storage.dart';
 import 'package:myapp/core/utils/app_logger.dart';
@@ -68,13 +69,21 @@ Future<void> main() async {
         if (kReleaseMode) FlutterError.presentError(details);
       };
 
-      runApp(
-        ProviderScope(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-          ],
-          child: const MyApp(),
-        ),
+      // Sentry envuelve el `runApp` cuando hay DSN configurado por
+      // --dart-define=SENTRY_DSN=https://...; si no hay DSN, ejecuta el
+      // runApp directamente (no-op). Toda la observabilidad sigue
+      // funcionando aunque Sentry esté off (AppLogger sigue logueando JSON).
+      await SentryService.init(
+        runApp: () {
+          runApp(
+            ProviderScope(
+              overrides: [
+                sharedPreferencesProvider.overrideWithValue(prefs),
+              ],
+              child: const MyApp(),
+            ),
+          );
+        },
       );
     },
     (error, stack) => AppLogger.e('Uncaught', error: error, stackTrace: stack),

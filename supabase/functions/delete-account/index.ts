@@ -24,6 +24,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,7 +40,7 @@ function json(body: unknown, status: number): Response {
   });
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withSentry("delete-account", async (req) => {
   // Preflight CORS (la app web hace una petición OPTIONS primero).
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -95,4 +96,4 @@ Deno.serve(async (req) => {
   } catch (e) {
     return json({ error: "internal_error", detail: String(e) }, 500);
   }
-});
+}));
