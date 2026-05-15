@@ -31,6 +31,7 @@ import 'package:myapp/features/auth/presentation/pages/password_updated_page.dar
 import 'package:myapp/features/auth/presentation/pages/register_page.dart';
 import 'package:myapp/features/auth/presentation/pages/set_new_password_page.dart';
 import 'package:myapp/features/auth/presentation/pages/verify_email_sent_page.dart';
+import 'package:myapp/features/billing/presentation/pages/plans_page.dart';
 import 'package:myapp/features/flags/presentation/pages/admin_flags_page.dart';
 import 'package:myapp/features/home/presentation/pages/home_page.dart';
 import 'package:myapp/features/legal/presentation/pages/cookies_page.dart';
@@ -224,6 +225,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const AdminFlagsPage(),
       ),
       GoRoute(
+        path: RoutePaths.plans,
+        name: RouteNames.plans,
+        builder: (_, __) => const PlansPage(),
+      ),
+      GoRoute(
         path: RoutePaths.acceptInvite,
         name: RouteNames.acceptInvite,
         builder: (_, state) => AcceptInvitePage(
@@ -285,6 +291,7 @@ const _privateRoutes = <String>{
   RoutePaths.passkeys,
   RoutePaths.auditLog,
   RoutePaths.team,
+  RoutePaths.plans,
   // `acceptInvite` se gestiona dentro de la propia página: si no hay sesión,
   // redirige al login él mismo. No la metemos como privada para que un
   // usuario sin sesión pueda al menos VER el error si el link es inválido.
