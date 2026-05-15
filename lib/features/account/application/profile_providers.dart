@@ -17,11 +17,16 @@ final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
   );
 });
 
-/// Carga el perfil del usuario autenticado. Se recalcula cuando cambia la
-/// sesión (login/logout). Devuelve `null` si no hay sesión.
+/// Carga el perfil del usuario autenticado.
+///
+/// Observa `isAuthenticatedProvider` (bool) en vez de `currentSessionProvider`
+/// (Session?): así solo se re-fetcha en login/logout, NO en cada refresh de
+/// token. Sin esto, el SDK podía entrar en bucle:
+///   tokenRefreshed → currentSession cambia → re-fetch → el SDK refresca →
+///   tokenRefreshed → … → 429 y sesión rota.
 final myProfileProvider = FutureProvider<Profile?>((ref) async {
-  final session = ref.watch(currentSessionProvider);
-  if (session == null) return null;
+  final authed = ref.watch(isAuthenticatedProvider);
+  if (!authed) return null;
   final result = await ref.watch(profileRepositoryProvider).getMyProfile();
   return result.fold((_) => null, (profile) => profile);
 });
@@ -31,8 +36,8 @@ final myProfileProvider = FutureProvider<Profile?>((ref) async {
 /// - con sesión pero perfil aún no cargado → `user` (nunca asumimos admin).
 /// - con perfil → su `role`.
 final currentRoleProvider = Provider<UserRole>((ref) {
-  final session = ref.watch(currentSessionProvider);
-  if (session == null) return UserRole.guest;
+  final authed = ref.watch(isAuthenticatedProvider);
+  if (!authed) return UserRole.guest;
   final profile = ref.watch(myProfileProvider).valueOrNull;
   return profile?.role ?? UserRole.user;
 });

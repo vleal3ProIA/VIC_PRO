@@ -17,11 +17,16 @@ final mfaChallengePendingProvider = Provider<bool>((ref) {
   return ref.watch(authRepositoryProvider).isMfaChallengePending();
 });
 
-/// Lista de factores MFA del usuario. Se recalcula al cambiar la sesión.
-/// `null`/error → lista vacía (la UI lo trata como "sin MFA").
+/// Lista de factores MFA del usuario. `null`/error → lista vacía (la UI lo
+/// trata como "sin MFA").
+///
+/// Observa `isAuthenticatedProvider` (bool) en vez de `currentSessionProvider`
+/// para evitar re-fetcharse en cada `tokenRefreshed` — eso, combinado con que
+/// cada fetch puede gatillar al SDK a refrescar, provocaba un bucle que
+/// terminaba en 429 y la sesión rota.
 final mfaFactorsProvider = FutureProvider<List<MfaFactor>>((ref) async {
-  final session = ref.watch(currentSessionProvider);
-  if (session == null) return const [];
+  final authed = ref.watch(isAuthenticatedProvider);
+  if (!authed) return const [];
   final result = await ref.watch(authRepositoryProvider).listMfaFactors();
   return result.fold((_) => const [], (factors) => factors);
 });
