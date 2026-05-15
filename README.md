@@ -1,6 +1,15 @@
 # myapp
 
+[![CI](https://github.com/vleal3ProIA/VIC_PRO/actions/workflows/ci.yml/badge.svg)](https://github.com/vleal3ProIA/VIC_PRO/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/vleal3ProIA/VIC_PRO/branch/main/graph/badge.svg)](https://codecov.io/gh/vleal3ProIA/VIC_PRO)
+
 Aplicación Flutter Web enterprise con **Clean Architecture**, **BLoC** y **inyección de dependencias** vía `get_it` + `injectable`.
+
+> 📊 La cobertura se mide en cada PR. Se sube `coverage/lcov.info` como
+> artefacto en cada run y, si el repo está conectado con Codecov
+> (`CODECOV_TOKEN` en Settings → Secrets), también se publica allí.
+> Objetivo: **≥ 80 % en `domain/` y `data/`**. El umbral aún no se exige
+> en CI; se irá subiendo cuando se añadan widget tests.
 
 ---
 
