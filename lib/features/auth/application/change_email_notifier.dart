@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:formz/formz.dart';
 
 import 'package:myapp/core/validation/email.dart';
+import 'package:myapp/features/audit/application/audit_logger.dart';
+import 'package:myapp/features/audit/domain/audit_events.dart';
 import 'package:myapp/features/auth/application/auth_providers.dart';
 import 'package:myapp/features/auth/domain/failures/auth_failure.dart';
 
@@ -66,10 +68,13 @@ class ChangeEmailNotifier extends Notifier<ChangeEmailState> {
         status: ChangeEmailStatus.failure,
         failure: failure,
       ),
-      (_) => state = state.copyWith(
-        status: ChangeEmailStatus.success,
-        sentToEmail: state.newEmail.value.trim(),
-      ),
+      (_) {
+        state = state.copyWith(
+          status: ChangeEmailStatus.success,
+          sentToEmail: state.newEmail.value.trim(),
+        );
+        ref.read(auditLoggerProvider).log(AuditEvents.emailChangeRequested);
+      },
     );
   }
 

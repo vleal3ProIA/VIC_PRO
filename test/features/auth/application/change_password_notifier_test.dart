@@ -14,7 +14,10 @@ void main() {
   setUp(() {
     repo = FakeAuthRepository();
     container = ProviderContainer(
-      overrides: [authRepositoryProvider.overrideWithValue(repo)],
+      overrides: [
+        authRepositoryProvider.overrideWithValue(repo),
+        auditLoggerNoopOverride,
+      ],
     );
     addTearDown(container.dispose);
   });

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/core/constants/supported_locales.dart';
 import 'package:myapp/core/providers/preferences_provider.dart';
+import 'package:myapp/features/audit/application/audit_logger.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -70,6 +71,8 @@ Future<void> pumpForTest(
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
+        // Sin Supabase real en tests: el logger no toca BD.
+        auditLoggerProvider.overrideWithValue(const AuditLogger.noop()),
         ...overrides,
       ],
       child: MaterialApp.router(

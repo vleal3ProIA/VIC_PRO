@@ -1,8 +1,16 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:myapp/features/audit/application/audit_logger.dart';
 import 'package:myapp/features/auth/domain/entities/mfa_enrollment.dart';
 import 'package:myapp/features/auth/domain/entities/sign_up_request.dart';
 import 'package:myapp/features/auth/domain/failures/auth_failure.dart';
 import 'package:myapp/features/auth/domain/repositories/auth_repository.dart';
+
+/// Override que neutraliza el logger de auditoría para los tests de unidad:
+/// los notifiers llaman `auditLoggerProvider.log()` tras un éxito, pero en
+/// tests no hay Supabase. Este override hace que `log()` sea no-op.
+final auditLoggerNoopOverride =
+    auditLoggerProvider.overrideWithValue(const AuditLogger.noop());
 
 /// Fake controlable de `AuthRepository` para tests de notifiers.
 /// Cada método guarda los argumentos recibidos y devuelve la respuesta

@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:myapp/features/audit/application/audit_logger.dart';
+import 'package:myapp/features/audit/domain/audit_events.dart';
 import 'package:myapp/features/auth/application/webauthn_providers.dart';
 import 'package:myapp/features/auth/domain/failures/auth_failure.dart';
 
@@ -51,6 +53,7 @@ class PasskeyNotifier extends Notifier<PasskeyActionState> {
       (_) {
         state = state.copyWith(status: PasskeyActionStatus.success);
         ref.invalidate(myPasskeysProvider);
+        ref.read(auditLoggerProvider).log(AuditEvents.passkeyAdded);
       },
     );
   }
@@ -68,7 +71,10 @@ class PasskeyNotifier extends Notifier<PasskeyActionState> {
         status: PasskeyActionStatus.failure,
         failure: failure,
       ),
-      (_) => state = state.copyWith(status: PasskeyActionStatus.success),
+      (_) {
+        state = state.copyWith(status: PasskeyActionStatus.success);
+        ref.read(auditLoggerProvider).log(AuditEvents.loginPasskey);
+      },
     );
   }
 
@@ -88,6 +94,7 @@ class PasskeyNotifier extends Notifier<PasskeyActionState> {
       (_) {
         state = state.copyWith(status: PasskeyActionStatus.success);
         ref.invalidate(myPasskeysProvider);
+        ref.read(auditLoggerProvider).log(AuditEvents.passkeyRemoved);
       },
     );
   }
