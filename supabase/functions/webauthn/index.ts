@@ -41,6 +41,7 @@ import type {
   AuthenticationResponseJSON,
   RegistrationResponseJSON,
 } from "npm:@simplewebauthn/server@10/script/deps";
+import { checkRateLimit, getClientIp } from "../_shared/rate_limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,6 +102,13 @@ Deno.serve(async (req) => {
     // ===== REGISTER OPTIONS ==================================================
     if (action === "register-options") {
       if (!user) return json({ error: "auth_required" }, 401);
+      // Rate limit: 20/hora por usuario. Registrar un passkey es raro.
+      const ok = await checkRateLimit(admin, {
+        bucketKey: `webauthn-register-options:user:${user.id}`,
+        limit: 20,
+        windowSeconds: 3600,
+      });
+      if (!ok) return json({ error: "rate_limited" }, 429);
 
       // Lista los credenciales que el usuario ya tiene → excludeCredentials
       // (evita que el navegador registre dos veces el mismo passkey).
@@ -153,6 +161,15 @@ Deno.serve(async (req) => {
     // ===== REGISTER VERIFY ===================================================
     if (action === "register-verify") {
       if (!user) return json({ error: "auth_required" }, 401);
+      // Rate limit: 20/hora por usuario.
+      {
+        const ok = await checkRateLimit(admin, {
+          bucketKey: `webauthn-register-verify:user:${user.id}`,
+          limit: 20,
+          windowSeconds: 3600,
+        });
+        if (!ok) return json({ error: "rate_limited" }, 429);
+      }
       const challengeId = body?.challengeId as string | undefined;
       const response = body?.response as RegistrationResponseJSON | undefined;
       const friendlyName = (body?.friendlyName as string | undefined) ?? null;
@@ -227,6 +244,16 @@ Deno.serve(async (req) => {
 
     // ===== AUTH OPTIONS ======================================================
     if (action === "auth-options") {
+      // Rate limit: 30/min por IP. Anti-DoS — un único cliente no debería
+      // pedir opciones de login con passkey docenas de veces por segundo.
+      const ip = getClientIp(req);
+      const ok = await checkRateLimit(admin, {
+        bucketKey: `webauthn-auth-options:ip:${ip}`,
+        limit: 30,
+        windowSeconds: 60,
+      });
+      if (!ok) return json({ error: "rate_limited" }, 429);
+
       const options = await generateAuthenticationOptions({
         rpID: rpId,
         userVerification: "preferred",
@@ -254,6 +281,15 @@ Deno.serve(async (req) => {
 
     // ===== AUTH VERIFY =======================================================
     if (action === "auth-verify") {
+      // Rate limit: 10/15min por IP. Anti-fuerza bruta del passkey.
+      const ip = getClientIp(req);
+      const ok = await checkRateLimit(admin, {
+        bucketKey: `webauthn-auth-verify:ip:${ip}`,
+        limit: 10,
+        windowSeconds: 900,
+      });
+      if (!ok) return json({ error: "rate_limited" }, 429);
+
       const challengeId = body?.challengeId as string | undefined;
       const response = body?.response as AuthenticationResponseJSON | undefined;
       if (!challengeId || !response) {
