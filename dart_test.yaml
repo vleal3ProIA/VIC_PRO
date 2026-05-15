@@ -1,0 +1,14 @@
+# Configuración del runner de tests.
+#
+# `tags` declara los tags que usamos en los tests para poder filtrar.
+# Hoy:
+#   golden  → tests de regresión visual (golden_toolkit). Producen ficheros
+#             `*.png` específicos del sistema operativo del que se generan.
+#             Se ejecutan en local con `flutter test` y se EXCLUYEN en CI
+#             (`flutter test --exclude-tags golden`) porque el rendering de
+#             Linux no es bit-exact respecto a Windows/macOS.
+#
+# Para regenerar los baselines tras un cambio de UI intencionado:
+#   flutter test --update-goldens --tags golden
+tags:
+  golden:

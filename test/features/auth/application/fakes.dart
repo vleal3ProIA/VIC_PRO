@@ -1,4 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:myapp/features/audit/application/audit_logger.dart';
 import 'package:myapp/features/auth/domain/entities/mfa_enrollment.dart';

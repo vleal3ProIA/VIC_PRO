@@ -131,8 +131,14 @@ flutter analyze
 # Formateo
 dart format --set-exit-if-changed lib test
 
-# Tests unitarios + cobertura
+# Tests unitarios + cobertura (incluye goldens en local)
 flutter test --coverage
+
+# Solo unit / widget tests (sin goldens) — esto es lo que corre CI
+flutter test --exclude-tags golden
+
+# Regenerar goldens tras un cambio intencionado de UI
+flutter test --update-goldens --tags golden
 
 # Tests de integración (web)
 flutter test integration_test -d chrome

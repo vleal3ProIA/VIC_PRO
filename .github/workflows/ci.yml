@@ -59,8 +59,12 @@ jobs:
       - name: Analyze (very_good_analysis)
         run: flutter analyze
 
-      - name: Run tests with coverage
-        run: flutter test --coverage --reporter expanded
+      # Excluimos los tests con tag `golden` en CI: las imágenes de referencia
+      # se generan en la máquina del dev (Windows / macOS) y el rendering de
+      # Linux no es bit-exact respecto a otros sistemas. Los goldens corren
+      # localmente con `flutter test`. Ver dart_test.yaml.
+      - name: Run tests with coverage (sin goldens)
+        run: flutter test --coverage --reporter expanded --exclude-tags golden
 
       # ----- Cobertura -------------------------------------------------------
       - name: Install lcov
