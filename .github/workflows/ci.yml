@@ -59,9 +59,58 @@ jobs:
       - name: Analyze (very_good_analysis)
         run: flutter analyze
 
-      - name: Run tests
-        run: flutter test --reporter expanded
+      - name: Run tests with coverage
+        run: flutter test --coverage --reporter expanded
 
+      # ----- Cobertura -------------------------------------------------------
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -y lcov
+
+      - name: Filter and summarise coverage
+        run: |
+          if [ ! -f coverage/lcov.info ]; then
+            echo "::warning::No se generó coverage/lcov.info"
+            exit 0
+          fi
+          # Excluimos código generado (l10n) del cómputo: ya está cubierto
+          # implícitamente al renderizarse y no es nuestro código real.
+          lcov --remove coverage/lcov.info \
+            'lib/generated/*' \
+            --output-file coverage/lcov.filtered.info \
+            --ignore-errors unused
+          SUMMARY=$(lcov --summary coverage/lcov.filtered.info 2>&1)
+          echo "$SUMMARY"
+          LINES_PCT=$(echo "$SUMMARY" | grep -oP 'lines\.+:\s*\K[0-9.]+' || echo "?")
+          FUNCTIONS_PCT=$(echo "$SUMMARY" | grep -oP 'functions\.+:\s*\K[0-9.]+' || echo "?")
+          {
+            echo "## 🧪 Test coverage"
+            echo ""
+            echo "| Metric | % |"
+            echo "|---|---|"
+            echo "| Lines | ${LINES_PCT}% |"
+            echo "| Functions | ${FUNCTIONS_PCT}% |"
+            echo ""
+            echo "_Objetivo: ≥ 80 % en \`domain/\` y \`data/\`. Hoy aún no se exige umbral en CI._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          retention-days: 30
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage/lcov.info
+          fail_ci_if_error: false
+          # En repos privados Codecov requiere el secret CODECOV_TOKEN
+          # configurado en Settings → Secrets. En públicos no hace falta.
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
+
+      # ----- Build -----------------------------------------------------------
       - name: Build web (release)
         run: flutter build web --release --dart-define=ENV=ci
 
