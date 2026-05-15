@@ -61,6 +61,11 @@
   "adminSubtitle": "Керування користувачами та налаштуваннями системи.",
   "adminRoleBadge": "Ваша роль",
   "adminPlaceholder": "Тут з'являться керування користувачами та налаштування системи.",
+  "adminFlagsTitle": "Feature флаги",
+  "adminFlagsHint": "Вмикайте функції та робіть rollout поступово.",
+  "adminFlagsEmpty": "Feature флагів ще немає.",
+  "adminFlagsError": "Не вдалося завантажити feature флаги.",
+  "adminFlagsRollout": "{percent}%",
 
   "registerTitle": "Створіть акаунт",
   "registerSubtitle": "Приєднуйтеся та починайте свою подорож.",

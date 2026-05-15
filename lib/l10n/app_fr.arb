@@ -61,6 +61,11 @@
   "adminSubtitle": "Gérez les utilisateurs et les paramètres du système.",
   "adminRoleBadge": "Votre rôle",
   "adminPlaceholder": "La gestion des utilisateurs et les paramètres du système seront ici.",
+  "adminFlagsTitle": "Feature flags",
+  "adminFlagsHint": "Activez des fonctionnalités et déployez-les progressivement.",
+  "adminFlagsEmpty": "Aucun feature flag défini.",
+  "adminFlagsError": "Impossible de charger les feature flags.",
+  "adminFlagsRollout": "{percent}%",
 
   "registerTitle": "Créer votre compte",
   "registerSubtitle": "Rejoignez-nous et commencez votre aventure.",

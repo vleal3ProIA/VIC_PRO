@@ -31,6 +31,7 @@ import 'package:myapp/features/auth/presentation/pages/password_updated_page.dar
 import 'package:myapp/features/auth/presentation/pages/register_page.dart';
 import 'package:myapp/features/auth/presentation/pages/set_new_password_page.dart';
 import 'package:myapp/features/auth/presentation/pages/verify_email_sent_page.dart';
+import 'package:myapp/features/flags/presentation/pages/admin_flags_page.dart';
 import 'package:myapp/features/home/presentation/pages/home_page.dart';
 import 'package:myapp/features/legal/presentation/pages/cookies_page.dart';
 import 'package:myapp/features/legal/presentation/pages/privacy_page.dart';
@@ -218,6 +219,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const TeamPage(),
       ),
       GoRoute(
+        path: RoutePaths.adminFlags,
+        name: RouteNames.adminFlags,
+        builder: (_, __) => const AdminFlagsPage(),
+      ),
+      GoRoute(
         path: RoutePaths.acceptInvite,
         name: RouteNames.acceptInvite,
         builder: (_, state) => AcceptInvitePage(
@@ -268,6 +274,7 @@ const _excludedFromGuard = <String>{
 const _privateRoutes = <String>{
   RoutePaths.home,
   RoutePaths.admin,
+  RoutePaths.adminFlags,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
   RoutePaths.changePassword,
@@ -287,6 +294,7 @@ const _privateRoutes = <String>{
 /// rol que las pida es redirigido a `/home`.
 const _adminRoutes = <String>{
   RoutePaths.admin,
+  RoutePaths.adminFlags,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.

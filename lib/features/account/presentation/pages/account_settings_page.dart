@@ -10,6 +10,7 @@ import 'package:myapp/features/account/application/data_export_notifier.dart';
 import 'package:myapp/features/account/application/profile_settings_notifier.dart';
 import 'package:myapp/features/account/presentation/widgets/profile_failure_message.dart';
 import 'package:myapp/features/account/presentation/widgets/user_avatar.dart';
+import 'package:myapp/features/flags/application/feature_flags_providers.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
 class AccountSettingsPage extends ConsumerStatefulWidget {
@@ -334,14 +335,18 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
                       onTap: () => context.goNamed(RouteNames.passkeys),
                     ),
                     const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.history),
-                      title: Text(l.settingsAuditLog),
-                      subtitle: Text(l.settingsAuditLogHint),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.goNamed(RouteNames.auditLog),
-                    ),
-                    const Divider(height: 1),
+                    // El tile de "Recent activity" se oculta si el flag
+                    // `audit_log_visible` está off (gated por feature flag).
+                    if (ref.watch(flagEnabledProvider('audit_log_visible'))) ...[
+                      ListTile(
+                        leading: const Icon(Icons.history),
+                        title: Text(l.settingsAuditLog),
+                        subtitle: Text(l.settingsAuditLogHint),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.goNamed(RouteNames.auditLog),
+                      ),
+                      const Divider(height: 1),
+                    ],
                     ListTile(
                       leading: const Icon(Icons.groups_outlined),
                       title: Text(l.settingsTeam),

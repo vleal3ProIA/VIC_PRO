@@ -62,6 +62,12 @@
   "adminSubtitle": "Manage users and system settings.",
   "adminRoleBadge": "Your role",
   "adminPlaceholder": "User management and system settings will live here.",
+  "adminFlagsTitle": "Feature flags",
+  "adminFlagsHint": "Toggle features and roll them out gradually.",
+  "adminFlagsEmpty": "No feature flags defined yet.",
+  "adminFlagsError": "Couldn't load feature flags.",
+  "adminFlagsRollout": "{percent}%",
+  "@adminFlagsRollout": {"placeholders": {"percent": {"type": "String"}}},
 
   "registerTitle": "Create your account",
   "registerSubtitle": "Join us and start your journey.",
