@@ -23,6 +23,7 @@
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit } from "../_shared/rate_limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -70,9 +71,19 @@ Deno.serve(async (req) => {
       return json({ error: "invalid_token" }, 401);
     }
 
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // Rate limit: 3 intentos / hora por usuario. La acción es destructiva
+    // e infrecuente; un bot acumulando intentos no tiene caso de uso.
+    const ok = await checkRateLimit(adminClient, {
+      bucketKey: `delete-account:user:${user.id}`,
+      limit: 3,
+      windowSeconds: 3600,
+    });
+    if (!ok) return json({ error: "rate_limited" }, 429);
+
     // 2) Borrar ese usuario con el cliente admin (service_role).
     //    `public.profiles` se va por ON DELETE CASCADE.
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const { error: deleteErr } = await adminClient.auth.admin.deleteUser(
       user.id,
     );

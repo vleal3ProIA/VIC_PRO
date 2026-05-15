@@ -24,6 +24,7 @@
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit } from "../_shared/rate_limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -122,6 +123,14 @@ Deno.serve(async (req) => {
       if (jwtAal(token) !== "aal2") {
         return json({ error: "aal2_required" }, 403);
       }
+      // Rate limit: 5/hora por usuario. Operación rara (solo al activar
+      // MFA o regenerar tras pérdida).
+      const ok = await checkRateLimit(admin, {
+        bucketKey: `mfa-recovery-generate:user:${user.id}`,
+        limit: 5,
+        windowSeconds: 3600,
+      });
+      if (!ok) return json({ error: "rate_limited" }, 429);
 
       const codes: string[] = [];
       for (let i = 0; i < CODE_COUNT; i++) codes.push(generateCode());
@@ -150,6 +159,17 @@ Deno.serve(async (req) => {
 
     // ---- VERIFY ------------------------------------------------------------
     if (action === "verify") {
+      // Rate limit: 10 intentos / 15 min por usuario — anti-fuerza bruta
+      // de códigos. Usuarios legítimos suelen acertar a la primera o
+      // segunda; 10 cubre fallos de copia/pega y deja inviable el
+      // ataque (≈ 10⁻¹⁰ de probabilidad con 10 tries en una ventana).
+      const ok = await checkRateLimit(admin, {
+        bucketKey: `mfa-recovery-verify:user:${user.id}`,
+        limit: 10,
+        windowSeconds: 900,
+      });
+      if (!ok) return json({ error: "rate_limited" }, 429);
+
       const code = typeof body?.code === "string" ? body.code : "";
       if (normalize(code).length === 0) {
         return json({ error: "missing_code" }, 400);

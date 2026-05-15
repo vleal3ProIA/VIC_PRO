@@ -462,6 +462,11 @@ class AuthRepositoryImpl implements AuthRepository {
     final code = e.code ?? '';
     final msg = e.message.toLowerCase();
 
+    // 429 desde nuestras Edge Functions = rate limit aplicado por nosotros.
+    if (e.statusCode == '429') {
+      return AuthRateLimited(cause: e);
+    }
+
     if (code == 'user_already_exists' ||
         msg.contains('already registered') ||
         msg.contains('user already')) {

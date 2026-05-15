@@ -39,7 +39,7 @@ class WebauthnRepositoryImpl implements WebauthnRepository {
       return const Right(unit);
     } on AuthException catch (e) {
       AppLogger.w('registerPasskey AuthException: ${e.message}');
-      return Left(AuthPasskeyFailed(cause: e, message: e.message));
+      return Left(_mapPasskeyException(e));
     } catch (e, st) {
       AppLogger.e('registerPasskey unknown', error: e, stackTrace: st);
       return Left(AuthPasskeyFailed(cause: e, message: e.toString()));
@@ -68,11 +68,21 @@ class WebauthnRepositoryImpl implements WebauthnRepository {
       return const Right(unit);
     } on AuthException catch (e) {
       AppLogger.w('loginWithPasskey AuthException: ${e.message}');
-      return Left(AuthPasskeyFailed(cause: e, message: e.message));
+      return Left(_mapPasskeyException(e));
     } catch (e, st) {
       AppLogger.e('loginWithPasskey unknown', error: e, stackTrace: st);
       return Left(AuthPasskeyFailed(cause: e, message: e.toString()));
     }
+  }
+
+  /// Mapea una `AuthException` del flujo de passkey: 429 → rate limited
+  /// (mensaje específico al usuario), todo lo demás → fallo genérico de
+  /// passkey.
+  AuthFailure _mapPasskeyException(AuthException e) {
+    if (e.statusCode == '429') {
+      return AuthRateLimited(cause: e);
+    }
+    return AuthPasskeyFailed(cause: e, message: e.message);
   }
 
   @override
