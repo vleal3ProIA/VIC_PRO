@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:myapp/features/tenants/application/tenant_providers.dart';
+
 import '../config/env_config.dart';
 import '../providers/supabase_providers.dart';
 import '../utils/app_logger.dart';
@@ -65,7 +67,11 @@ class NoopAnalyticsBackend implements AnalyticsBackend {
 /// - `env`         ← dev / staging / prod.
 /// - cualquier `tag` del [LogContext].
 class AnalyticsService {
-  AnalyticsService({required this.backend, this.getUserId});
+  AnalyticsService({
+    required this.backend,
+    this.getUserId,
+    this.getTenantId,
+  });
 
   final AnalyticsBackend backend;
 
@@ -73,6 +79,11 @@ class AnalyticsService {
   /// servicio a Riverpod. El provider lo conecta a `currentUserProvider`;
   /// los tests pueden inyectar el suyo o dejarlo `null`.
   final String? Function()? getUserId;
+
+  /// Callback opcional para resolver el `tenant_id` actual. Enriquece cada
+  /// evento con la dimensión "tenant" — fundamental para segmentar funnels
+  /// y rendimiento por workspace.
+  final String? Function()? getTenantId;
 
   String? _lastIdentifiedUser;
 
@@ -138,10 +149,12 @@ class AnalyticsService {
   Map<String, Object?> _enrich(Map<String, Object?> base) {
     final ctx = LogContext.current;
     final userId = getUserId?.call();
+    final tenantId = getTenantId?.call();
     return <String, Object?>{
       ...base,
       'env': _envName(),
       if (userId != null) 'user_id': userId,
+      if (tenantId != null) 'tenant_id': tenantId,
       if (ctx != null) 'correlation_id': ctx.correlationId,
       if (ctx != null) ...ctx.tags,
     };
@@ -169,6 +182,11 @@ final analyticsServiceProvider = Provider<AnalyticsService>((ref) {
   return AnalyticsService(
     backend: backend,
     getUserId: () => ref.read(currentUserProvider)?.id,
+    // `currentTenantIdProvider` se importa de features/tenants. Romper la
+    // dependencia "core no depende de features" sería sobrediseño aquí:
+    // el feature de observabilidad SÍ necesita saber el tenant actual
+    // para que cada evento lo lleve.
+    getTenantId: () => ref.read(currentTenantIdProvider),
   );
 });
 

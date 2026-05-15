@@ -152,6 +152,25 @@ class SentryService {
     );
   }
 
+  /// Setea el `tenant_id` y `tenant_slug` como tags globales del scope.
+  /// Todos los eventos posteriores los llevan, lo que permite filtrar
+  /// errores por workspace en el dashboard de Sentry.
+  static Future<void> setTenant({String? id, String? slug}) async {
+    if (!_enabled) return;
+    await Sentry.configureScope((scope) {
+      if (id == null) {
+        scope.removeTag('tenant_id');
+      } else {
+        scope.setTag('tenant_id', id);
+      }
+      if (slug == null) {
+        scope.removeTag('tenant_slug');
+      } else {
+        scope.setTag('tenant_slug', slug);
+      }
+    });
+  }
+
   static String _envName() => switch (EnvConfig.environment) {
         Environment.development => 'dev',
         Environment.staging => 'staging',
