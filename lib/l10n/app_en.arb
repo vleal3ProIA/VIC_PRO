@@ -251,6 +251,10 @@
   "privacyS6Title": "6. Contact",
   "privacyS6Body": "To exercise your rights or ask about this policy, contact us at the email address shown in the app. You may also lodge a complaint with your data protection authority.",
 
+  "settingsDownloadData": "Download my data",
+  "settingsDownloadDataHint": "A copy of your personal data in JSON (GDPR).",
+  "dataExportStarted": "Download started",
+  "dataExportFailed": "Couldn't generate the download.",
   "settingsDeleteAccount": "Delete account",
   "deleteAccountTitle": "Delete account",
   "deleteAccountSubtitle": "This action is permanent and cannot be undone.",

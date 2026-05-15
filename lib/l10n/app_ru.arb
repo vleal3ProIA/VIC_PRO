@@ -238,6 +238,10 @@
   "privacyS6Title": "6. Контакты",
   "privacyS6Body": "Чтобы реализовать свои права или задать вопросы об этой политике, напишите нам на адрес email, указанный в приложении. Вы также можете подать жалобу в орган по защите данных.",
 
+  "settingsDownloadData": "Скачать мои данные",
+  "settingsDownloadDataHint": "Копия ваших персональных данных в JSON (GDPR).",
+  "dataExportStarted": "Загрузка начата",
+  "dataExportFailed": "Не удалось создать загрузку.",
   "settingsDeleteAccount": "Удалить аккаунт",
   "deleteAccountTitle": "Удалить аккаунт",
   "deleteAccountSubtitle": "Это действие необратимо и не может быть отменено.",

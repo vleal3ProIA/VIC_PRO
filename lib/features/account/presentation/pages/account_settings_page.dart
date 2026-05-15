@@ -6,6 +6,7 @@ import 'package:myapp/core/constants/supported_locales.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/features/account/application/data_export_notifier.dart';
 import 'package:myapp/features/account/application/profile_settings_notifier.dart';
 import 'package:myapp/features/account/presentation/widgets/profile_failure_message.dart';
 import 'package:myapp/features/account/presentation/widgets/user_avatar.dart';
@@ -79,6 +80,18 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
       }
     });
 
+    // Feedback al exportar los datos.
+    ref.listen<DataExportState>(dataExportNotifierProvider, (prev, next) {
+      if (prev?.status != DataExportStatus.success &&
+          next.status == DataExportStatus.success) {
+        context.showSnack(l.dataExportStarted);
+      }
+      if (prev?.status != DataExportStatus.failure &&
+          next.status == DataExportStatus.failure) {
+        context.showSnack(l.dataExportFailed, isError: true);
+      }
+    });
+
     return switch (state.status) {
       ProfileSettingsStatus.loading => const Center(
           child: CircularProgressIndicator(),
@@ -114,6 +127,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     AppLocalizations l,
   ) {
     final profile = state.profile!;
+    final exportState = ref.watch(dataExportNotifierProvider);
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -310,6 +324,26 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
                       subtitle: Text(l.settingsSecurityHint),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => context.goNamed(RouteNames.mfaSetup),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.download_outlined),
+                      title: Text(l.settingsDownloadData),
+                      subtitle: Text(l.settingsDownloadDataHint),
+                      trailing: exportState.isBuilding
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                              ),
+                            )
+                          : const Icon(Icons.chevron_right),
+                      onTap: exportState.isBuilding
+                          ? null
+                          : () => ref
+                              .read(dataExportNotifierProvider.notifier)
+                              .exportAndDownload(),
                     ),
                     const Divider(height: 1),
                     ListTile(
