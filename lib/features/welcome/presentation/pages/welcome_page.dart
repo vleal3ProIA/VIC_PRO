@@ -97,6 +97,11 @@ class _LegalFooter extends StatelessWidget {
             onPressed: () => context.goNamed(RouteNames.privacy),
             child: Text(l.privacyTitle),
           ),
+          Text('·', style: style),
+          TextButton(
+            onPressed: () => context.goNamed(RouteNames.cookies),
+            child: Text(l.cookiesTitle),
+          ),
         ],
       ),
     );

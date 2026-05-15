@@ -29,6 +29,7 @@ class RouteNames {
   static const String passkeys = 'passkeys';
   static const String terms = 'terms';
   static const String privacy = 'privacy';
+  static const String cookies = 'cookies';
   static const String notFound = 'not_found';
 }
 
@@ -66,4 +67,5 @@ class RoutePaths {
   static const String passkeys = '/passkeys';
   static const String terms = '/terms';
   static const String privacy = '/privacy';
+  static const String cookies = '/cookies';
 }
