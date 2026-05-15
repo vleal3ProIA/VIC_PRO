@@ -28,6 +28,8 @@ class RouteNames {
   static const String deleteAccount = 'delete_account';
   static const String passkeys = 'passkeys';
   static const String auditLog = 'audit_log';
+  static const String team = 'team';
+  static const String acceptInvite = 'accept_invite';
   static const String terms = 'terms';
   static const String privacy = 'privacy';
   static const String cookies = 'cookies';
@@ -67,6 +69,8 @@ class RoutePaths {
   static const String deleteAccount = '/delete-account';
   static const String passkeys = '/passkeys';
   static const String auditLog = '/audit-log';
+  static const String team = '/team';
+  static const String acceptInvite = '/accept-invite';
   static const String terms = '/terms';
   static const String privacy = '/privacy';
   static const String cookies = '/cookies';
