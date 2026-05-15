@@ -31,6 +31,7 @@ import 'package:myapp/features/auth/presentation/pages/register_page.dart';
 import 'package:myapp/features/auth/presentation/pages/set_new_password_page.dart';
 import 'package:myapp/features/auth/presentation/pages/verify_email_sent_page.dart';
 import 'package:myapp/features/home/presentation/pages/home_page.dart';
+import 'package:myapp/features/legal/presentation/pages/cookies_page.dart';
 import 'package:myapp/features/legal/presentation/pages/privacy_page.dart';
 import 'package:myapp/features/legal/presentation/pages/terms_page.dart';
 import 'package:myapp/features/shell/presentation/widgets/private_shell.dart';
@@ -213,6 +214,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: RouteNames.privacy,
         builder: (_, __) => const PrivacyPage(),
       ),
+      GoRoute(
+        path: RoutePaths.cookies,
+        name: RouteNames.cookies,
+        builder: (_, __) => const CookiesPage(),
+      ),
     ],
     errorBuilder: (_, state) => _NotFoundPage(error: state.error),
   );
@@ -235,6 +241,7 @@ const _excludedFromGuard = <String>{
   RoutePaths.emailChanged,
   RoutePaths.terms,
   RoutePaths.privacy,
+  RoutePaths.cookies,
 };
 
 /// Rutas privadas (requieren sesión activa).
