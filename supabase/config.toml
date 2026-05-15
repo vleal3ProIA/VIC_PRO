@@ -1,0 +1,14 @@
+# ============================================================================
+# Configuración local de Supabase
+# ----------------------------------------------------------------------------
+# Este archivo lo usa `supabase` CLI tanto para desarrollo local como para
+# leer flags por-función al hacer `functions deploy`.
+#
+# Aquí solo configuramos las Edge Functions que necesitan algo distinto al
+# default. Las que no aparecen heredan `verify_jwt = true`.
+# ============================================================================
+
+# Stripe → nuestro webhook. Stripe NO manda JWT; la autenticidad se verifica
+# firmando el body con `STRIPE_WEBHOOK_SECRET` dentro del handler.
+[functions.stripe-webhook]
+verify_jwt = false

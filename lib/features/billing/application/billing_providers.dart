@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:myapp/core/observability/analytics_service.dart';
 import 'package:myapp/core/providers/supabase_providers.dart';
+import 'package:myapp/core/utils/log_context.dart';
 import 'package:myapp/features/tenants/application/tenant_providers.dart';
 
 import '../data/billing_datasource.dart';
@@ -58,4 +61,79 @@ bool entitlementCapability(WidgetRef ref, String key, {bool fallback = false}) {
   final e = ref.watch(currentEntitlementsProvider).valueOrNull
       ?? const Entitlements.empty();
   return e.capability(key, fallback: fallback);
+}
+
+// ─── Acciones (Stripe checkout / portal) ─────────────────────────────────
+
+/// Lanza el flujo de checkout: invoca la Edge Function, recibe la URL de
+/// Stripe Checkout y devuelve la URL para que la UI redirija. La UI debe
+/// llamar `html.window.location.href = url` (web) o `url_launcher` (mobile).
+///
+/// Devuelve la URL o `null` si falla. La excepción [BillingException] se
+/// captura aquí y se loguea; la UI inspecciona el provider state para
+/// mostrar el error apropiado.
+Future<String?> launchCheckout(
+  WidgetRef ref, {
+  required String tenantId,
+  required String planSlug,
+  required String billingPeriod,
+  required String successUrl,
+  required String cancelUrl,
+}) async {
+  return LogContext.run<String?>(
+    tags: {
+      'flow': 'checkout',
+      'tenant_id': tenantId,
+      'plan_slug': planSlug,
+      'billing_period': billingPeriod,
+    },
+    () async {
+      final ds = ref.read(billingDataSourceProvider);
+      final analytics = ref.read(analyticsServiceProvider);
+      analytics.trackSync(
+        'checkout_started',
+        properties: {'plan_slug': planSlug, 'billing_period': billingPeriod},
+      );
+      try {
+        final result = await ds.createCheckoutSession(
+          tenantId: tenantId,
+          planSlug: planSlug,
+          billingPeriod: billingPeriod,
+          successUrl: successUrl,
+          cancelUrl: cancelUrl,
+        );
+        return result.url;
+      } catch (e) {
+        analytics.trackSync(
+          'checkout_failed',
+          properties: {
+            'reason': e is BillingException ? e.code : 'unknown',
+          },
+        );
+        if (kDebugMode) debugPrint('Checkout error: $e');
+        rethrow;
+      }
+    },
+  );
+}
+
+/// Abre Customer Portal. Devuelve la URL para redirigir (igual que
+/// [launchCheckout]).
+Future<String?> launchCustomerPortal(
+  WidgetRef ref, {
+  required String tenantId,
+  required String returnUrl,
+}) async {
+  final ds = ref.read(billingDataSourceProvider);
+  final analytics = ref.read(analyticsServiceProvider);
+  analytics.trackSync('customer_portal_opened');
+  try {
+    return await ds.createCustomerPortalSession(
+      tenantId: tenantId,
+      returnUrl: returnUrl,
+    );
+  } catch (e) {
+    if (kDebugMode) debugPrint('Portal error: $e');
+    rethrow;
+  }
 }
