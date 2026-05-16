@@ -594,5 +594,24 @@
   "adminTrashRestoreConfirmTitle": "Ripristinare il tenant?",
   "adminTrashRestoreConfirmBody": "“{name}” e tutti i suoi membri saranno ripristinati.",
   "adminTrashRestored": "“{name}” ripristinato.",
-  "adminTrashRestoreError": "Impossibile ripristinare il tenant."
+  "adminTrashRestoreError": "Impossibile ripristinare il tenant.",
+
+  "settingsSessions": "Sessioni attive",
+  "settingsSessionsHint": "Gestisci i dispositivi e browser connessi al tuo account.",
+  "sessionsTitle": "Sessioni attive",
+  "sessionsLoadError": "Impossibile caricare le sessioni.",
+  "sessionsEmpty": "Nessuna sessione attiva.",
+  "sessionsCount": "{count} sessione/i attiva/e",
+  "sessionsOtherDevicesHint": "Se non ne riconosci una, revocala subito.",
+  "sessionsRevokeOthers": "Disconnetti tutte le altre",
+  "sessionsRevokeOthersConfirmTitle": "Disconnettere tutte le altre sessioni?",
+  "sessionsRevokeOthersConfirmBody": "Tutti i dispositivi tranne questo verranno disconnessi subito.",
+  "sessionsRevokedOthers": "{count} sessione/i revocata/e.",
+  "sessionsCurrentBadge": "Questo dispositivo",
+  "sessionsMfaBadge": "MFA",
+  "sessionsLastActive": "Ultima attività {date}",
+  "sessionsIp": "IP {ip}",
+  "sessionsRevoke": "Disconnetti questo dispositivo",
+  "sessionsRevoked": "Sessione revocata.",
+  "sessionsRevokeError": "Impossibile revocare la sessione."
 }

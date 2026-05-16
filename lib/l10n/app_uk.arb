@@ -594,5 +594,24 @@
   "adminTrashRestoreConfirmTitle": "Відновити тенант?",
   "adminTrashRestoreConfirmBody": "«{name}» і всіх його учасників буде відновлено.",
   "adminTrashRestored": "«{name}» відновлено.",
-  "adminTrashRestoreError": "Не вдалося відновити тенант."
+  "adminTrashRestoreError": "Не вдалося відновити тенант.",
+
+  "settingsSessions": "Активні сесії",
+  "settingsSessionsHint": "Керуй пристроями та браузерами, що увійшли до твого акаунту.",
+  "sessionsTitle": "Активні сесії",
+  "sessionsLoadError": "Не вдалося завантажити сесії.",
+  "sessionsEmpty": "Немає активних сесій.",
+  "sessionsCount": "{count} активних сесій",
+  "sessionsOtherDevicesHint": "Якщо якоїсь не впізнаєш — відклич її негайно.",
+  "sessionsRevokeOthers": "Вийти з усіх інших",
+  "sessionsRevokeOthersConfirmTitle": "Вийти з усіх інших сесій?",
+  "sessionsRevokeOthersConfirmBody": "Всі пристрої, крім цього, будуть негайно завершені.",
+  "sessionsRevokedOthers": "{count} сесій відкликано.",
+  "sessionsCurrentBadge": "Цей пристрій",
+  "sessionsMfaBadge": "MFA",
+  "sessionsLastActive": "Остання активність {date}",
+  "sessionsIp": "IP {ip}",
+  "sessionsRevoke": "Вийти з цього пристрою",
+  "sessionsRevoked": "Сесію відкликано.",
+  "sessionsRevokeError": "Не вдалося відкликати сесію."
 }

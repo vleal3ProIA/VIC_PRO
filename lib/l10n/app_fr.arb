@@ -594,5 +594,24 @@
   "adminTrashRestoreConfirmTitle": "Restaurer le tenant ?",
   "adminTrashRestoreConfirmBody": "« {name} » et tous ses membres seront restaurés.",
   "adminTrashRestored": "« {name} » restauré.",
-  "adminTrashRestoreError": "Impossible de restaurer le tenant."
+  "adminTrashRestoreError": "Impossible de restaurer le tenant.",
+
+  "settingsSessions": "Sessions actives",
+  "settingsSessionsHint": "Gérez les appareils et navigateurs connectés à votre compte.",
+  "sessionsTitle": "Sessions actives",
+  "sessionsLoadError": "Impossible de charger les sessions.",
+  "sessionsEmpty": "Aucune session active.",
+  "sessionsCount": "{count} session(s) active(s)",
+  "sessionsOtherDevicesHint": "Si vous ne reconnaissez pas l'une d'elles, révoquez-la immédiatement.",
+  "sessionsRevokeOthers": "Déconnecter toutes les autres",
+  "sessionsRevokeOthersConfirmTitle": "Déconnecter toutes les autres sessions ?",
+  "sessionsRevokeOthersConfirmBody": "Tous les appareils sauf celui-ci seront déconnectés immédiatement.",
+  "sessionsRevokedOthers": "{count} session(s) révoquée(s).",
+  "sessionsCurrentBadge": "Cet appareil",
+  "sessionsMfaBadge": "MFA",
+  "sessionsLastActive": "Dernière activité {date}",
+  "sessionsIp": "IP {ip}",
+  "sessionsRevoke": "Déconnecter cet appareil",
+  "sessionsRevoked": "Session révoquée.",
+  "sessionsRevokeError": "Impossible de révoquer la session."
 }
