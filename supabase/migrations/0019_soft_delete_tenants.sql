@@ -157,9 +157,9 @@ begin
 end;
 $$;
 
-/// Devuelve los tenants borrados con metadatos útiles para la pantalla
-/// admin de papelera. SECURITY DEFINER + check de admin = la única forma
-/// de leer la lista; usuarios normales reciben 0 filas siempre.
+-- Devuelve los tenants borrados con metadatos útiles para la pantalla
+-- admin de papelera. SECURITY DEFINER + check de admin = la única forma
+-- de leer la lista; usuarios normales reciben 0 filas siempre.
 create or replace function public.list_deleted_tenants()
 returns table (
   id            uuid,
