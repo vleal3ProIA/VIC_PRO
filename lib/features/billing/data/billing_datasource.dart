@@ -131,6 +131,113 @@ class BillingDataSource {
     }
     return payload['url'] as String;
   }
+
+  // ─── Subscription management (sin Customer Portal) ──────────────────────
+
+  /// Cancela la sub al final del periodo facturado.
+  Future<void> cancelSubscription(String subscriptionId) async {
+    await _invokeSubUpdate({
+      'action': 'cancel',
+      'subscription_id': subscriptionId,
+    });
+  }
+
+  /// Deshace una cancelación pendiente.
+  Future<void> reactivateSubscription(String subscriptionId) async {
+    await _invokeSubUpdate({
+      'action': 'reactivate',
+      'subscription_id': subscriptionId,
+    });
+  }
+
+  /// Cancela inmediatamente (el user pierde acceso al momento).
+  Future<void> cancelSubscriptionNow(String subscriptionId) async {
+    await _invokeSubUpdate({
+      'action': 'cancel_now',
+      'subscription_id': subscriptionId,
+    });
+  }
+
+  /// Cambia plan y/o periodo. Stripe aplica proration automáticamente.
+  Future<void> changeSubscriptionPlan({
+    required String subscriptionId,
+    required String newPlanSlug,
+    required String newBillingPeriod,
+  }) async {
+    await _invokeSubUpdate({
+      'action': 'change_plan',
+      'subscription_id': subscriptionId,
+      'new_plan_slug': newPlanSlug,
+      'new_billing_period': newBillingPeriod,
+    });
+  }
+
+  /// Estima cuánto se cobra/se acredita al aplicar el cambio AHORA.
+  /// `amountDueCents` negativo = crédito; positivo = se cobrará.
+  Future<ChangePlanPreview> previewChangePlan({
+    required String subscriptionId,
+    required String newPlanSlug,
+    required String newBillingPeriod,
+  }) async {
+    final payload = await _invokeSubUpdate({
+      'action': 'preview_change_plan',
+      'subscription_id': subscriptionId,
+      'new_plan_slug': newPlanSlug,
+      'new_billing_period': newBillingPeriod,
+    });
+    return ChangePlanPreview(
+      amountDueCents: (payload['amount_due'] as int?) ?? 0,
+      currency: (payload['currency'] as String?) ?? 'EUR',
+    );
+  }
+
+  Future<Map<String, dynamic>> _invokeSubUpdate(
+    Map<String, dynamic> body,
+  ) async {
+    final response = await _client.functions.invoke(
+      'stripe-subscription-update',
+      body: body,
+    );
+    final payload = response.data as Map<String, dynamic>?;
+    if (payload == null) throw const BillingException('empty_response');
+    if (payload['error'] != null) {
+      throw BillingException(payload['error'] as String);
+    }
+    return payload;
+  }
+}
+
+/// Estimación de proration al cambiar de plan.
+class ChangePlanPreview {
+  const ChangePlanPreview({
+    required this.amountDueCents,
+    required this.currency,
+  });
+
+  /// Negativo = crédito; positivo = cargo inmediato.
+  final int amountDueCents;
+  final String currency;
+
+  /// Formato "+€12,34" o "−€8,50" o "€0".
+  String formatAmount() {
+    final isNeg = amountDueCents < 0;
+    final cents = amountDueCents.abs();
+    final euros = cents / 100;
+    final symbol = switch (currency.toUpperCase()) {
+      'EUR' => '€',
+      'USD' => r'$',
+      'GBP' => '£',
+      _ => currency.toUpperCase(),
+    };
+    final formatted = euros == euros.roundToDouble()
+        ? euros.toStringAsFixed(0)
+        : euros.toStringAsFixed(2);
+    if (amountDueCents == 0) return '${symbol}0';
+    return '${isNeg ? '−' : '+'}$symbol$formatted';
+  }
+
+  bool get isCharge => amountDueCents > 0;
+  bool get isCredit => amountDueCents < 0;
 }
 
 /// Excepción con `code` para mapear a mensajes localizados en la UI.
