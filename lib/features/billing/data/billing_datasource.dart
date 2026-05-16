@@ -93,6 +93,7 @@ class BillingDataSource {
     required String planSlug,
     required String billingPeriod,
     required String returnUrl,
+    String? stripePromotionCodeId,
   }) async {
     final response = await _client.functions.invoke(
       'stripe-checkout',
@@ -102,6 +103,8 @@ class BillingDataSource {
         'billing_period': billingPeriod,
         'success_url': returnUrl,
         'ui_mode': 'embedded',
+        if (stripePromotionCodeId != null)
+          'stripe_promotion_code_id': stripePromotionCodeId,
       },
     );
     final payload = response.data as Map<String, dynamic>?;

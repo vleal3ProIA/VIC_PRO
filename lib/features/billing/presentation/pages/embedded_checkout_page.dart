@@ -31,11 +31,18 @@ class EmbeddedCheckoutPage extends ConsumerStatefulWidget {
   const EmbeddedCheckoutPage({
     required this.planSlug,
     required this.billingPeriod,
+    this.stripePromotionCodeId,
     super.key,
   });
 
   final String planSlug;
   final String billingPeriod;
+
+  /// Si llega no-null, se pasa al `stripe-checkout` para aplicar el
+  /// descuento como `discounts: [{promotion_code}]` en la session.
+  /// Validado previamente en `/billing/plans` por la Edge Function
+  /// `validate-promotion-code`.
+  final String? stripePromotionCodeId;
 
   @override
   ConsumerState<EmbeddedCheckoutPage> createState() =>
@@ -84,6 +91,7 @@ class _EmbeddedCheckoutPageState extends ConsumerState<EmbeddedCheckoutPage> {
         planSlug: widget.planSlug,
         billingPeriod: widget.billingPeriod,
         returnUrl: returnUrl,
+        stripePromotionCodeId: widget.stripePromotionCodeId,
       );
 
       final pk = session.publishableKey;
