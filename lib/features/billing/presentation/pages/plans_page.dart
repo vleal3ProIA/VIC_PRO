@@ -101,7 +101,8 @@ class _PlansPageState extends ConsumerState<PlansPage> {
                       if (showCancelBanner)
                         _CancelPendingBanner(
                           endsAt: currentSub.currentPeriodEnd!,
-                          onReactivate: () => _onManageBilling(context),
+                          subscriptionId:
+                              currentSub.stripeSubscriptionId ?? '',
                         ),
                       if (showCancelBanner) const SizedBox(height: 16),
                       Wrap(
@@ -121,6 +122,13 @@ class _PlansPageState extends ConsumerState<PlansPage> {
                                 // business=30, enterprise=40.
                                 isDowngrade: currentPlan != null &&
                                     p.position < currentPlan.position,
+                                // Si hay sub Stripe viva, los botones usan
+                                // change_plan; si no (Free), embedded
+                                // checkout.
+                                stripeSubscriptionId:
+                                    currentSub?.stripeSubscriptionId,
+                                cancelPending:
+                                    currentSub?.cancelAtPeriodEnd ?? false,
                               ),
                             ),
                         ],
@@ -169,14 +177,19 @@ class _PlanCard extends ConsumerWidget {
     required this.yearly,
     required this.isCurrent,
     required this.isDowngrade,
+    required this.stripeSubscriptionId,
+    required this.cancelPending,
   });
   final Plan plan;
   final bool yearly;
   final bool isCurrent;
-  /// `true` cuando este plan está por debajo del plan actual del tenant
-  /// (menor `position`). Mostrar "Upgrade" sería incorrecto: el flujo de
-  /// bajar de plan va por Customer Portal.
   final bool isDowngrade;
+  /// ID de la suscripción Stripe viva del tenant. Si no es null, los
+  /// cambios de plan van por `change_plan` API (sin checkout). Si es
+  /// null, el upgrade va por embedded checkout (primera compra).
+  final String? stripeSubscriptionId;
+  /// True si la sub viva está marcada para cancelarse al final del periodo.
+  final bool cancelPending;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -269,30 +282,13 @@ class _PlanCard extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: isCurrent
-                  ? OutlinedButton(
-                      onPressed: null,
-                      child: Text(l.plansCurrentPlan),
-                    )
-                  : plan.isCustomPriced
-                      ? OutlinedButton(
-                          onPressed: () {
-                            context.showSnack(l.plansContactSales);
-                          },
-                          child: Text(l.plansContactSales),
-                        )
-                      : isDowngrade
-                          // Plan por debajo del actual: para bajar el
-                          // usuario tiene que ir al Customer Portal
-                          // (cancelar/cambiar de plan). NO se "upgradea"
-                          // a un plan inferior por checkout.
-                          ? OutlinedButton(
-                              onPressed: null,
-                              child: Text(l.plansDowngradeViaPortal),
-                            )
-                          : _UpgradeButton(plan: plan, yearly: yearly),
+            _PlanCardAction(
+              plan: plan,
+              yearly: yearly,
+              isCurrent: isCurrent,
+              isDowngrade: isDowngrade,
+              stripeSubscriptionId: stripeSubscriptionId,
+              cancelPending: cancelPending,
             ),
           ],
         ),
@@ -365,20 +361,63 @@ class _PlanCard extends ConsumerWidget {
 /// Banner amarillo arriba del catálogo cuando la suscripción está
 /// programada para cancelarse al final del periodo. Informa al usuario y
 /// le ofrece reactivar (=> Customer Portal).
-class _CancelPendingBanner extends StatelessWidget {
+/// Banner amarillo cuando la sub está pendiente de cancelarse al fin de
+/// periodo. El botón "Reactivar" llama a la Edge Function
+/// `stripe-subscription-update` con `action: reactivate` — sin abrir
+/// Customer Portal.
+class _CancelPendingBanner extends ConsumerStatefulWidget {
   const _CancelPendingBanner({
     required this.endsAt,
-    required this.onReactivate,
+    required this.subscriptionId,
   });
 
   final DateTime endsAt;
-  final VoidCallback onReactivate;
+  final String subscriptionId;
+
+  @override
+  ConsumerState<_CancelPendingBanner> createState() =>
+      _CancelPendingBannerState();
+}
+
+class _CancelPendingBannerState extends ConsumerState<_CancelPendingBanner> {
+  bool _busy = false;
+
+  Future<void> _onReactivate() async {
+    if (widget.subscriptionId.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(billingDataSourceProvider)
+          .reactivateSubscription(widget.subscriptionId);
+      // Refresca el estado de la sub — el banner desaparece solo cuando
+      // `cancel_at_period_end` pase a false (Stripe envía webhook).
+      ref
+        ..invalidate(currentSubscriptionProvider)
+        ..invalidate(currentPlanProvider)
+        ..invalidate(currentEntitlementsProvider);
+      if (!mounted) return;
+      context.showSnack(context.l10n.plansReactivated);
+    } on BillingException catch (e) {
+      if (!mounted) return;
+      context.showSnack(
+        e.code == 'rate_limited'
+            ? context.l10n.plansRateLimited
+            : context.l10n.plansCheckoutFailed,
+        isError: true,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      context.showSnack(context.l10n.plansCheckoutFailed, isError: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     final localeCode = Localizations.localeOf(context).languageCode;
-    final formatted = DateFormat.yMMMMd(localeCode).format(endsAt.toLocal());
+    final formatted = DateFormat.yMMMMd(localeCode).format(widget.endsAt.toLocal());
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -400,11 +439,269 @@ class _CancelPendingBanner extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           FilledButton.tonal(
-            onPressed: onReactivate,
-            child: Text(l.plansReactivate),
+            onPressed: _busy ? null : _onReactivate,
+            child: _busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2.4),
+                  )
+                : Text(l.plansReactivate),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Decide qué botón mostrar bajo cada card en función del plan iterado vs
+/// el plan actual del tenant. Centraliza la lógica que antes vivía
+/// inline en `_PlanCard`.
+class _PlanCardAction extends ConsumerStatefulWidget {
+  const _PlanCardAction({
+    required this.plan,
+    required this.yearly,
+    required this.isCurrent,
+    required this.isDowngrade,
+    required this.stripeSubscriptionId,
+    required this.cancelPending,
+  });
+
+  final Plan plan;
+  final bool yearly;
+  final bool isCurrent;
+  final bool isDowngrade;
+  final String? stripeSubscriptionId;
+  final bool cancelPending;
+
+  @override
+  ConsumerState<_PlanCardAction> createState() => _PlanCardActionState();
+}
+
+class _PlanCardActionState extends ConsumerState<_PlanCardAction> {
+  bool _busy = false;
+
+  bool get _hasPaidSub =>
+      widget.stripeSubscriptionId != null &&
+      widget.stripeSubscriptionId!.isNotEmpty;
+
+  /// Confirma con el user y ejecuta `change_plan` API.
+  Future<void> _onChangePlan() async {
+    final l = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.plansChangeConfirmTitle(widget.plan.name)),
+        content: Text(l.plansChangeConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.plansChangeConfirmAction),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    setState(() => _busy = true);
+    try {
+      await ref.read(billingDataSourceProvider).changeSubscriptionPlan(
+            subscriptionId: widget.stripeSubscriptionId!,
+            newPlanSlug: widget.plan.slug,
+            newBillingPeriod: widget.yearly ? 'yearly' : 'monthly',
+          );
+      ref
+        ..invalidate(currentSubscriptionProvider)
+        ..invalidate(currentPlanProvider)
+        ..invalidate(currentEntitlementsProvider);
+      if (!mounted) return;
+      context.showSnack(l.plansChanged(widget.plan.name));
+    } on BillingException catch (e) {
+      if (!mounted) return;
+      context.showSnack(_mapError(e.code), isError: true);
+    } catch (_) {
+      if (!mounted) return;
+      context.showSnack(context.l10n.plansCheckoutFailed, isError: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Confirma y cancela la sub al fin de periodo.
+  Future<void> _onCancel() async {
+    final l = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.plansCancelConfirmTitle),
+        content: Text(l.plansCancelConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+          ),
+          FilledButton.tonal(
+            style: FilledButton.styleFrom(
+              backgroundColor: context.colors.errorContainer,
+              foregroundColor: context.colors.onErrorContainer,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.plansCancelConfirmAction),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(billingDataSourceProvider)
+          .cancelSubscription(widget.stripeSubscriptionId!);
+      ref
+        ..invalidate(currentSubscriptionProvider)
+        ..invalidate(currentPlanProvider)
+        ..invalidate(currentEntitlementsProvider);
+      if (!mounted) return;
+      context.showSnack(l.plansCancelScheduled);
+    } on BillingException catch (e) {
+      if (!mounted) return;
+      context.showSnack(_mapError(e.code), isError: true);
+    } catch (_) {
+      if (!mounted) return;
+      context.showSnack(context.l10n.plansCheckoutFailed, isError: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  String _mapError(String code) {
+    final l = context.l10n;
+    return switch (code) {
+      'stripe_not_configured' => l.plansStripeNotConfigured,
+      'rate_limited' => l.plansRateLimited,
+      'not_admin' || 'not_member' => l.plansNotAdmin,
+      _ => l.plansCheckoutFailed,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+
+    // Plan actual:
+    if (widget.isCurrent) {
+      // Hay sub paga y NO está cancelándose → botón Cancel disponible.
+      if (_hasPaidSub && !widget.cancelPending) {
+        return Column(
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: null,
+                child: Text(l.plansCurrentPlan),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: _busy ? null : _onCancel,
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: _busy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2.4),
+                    )
+                  : Text(l.plansCancelSubscription),
+            ),
+          ],
+        );
+      }
+      // Free o sub cancel-pending: solo "Current plan", el banner ya
+      // gestiona el reactivate.
+      return SizedBox(
+        width: double.infinity,
+        child: OutlinedButton(
+          onPressed: null,
+          child: Text(l.plansCurrentPlan),
+        ),
+      );
+    }
+
+    // Plan con precio custom (Enterprise): Contact sales.
+    if (widget.plan.isCustomPriced) {
+      return SizedBox(
+        width: double.infinity,
+        child: OutlinedButton(
+          onPressed: () => context.showSnack(l.plansContactSales),
+          child: Text(l.plansContactSales),
+        ),
+      );
+    }
+
+    // Free card mientras el user tiene sub paga: "Switch to Free" = cancel.
+    if (widget.plan.isFree && _hasPaidSub) {
+      return SizedBox(
+        width: double.infinity,
+        child: OutlinedButton(
+          onPressed: _busy ? null : _onCancel,
+          child: _busy
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2.4),
+                )
+              : Text(l.plansSwitchToFree),
+        ),
+      );
+    }
+
+    // Plan inferior (downgrade) y sub paga → change_plan API.
+    if (widget.isDowngrade && _hasPaidSub) {
+      return SizedBox(
+        width: double.infinity,
+        child: OutlinedButton(
+          onPressed: _busy ? null : _onChangePlan,
+          child: _busy
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2.4),
+                )
+              : Text(l.plansSwitchTo(widget.plan.name)),
+        ),
+      );
+    }
+
+    // Plan superior (upgrade):
+    //  - Con sub Stripe → change_plan API (sin checkout).
+    //  - Sin sub Stripe (Free user) → embedded checkout.
+    if (_hasPaidSub) {
+      return SizedBox(
+        width: double.infinity,
+        child: FilledButton(
+          onPressed: _busy ? null : _onChangePlan,
+          child: _busy
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2.4),
+                )
+              : Text(l.plansSwitchTo(widget.plan.name)),
+        ),
+      );
+    }
+
+    // Sin sub Stripe → embedded checkout.
+    return SizedBox(
+      width: double.infinity,
+      child: _UpgradeButton(plan: widget.plan, yearly: widget.yearly),
     );
   }
 }
