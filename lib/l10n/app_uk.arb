@@ -582,5 +582,17 @@
   "adminPlansPriceConfirmBody": "{count} активних підписок будуть мігровані за стратегією: {strategy}. Дію не можна скасувати.",
   "adminPlansPriceApplied": "Ціна оновлена. {count} підписок мігровано.",
   "adminPlansPricePartial": "Ціна оновлена. {migrated} мігровано, {failed} з помилкою — дивись логи.",
-  "adminPlansPriceError": "Не вдалося застосувати зміну ціни."
+  "adminPlansPriceError": "Не вдалося застосувати зміну ціни.",
+
+  "adminTrashTitle": "Кошик",
+  "adminTrashHint": "Soft-видалені тенанти. Відновлюй у 1 клік.",
+  "adminTrashLoadError": "Не вдалося завантажити видалені тенанти.",
+  "adminTrashEmpty": "Кошик порожній. Нічого відновлювати.",
+  "adminTrashDeletedAt": "Видалено {date}",
+  "adminTrashMemberCount": "{count} учасник(ів)",
+  "adminTrashRestore": "Відновити",
+  "adminTrashRestoreConfirmTitle": "Відновити тенант?",
+  "adminTrashRestoreConfirmBody": "«{name}» і всіх його учасників буде відновлено.",
+  "adminTrashRestored": "«{name}» відновлено.",
+  "adminTrashRestoreError": "Не вдалося відновити тенант."
 }

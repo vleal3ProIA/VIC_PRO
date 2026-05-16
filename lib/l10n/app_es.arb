@@ -582,5 +582,17 @@
   "adminPlansPriceConfirmBody": "{count} suscripción(es) activa(s) serán migradas con la estrategia: {strategy}. Esto no se puede deshacer.",
   "adminPlansPriceApplied": "Precio actualizado. {count} suscripción(es) migrada(s).",
   "adminPlansPricePartial": "Precio actualizado. {migrated} migradas, {failed} fallaron — revisa los logs.",
-  "adminPlansPriceError": "No se pudo aplicar el cambio de precio."
+  "adminPlansPriceError": "No se pudo aplicar el cambio de precio.",
+
+  "adminTrashTitle": "Papelera",
+  "adminTrashHint": "Tenants borrados (soft-delete). Restáuralos en 1 click.",
+  "adminTrashLoadError": "No se pudieron cargar los tenants borrados.",
+  "adminTrashEmpty": "La papelera está vacía. Nada que restaurar.",
+  "adminTrashDeletedAt": "Borrado el {date}",
+  "adminTrashMemberCount": "{count} miembro(s)",
+  "adminTrashRestore": "Restaurar",
+  "adminTrashRestoreConfirmTitle": "¿Restaurar tenant?",
+  "adminTrashRestoreConfirmBody": "“{name}” y todos sus miembros serán restaurados.",
+  "adminTrashRestored": "“{name}” restaurado.",
+  "adminTrashRestoreError": "No se pudo restaurar el tenant."
 }
