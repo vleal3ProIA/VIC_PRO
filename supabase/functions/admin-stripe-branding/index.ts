@@ -321,17 +321,35 @@ async function updateOwnAccount(
 ): Promise<{ ok?: true; error?: string }> {
   const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
   const body = stripeFormEncode(payload);
-  const res = await fetch("https://api.stripe.com/v1/account", {
+  const url = "https://api.stripe.com/v1/account";
+  console.log("[admin-stripe-branding] POST", url, "body:", body);
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${stripeKey}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body,
+    redirect: "manual",
   });
+  console.log(
+    "[admin-stripe-branding] Stripe response",
+    res.status,
+    "url:",
+    res.url,
+    "redirected:",
+    res.redirected,
+  );
   if (res.ok) return { ok: true };
+  // Si Stripe redirige (303/302) a /v1/accounts/{id}, lo registramos.
+  if (res.status >= 300 && res.status < 400) {
+    const loc = res.headers.get("location");
+    console.log("[admin-stripe-branding] redirect Location:", loc);
+    return { error: `Stripe redirected (${res.status}) to ${loc ?? "?"}` };
+  }
   try {
     const j = await res.json();
+    console.log("[admin-stripe-branding] Stripe error body:", JSON.stringify(j));
     return { error: j?.error?.message ?? `HTTP ${res.status}` };
   } catch {
     return { error: `HTTP ${res.status}` };
