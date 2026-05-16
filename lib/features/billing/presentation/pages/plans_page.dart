@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/features/tenants/application/tenant_providers.dart';
@@ -28,6 +29,7 @@ class _PlansPageState extends ConsumerState<PlansPage> {
     final l = context.l10n;
     final plansAsync = ref.watch(plansProvider);
     final currentPlan = ref.watch(currentPlanProvider).valueOrNull;
+    final currentSub = ref.watch(currentSubscriptionProvider).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(
@@ -75,25 +77,42 @@ class _PlansPageState extends ConsumerState<PlansPage> {
               padding: const EdgeInsets.all(24),
               child: LayoutBuilder(
                 builder: (ctx, c) {
+                  // Banner solo cuando hay una sub con cancelación
+                  // programada — todavía activa pero termina pronto.
+                  final showCancelBanner = currentSub != null &&
+                      currentSub.cancelAtPeriodEnd &&
+                      currentSub.currentPeriodEnd != null;
+
                   // 4 cols en desktop, 2 en tablet, 1 en mobile.
                   final cols = c.maxWidth >= 1100
                       ? 4
                       : c.maxWidth >= 700
                           ? 2
                           : 1;
-                  return Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      for (final p in plans)
-                        SizedBox(
-                          width: (c.maxWidth - (cols - 1) * 16) / cols,
-                          child: _PlanCard(
-                            plan: p,
-                            yearly: _yearly,
-                            isCurrent: currentPlan?.id == p.id,
-                          ),
+                      if (showCancelBanner)
+                        _CancelPendingBanner(
+                          endsAt: currentSub.currentPeriodEnd!,
+                          onReactivate: () => _onManageBilling(context),
                         ),
+                      if (showCancelBanner) const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        children: [
+                          for (final p in plans)
+                            SizedBox(
+                              width: (c.maxWidth - (cols - 1) * 16) / cols,
+                              child: _PlanCard(
+                                plan: p,
+                                yearly: _yearly,
+                                isCurrent: currentPlan?.id == p.id,
+                              ),
+                            ),
+                        ],
+                      ),
                     ],
                   );
                 },
@@ -323,6 +342,53 @@ class _PlanCard extends ConsumerWidget {
     if (boolVal('white_label') ?? false) out.add(l.planFeatureWhiteLabel);
 
     return out;
+  }
+}
+
+/// Banner amarillo arriba del catálogo cuando la suscripción está
+/// programada para cancelarse al final del periodo. Informa al usuario y
+/// le ofrece reactivar (=> Customer Portal).
+class _CancelPendingBanner extends StatelessWidget {
+  const _CancelPendingBanner({
+    required this.endsAt,
+    required this.onReactivate,
+  });
+
+  final DateTime endsAt;
+  final VoidCallback onReactivate;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final localeCode = Localizations.localeOf(context).languageCode;
+    final formatted = DateFormat.yMMMMd(localeCode).format(endsAt.toLocal());
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.colors.tertiaryContainer,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.colors.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_outlined, color: context.colors.tertiary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              l.plansCancelPendingMessage(formatted),
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.colors.onTertiaryContainer,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          FilledButton.tonal(
+            onPressed: onReactivate,
+            child: Text(l.plansReactivate),
+          ),
+        ],
+      ),
+    );
   }
 }
 

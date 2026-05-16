@@ -145,6 +145,7 @@ async function handleSubscriptionUpserted(
   );
   const trialEnd = unixToIso(sub.trial_end as number | null);
   const canceledAt = unixToIso(sub.canceled_at as number | null);
+  const cancelAtPeriodEnd = (sub.cancel_at_period_end as boolean | null) ?? false;
 
   // Buscar suscripción existente por stripe_subscription_id.
   const stripeSubId = sub.id as string;
@@ -163,6 +164,7 @@ async function handleSubscriptionUpserted(
     current_period_end: currentPeriodEnd,
     trial_end: trialEnd,
     canceled_at: canceledAt,
+    cancel_at_period_end: cancelAtPeriodEnd,
     stripe_subscription_id: stripeSubId,
     stripe_customer_id: sub.customer as string,
   };

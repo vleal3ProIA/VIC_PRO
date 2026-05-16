@@ -327,6 +327,8 @@
   "plansUpgradeComingSoon": "El checkout de Stripe estará disponible en la próxima versión.",
   "plansManageBilling": "Gestionar facturación",
   "plansDowngradeViaPortal": "Para bajar de plan, usa Gestionar facturación",
+  "plansCancelPendingMessage": "Tu suscripción se cancelará el {date}. Mantendrás el acceso hasta entonces.",
+  "plansReactivate": "Reactivar",
   "plansStripeNotConfigured": "La facturación aún no está configurada. Inténtalo más tarde.",
   "plansRateLimited": "Demasiadas peticiones. Inténtalo en un momento.",
   "plansNotAdmin": "Solo los administradores del workspace pueden cambiar el plan.",
