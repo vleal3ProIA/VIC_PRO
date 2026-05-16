@@ -39,7 +39,12 @@ class _PlansPageState extends ConsumerState<PlansPage> {
         ),
         title: Text(l.plansTitle),
         actions: [
-          if (currentPlan != null && !currentPlan.isFree)
+          // Solo mostramos "Manage billing" si HAY un Stripe customer real
+          // que gestionar. Esto excluye:
+          //   - usuarios en plan Free (no han pasado por checkout nunca)
+          //   - clientes Enterprise gestionados manualmente (sin sub Stripe)
+          //   - cualquier escenario sin stripe_customer_id
+          if (currentSub?.stripeCustomerId != null)
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: TextButton.icon(
