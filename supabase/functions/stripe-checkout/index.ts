@@ -128,38 +128,51 @@ Deno.serve(withSentry("stripe-checkout", async (req) => {
 
   // Lookup existing Stripe customer_id si lo tenemos. Si no, dejamos que
   // Stripe Checkout lo cree y usaremos el ID de vuelta vía webhook.
+  // OJO: existingSub puede tener `stripe_customer_id = null` (tenants
+  // creados antes del primer checkout). Convertimos null → undefined para
+  // que NO aparezca en el body de la request a Stripe (Stripe rechaza si
+  // ve `customer` Y `customer_email` ambos presentes, aunque uno sea null).
   const { data: existingSub } = await admin
     .from("tenant_subscriptions")
     .select("stripe_customer_id")
     .eq("tenant_id", tenantId)
+    .not("stripe_customer_id", "is", null)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   const customerId = existingSub?.stripe_customer_id as string | undefined;
 
-  try {
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      customer: customerId,
-      customer_email: customerId ? undefined : user.email,
-      line_items: [{ price: priceId, quantity: 1 }],
-      // Metadata: imprescindible para que el webhook sepa a qué tenant
-      // aplicar la suscripción creada.
-      subscription_data: {
-        metadata: {
-          tenant_id: tenantId,
-          plan_id: plan.id,
-          plan_slug: planSlug,
-          billing_period: billingPeriod,
-          created_by_user_id: user.id,
-        },
+  // Construimos los params condicionalmente: o pasamos `customer` (cliente
+  // Stripe ya creado), o pasamos `customer_email` (Stripe lo crea), pero
+  // **nunca los dos**.
+  const sessionParams: Record<string, unknown> = {
+    mode: "subscription",
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    line_items: [{ price: priceId, quantity: 1 }],
+    // Metadata: imprescindible para que el webhook sepa a qué tenant
+    // aplicar la suscripción creada.
+    subscription_data: {
+      metadata: {
+        tenant_id: tenantId,
+        plan_id: plan.id,
+        plan_slug: planSlug,
+        billing_period: billingPeriod,
+        created_by_user_id: user.id,
       },
-      client_reference_id: tenantId,
-      allow_promotion_codes: true,
-    });
+    },
+    client_reference_id: tenantId,
+    allow_promotion_codes: true,
+  };
+  if (customerId) {
+    sessionParams.customer = customerId;
+  } else if (user.email) {
+    sessionParams.customer_email = user.email;
+  }
 
+  try {
+    // deno-lint-ignore no-explicit-any
+    const session = await stripe.checkout.sessions.create(sessionParams as any);
     return json({ url: session.url, session_id: session.id }, 200);
   } catch (e) {
     return json(
