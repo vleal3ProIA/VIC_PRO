@@ -89,12 +89,27 @@ Deno.serve(withSentry("stripe-checkout", async (req) => {
   const billingPeriod = body.billing_period as string | undefined;
   const successUrl = body.success_url as string | undefined;
   const cancelUrl = body.cancel_url as string | undefined;
+  // `ui_mode = "embedded"` → devolvemos `client_secret` para montar el
+  //   widget de Stripe en NUESTRA página (no redirect).
+  // `ui_mode = "hosted"` (default) → devolvemos `url` para redirect.
+  const uiMode = (body.ui_mode as string | undefined) ?? "hosted";
 
-  if (!tenantId || !planSlug || !billingPeriod || !successUrl || !cancelUrl) {
+  if (!tenantId || !planSlug || !billingPeriod) {
+    return json({ error: "missing_fields" }, 400);
+  }
+  // Hosted necesita ambas URLs; embedded solo `return_url` (que viaja en
+  // `success_url`).
+  if (uiMode === "hosted" && (!successUrl || !cancelUrl)) {
+    return json({ error: "missing_fields" }, 400);
+  }
+  if (uiMode === "embedded" && !successUrl) {
     return json({ error: "missing_fields" }, 400);
   }
   if (!["monthly", "yearly"].includes(billingPeriod)) {
     return json({ error: "invalid_billing_period" }, 400);
+  }
+  if (!["hosted", "embedded"].includes(uiMode)) {
+    return json({ error: "invalid_ui_mode" }, 400);
   }
 
   // El caller debe ser admin/owner del tenant.
@@ -205,8 +220,7 @@ Deno.serve(withSentry("stripe-checkout", async (req) => {
   // **nunca los dos**.
   const sessionParams: Record<string, unknown> = {
     mode: "subscription",
-    success_url: successUrl,
-    cancel_url: cancelUrl,
+    ui_mode: uiMode,
     line_items: [{ price: priceId, quantity: 1 }],
     // Metadata: imprescindible para que el webhook sepa a qué tenant
     // aplicar la suscripción creada.
@@ -222,6 +236,15 @@ Deno.serve(withSentry("stripe-checkout", async (req) => {
     client_reference_id: tenantId,
     allow_promotion_codes: true,
   };
+  // En hosted Stripe redirige al success_url; en embedded redirige al
+  // return_url (cargado como success_url aquí). cancel_url NO existe en
+  // embedded — el cancelar es responsabilidad del cliente (cerrar la pág).
+  if (uiMode === "hosted") {
+    sessionParams.success_url = successUrl;
+    sessionParams.cancel_url = cancelUrl;
+  } else {
+    sessionParams.return_url = successUrl;
+  }
   if (customerId) {
     sessionParams.customer = customerId;
   } else if (user.email) {
@@ -237,6 +260,20 @@ Deno.serve(withSentry("stripe-checkout", async (req) => {
   try {
     // deno-lint-ignore no-explicit-any
     const session = await stripe.checkout.sessions.create(sessionParams as any);
+    // Hosted → devolvemos `url` para redirect.
+    // Embedded → devolvemos `client_secret` para que el cliente monte el
+    //   widget con Stripe.js. También enviamos `publishable_key` para que
+    //   el cliente no tenga que conocerla por dart-define.
+    if (uiMode === "embedded") {
+      return json(
+        {
+          client_secret: session.client_secret,
+          session_id: session.id,
+          publishable_key: Deno.env.get("STRIPE_PUBLISHABLE_KEY") ?? null,
+        },
+        200,
+      );
+    }
     return json({ url: session.url, session_id: session.id }, 200);
   } catch (e) {
     return json(

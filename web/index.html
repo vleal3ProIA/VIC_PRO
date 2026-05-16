@@ -40,6 +40,15 @@
     `dart:js_interop` (ver `lib/features/auth/data/webauthn/webauthn_js.dart`).
   -->
   <script src="https://unpkg.com/@simplewebauthn/browser@10.0.0/dist/bundle/index.umd.min.js"></script>
+
+  <!--
+    Stripe.js v3 — necesario para Embedded Checkout. Lo expone como
+    `window.Stripe(publishableKey)`. Lo invocamos desde Dart vía
+    `dart:js_interop` (ver `lib/features/billing/data/stripe_js.dart`).
+    Carga async para no bloquear; la página de checkout espera a que esté
+    disponible antes de mount.
+  -->
+  <script src="https://js.stripe.com/v3/" async></script>
 </head>
 <body>
   <!--
