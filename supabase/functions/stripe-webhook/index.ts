@@ -125,8 +125,24 @@ async function handleSubscriptionUpserted(
     "monthly";
 
   const status = mapStripeStatus(sub.status as string);
-  const currentPeriodStart = unixToIso(sub.current_period_start as number);
-  const currentPeriodEnd = unixToIso(sub.current_period_end as number);
+
+  // En Stripe API >= 2024-06 los `current_period_*` se movieron a
+  // `subscription.items[0]`. Stripe los mantiene en el objeto raíz por
+  // compatibilidad temporal pero pueden faltar en versiones nuevas
+  // (p.ej. 2026-04-22.dahlia los devuelve solo en items). Leemos primero
+  // del item; si no, fallback al campo legacy.
+  // deno-lint-ignore no-explicit-any
+  const firstItem = (sub.items as any)?.data?.[0] as
+    | { current_period_start?: number; current_period_end?: number }
+    | undefined;
+  const currentPeriodStart = unixToIso(
+    (firstItem?.current_period_start ?? sub.current_period_start) as
+      | number
+      | null,
+  );
+  const currentPeriodEnd = unixToIso(
+    (firstItem?.current_period_end ?? sub.current_period_end) as number | null,
+  );
   const trialEnd = unixToIso(sub.trial_end as number | null);
   const canceledAt = unixToIso(sub.canceled_at as number | null);
 
