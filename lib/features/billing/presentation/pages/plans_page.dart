@@ -109,6 +109,12 @@ class _PlansPageState extends ConsumerState<PlansPage> {
                                 plan: p,
                                 yearly: _yearly,
                                 isCurrent: currentPlan?.id == p.id,
+                                // Un plan es "downgrade" si su `position`
+                                // está por debajo del plan actual. Por
+                                // convención de seed: free=10, pro=20,
+                                // business=30, enterprise=40.
+                                isDowngrade: currentPlan != null &&
+                                    p.position < currentPlan.position,
                               ),
                             ),
                         ],
@@ -156,10 +162,15 @@ class _PlanCard extends ConsumerWidget {
     required this.plan,
     required this.yearly,
     required this.isCurrent,
+    required this.isDowngrade,
   });
   final Plan plan;
   final bool yearly;
   final bool isCurrent;
+  /// `true` cuando este plan está por debajo del plan actual del tenant
+  /// (menor `position`). Mostrar "Upgrade" sería incorrecto: el flujo de
+  /// bajar de plan va por Customer Portal.
+  final bool isDowngrade;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -266,11 +277,11 @@ class _PlanCard extends ConsumerWidget {
                           },
                           child: Text(l.plansContactSales),
                         )
-                      : plan.isFree
-                          // Plan Free cuando NO es el actual: el usuario
-                          // está en un plan de pago. Para "bajar" a Free
-                          // tiene que cancelar la suscripción actual desde
-                          // el Customer Portal — no se "upgradea" a free.
+                      : isDowngrade
+                          // Plan por debajo del actual: para bajar el
+                          // usuario tiene que ir al Customer Portal
+                          // (cancelar/cambiar de plan). NO se "upgradea"
+                          // a un plan inferior por checkout.
                           ? OutlinedButton(
                               onPressed: null,
                               child: Text(l.plansDowngradeViaPortal),
