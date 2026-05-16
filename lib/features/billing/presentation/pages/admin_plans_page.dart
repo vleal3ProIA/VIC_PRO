@@ -8,6 +8,7 @@ import 'package:myapp/core/router/route_names.dart';
 import '../../application/admin_plans_providers.dart';
 import '../../domain/plan.dart';
 import '../widgets/admin_plan_edit_dialog.dart';
+import '../widgets/admin_plan_price_change_dialog.dart';
 
 /// `/admin/plans` — gestión del catálogo (solo admin global).
 ///
@@ -170,6 +171,13 @@ class _PlanRow extends ConsumerWidget {
                   ),
                 ),
                 IconButton(
+                  tooltip: l.adminPlansChangePriceTooltip,
+                  icon: const Icon(Icons.payments_outlined),
+                  onPressed: plan.isFree || plan.isCustomPriced
+                      ? null
+                      : () => _onChangePrice(context, ref),
+                ),
+                IconButton(
                   tooltip: l.adminPlansEditTooltip,
                   icon: const Icon(Icons.edit_outlined),
                   onPressed: () => _onEdit(context, ref),
@@ -186,6 +194,16 @@ class _PlanRow extends ConsumerWidget {
     final result = await showDialog<bool>(
       context: context,
       builder: (_) => AdminPlanEditDialog(plan: plan),
+    );
+    if ((result ?? false) && context.mounted) {
+      invalidatePlanCaches(ref);
+    }
+  }
+
+  Future<void> _onChangePrice(BuildContext context, WidgetRef ref) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (_) => AdminPlanPriceChangeDialog(plan: plan),
     );
     if ((result ?? false) && context.mounted) {
       invalidatePlanCaches(ref);
