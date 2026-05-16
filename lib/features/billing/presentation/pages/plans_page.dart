@@ -9,8 +9,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../application/billing_info_providers.dart';
 import '../../application/billing_providers.dart';
+import '../../application/promotion_code_providers.dart';
 import '../../data/billing_datasource.dart';
 import '../../domain/plan.dart';
+import '../../domain/promotion_code.dart';
+import '../widgets/promotion_code_field.dart';
 
 /// Pantalla `/billing/plans` — catálogo de planes + indicador del actual.
 /// El botón "Upgrade" muestra un placeholder por ahora; la integración con
@@ -105,6 +108,8 @@ class _PlansPageState extends ConsumerState<PlansPage> {
                               currentSub.stripeSubscriptionId ?? '',
                         ),
                       if (showCancelBanner) const SizedBox(height: 16),
+                      const PromotionCodeField(),
+                      const SizedBox(height: 16),
                       Wrap(
                         spacing: 16,
                         runSpacing: 16,
@@ -195,6 +200,23 @@ class _PlanCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final priceText = plan.formatPrice(yearly: yearly);
+    final applied = ref.watch(appliedPromotionCodeProvider);
+    // Solo aplicamos visualmente el descuento si el cupón aplica a este
+    // plan (o aplica a todos). El backend revalida en el checkout.
+    final discountApplies = applied != null &&
+        _appliesToPlan(applied, plan.slug) &&
+        !plan.isFree &&
+        !plan.isCustomPriced;
+    final basePriceCents = yearly
+        ? plan.priceYearlyCents
+        : plan.priceMonthlyCents;
+    final discountedPriceText =
+        discountApplies && basePriceCents != null && basePriceCents > 0
+            ? _formatCents(
+                applied.applyToPriceCents(basePriceCents),
+                plan.currency,
+              )
+            : null;
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
@@ -236,16 +258,36 @@ class _PlanCard extends ConsumerWidget {
               ),
             ],
             const SizedBox(height: 20),
-            // Precio.
+            // Precio (con tachado si hay descuento aplicado a este plan).
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  priceText,
-                  style: context.textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
+                if (discountedPriceText != null) ...[
+                  Text(
+                    discountedPriceText,
+                    style: context.textTheme.headlineLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: context.colors.primary,
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      priceText,
+                      style: context.textTheme.bodyLarge?.copyWith(
+                        color: context.colors.onSurfaceVariant,
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
+                  ),
+                ] else
+                  Text(
+                    priceText,
+                    style: context.textTheme.headlineLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 if (!plan.isCustomPriced && !plan.isFree) ...[
                   const SizedBox(width: 4),
                   Padding(
@@ -355,6 +397,22 @@ class _PlanCard extends ConsumerWidget {
     if (boolVal('white_label') ?? false) out.add(l.planFeatureWhiteLabel);
 
     return out;
+  }
+
+  bool _appliesToPlan(AppliedPromotionCode applied, String slug) {
+    final list = applied.appliesToPlanSlugs;
+    if (list == null || list.isEmpty) return true;
+    return list.contains(slug);
+  }
+
+  String _formatCents(int cents, String? currency) {
+    final value = cents / 100.0;
+    final sym = switch (currency) {
+      'USD' => r'$',
+      'GBP' => '£',
+      _ => '€',
+    };
+    return '${value.toStringAsFixed(2)} $sym';
   }
 }
 
@@ -736,11 +794,21 @@ class _UpgradeButtonState extends ConsumerState<_UpgradeButton> {
     // Navega a la pantalla embedded — el widget Stripe se monta dentro
     // de nuestra app (no redirect). La pantalla embedded se encarga de
     // crear la session y montar el widget.
+    //
+    // Si hay un código promocional aplicado, lo pasamos como query param
+    // para que la pantalla embedded lo incluya en el create-session.
     final period = widget.yearly ? 'yearly' : 'monthly';
+    final applied = ref.read(appliedPromotionCodeProvider);
+    final promo = applied != null &&
+            (applied.appliesToPlanSlugs == null ||
+                applied.appliesToPlanSlugs!.contains(widget.plan.slug))
+        ? '&stripe_promotion_code_id=${Uri.encodeQueryComponent(applied.stripePromotionCodeId)}'
+        : '';
     context.go(
       '${RoutePaths.embeddedCheckout}'
       '?plan_slug=${widget.plan.slug}'
-      '&billing_period=$period',
+      '&billing_period=$period'
+      '$promo',
     );
   }
 

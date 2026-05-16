@@ -93,6 +93,12 @@ Deno.serve(withSentry("stripe-checkout", async (req) => {
   //   widget de Stripe en NUESTRA página (no redirect).
   // `ui_mode = "hosted"` (default) → devolvemos `url` para redirect.
   const uiMode = (body.ui_mode as string | undefined) ?? "hosted";
+  // Código promocional pre-validado por la Edge Function
+  // `validate-promotion-code`. Si llega, lo aplicamos como `discounts`
+  // explícito en la session y desactivamos `allow_promotion_codes` (Stripe
+  // rechaza tener ambos a la vez). Si no llega, dejamos que Stripe acepte
+  // códigos directamente en el formulario del Checkout.
+  const promotionCodeId = body.stripe_promotion_code_id as string | undefined;
 
   if (!tenantId || !planSlug || !billingPeriod) {
     return json({ error: "missing_fields" }, 400);
@@ -234,8 +240,16 @@ Deno.serve(withSentry("stripe-checkout", async (req) => {
       },
     },
     client_reference_id: tenantId,
-    allow_promotion_codes: true,
   };
+  if (promotionCodeId) {
+    // Stripe: `discounts` y `allow_promotion_codes` son mutuamente
+    // excluyentes. Si el cliente ya validó un código contra nuestro
+    // sistema, lo aplicamos sí o sí y no dejamos que se cambie en el
+    // widget.
+    sessionParams.discounts = [{ promotion_code: promotionCodeId }];
+  } else {
+    sessionParams.allow_promotion_codes = true;
+  }
   // En hosted Stripe redirige al success_url; en embedded redirige al
   // return_url (cargado como success_url aquí). cancel_url NO existe en
   // embedded — el cancelar es responsabilidad del cliente (cerrar la pág).

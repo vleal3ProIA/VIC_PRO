@@ -93,6 +93,16 @@ class AdminPage extends ConsumerWidget {
                   onTap: () => context.goNamed(RouteNames.adminBranding),
                 ),
               ),
+              const SizedBox(height: 8),
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.local_offer_outlined),
+                  title: Text(l.adminCouponsTitle),
+                  subtitle: Text(l.adminCouponsHint),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.goNamed(RouteNames.adminCoupons),
+                ),
+              ),
               const SizedBox(height: 16),
               Card(
                 child: Padding(

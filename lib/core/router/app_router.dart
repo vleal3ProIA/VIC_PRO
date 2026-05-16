@@ -32,6 +32,7 @@ import 'package:myapp/features/auth/presentation/pages/register_page.dart';
 import 'package:myapp/features/auth/presentation/pages/set_new_password_page.dart';
 import 'package:myapp/features/auth/presentation/pages/verify_email_sent_page.dart';
 import 'package:myapp/features/billing/presentation/pages/admin_branding_page.dart';
+import 'package:myapp/features/billing/presentation/pages/admin_coupons_page.dart';
 import 'package:myapp/features/billing/presentation/pages/admin_plans_page.dart';
 import 'package:myapp/features/billing/presentation/pages/billing_info_page.dart';
 import 'package:myapp/features/billing/presentation/pages/billing_success_page.dart';
@@ -241,6 +242,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const AdminBrandingPage(),
       ),
       GoRoute(
+        path: RoutePaths.adminCoupons,
+        name: RouteNames.adminCoupons,
+        builder: (_, __) => const AdminCouponsPage(),
+      ),
+      GoRoute(
         path: RoutePaths.plans,
         name: RouteNames.plans,
         builder: (_, __) => const PlansPage(),
@@ -266,6 +272,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           planSlug: state.uri.queryParameters['plan_slug'] ?? '',
           billingPeriod:
               state.uri.queryParameters['billing_period'] ?? 'monthly',
+          stripePromotionCodeId:
+              state.uri.queryParameters['stripe_promotion_code_id'],
         ),
       ),
       GoRoute(
@@ -327,6 +335,7 @@ const _privateRoutes = <String>{
   RoutePaths.adminFlags,
   RoutePaths.adminPlans,
   RoutePaths.adminBranding,
+  RoutePaths.adminCoupons,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
   RoutePaths.changePassword,
@@ -354,6 +363,7 @@ const _adminRoutes = <String>{
   RoutePaths.adminFlags,
   RoutePaths.adminPlans,
   RoutePaths.adminBranding,
+  RoutePaths.adminCoupons,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.
