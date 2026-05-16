@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:myapp/core/config/env_config.dart';
 import 'package:myapp/core/constants/app_constants.dart';
 import 'package:myapp/core/constants/supported_locales.dart';
 import 'package:myapp/core/observability/analytics_service.dart';
@@ -40,29 +41,61 @@ class MyApp extends ConsumerWidget {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       routerConfig: router,
       builder: (context, child) => ProfilePreferencesSync(
-        child: Stack(
-          children: [
-            ResponsiveBreakpoints.builder(
-              child: child!,
-              breakpoints: const [
-                Breakpoint(start: 0, end: 600, name: MOBILE),
-                Breakpoint(start: 601, end: 1024, name: TABLET),
-                Breakpoint(start: 1025, end: 1440, name: DESKTOP),
-                Breakpoint(start: 1441, end: double.infinity, name: '4K'),
-              ],
-            ),
-            // Banner GDPR fijo abajo, sobre cualquier pantalla, hasta que
-            // el usuario decida (acepta / rechaza / personaliza). El propio
-            // widget se oculta cuando hay decisión, así que no hace falta
-            // ningún flag aquí.
-            const Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: CookieConsentBanner(),
-            ),
-          ],
+        child: _EnvBanner(
+          child: Stack(
+            children: [
+              ResponsiveBreakpoints.builder(
+                child: child!,
+                breakpoints: const [
+                  Breakpoint(start: 0, end: 600, name: MOBILE),
+                  Breakpoint(start: 601, end: 1024, name: TABLET),
+                  Breakpoint(start: 1025, end: 1440, name: DESKTOP),
+                  Breakpoint(start: 1441, end: double.infinity, name: '4K'),
+                ],
+              ),
+              // Banner GDPR fijo abajo, sobre cualquier pantalla, hasta que
+              // el usuario decida (acepta / rechaza / personaliza). El propio
+              // widget se oculta cuando hay decisión, así que no hace falta
+              // ningún flag aquí.
+              const Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: CookieConsentBanner(),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+/// Envuelve la app con un [Banner] en la esquina superior derecha cuando
+/// el entorno NO es producción. En desarrollo dice "DEV" en gris/azul; en
+/// staging dice "STAGING" en amarillo intenso. Imposible confundir el
+/// entorno antes de un click destructivo (cancelar suscripción, borrar
+/// cuenta, etc.).
+///
+/// El widget es no-op en producción (devuelve el child tal cual) para no
+/// añadir overhead innecesario.
+class _EnvBanner extends StatelessWidget {
+  const _EnvBanner({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (EnvConfig.isProduction) return child;
+    final (label, color) = EnvConfig.isStaging
+        ? ('STAGING', const Color(0xFFFFA000))
+        : ('DEV', const Color(0xFF3949AB));
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Banner(
+        message: label,
+        location: BannerLocation.topEnd,
+        color: color,
+        child: child,
       ),
     );
   }
