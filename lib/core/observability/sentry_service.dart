@@ -34,30 +34,26 @@ class SentryService {
   /// `true` si Sentry está inicializado y recibirá eventos.
   static bool get isEnabled => _enabled;
 
-  /// DSN recibido por `--dart-define=SENTRY_DSN=...`. Vacío si no se pasó.
-  static const String _dsn = String.fromEnvironment('SENTRY_DSN');
-
-  /// Versión de la release. Por convención `<app>@<semver>+<build>` —
-  /// recibida por `--dart-define=APP_VERSION=...`. Vacío si no se pasó.
-  static const String _release = String.fromEnvironment('APP_VERSION');
-
-  /// Inicializa Sentry **solo si hay DSN configurado**. Si no, ejecuta
-  /// directamente [runApp] (no-op). En ambos casos llama a [runApp] dentro
-  /// de la zona apropiada — no llames a `runApp` tú aparte.
+  /// Inicializa Sentry **solo si hay DSN configurado** (vía
+  /// `--dart-define=SENTRY_DSN=...` o `.env`). Si no, ejecuta
+  /// directamente [runApp] (no-op). En ambos casos llama a [runApp]
+  /// dentro de la zona apropiada — no llames a `runApp` tú aparte.
   static Future<void> init({
     required FutureOr<void> Function() runApp,
   }) async {
-    if (_dsn.isEmpty) {
+    final dsn = EnvConfig.sentryDsn;
+    if (dsn.isEmpty) {
       _enabled = false;
       await runApp();
       return;
     }
+    final release = EnvConfig.appVersion;
 
     await SentryFlutter.init(
       (options) {
-        options.dsn = _dsn;
+        options.dsn = dsn;
         options.environment = _envName();
-        if (_release.isNotEmpty) options.release = _release;
+        if (release.isNotEmpty) options.release = release;
         // En dev capturamos absolutamente todo para que el dev pueda probar
         // el setup. En prod 0.2 → 20% sampling para errores no fatales.
         options.tracesSampleRate = kReleaseMode ? 0.2 : 1.0;

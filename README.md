@@ -157,7 +157,54 @@ flutter build web --release --web-renderer canvaskit
 | Staging | `flutter run -d chrome --dart-define=ENV=staging` |
 | Production | `flutter build web --release --dart-define=ENV=prod` |
 
-Variables sensibles en `.env` (ignorado por git). Plantilla en `.env.example`.
+En cualquier entorno != `prod` la app muestra un **banner "DEV" o
+"STAGING"** en la esquina superior derecha — diseñado para que sea
+imposible confundirse de entorno antes de pulsar acciones destructivas.
+
+### Cómo se resuelven las variables (`.env` vs `--dart-define`)
+
+Cada variable de `EnvConfig` se lee con este **orden de prioridad**:
+
+1. **`--dart-define=KEY=value`** pasado al build (lo usa CI/CD).
+2. **`.env`** local cargado con `flutter_dotenv` (comodidad para devs).
+3. **Fallback** documentado en el getter; o `StateError` si la variable
+   es obligatoria (`SUPABASE_URL`, `SUPABASE_ANON_KEY`).
+
+Esto permite:
+
+- **Local**: copias `.env.example` → `.env`, rellenas tus credenciales
+  del proyecto Supabase dev y haces `flutter run`. No tocas nada más.
+- **CI staging/prod**: el runner NO tiene `.env` en disco — las
+  credenciales viajan como GitHub Secrets que el workflow inyecta:
+  ```yaml
+  - run: flutter build web --release \
+      --dart-define=ENV=prod \
+      --dart-define=SUPABASE_URL=${{ secrets.PROD_SUPABASE_URL }} \
+      --dart-define=SUPABASE_ANON_KEY=${{ secrets.PROD_SUPABASE_ANON_KEY }} \
+      --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
+      --dart-define=APP_VERSION=${{ github.ref_name }}
+  ```
+- **Local con override puntual**: si quieres probar contra otras
+  credenciales sin tocar `.env`, pasas el `--dart-define` correspondiente
+  — gana sobre el archivo.
+
+Variables soportadas:
+
+| Variable | Obligatoria | Origen típico |
+|---|---|---|
+| `SUPABASE_URL` | sí | `.env` (dev) · `--dart-define` (CI) |
+| `SUPABASE_ANON_KEY` | sí | `.env` (dev) · `--dart-define` (CI) |
+| `SENTRY_DSN` | no | `.env` (dev opcional) · `--dart-define` (CI) |
+| `APP_VERSION` | no | `--dart-define=APP_VERSION=v1.2.3` (tag git) |
+| `APP_NAME` | no | `.env` (default `myapp`) |
+| `OTP_CODE_LENGTH` | no | `.env` (default `6`, debe coincidir con Supabase) |
+| `ENABLE_LOGGING` | no | `.env` (default `true`) |
+| `ENABLE_ANALYTICS` | no | `.env` (default `false`) |
+| `STRUCTURED_LOGS` | no | `.env` (default `false`) |
+
+`.env.example` lista todas con docs. **Nunca pongas el `service_role`
+key de Supabase ni el `STRIPE_SECRET_KEY` en `.env`** — esos solo viven
+en `Supabase Dashboard → Edge Functions → Secrets`.
 
 ### Observabilidad (opcional pero recomendada en staging/prod)
 
