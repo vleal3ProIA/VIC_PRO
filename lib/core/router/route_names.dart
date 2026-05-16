@@ -20,6 +20,7 @@ class RouteNames {
   static const String home = 'home';
   static const String admin = 'admin';
   static const String adminFlags = 'admin_flags';
+  static const String adminPlans = 'admin_plans';
   static const String accountSettings = 'account_settings';
   static const String changePassword = 'change_password';
   static const String changePasswordDone = 'change_password_done';
@@ -64,6 +65,7 @@ class RoutePaths {
   static const String home = '/home';
   static const String admin = '/admin';
   static const String adminFlags = '/admin/flags';
+  static const String adminPlans = '/admin/plans';
   static const String accountSettings = '/account-settings';
   static const String changePassword = '/change-password';
   static const String changePasswordDone = '/change-password-done';
