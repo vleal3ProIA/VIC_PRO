@@ -48,6 +48,7 @@ class TenantSubscription {
     this.currentPeriodEnd,
     this.trialEnd,
     this.canceledAt,
+    this.cancelAtPeriodEnd = false,
     this.stripeSubscriptionId,
     this.stripeCustomerId,
   });
@@ -66,6 +67,7 @@ class TenantSubscription {
       currentPeriodEnd: parse(map['current_period_end']),
       trialEnd: parse(map['trial_end']),
       canceledAt: parse(map['canceled_at']),
+      cancelAtPeriodEnd: (map['cancel_at_period_end'] as bool?) ?? false,
       stripeSubscriptionId: map['stripe_subscription_id'] as String?,
       stripeCustomerId: map['stripe_customer_id'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
@@ -81,6 +83,12 @@ class TenantSubscription {
   final DateTime? currentPeriodEnd;
   final DateTime? trialEnd;
   final DateTime? canceledAt;
+
+  /// `true` cuando el cliente programó la cancelación pero todavía tiene
+  /// acceso hasta `currentPeriodEnd`. La UI debe mostrar un banner del tipo
+  /// "Tu plan termina el [fecha], reactiva para mantenerlo".
+  final bool cancelAtPeriodEnd;
+
   final String? stripeSubscriptionId;
   final String? stripeCustomerId;
   final DateTime createdAt;
