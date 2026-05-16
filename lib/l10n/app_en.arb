@@ -343,6 +343,7 @@
   "plansUpgrade": "Upgrade",
   "plansUpgradeComingSoon": "Stripe checkout will be available in the next release.",
   "plansManageBilling": "Manage billing",
+  "plansDowngradeViaPortal": "To downgrade, use Manage billing",
   "plansStripeNotConfigured": "Billing is not configured yet. Please try again later.",
   "plansRateLimited": "Too many requests. Please try again in a moment.",
   "plansNotAdmin": "Only workspace admins can change the plan.",

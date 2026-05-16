@@ -326,6 +326,7 @@
   "plansUpgrade": "Перейти",
   "plansUpgradeComingSoon": "Оплата через Stripe будет доступна в следующем релизе.",
   "plansManageBilling": "Управлять оплатой",
+  "plansDowngradeViaPortal": "Чтобы понизить тариф, используйте Управлять оплатой",
   "plansStripeNotConfigured": "Оплата ещё не настроена. Попробуйте позже.",
   "plansRateLimited": "Слишком много запросов. Попробуйте через мгновение.",
   "plansNotAdmin": "Только администраторы workspace могут менять тариф.",

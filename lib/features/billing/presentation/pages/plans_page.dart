@@ -247,7 +247,16 @@ class _PlanCard extends ConsumerWidget {
                           },
                           child: Text(l.plansContactSales),
                         )
-                      : _UpgradeButton(plan: plan, yearly: yearly),
+                      : plan.isFree
+                          // Plan Free cuando NO es el actual: el usuario
+                          // está en un plan de pago. Para "bajar" a Free
+                          // tiene que cancelar la suscripción actual desde
+                          // el Customer Portal — no se "upgradea" a free.
+                          ? OutlinedButton(
+                              onPressed: null,
+                              child: Text(l.plansDowngradeViaPortal),
+                            )
+                          : _UpgradeButton(plan: plan, yearly: yearly),
             ),
           ],
         ),

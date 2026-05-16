@@ -326,6 +326,7 @@
   "plansUpgrade": "Upgrade",
   "plansUpgradeComingSoon": "Il checkout di Stripe sarà disponibile nella prossima versione.",
   "plansManageBilling": "Gestisci fatturazione",
+  "plansDowngradeViaPortal": "Per fare downgrade, usa Gestisci fatturazione",
   "plansStripeNotConfigured": "La fatturazione non è ancora configurata. Riprova più tardi.",
   "plansRateLimited": "Troppe richieste. Riprova tra poco.",
   "plansNotAdmin": "Solo gli amministratori del workspace possono cambiare il piano.",

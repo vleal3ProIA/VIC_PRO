@@ -326,6 +326,7 @@
   "plansUpgrade": "Upgraden",
   "plansUpgradeComingSoon": "Stripe-Checkout ist in der nächsten Version verfügbar.",
   "plansManageBilling": "Abrechnung verwalten",
+  "plansDowngradeViaPortal": "Zum Downgraden Abrechnung verwalten nutzen",
   "plansStripeNotConfigured": "Die Abrechnung ist noch nicht konfiguriert. Versuche es später erneut.",
   "plansRateLimited": "Zu viele Anfragen. Versuche es gleich erneut.",
   "plansNotAdmin": "Nur Workspace-Administratoren können den Plan ändern.",
