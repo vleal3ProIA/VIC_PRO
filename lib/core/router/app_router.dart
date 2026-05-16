@@ -31,6 +31,7 @@ import 'package:myapp/features/auth/presentation/pages/password_updated_page.dar
 import 'package:myapp/features/auth/presentation/pages/register_page.dart';
 import 'package:myapp/features/auth/presentation/pages/set_new_password_page.dart';
 import 'package:myapp/features/auth/presentation/pages/verify_email_sent_page.dart';
+import 'package:myapp/features/billing/presentation/pages/admin_branding_page.dart';
 import 'package:myapp/features/billing/presentation/pages/admin_plans_page.dart';
 import 'package:myapp/features/billing/presentation/pages/billing_info_page.dart';
 import 'package:myapp/features/billing/presentation/pages/billing_success_page.dart';
@@ -235,6 +236,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const AdminPlansPage(),
       ),
       GoRoute(
+        path: RoutePaths.adminBranding,
+        name: RouteNames.adminBranding,
+        builder: (_, __) => const AdminBrandingPage(),
+      ),
+      GoRoute(
         path: RoutePaths.plans,
         name: RouteNames.plans,
         builder: (_, __) => const PlansPage(),
@@ -320,6 +326,7 @@ const _privateRoutes = <String>{
   RoutePaths.admin,
   RoutePaths.adminFlags,
   RoutePaths.adminPlans,
+  RoutePaths.adminBranding,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
   RoutePaths.changePassword,
@@ -346,6 +353,7 @@ const _adminRoutes = <String>{
   RoutePaths.admin,
   RoutePaths.adminFlags,
   RoutePaths.adminPlans,
+  RoutePaths.adminBranding,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.
