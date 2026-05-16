@@ -58,6 +58,74 @@ class AdminPlansDataSource {
     );
   }
 
+  /// Preview del impacto de un cambio de precio: cuántas suscripciones
+  /// activas tiene el plan actualmente. La UI lo usa para mostrar al
+  /// admin "vas a afectar a N clientes" antes de aplicar.
+  Future<({int activeSubscriptionsCount, int? currentMonthlyCents, int? currentYearlyCents, String? currency})>
+      previewPriceChange({required String planId}) async {
+    final response = await _client.functions.invoke(
+      'admin-plans-prices',
+      body: {'action': 'preview', 'plan_id': planId},
+    );
+    final payload = response.data as Map<String, dynamic>?;
+    if (payload == null) throw const AdminPlanException('empty_response');
+    if (payload['error'] != null) {
+      throw AdminPlanException(payload['error'] as String);
+    }
+    final cur = (payload['current'] as Map?)?.cast<String, dynamic>() ?? const {};
+    return (
+      activeSubscriptionsCount:
+          (payload['active_subscriptions_count'] as int?) ?? 0,
+      currentMonthlyCents: cur['price_monthly_cents'] as int?,
+      currentYearlyCents: cur['price_yearly_cents'] as int?,
+      currency: cur['currency'] as String?,
+    );
+  }
+
+  /// Aplica el cambio de precio. Crea Prices nuevos en Stripe, actualiza
+  /// la BD, y (opcionalmente) migra las suscripciones existentes según
+  /// la `migrationStrategy`:
+  ///
+  /// - `grandfather` → clientes existentes siguen con el viejo precio.
+  /// - `nextPeriod`  → migran al inicio del próximo periodo, sin proration.
+  /// - `immediate`   → migran ya con proration prorrateado.
+  Future<({int migratedCount, List<({String subscriptionId, String detail})> errors})>
+      applyPriceChange({
+    required String planId,
+    required PriceMigrationStrategy migrationStrategy,
+    int? newMonthlyCents,
+    int? newYearlyCents,
+  }) async {
+    final response = await _client.functions.invoke(
+      'admin-plans-prices',
+      body: {
+        'action': 'apply',
+        'plan_id': planId,
+        if (newMonthlyCents != null) 'new_price_monthly_cents': newMonthlyCents,
+        if (newYearlyCents != null) 'new_price_yearly_cents': newYearlyCents,
+        'migration_strategy': migrationStrategy.apiValue,
+      },
+    );
+    final payload = response.data as Map<String, dynamic>?;
+    if (payload == null) throw const AdminPlanException('empty_response');
+    if (payload['error'] != null) {
+      throw AdminPlanException(payload['error'] as String);
+    }
+    final errs = ((payload['errors'] as List?) ?? const [])
+        .cast<Map<String, dynamic>>()
+        .map(
+          (m) => (
+            subscriptionId: m['subscription_id'] as String,
+            detail: m['detail'] as String,
+          ),
+        )
+        .toList(growable: false);
+    return (
+      migratedCount: (payload['migrated_count'] as int?) ?? 0,
+      errors: errs,
+    );
+  }
+
   /// Backfill puntual: recorre planes con price_id pero sin product_id y
   /// los resuelve vía Stripe. Idempotente, llamable a mano.
   Future<int> backfillStripeProductIds() async {
@@ -75,4 +143,30 @@ class AdminPlanException implements Exception {
   final String code;
   @override
   String toString() => 'AdminPlanException($code)';
+}
+
+/// Estrategia de migración de suscripciones al cambiar el precio del plan.
+enum PriceMigrationStrategy {
+  /// No tocar las suscripciones existentes — siguen con el viejo precio.
+  /// Solo NUEVOS contratos pagan el nuevo precio.
+  grandfather,
+
+  /// Migrar al final del periodo actual (sin proration). El cliente ya
+  /// pagó este periodo y verá el nuevo precio en la próxima factura.
+  nextPeriod,
+
+  /// Migrar inmediatamente con proration: Stripe cobra o abona la
+  /// diferencia prorrateada por los días restantes.
+  immediate;
+
+  String get apiValue {
+    switch (this) {
+      case PriceMigrationStrategy.grandfather:
+        return 'grandfather';
+      case PriceMigrationStrategy.nextPeriod:
+        return 'next_period';
+      case PriceMigrationStrategy.immediate:
+        return 'immediate';
+    }
+  }
 }
