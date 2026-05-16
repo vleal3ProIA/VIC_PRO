@@ -582,5 +582,17 @@
   "adminPlansPriceConfirmBody": "{count} aktive(s) Abo(s) werden mit der Strategie migriert: {strategy}. Dies kann nicht rückgängig gemacht werden.",
   "adminPlansPriceApplied": "Preis aktualisiert. {count} Abo(s) migriert.",
   "adminPlansPricePartial": "Preis aktualisiert. {migrated} migriert, {failed} fehlgeschlagen — siehe Logs.",
-  "adminPlansPriceError": "Preisänderung konnte nicht angewendet werden."
+  "adminPlansPriceError": "Preisänderung konnte nicht angewendet werden.",
+
+  "adminTrashTitle": "Papierkorb",
+  "adminTrashHint": "Soft-gelöschte Tenants. Mit einem Klick wiederherstellen.",
+  "adminTrashLoadError": "Gelöschte Tenants konnten nicht geladen werden.",
+  "adminTrashEmpty": "Papierkorb ist leer. Nichts wiederherzustellen.",
+  "adminTrashDeletedAt": "Gelöscht am {date}",
+  "adminTrashMemberCount": "{count} Mitglied(er)",
+  "adminTrashRestore": "Wiederherstellen",
+  "adminTrashRestoreConfirmTitle": "Tenant wiederherstellen?",
+  "adminTrashRestoreConfirmBody": "„{name}“ und alle Mitglieder werden wiederhergestellt.",
+  "adminTrashRestored": "„{name}“ wiederhergestellt.",
+  "adminTrashRestoreError": "Tenant konnte nicht wiederhergestellt werden."
 }

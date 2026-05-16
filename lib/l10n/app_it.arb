@@ -582,5 +582,17 @@
   "adminPlansPriceConfirmBody": "{count} abbonamento/i attivo/i sarà/saranno migrato/i con strategia: {strategy}. Non è reversibile.",
   "adminPlansPriceApplied": "Prezzo aggiornato. {count} abbonamento/i migrato/i.",
   "adminPlansPricePartial": "Prezzo aggiornato. {migrated} migrati, {failed} falliti — controlla i log.",
-  "adminPlansPriceError": "Impossibile applicare il cambio di prezzo."
+  "adminPlansPriceError": "Impossibile applicare il cambio di prezzo.",
+
+  "adminTrashTitle": "Cestino",
+  "adminTrashHint": "Tenant soft-eliminati. Ripristinali con un click.",
+  "adminTrashLoadError": "Impossibile caricare i tenant eliminati.",
+  "adminTrashEmpty": "Il cestino è vuoto. Niente da ripristinare.",
+  "adminTrashDeletedAt": "Eliminato il {date}",
+  "adminTrashMemberCount": "{count} membro/i",
+  "adminTrashRestore": "Ripristina",
+  "adminTrashRestoreConfirmTitle": "Ripristinare il tenant?",
+  "adminTrashRestoreConfirmBody": "“{name}” e tutti i suoi membri saranno ripristinati.",
+  "adminTrashRestored": "“{name}” ripristinato.",
+  "adminTrashRestoreError": "Impossibile ripristinare il tenant."
 }

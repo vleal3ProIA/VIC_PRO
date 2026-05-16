@@ -623,5 +623,21 @@
   "@adminPlansPriceApplied": {"placeholders": {"count": {"type": "int"}}},
   "adminPlansPricePartial": "Price updated. {migrated} migrated, {failed} failed — check logs.",
   "@adminPlansPricePartial": {"placeholders": {"migrated": {"type": "int"}, "failed": {"type": "int"}}},
-  "adminPlansPriceError": "Couldn't apply price change."
+  "adminPlansPriceError": "Couldn't apply price change.",
+
+  "adminTrashTitle": "Trash",
+  "adminTrashHint": "Soft-deleted tenants. Restore them with one click.",
+  "adminTrashLoadError": "Couldn't load deleted tenants.",
+  "adminTrashEmpty": "Trash is empty. Nothing to restore.",
+  "adminTrashDeletedAt": "Deleted on {date}",
+  "@adminTrashDeletedAt": {"placeholders": {"date": {"type": "String"}}},
+  "adminTrashMemberCount": "{count} member(s)",
+  "@adminTrashMemberCount": {"placeholders": {"count": {"type": "int"}}},
+  "adminTrashRestore": "Restore",
+  "adminTrashRestoreConfirmTitle": "Restore tenant?",
+  "adminTrashRestoreConfirmBody": "“{name}” and all its members will be restored.",
+  "@adminTrashRestoreConfirmBody": {"placeholders": {"name": {"type": "String"}}},
+  "adminTrashRestored": "“{name}” restored.",
+  "@adminTrashRestored": {"placeholders": {"name": {"type": "String"}}},
+  "adminTrashRestoreError": "Couldn't restore tenant."
 }

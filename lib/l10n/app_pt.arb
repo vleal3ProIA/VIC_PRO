@@ -582,5 +582,17 @@
   "adminPlansPriceConfirmBody": "{count} subscrição/ões ativa(s) serão migradas com a estratégia: {strategy}. Não é reversível.",
   "adminPlansPriceApplied": "Preço atualizado. {count} subscrição/ões migrada(s).",
   "adminPlansPricePartial": "Preço atualizado. {migrated} migradas, {failed} falharam — vê os logs.",
-  "adminPlansPriceError": "Não foi possível aplicar a alteração de preço."
+  "adminPlansPriceError": "Não foi possível aplicar a alteração de preço.",
+
+  "adminTrashTitle": "Lixo",
+  "adminTrashHint": "Tenants soft-apagados. Restaurar com 1 click.",
+  "adminTrashLoadError": "Não foi possível carregar os tenants apagados.",
+  "adminTrashEmpty": "O lixo está vazio. Nada para restaurar.",
+  "adminTrashDeletedAt": "Apagado em {date}",
+  "adminTrashMemberCount": "{count} membro(s)",
+  "adminTrashRestore": "Restaurar",
+  "adminTrashRestoreConfirmTitle": "Restaurar tenant?",
+  "adminTrashRestoreConfirmBody": "“{name}” e todos os seus membros serão restaurados.",
+  "adminTrashRestored": "“{name}” restaurado.",
+  "adminTrashRestoreError": "Não foi possível restaurar o tenant."
 }

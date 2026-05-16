@@ -582,5 +582,17 @@
   "adminPlansPriceConfirmBody": "{count} активных подписок будут мигрированы по стратегии: {strategy}. Действие необратимо.",
   "adminPlansPriceApplied": "Цена обновлена. {count} подписок мигрировано.",
   "adminPlansPricePartial": "Цена обновлена. {migrated} мигрировано, {failed} с ошибкой — смотри логи.",
-  "adminPlansPriceError": "Не удалось применить изменение цены."
+  "adminPlansPriceError": "Не удалось применить изменение цены.",
+
+  "adminTrashTitle": "Корзина",
+  "adminTrashHint": "Soft-удалённые тенанты. Восстанови в 1 клик.",
+  "adminTrashLoadError": "Не удалось загрузить удалённые тенанты.",
+  "adminTrashEmpty": "Корзина пуста. Нечего восстанавливать.",
+  "adminTrashDeletedAt": "Удалён {date}",
+  "adminTrashMemberCount": "{count} участник(ов)",
+  "adminTrashRestore": "Восстановить",
+  "adminTrashRestoreConfirmTitle": "Восстановить тенант?",
+  "adminTrashRestoreConfirmBody": "«{name}» и все его участники будут восстановлены.",
+  "adminTrashRestored": "«{name}» восстановлен.",
+  "adminTrashRestoreError": "Не удалось восстановить тенант."
 }

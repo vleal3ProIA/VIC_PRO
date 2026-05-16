@@ -582,5 +582,17 @@
   "adminPlansPriceConfirmBody": "{count} abonnement(s) actif(s) seront migré(s) avec la stratégie : {strategy}. Cette action est irréversible.",
   "adminPlansPriceApplied": "Prix mis à jour. {count} abonnement(s) migré(s).",
   "adminPlansPricePartial": "Prix mis à jour. {migrated} migré(s), {failed} en échec — voir les logs.",
-  "adminPlansPriceError": "Impossible d'appliquer le changement de prix."
+  "adminPlansPriceError": "Impossible d'appliquer le changement de prix.",
+
+  "adminTrashTitle": "Corbeille",
+  "adminTrashHint": "Tenants soft-supprimés. Restaurer en un clic.",
+  "adminTrashLoadError": "Impossible de charger les tenants supprimés.",
+  "adminTrashEmpty": "La corbeille est vide. Rien à restaurer.",
+  "adminTrashDeletedAt": "Supprimé le {date}",
+  "adminTrashMemberCount": "{count} membre(s)",
+  "adminTrashRestore": "Restaurer",
+  "adminTrashRestoreConfirmTitle": "Restaurer le tenant ?",
+  "adminTrashRestoreConfirmBody": "« {name} » et tous ses membres seront restaurés.",
+  "adminTrashRestored": "« {name} » restauré.",
+  "adminTrashRestoreError": "Impossible de restaurer le tenant."
 }
