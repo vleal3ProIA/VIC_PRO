@@ -178,10 +178,12 @@ Deno.serve(withSentry("admin-stripe-branding", async (req) => {
       if (Object.keys(brandingPatch).length === 0) {
         return json({ error: "nothing_to_update" }, 400);
       }
-      const accountId = await getOwnAccountId(stripe);
-      await stripe.accounts.update(accountId, {
+      const r = await updateOwnAccount({
         settings: { branding: brandingPatch },
       });
+      if (r.error) {
+        return json({ error: "stripe_error", detail: r.error }, 500);
+      }
       return json({ ok: true }, 200);
     } catch (e) {
       return json(
@@ -212,10 +214,10 @@ Deno.serve(withSentry("admin-stripe-branding", async (req) => {
       if (Object.keys(profile).length === 0) {
         return json({ error: "nothing_to_update" }, 400);
       }
-      const accountId = await getOwnAccountId(stripe);
-      await stripe.accounts.update(accountId, {
-        business_profile: profile,
-      });
+      const r = await updateOwnAccount({ business_profile: profile });
+      if (r.error) {
+        return json({ error: "stripe_error", detail: r.error }, 500);
+      }
       return json({ ok: true }, 200);
     } catch (e) {
       return json(
@@ -272,10 +274,12 @@ Deno.serve(withSentry("admin-stripe-branding", async (req) => {
       const fileId = uploadJson.id as string;
 
       // Asociar el file al account.settings.branding.logo.
-      const accountId = await getOwnAccountId(stripe);
-      await stripe.accounts.update(accountId, {
+      const linkRes = await updateOwnAccount({
         settings: { branding: { logo: fileId } },
       });
+      if (linkRes.error) {
+        return json({ error: "stripe_error", detail: linkRes.error }, 500);
+      }
 
       // Crear link público para preview en la UI.
       let logoUrl: string | null = null;
@@ -298,15 +302,63 @@ Deno.serve(withSentry("admin-stripe-branding", async (req) => {
   return json({ error: "unknown_action" }, 400);
 }));
 
-/// Helper: el TS type de `accounts.update()` exige un account id. Para el
-/// own account de plataforma resolvemos el id leyéndolo desde
-/// `accounts.retrieve()` (sin args = own account). Cacheamos en memoria del
-/// worker para evitar round-trips redundantes.
-let _cachedOwnAccountId: string | null = null;
+/// Stripe rechaza `accounts.update(<own_account_id>, ...)` con:
+///   "You cannot use this method on your own account: you may only use it
+///    on connected accounts."
+///
+/// Para actualizar la propia cuenta de plataforma hay que pegar contra
+/// `POST https://api.stripe.com/v1/account` (sin id en la URL). El SDK
+/// Node no expone esto cómodamente; lo hacemos con `fetch` directo.
+///
+/// Stripe usa form-urlencoded con corchetes para anidar — por ejemplo:
+///   settings[branding][primary_color]=%231F2937
+///   business_profile[support_address][city]=Madrid
+///
+/// Devuelve `{ok: true}` en éxito o `{error: <stripe message>}` en fallo.
+async function updateOwnAccount(
+  // deno-lint-ignore no-explicit-any
+  payload: Record<string, any>,
+): Promise<{ ok?: true; error?: string }> {
+  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
+  const body = stripeFormEncode(payload);
+  const res = await fetch("https://api.stripe.com/v1/account", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${stripeKey}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+  });
+  if (res.ok) return { ok: true };
+  try {
+    const j = await res.json();
+    return { error: j?.error?.message ?? `HTTP ${res.status}` };
+  } catch {
+    return { error: `HTTP ${res.status}` };
+  }
+}
+
+/// Serializa un objeto JS al formato form-urlencoded estilo Stripe:
+///   { a: 1, b: { c: "x" }, d: ["y", "z"] }
+///     →  a=1&b[c]=x&d[0]=y&d[1]=z   (con encodeURIComponent)
 // deno-lint-ignore no-explicit-any
-async function getOwnAccountId(stripe: any): Promise<string> {
-  if (_cachedOwnAccountId) return _cachedOwnAccountId;
-  const acc = await stripe.accounts.retrieve();
-  _cachedOwnAccountId = acc.id as string;
-  return _cachedOwnAccountId;
+function stripeFormEncode(obj: Record<string, any>): string {
+  const parts: string[] = [];
+  // deno-lint-ignore no-explicit-any
+  const walk = (value: any, prefix: string): void => {
+    if (value === undefined || value === null) return;
+    if (Array.isArray(value)) {
+      value.forEach((v, i) => walk(v, `${prefix}[${i}]`));
+    } else if (typeof value === "object") {
+      for (const [k, v] of Object.entries(value)) {
+        walk(v, `${prefix}[${k}]`);
+      }
+    } else {
+      parts.push(
+        `${encodeURIComponent(prefix)}=${encodeURIComponent(String(value))}`,
+      );
+    }
+  };
+  for (const [k, v] of Object.entries(obj)) walk(v, k);
+  return parts.join("&");
 }
