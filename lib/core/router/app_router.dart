@@ -35,6 +35,7 @@ import 'package:myapp/features/billing/presentation/pages/admin_plans_page.dart'
 import 'package:myapp/features/billing/presentation/pages/billing_info_page.dart';
 import 'package:myapp/features/billing/presentation/pages/billing_success_page.dart';
 import 'package:myapp/features/billing/presentation/pages/embedded_checkout_page.dart';
+import 'package:myapp/features/billing/presentation/pages/invoices_page.dart';
 import 'package:myapp/features/billing/presentation/pages/plans_page.dart';
 import 'package:myapp/features/flags/presentation/pages/admin_flags_page.dart';
 import 'package:myapp/features/home/presentation/pages/home_page.dart';
@@ -262,6 +263,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: RoutePaths.invoices,
+        name: RouteNames.invoices,
+        builder: (_, __) => const InvoicesPage(),
+      ),
+      GoRoute(
         path: RoutePaths.acceptInvite,
         name: RouteNames.acceptInvite,
         builder: (_, state) => AcceptInvitePage(
@@ -328,6 +334,7 @@ const _privateRoutes = <String>{
   RoutePaths.billingSuccess,
   RoutePaths.billingInfo,
   RoutePaths.embeddedCheckout,
+  RoutePaths.invoices,
   // `acceptInvite` se gestiona dentro de la propia página: si no hay sesión,
   // redirige al login él mismo. No la metemos como privada para que un
   // usuario sin sesión pueda al menos VER el error si el link es inválido.

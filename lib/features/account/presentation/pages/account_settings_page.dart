@@ -372,6 +372,14 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
                     ),
                     const Divider(height: 1),
                     ListTile(
+                      leading: const Icon(Icons.description_outlined),
+                      title: Text(l.settingsInvoices),
+                      subtitle: Text(l.settingsInvoicesHint),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.goNamed(RouteNames.invoices),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
                       leading: const Icon(Icons.download_outlined),
                       title: Text(l.settingsDownloadData),
                       subtitle: Text(l.settingsDownloadDataHint),

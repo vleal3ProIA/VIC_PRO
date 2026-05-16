@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/entitlements.dart';
+import '../domain/invoice.dart';
 import '../domain/plan.dart';
 import '../domain/tenant_subscription.dart';
 
@@ -130,6 +131,28 @@ class BillingDataSource {
       throw BillingException(payload['error'] as String);
     }
     return payload['url'] as String;
+  }
+
+  /// Lista las últimas [limit] facturas del Stripe customer del tenant.
+  /// Si el tenant no tiene customer (nunca ha pagado), devuelve `[]`.
+  Future<List<Invoice>> listInvoices({
+    required String tenantId,
+    int limit = 20,
+  }) async {
+    final response = await _client.functions.invoke(
+      'stripe-invoices',
+      body: {'action': 'list', 'tenant_id': tenantId, 'limit': limit},
+    );
+    final payload = response.data as Map<String, dynamic>?;
+    if (payload == null) throw const BillingException('empty_response');
+    if (payload['error'] != null) {
+      throw BillingException(payload['error'] as String);
+    }
+    final list = payload['invoices'] as List?;
+    if (list == null) return const [];
+    return list
+        .map((row) => Invoice.fromMap(row as Map<String, dynamic>))
+        .toList(growable: false);
   }
 
   // ─── Subscription management (sin Customer Portal) ──────────────────────
