@@ -591,6 +591,14 @@ class _BrandingFormState extends ConsumerState<_BrandingForm> {
             ? l.adminBrandingSaveError
             : 'Stripe: $detail';
       default:
+        // `http_500`, `http_502`, etc. — la Edge Function devolvió un
+        // status feo. Si trae detalle, lo mostramos; si no, mensaje
+        // genérico con el código.
+        if (code.startsWith('http_')) {
+          return detail == null || detail.isEmpty
+              ? '${l.adminBrandingSaveError} ($code)'
+              : '$code: $detail';
+        }
         return l.adminBrandingSaveError;
     }
   }
