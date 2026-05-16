@@ -594,5 +594,24 @@
   "adminTrashRestoreConfirmTitle": "Tenant wiederherstellen?",
   "adminTrashRestoreConfirmBody": "„{name}“ und alle Mitglieder werden wiederhergestellt.",
   "adminTrashRestored": "„{name}“ wiederhergestellt.",
-  "adminTrashRestoreError": "Tenant konnte nicht wiederhergestellt werden."
+  "adminTrashRestoreError": "Tenant konnte nicht wiederhergestellt werden.",
+
+  "settingsSessions": "Aktive Sitzungen",
+  "settingsSessionsHint": "Verwalte die in deinem Konto angemeldeten Geräte und Browser.",
+  "sessionsTitle": "Aktive Sitzungen",
+  "sessionsLoadError": "Sitzungen konnten nicht geladen werden.",
+  "sessionsEmpty": "Keine aktiven Sitzungen.",
+  "sessionsCount": "{count} aktive Sitzung(en)",
+  "sessionsOtherDevicesHint": "Wenn du eine davon nicht erkennst, widerrufe sie sofort.",
+  "sessionsRevokeOthers": "Alle anderen abmelden",
+  "sessionsRevokeOthersConfirmTitle": "Alle anderen Sitzungen abmelden?",
+  "sessionsRevokeOthersConfirmBody": "Alle Geräte außer diesem werden sofort abgemeldet.",
+  "sessionsRevokedOthers": "{count} Sitzung(en) widerrufen.",
+  "sessionsCurrentBadge": "Dieses Gerät",
+  "sessionsMfaBadge": "MFA",
+  "sessionsLastActive": "Zuletzt aktiv {date}",
+  "sessionsIp": "IP {ip}",
+  "sessionsRevoke": "Dieses Gerät abmelden",
+  "sessionsRevoked": "Sitzung widerrufen.",
+  "sessionsRevokeError": "Sitzung konnte nicht widerrufen werden."
 }

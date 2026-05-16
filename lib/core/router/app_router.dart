@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/features/account/application/profile_providers.dart';
+import 'package:myapp/features/account/presentation/pages/account_sessions_page.dart';
 import 'package:myapp/features/account/presentation/pages/account_settings_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_trash_page.dart';
@@ -218,6 +219,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const PasskeysPage(),
       ),
       GoRoute(
+        path: RoutePaths.sessions,
+        name: RouteNames.sessions,
+        builder: (_, __) => const AccountSessionsPage(),
+      ),
+      GoRoute(
         path: RoutePaths.auditLog,
         name: RouteNames.auditLog,
         builder: (_, __) => const AuditLogPage(),
@@ -351,6 +357,7 @@ const _privateRoutes = <String>{
   RoutePaths.changeEmailSent,
   RoutePaths.deleteAccount,
   RoutePaths.passkeys,
+  RoutePaths.sessions,
   RoutePaths.auditLog,
   RoutePaths.team,
   RoutePaths.plans,

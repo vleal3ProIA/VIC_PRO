@@ -335,6 +335,14 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
                       onTap: () => context.goNamed(RouteNames.passkeys),
                     ),
                     const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.devices_outlined),
+                      title: Text(l.settingsSessions),
+                      subtitle: Text(l.settingsSessionsHint),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.goNamed(RouteNames.sessions),
+                    ),
+                    const Divider(height: 1),
                     // El tile de "Recent activity" se oculta si el flag
                     // `audit_log_visible` está off (gated por feature flag).
                     if (ref.watch(flagEnabledProvider('audit_log_visible'))) ...[

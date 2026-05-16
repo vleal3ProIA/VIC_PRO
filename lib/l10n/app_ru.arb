@@ -594,5 +594,24 @@
   "adminTrashRestoreConfirmTitle": "Восстановить тенант?",
   "adminTrashRestoreConfirmBody": "«{name}» и все его участники будут восстановлены.",
   "adminTrashRestored": "«{name}» восстановлен.",
-  "adminTrashRestoreError": "Не удалось восстановить тенант."
+  "adminTrashRestoreError": "Не удалось восстановить тенант.",
+
+  "settingsSessions": "Активные сессии",
+  "settingsSessionsHint": "Управляй устройствами и браузерами, вошедшими в твой аккаунт.",
+  "sessionsTitle": "Активные сессии",
+  "sessionsLoadError": "Не удалось загрузить сессии.",
+  "sessionsEmpty": "Нет активных сессий.",
+  "sessionsCount": "{count} активных сессий",
+  "sessionsOtherDevicesHint": "Если ты не узнаёшь какую-то — отзови её немедленно.",
+  "sessionsRevokeOthers": "Выйти со всех остальных",
+  "sessionsRevokeOthersConfirmTitle": "Выйти со всех остальных сессий?",
+  "sessionsRevokeOthersConfirmBody": "Все устройства, кроме этого, будут немедленно завершены.",
+  "sessionsRevokedOthers": "{count} сессий отозвано.",
+  "sessionsCurrentBadge": "Это устройство",
+  "sessionsMfaBadge": "MFA",
+  "sessionsLastActive": "Последняя активность {date}",
+  "sessionsIp": "IP {ip}",
+  "sessionsRevoke": "Выйти с этого устройства",
+  "sessionsRevoked": "Сессия отозвана.",
+  "sessionsRevokeError": "Не удалось отозвать сессию."
 }

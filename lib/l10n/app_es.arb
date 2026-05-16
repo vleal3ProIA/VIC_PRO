@@ -594,5 +594,24 @@
   "adminTrashRestoreConfirmTitle": "¿Restaurar tenant?",
   "adminTrashRestoreConfirmBody": "“{name}” y todos sus miembros serán restaurados.",
   "adminTrashRestored": "“{name}” restaurado.",
-  "adminTrashRestoreError": "No se pudo restaurar el tenant."
+  "adminTrashRestoreError": "No se pudo restaurar el tenant.",
+
+  "settingsSessions": "Sesiones activas",
+  "settingsSessionsHint": "Gestiona los dispositivos y navegadores conectados a tu cuenta.",
+  "sessionsTitle": "Sesiones activas",
+  "sessionsLoadError": "No se pudieron cargar las sesiones.",
+  "sessionsEmpty": "No hay sesiones activas.",
+  "sessionsCount": "{count} sesion(es) activa(s)",
+  "sessionsOtherDevicesHint": "Si no reconoces alguna, revócala inmediatamente.",
+  "sessionsRevokeOthers": "Cerrar las demás",
+  "sessionsRevokeOthersConfirmTitle": "¿Cerrar todas las demás sesiones?",
+  "sessionsRevokeOthersConfirmBody": "Todos los dispositivos excepto este se cerrarán inmediatamente.",
+  "sessionsRevokedOthers": "{count} sesion(es) revocada(s).",
+  "sessionsCurrentBadge": "Este dispositivo",
+  "sessionsMfaBadge": "MFA",
+  "sessionsLastActive": "Última actividad {date}",
+  "sessionsIp": "IP {ip}",
+  "sessionsRevoke": "Cerrar este dispositivo",
+  "sessionsRevoked": "Sesión revocada.",
+  "sessionsRevokeError": "No se pudo revocar la sesión."
 }
