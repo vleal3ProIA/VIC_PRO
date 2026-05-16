@@ -185,6 +185,78 @@ async function handleSubscriptionUpserted(
       .in("status", ["trialing", "active", "past_due", "incomplete"]);
 
     await admin.from("tenant_subscriptions").insert(row);
+
+    // Primera vez para este customer → sincronizamos los datos del
+    // profile al Stripe customer para que la factura PDF salga con
+    // nombre + dirección + tax id correctos. Best-effort.
+    const createdByUserId = (sub.metadata as Record<string, string>)
+      ?.created_by_user_id;
+    if (createdByUserId && sub.customer) {
+      await syncCustomerBillingInfo(
+        admin,
+        createdByUserId,
+        sub.customer as string,
+      );
+    }
+  }
+}
+
+/// Lee el profile del user y actualiza name/address/tax_id en el Stripe
+/// customer correspondiente. Idempotente. Si Stripe no está configurado
+/// o falla, no abortamos — el resto del webhook ya quedó persistido.
+async function syncCustomerBillingInfo(
+  admin: ReturnType<typeof createClient>,
+  userId: string,
+  stripeCustomerId: string,
+): Promise<void> {
+  const stripe = getStripe();
+  if (!stripe) return;
+  try {
+    const { data: profile } = await admin
+      .from("profiles")
+      .select(
+        "first_name, last_name, address_line1, address_line2, city, " +
+          "postal_code, country, tax_id, tax_id_type",
+      )
+      .eq("id", userId)
+      .maybeSingle();
+    if (!profile) return;
+    const fullName = [profile.first_name, profile.last_name]
+      .filter(Boolean)
+      .join(" ");
+    await stripe.customers.update(stripeCustomerId, {
+      ...(fullName ? { name: fullName } : {}),
+      ...(profile.address_line1
+        ? {
+            address: {
+              line1: profile.address_line1 as string,
+              line2: (profile.address_line2 as string | null) ?? undefined,
+              city: (profile.city as string | null) ?? undefined,
+              postal_code: (profile.postal_code as string | null) ?? undefined,
+              country: (profile.country as string | null) ?? undefined,
+            },
+          }
+        : {}),
+    });
+    if (profile.tax_id && profile.tax_id_type) {
+      const existingTaxIds = await stripe.customers.listTaxIds(stripeCustomerId);
+      const already = existingTaxIds.data.some(
+        (t) => t.value === profile.tax_id,
+      );
+      if (!already) {
+        await stripe.customers.createTaxId(stripeCustomerId, {
+          type: profile.tax_id_type as Parameters<
+            typeof stripe.customers.createTaxId
+          >[1]["type"],
+          value: profile.tax_id as string,
+        });
+      }
+    }
+  } catch (e) {
+    console.warn(
+      "syncCustomerBillingInfo failed:",
+      (e as Error).message,
+    );
   }
 }
 

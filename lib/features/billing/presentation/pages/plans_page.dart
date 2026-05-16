@@ -7,6 +7,7 @@ import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/features/tenants/application/tenant_providers.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../application/billing_info_providers.dart';
 import '../../application/billing_providers.dart';
 import '../../data/billing_datasource.dart';
 import '../../domain/plan.dart';
@@ -424,6 +425,19 @@ class _UpgradeButtonState extends ConsumerState<_UpgradeButton> {
   Future<void> _onPressed() async {
     final tenantId = ref.read(currentTenantIdProvider);
     if (tenantId == null) return;
+
+    // Gate: el usuario debe tener su billing info completa ANTES de pagar.
+    // Si no, le redirigimos a /billing/info?return=/billing/plans para
+    // que rellene y vuelva.
+    final billingComplete = ref.read(billingInfoCompleteProvider);
+    if (!billingComplete) {
+      final ret = Uri.encodeComponent(RoutePaths.plans);
+      if (mounted) {
+        context.go('${RoutePaths.billingInfo}?return=$ret');
+      }
+      return;
+    }
+
     setState(() => _busy = true);
     try {
       final base = Uri.base;

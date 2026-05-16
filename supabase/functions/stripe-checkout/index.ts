@@ -126,6 +126,18 @@ Deno.serve(withSentry("stripe-checkout", async (req) => {
     return json({ error: "plan_not_billable", detail: "missing stripe price id" }, 400);
   }
 
+  // Lookup billing info del user para pre-rellenar en Stripe Customer.
+  // Esto hace que la factura PDF (generada por Stripe) salga con su
+  // nombre, dirección, NIF/VAT, etc. — ya validado por el gate de cliente.
+  const { data: profile } = await admin
+    .from("profiles")
+    .select(
+      "first_name, last_name, address_line1, address_line2, city, " +
+        "postal_code, country, tax_id, tax_id_type",
+    )
+    .eq("id", user.id)
+    .maybeSingle();
+
   // Lookup existing Stripe customer_id si lo tenemos. Si no, dejamos que
   // Stripe Checkout lo cree y usaremos el ID de vuelta vía webhook.
   // OJO: existingSub puede tener `stripe_customer_id = null` (tenants
@@ -141,6 +153,52 @@ Deno.serve(withSentry("stripe-checkout", async (req) => {
     .limit(1)
     .maybeSingle();
   const customerId = existingSub?.stripe_customer_id as string | undefined;
+
+  // Si YA existe el customer en Stripe (segundo checkout de este tenant),
+  // actualizamos sus datos por si el user editó su billing info entremedias.
+  // Si NO existe todavía, Stripe Checkout lo creará y le pasamos los
+  // datos en `customer_update` + via la session.
+  if (customerId && profile) {
+    try {
+      const fullName = [profile.first_name, profile.last_name]
+        .filter(Boolean)
+        .join(" ");
+      await stripe.customers.update(customerId, {
+        ...(fullName ? { name: fullName } : {}),
+        ...(profile.address_line1
+          ? {
+              address: {
+                line1: profile.address_line1 as string,
+                line2: (profile.address_line2 as string | null) ?? undefined,
+                city: (profile.city as string | null) ?? undefined,
+                postal_code:
+                  (profile.postal_code as string | null) ?? undefined,
+                country: (profile.country as string | null) ?? undefined,
+              },
+            }
+          : {}),
+      });
+      // Tax IDs en Stripe son objetos separados; los gestionamos solo si
+      // hay uno explícito y aún no está adjuntado (idempotente).
+      if (profile.tax_id && profile.tax_id_type) {
+        const existingTaxIds = await stripe.customers.listTaxIds(customerId);
+        const already = existingTaxIds.data.some(
+          (t) => t.value === profile.tax_id,
+        );
+        if (!already) {
+          await stripe.customers.createTaxId(customerId, {
+            type: profile.tax_id_type as Parameters<
+              typeof stripe.customers.createTaxId
+            >[1]["type"],
+            value: profile.tax_id as string,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("stripe customer update failed:", (e as Error).message);
+      // Best-effort: no abortamos el checkout por esto.
+    }
+  }
 
   // Construimos los params condicionalmente: o pasamos `customer` (cliente
   // Stripe ya creado), o pasamos `customer_email` (Stripe lo crea), pero
@@ -168,6 +226,13 @@ Deno.serve(withSentry("stripe-checkout", async (req) => {
     sessionParams.customer = customerId;
   } else if (user.email) {
     sessionParams.customer_email = user.email;
+    // Para el customer recién creado, pasamos los datos vía
+    // `customer_creation = always` + nombre por defecto en
+    // `subscription_data.metadata` (Stripe los aplicará al customer cuando
+    // lo cree). Como NO podemos pasar address aquí (la API de Checkout
+    // Session no lo soporta para customer_creation), confiamos en que el
+    // webhook `customer.subscription.created` actualizará después.
+    sessionParams.customer_creation = "always";
   }
 
   try {

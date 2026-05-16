@@ -34,6 +34,7 @@ class RouteNames {
   static const String acceptInvite = 'accept_invite';
   static const String plans = 'plans';
   static const String billingSuccess = 'billing_success';
+  static const String billingInfo = 'billing_info';
   static const String terms = 'terms';
   static const String privacy = 'privacy';
   static const String cookies = 'cookies';
@@ -79,6 +80,7 @@ class RoutePaths {
   static const String acceptInvite = '/accept-invite';
   static const String plans = '/billing/plans';
   static const String billingSuccess = '/billing/success';
+  static const String billingInfo = '/billing/info';
   static const String terms = '/terms';
   static const String privacy = '/privacy';
   static const String cookies = '/cookies';
