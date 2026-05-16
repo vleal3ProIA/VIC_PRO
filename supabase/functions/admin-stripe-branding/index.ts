@@ -1,37 +1,29 @@
 // ============================================================================
-// Edge Function: admin-stripe-branding
+// Edge Function: admin-stripe-branding (READ-ONLY)
 // ----------------------------------------------------------------------------
-// Gestión del branding y datos fiscales de tu propia cuenta Stripe desde
-// el panel admin de la app, sin tener que ir a dashboard.stripe.com.
+// Devuelve el branding actual + business_profile de la propia cuenta Stripe
+// de la plataforma. Solo lectura.
 //
-// Lo que controlas:
-//   - settings.branding.primary_color
-//   - settings.branding.secondary_color
-//   - settings.branding.logo (file_id)
-//   - business_profile.name, support_email, url, support_phone,
-//     support_address.{line1,city,postal_code,country}
+// CONTEXTO: originalmente quisimos exponer también update (colores, logo,
+// business_profile) desde nuestro panel admin, pero Stripe **rechaza con
+// 403** cualquier POST sobre la propia cuenta de plataforma:
 //
-// Estos campos se reflejan automáticamente en las facturas PDF y en
-// las páginas hospedadas (Checkout, Customer Portal, invoice pages).
+//   "You cannot use this method on your own account: you may only use it
+//    on connected accounts."
 //
-// Acciones:
+// Esto es política deliberada de Stripe — los settings de la cuenta propia
+// se editan ÚNICAMENTE desde `https://dashboard.stripe.com/settings/branding`
+// y `/settings/account`. No hay forma documentada vía API.
+//
+// Por eso esta función es read-only: el panel /admin/branding muestra los
+// datos y un botón "Editar en Stripe Dashboard" que abre la pestaña
+// correcta. El admin sigue ahorrándose el login a Stripe para ver el
+// estado.
+//
+// Acción única:
 //
 //   { "action": "get" }
-//     Devuelve estado actual del account (branding + business_profile).
-//
-//   { "action": "update_branding", "primary_color"?, "secondary_color"? }
-//     PATCH a settings.branding (colores). Logo se actualiza en
-//     upload_logo (porque requiere subir el archivo primero).
-//
-//   { "action": "update_business", "name"?, "support_email"?, "url"?,
-//                                  "support_phone"?,
-//                                  "support_address"? }
-//     PATCH a business_profile.
-//
-//   { "action": "upload_logo", "filename", "mime_type", "data_base64" }
-//     1) Sube el archivo a `stripe.files` con purpose=business_logo →
-//        recibe file_id.
-//     2) Update account.settings.branding.logo = file_id.
+//     Devuelve { branding, business_profile } del own account.
 //
 // Seguridad:
 //   - JWT + role=admin en profiles.
@@ -110,8 +102,6 @@ Deno.serve(withSentry("admin-stripe-branding", async (req) => {
 
   const action = body.action as string | undefined;
 
-  // ───────────────────────────────── GET ─────────────────────────────────
-
   if (action === "get") {
     try {
       const account = await stripe.accounts.retrieve();
@@ -158,155 +148,5 @@ Deno.serve(withSentry("admin-stripe-branding", async (req) => {
     }
   }
 
-  // ──────────────────────────── UPDATE BRANDING ──────────────────────────
-
-  if (action === "update_branding") {
-    const primary = body.primary_color as string | undefined;
-    const secondary = body.secondary_color as string | undefined;
-    // Validación rápida: hex #RRGGBB.
-    if (primary !== undefined && !/^#[0-9A-Fa-f]{6}$/.test(primary)) {
-      return json({ error: "invalid_color", field: "primary_color" }, 400);
-    }
-    if (secondary !== undefined && !/^#[0-9A-Fa-f]{6}$/.test(secondary)) {
-      return json({ error: "invalid_color", field: "secondary_color" }, 400);
-    }
-    try {
-      // deno-lint-ignore no-explicit-any
-      const brandingPatch: Record<string, any> = {};
-      if (primary !== undefined) brandingPatch.primary_color = primary;
-      if (secondary !== undefined) brandingPatch.secondary_color = secondary;
-      if (Object.keys(brandingPatch).length === 0) {
-        return json({ error: "nothing_to_update" }, 400);
-      }
-      const accountId = await getOwnAccountId(stripe);
-      await stripe.accounts.update(accountId, {
-        settings: { branding: brandingPatch },
-      });
-      return json({ ok: true }, 200);
-    } catch (e) {
-      return json(
-        { error: "stripe_error", detail: (e as Error).message },
-        500,
-      );
-    }
-  }
-
-  // ──────────────────────────── UPDATE BUSINESS ──────────────────────────
-
-  if (action === "update_business") {
-    const name = body.name as string | undefined;
-    const supportEmail = body.support_email as string | undefined;
-    const url = body.url as string | undefined;
-    const supportPhone = body.support_phone as string | undefined;
-    const supportAddress = body.support_address as
-      | Record<string, string>
-      | undefined;
-    try {
-      // deno-lint-ignore no-explicit-any
-      const profile: Record<string, any> = {};
-      if (name !== undefined) profile.name = name;
-      if (supportEmail !== undefined) profile.support_email = supportEmail;
-      if (url !== undefined) profile.url = url;
-      if (supportPhone !== undefined) profile.support_phone = supportPhone;
-      if (supportAddress !== undefined) profile.support_address = supportAddress;
-      if (Object.keys(profile).length === 0) {
-        return json({ error: "nothing_to_update" }, 400);
-      }
-      const accountId = await getOwnAccountId(stripe);
-      await stripe.accounts.update(accountId, {
-        business_profile: profile,
-      });
-      return json({ ok: true }, 200);
-    } catch (e) {
-      return json(
-        { error: "stripe_error", detail: (e as Error).message },
-        500,
-      );
-    }
-  }
-
-  // ────────────────────────────── UPLOAD LOGO ────────────────────────────
-
-  if (action === "upload_logo") {
-    const filename = body.filename as string | undefined;
-    const mimeType = body.mime_type as string | undefined;
-    const base64 = body.data_base64 as string | undefined;
-    if (!filename || !mimeType || !base64) {
-      return json({ error: "missing_fields" }, 400);
-    }
-    if (!["image/png", "image/jpeg", "image/gif", "image/webp"].includes(mimeType)) {
-      return json({ error: "unsupported_mime" }, 400);
-    }
-
-    try {
-      const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-      // Stripe limita logos a 4MB.
-      if (bytes.byteLength > 4 * 1024 * 1024) {
-        return json({ error: "file_too_large" }, 413);
-      }
-
-      // El SDK de Stripe para Node depende de librerías de multipart que NO
-      // funcionan en Deno (`form-data`, streams Node). Subimos el fichero
-      // con `fetch` directo a la Files API — es el patrón oficial para
-      // entornos sin Node:
-      //
-      //   POST https://files.stripe.com/v1/files
-      //   Authorization: Bearer <secret>
-      //   Content-Type: multipart/form-data
-      //   { purpose, file }
-      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
-      const form = new FormData();
-      form.append("purpose", "business_logo");
-      form.append("file", new Blob([bytes], { type: mimeType }), filename);
-
-      const uploadRes = await fetch("https://files.stripe.com/v1/files", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${stripeKey}` },
-        body: form,
-      });
-      const uploadJson = await uploadRes.json();
-      if (!uploadRes.ok) {
-        const msg = uploadJson?.error?.message ?? `HTTP ${uploadRes.status}`;
-        return json({ error: "stripe_error", detail: msg }, 500);
-      }
-      const fileId = uploadJson.id as string;
-
-      // Asociar el file al account.settings.branding.logo.
-      const accountId = await getOwnAccountId(stripe);
-      await stripe.accounts.update(accountId, {
-        settings: { branding: { logo: fileId } },
-      });
-
-      // Crear link público para preview en la UI.
-      let logoUrl: string | null = null;
-      try {
-        const link = await stripe.fileLinks.create({ file: fileId });
-        logoUrl = link.url;
-      } catch (_) {
-        // No bloqueante.
-      }
-
-      return json({ ok: true, logo_file_id: fileId, logo_url: logoUrl }, 200);
-    } catch (e) {
-      return json(
-        { error: "stripe_error", detail: (e as Error).message },
-        500,
-      );
-    }
-  }
-
   return json({ error: "unknown_action" }, 400);
 }));
-
-/// Helper: el TS type de `accounts.update()` exige un account id. Para el
-/// own account de plataforma resolvemos el id leyéndolo desde
-/// `accounts.retrieve()` (sin args = own account). Cacheamos en memoria del
-/// worker para evitar round-trips redundantes.
-let _cachedOwnAccountId: string | null = null;
-// deno-lint-ignore no-explicit-any
-async function getOwnAccountId(stripe: any): Promise<string> {
-  if (_cachedOwnAccountId) return _cachedOwnAccountId;
-  const acc = await stripe.accounts.retrieve();
-  _cachedOwnAccountId = acc.id as string;
-  return _cachedOwnAccountId;
-}
