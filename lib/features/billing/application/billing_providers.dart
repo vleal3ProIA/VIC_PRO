@@ -8,6 +8,7 @@ import 'package:myapp/features/tenants/application/tenant_providers.dart';
 
 import '../data/billing_datasource.dart';
 import '../domain/entitlements.dart';
+import '../domain/invoice.dart';
 import '../domain/plan.dart';
 import '../domain/tenant_subscription.dart';
 
@@ -56,6 +57,20 @@ int entitlementQuota(WidgetRef ref, String key, {int fallback = 0}) {
       ?? const Entitlements.empty();
   return e.quota(key, fallback: fallback);
 }
+
+/// Facturas del tenant activo, ordenadas de más reciente a más antigua.
+/// Empty si no hay tenant activo o si el tenant aún no ha pasado por
+/// checkout (no tiene Stripe customer).
+final myInvoicesProvider = FutureProvider<List<Invoice>>((ref) async {
+  final tenantId = ref.watch(currentTenantIdProvider);
+  if (tenantId == null) return const [];
+  final ds = ref.watch(billingDataSourceProvider);
+  try {
+    return await ds.listInvoices(tenantId: tenantId);
+  } on BillingException {
+    return const [];
+  }
+});
 
 bool entitlementCapability(WidgetRef ref, String key, {bool fallback = false}) {
   final e = ref.watch(currentEntitlementsProvider).valueOrNull
