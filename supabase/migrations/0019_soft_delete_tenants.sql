@@ -81,7 +81,10 @@ create policy "tenant_members_select_in_my_tenants"
 -- Esta función la usan varias políticas. La hacemos consciente del soft
 -- delete: si el caller no es admin global, devolvemos solo tenants vivos.
 
-create or replace function public.user_tenants(p_user uuid)
+-- IMPORTANTE: el parámetro DEBE llamarse `p_user_id` igual que en
+-- la migración 0009 — Postgres no permite renombrar parámetros con
+-- CREATE OR REPLACE FUNCTION (SQLSTATE 42P13).
+create or replace function public.user_tenants(p_user_id uuid)
 returns setof uuid
 language sql
 stable
@@ -91,7 +94,7 @@ as $$
   select tm.tenant_id
   from public.tenant_members tm
   join public.tenants t on t.id = tm.tenant_id
-  where tm.user_id = p_user
+  where tm.user_id = p_user_id
     and (tm.deleted_at is null or public.is_admin())
     and (t.deleted_at is null or public.is_admin());
 $$;
