@@ -1,37 +1,26 @@
 // ============================================================================
 // Edge Function: account-sessions
 // ----------------------------------------------------------------------------
-// Listado + revocación de sesiones del propio usuario. NO admin —
-// cualquier usuario autenticado solo puede ver/revocar SUS sesiones.
+// Listado + revocación de sesiones del propio usuario.
 //
-// Tabla origen: `auth.sessions` (schema interno de Supabase Auth). La
-// usamos con service_role (bypass RLS) y filtramos por `user_id =
-// auth.uid()` extraído del JWT del caller — así no necesitamos exponer
-// el schema auth al cliente.
+// El schema `auth` está bloqueado para acceso REST por Supabase (decisión
+// de seguridad). Por eso TODA la lógica vive en RPCs SECURITY DEFINER
+// del schema `public` (migration 0020):
+//   - public.list_user_sessions(p_current_session_id)
+//   - public.revoke_user_session(p_session_id)
+//   - public.revoke_other_user_sessions(p_current_session_id)
 //
-// Identificación de la sesión ACTUAL: el JWT de Supabase incluye el
-// claim `session_id` desde GoTrue v2. Lo decodificamos del Authorization
-// header (sin verificar firma — la firma ya la validó el gateway al
-// llamar a /auth/v1/user; aquí solo extraemos el id como string).
+// Esta función es un thin wrapper que:
+//   1. valida el JWT del caller con `auth.getUser()`
+//   2. extrae el `session_id` del JWT para identificar la sesión actual
+//   3. invoca la RPC correspondiente
+//   4. devuelve el resultado al cliente
 //
-// Acciones:
+// La autorización efectiva está dentro de la RPC: las queries filtran por
+// `auth.uid()`, así que el caller solo ve/borra SUS propias sesiones —
+// imposible tocar las de otro usuario aunque pase un session_id ajeno.
 //
-//   { "action": "list" }
-//     Devuelve `{sessions: [{id, user_agent, ip, created_at, updated_at,
-//                             not_after, aal, is_current}, ...]}`
-//     ordenadas por updated_at desc.
-//
-//   { "action": "revoke", "session_id": "<uuid>" }
-//     Borra la sesión indicada. Si es la actual, el cliente recibe ok
-//     pero la próxima petición fallará por 401 — la UI navega a /login.
-//
-//   { "action": "revoke_others" }
-//     Borra TODAS menos la actual. Si no se puede identificar la actual
-//     desde el JWT, devuelve error `no_current_session`.
-//
-// Seguridad: JWT requerido. Rate limit 30/h/user (ratos de "limpieza"
-// no son frecuentes; un atacante con JWT no gana mucho borrando sus
-// propias sesiones, pero limitamos por buen gusto).
+// Acciones: list, revoke, revoke_others. Rate limit 30/h.
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -52,16 +41,15 @@ function json(body: unknown, status: number): Response {
   });
 }
 
-/// Decodifica el payload de un JWT sin verificar firma. Devuelve el
-/// claim `session_id` o `null` si no está presente. Solo lo usamos para
-/// extraer el id; la firma ya se validó al hacer `auth.getUser()`.
+/// Decodifica el claim `session_id` del JWT (sin verificar firma — ya la
+/// validó `auth.getUser()`). Devuelve null si no aparece o el token está
+/// malformado.
 function extractSessionId(authHeader: string | null): string | null {
   if (!authHeader) return null;
   const token = authHeader.replace(/^Bearer\s+/i, "");
   const parts = token.split(".");
   if (parts.length !== 3) return null;
   try {
-    // base64url → base64 estándar (Deno's atob necesita padding).
     let payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
     while (payload.length % 4 !== 0) payload += "=";
     const decoded = JSON.parse(atob(payload));
@@ -87,7 +75,9 @@ Deno.serve(withSentry("account-sessions", async (req) => {
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-  // Validamos el JWT con el user client.
+  // userClient — usa el JWT del caller, hereda su `auth.uid()` dentro de
+  // las RPCs SECURITY DEFINER. CRÍTICO: si usaras `admin` (service_role)
+  // aquí, `auth.uid()` dentro de la RPC sería NULL y no devolvería nada.
   const userClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
   });
@@ -97,7 +87,7 @@ Deno.serve(withSentry("account-sessions", async (req) => {
   } = await userClient.auth.getUser();
   if (userErr || !user) return json({ error: "invalid_token" }, 401);
 
-  // Rate limit.
+  // Rate limit con service_role (escribe en su tabla bypassando RLS).
   const admin = createClient(supabaseUrl, serviceRoleKey);
   const rateOk = await checkRateLimit(admin, {
     bucketKey: `account:sessions:user:${user.id}`,
@@ -119,22 +109,17 @@ Deno.serve(withSentry("account-sessions", async (req) => {
   // ──────────────────────────────── LIST ────────────────────────────────
 
   if (action === "list") {
-    const { data, error } = await admin
-      .schema("auth")
-      .from("sessions")
-      .select("id, user_agent, ip, created_at, updated_at, not_after, aal")
-      .eq("user_id", user.id)
-      .order("updated_at", { ascending: false, nullsFirst: false });
+    const { data, error } = await userClient.rpc("list_user_sessions", {
+      p_current_session_id: currentSessionId,
+    });
     if (error) return json({ error: "db_error", detail: error.message }, 500);
-
-    const sessions = (data ?? []).map((row) => ({
-      ...row,
-      // Stringify la IP — supabase la devuelve como string ya, pero
-      // dejamos explícita la forma del payload.
-      ip: row.ip == null ? null : String(row.ip),
-      is_current: currentSessionId != null && row.id === currentSessionId,
-    }));
-    return json({ sessions, current_session_id: currentSessionId }, 200);
+    return json(
+      {
+        sessions: data ?? [],
+        current_session_id: currentSessionId,
+      },
+      200,
+    );
   }
 
   // ─────────────────────────────── REVOKE ───────────────────────────────
@@ -143,56 +128,30 @@ Deno.serve(withSentry("account-sessions", async (req) => {
     const sessionId = body.session_id as string | undefined;
     if (!sessionId) return json({ error: "missing_session_id" }, 400);
 
-    const { error, count } = await admin
-      .schema("auth")
-      .from("sessions")
-      .delete({ count: "exact" })
-      .eq("id", sessionId)
-      .eq("user_id", user.id);
+    const { data, error } = await userClient.rpc("revoke_user_session", {
+      p_session_id: sessionId,
+    });
     if (error) return json({ error: "db_error", detail: error.message }, 500);
-    if ((count ?? 0) === 0) return json({ error: "not_found" }, 404);
+    if (data !== true) return json({ error: "not_found" }, 404);
 
-    // Si revocamos la actual, también limpiamos los refresh_tokens
-    // asociados para que el cliente no pueda renovar el JWT.
-    await admin
-      .schema("auth")
-      .from("refresh_tokens")
-      .update({ revoked: true })
-      .eq("session_id", sessionId);
-
-    return json({ ok: true, was_current: sessionId === currentSessionId }, 200);
+    return json(
+      { ok: true, was_current: sessionId === currentSessionId },
+      200,
+    );
   }
 
   // ─────────────────────────── REVOKE OTHERS ────────────────────────────
 
   if (action === "revoke_others") {
     if (!currentSessionId) {
-      // Sin id de sesión actual no podemos garantizar que la nuestra no
-      // se borre — abortamos para que el cliente no se sake a sí mismo
-      // del sistema sin querer.
       return json({ error: "no_current_session" }, 400);
     }
-
-    const { error, count } = await admin
-      .schema("auth")
-      .from("sessions")
-      .delete({ count: "exact" })
-      .eq("user_id", user.id)
-      .neq("id", currentSessionId);
+    const { data, error } = await userClient.rpc(
+      "revoke_other_user_sessions",
+      { p_current_session_id: currentSessionId },
+    );
     if (error) return json({ error: "db_error", detail: error.message }, 500);
-
-    // Revocar también los refresh tokens de las sesiones eliminadas.
-    // Como Supabase los borra en cascade al borrar la session (FK),
-    // esto es defensivo: si en alguna versión cambian el cascade, aún
-    // dejamos los refresh tokens revocados.
-    await admin
-      .schema("auth")
-      .from("refresh_tokens")
-      .update({ revoked: true })
-      .eq("user_id", user.id)
-      .neq("session_id", currentSessionId);
-
-    return json({ ok: true, revoked_count: count ?? 0 }, 200);
+    return json({ ok: true, revoked_count: (data as number) ?? 0 }, 200);
   }
 
   return json({ error: "unknown_action" }, 400);
