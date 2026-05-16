@@ -225,14 +225,13 @@ Deno.serve(withSentry("stripe-checkout", async (req) => {
   if (customerId) {
     sessionParams.customer = customerId;
   } else if (user.email) {
+    // En modo `subscription`, Stripe SIEMPRE crea el customer automática-
+    // mente cuando pasamos `customer_email` — no hay que (ni se puede)
+    // pasar `customer_creation`. Esa flag es exclusiva de `mode: payment`.
+    // Los datos de billing (nombre, address, tax_id) se aplican al
+    // customer recién creado desde el webhook `customer.subscription.
+    // created` vía `syncCustomerBillingInfo(...)`.
     sessionParams.customer_email = user.email;
-    // Para el customer recién creado, pasamos los datos vía
-    // `customer_creation = always` + nombre por defecto en
-    // `subscription_data.metadata` (Stripe los aplicará al customer cuando
-    // lo cree). Como NO podemos pasar address aquí (la API de Checkout
-    // Session no lo soporta para customer_creation), confiamos en que el
-    // webhook `customer.subscription.created` actualizará después.
-    sessionParams.customer_creation = "always";
   }
 
   try {
