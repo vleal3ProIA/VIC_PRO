@@ -420,8 +420,6 @@ class _UpgradeButton extends ConsumerStatefulWidget {
 }
 
 class _UpgradeButtonState extends ConsumerState<_UpgradeButton> {
-  bool _busy = false;
-
   Future<void> _onPressed() async {
     final tenantId = ref.read(currentTenantIdProvider);
     if (tenantId == null) return;
@@ -438,74 +436,22 @@ class _UpgradeButtonState extends ConsumerState<_UpgradeButton> {
       return;
     }
 
-    setState(() => _busy = true);
-    try {
-      final base = Uri.base;
-      final success = Uri(
-        scheme: base.scheme,
-        host: base.host,
-        port: base.hasPort && base.port != 80 && base.port != 443
-            ? base.port
-            : null,
-        path: RoutePaths.billingSuccess,
-        queryParameters: const {'session_id': '{CHECKOUT_SESSION_ID}'},
-      ).toString();
-      final cancel = Uri(
-        scheme: base.scheme,
-        host: base.host,
-        port: base.hasPort && base.port != 80 && base.port != 443
-            ? base.port
-            : null,
-        path: RoutePaths.plans,
-      ).toString();
-
-      final url = await launchCheckout(
-        ref,
-        tenantId: tenantId,
-        planSlug: widget.plan.slug,
-        billingPeriod: widget.yearly ? 'yearly' : 'monthly',
-        successUrl: success,
-        cancelUrl: cancel,
-      );
-      if (url == null) return;
-      // Web: full-page redirect en la misma pestaña.
-      // url_launcher con webOnlyWindowName: '_self' lo logra.
-      await launchUrl(
-        Uri.parse(url),
-        webOnlyWindowName: '_self',
-      );
-    } on BillingException catch (e) {
-      if (!mounted) return;
-      context.showSnack(_mapError(e.code), isError: true);
-    } catch (_) {
-      if (!mounted) return;
-      context.showSnack(context.l10n.plansCheckoutFailed, isError: true);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  String _mapError(String code) {
-    final l = context.l10n;
-    return switch (code) {
-      'stripe_not_configured' => l.plansStripeNotConfigured,
-      'rate_limited' => l.plansRateLimited,
-      'not_admin' || 'not_member' => l.plansNotAdmin,
-      _ => l.plansCheckoutFailed,
-    };
+    // Navega a la pantalla embedded — el widget Stripe se monta dentro
+    // de nuestra app (no redirect). La pantalla embedded se encarga de
+    // crear la session y montar el widget.
+    final period = widget.yearly ? 'yearly' : 'monthly';
+    context.go(
+      '${RoutePaths.embeddedCheckout}'
+      '?plan_slug=${widget.plan.slug}'
+      '&billing_period=$period',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return FilledButton(
-      onPressed: _busy ? null : _onPressed,
-      child: _busy
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2.4),
-            )
-          : Text(context.l10n.plansUpgrade),
+      onPressed: _onPressed,
+      child: Text(context.l10n.plansUpgrade),
     );
   }
 }

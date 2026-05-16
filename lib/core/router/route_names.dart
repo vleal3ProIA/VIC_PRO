@@ -35,6 +35,7 @@ class RouteNames {
   static const String plans = 'plans';
   static const String billingSuccess = 'billing_success';
   static const String billingInfo = 'billing_info';
+  static const String embeddedCheckout = 'embedded_checkout';
   static const String terms = 'terms';
   static const String privacy = 'privacy';
   static const String cookies = 'cookies';
@@ -81,6 +82,7 @@ class RoutePaths {
   static const String plans = '/billing/plans';
   static const String billingSuccess = '/billing/success';
   static const String billingInfo = '/billing/info';
+  static const String embeddedCheckout = '/billing/checkout';
   static const String terms = '/terms';
   static const String privacy = '/privacy';
   static const String cookies = '/cookies';

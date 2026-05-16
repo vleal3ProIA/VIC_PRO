@@ -47,9 +47,9 @@ class BillingDataSource {
     return const Entitlements.empty();
   }
 
-  /// Crea una sesión de Stripe Checkout y devuelve la URL. La UI redirige
-  /// al usuario a esa URL — Stripe maneja el pago y al terminar manda al
-  /// `successUrl` (o `cancelUrl` si abandona).
+  /// Crea una sesión de Stripe Checkout **hosted** y devuelve la URL. La UI
+  /// redirige al usuario a esa URL — Stripe maneja el pago y al terminar
+  /// manda al `successUrl` (o `cancelUrl` si abandona).
   ///
   /// Lanza [BillingException] con el `code` del backend si falla.
   Future<({String url, String sessionId})> createCheckoutSession({
@@ -67,6 +67,7 @@ class BillingDataSource {
         'billing_period': billingPeriod,
         'success_url': successUrl,
         'cancel_url': cancelUrl,
+        'ui_mode': 'hosted',
       },
     );
     final payload = response.data as Map<String, dynamic>?;
@@ -77,6 +78,40 @@ class BillingDataSource {
     return (
       url: payload['url'] as String,
       sessionId: payload['session_id'] as String,
+    );
+  }
+
+  /// Crea una sesión **embedded** y devuelve el `client_secret` para que la
+  /// UI monte el widget de Stripe en su propia página (sin redirect).
+  /// `returnUrl` es donde Stripe redirige tras éxito (sustituye al
+  /// `success_url` del hosted; no hay `cancel_url` en embedded — el usuario
+  /// simplemente cierra la página).
+  Future<({String clientSecret, String sessionId, String? publishableKey})>
+      createEmbeddedCheckoutSession({
+    required String tenantId,
+    required String planSlug,
+    required String billingPeriod,
+    required String returnUrl,
+  }) async {
+    final response = await _client.functions.invoke(
+      'stripe-checkout',
+      body: {
+        'tenant_id': tenantId,
+        'plan_slug': planSlug,
+        'billing_period': billingPeriod,
+        'success_url': returnUrl,
+        'ui_mode': 'embedded',
+      },
+    );
+    final payload = response.data as Map<String, dynamic>?;
+    if (payload == null) throw const BillingException('empty_response');
+    if (payload['error'] != null) {
+      throw BillingException(payload['error'] as String);
+    }
+    return (
+      clientSecret: payload['client_secret'] as String,
+      sessionId: payload['session_id'] as String,
+      publishableKey: payload['publishable_key'] as String?,
     );
   }
 
