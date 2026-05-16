@@ -448,7 +448,7 @@ class _BrandingFormState extends ConsumerState<_BrandingForm> {
       ref.invalidate(stripeBrandingProvider);
     } on StripeBrandingException catch (e) {
       if (!mounted) return;
-      _toast(_friendlyError(l, e.code));
+      _toast(_friendlyError(l, e.code, detail: e.detail));
     } catch (e) {
       if (!mounted) return;
       _toast(l.adminBrandingSaveError);
@@ -496,7 +496,7 @@ class _BrandingFormState extends ConsumerState<_BrandingForm> {
       ref.invalidate(stripeBrandingProvider);
     } on StripeBrandingException catch (e) {
       if (!mounted) return;
-      _toast(_friendlyError(l, e.code));
+      _toast(_friendlyError(l, e.code, detail: e.detail));
     } catch (e) {
       if (!mounted) return;
       _toast(l.adminBrandingSaveError);
@@ -552,7 +552,7 @@ class _BrandingFormState extends ConsumerState<_BrandingForm> {
       ref.invalidate(stripeBrandingProvider);
     } on StripeBrandingException catch (e) {
       if (!mounted) return;
-      _toast(_friendlyError(l, e.code));
+      _toast(_friendlyError(l, e.code, detail: e.detail));
     } catch (e) {
       if (!mounted) return;
       _toast(l.adminBrandingLogoUploadError);
@@ -570,7 +570,7 @@ class _BrandingFormState extends ConsumerState<_BrandingForm> {
     return null;
   }
 
-  String _friendlyError(AppLocalizations l, String code) {
+  String _friendlyError(AppLocalizations l, String code, {String? detail}) {
     switch (code) {
       case 'invalid_color':
         return l.adminBrandingInvalidColor;
@@ -584,6 +584,12 @@ class _BrandingFormState extends ConsumerState<_BrandingForm> {
         return l.adminBrandingLogoUnsupported;
       case 'nothing_to_update':
         return l.adminBrandingNothingToUpdate;
+      case 'stripe_error':
+        // Mostramos el mensaje literal de Stripe (URL inválida, teléfono mal
+        // formateado, etc.) para que el admin sepa qué corregir.
+        return detail == null || detail.isEmpty
+            ? l.adminBrandingSaveError
+            : 'Stripe: $detail';
       default:
         return l.adminBrandingSaveError;
     }
