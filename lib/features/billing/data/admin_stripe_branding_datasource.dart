@@ -24,7 +24,10 @@ class AdminStripeBrandingDataSource {
       throw const StripeBrandingException('empty_response');
     }
     if (payload['error'] != null) {
-      throw StripeBrandingException(payload['error'] as String);
+      throw StripeBrandingException(
+        payload['error'] as String,
+        detail: payload['detail'] as String?,
+      );
     }
     return StripeBranding.fromPayload(payload);
   }
@@ -48,7 +51,10 @@ class AdminStripeBrandingDataSource {
       throw const StripeBrandingException('empty_response');
     }
     if (payload['error'] != null) {
-      throw StripeBrandingException(payload['error'] as String);
+      throw StripeBrandingException(
+        payload['error'] as String,
+        detail: payload['detail'] as String?,
+      );
     }
   }
 
@@ -77,7 +83,10 @@ class AdminStripeBrandingDataSource {
       throw const StripeBrandingException('empty_response');
     }
     if (payload['error'] != null) {
-      throw StripeBrandingException(payload['error'] as String);
+      throw StripeBrandingException(
+        payload['error'] as String,
+        detail: payload['detail'] as String?,
+      );
     }
   }
 
@@ -102,7 +111,10 @@ class AdminStripeBrandingDataSource {
       throw const StripeBrandingException('empty_response');
     }
     if (payload['error'] != null) {
-      throw StripeBrandingException(payload['error'] as String);
+      throw StripeBrandingException(
+        payload['error'] as String,
+        detail: payload['detail'] as String?,
+      );
     }
     return (
       logoFileId: payload['logo_file_id'] as String,
@@ -112,8 +124,18 @@ class AdminStripeBrandingDataSource {
 }
 
 class StripeBrandingException implements Exception {
-  const StripeBrandingException(this.code);
+  const StripeBrandingException(this.code, {this.detail});
+
+  /// Código corto de error de la Edge Function (`stripe_error`,
+  /// `invalid_color`, `rate_limited`, etc.).
   final String code;
+
+  /// Mensaje detallado de Stripe (solo cuando `code == 'stripe_error'`).
+  /// Útil para diagnosticar campos rechazados (URL inválida, teléfono mal
+  /// formateado, file demasiado grande detectado por Stripe, etc.).
+  final String? detail;
+
   @override
-  String toString() => 'StripeBrandingException($code)';
+  String toString() =>
+      detail == null ? 'StripeBrandingException($code)' : 'StripeBrandingException($code: $detail)';
 }

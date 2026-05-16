@@ -244,31 +244,49 @@ Deno.serve(withSentry("admin-stripe-branding", async (req) => {
       if (bytes.byteLength > 4 * 1024 * 1024) {
         return json({ error: "file_too_large" }, 413);
       }
-      const blob = new Blob([bytes], { type: mimeType });
 
-      // En la Deno Stripe SDK pasamos {data, name, type}.
-      // deno-lint-ignore no-explicit-any
-      const file = await stripe.files.create({
-        file: { data: blob as any, name: filename, type: mimeType },
-        purpose: "business_logo",
+      // El SDK de Stripe para Node depende de librerías de multipart que NO
+      // funcionan en Deno (`form-data`, streams Node). Subimos el fichero
+      // con `fetch` directo a la Files API — es el patrón oficial para
+      // entornos sin Node:
+      //
+      //   POST https://files.stripe.com/v1/files
+      //   Authorization: Bearer <secret>
+      //   Content-Type: multipart/form-data
+      //   { purpose, file }
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
+      const form = new FormData();
+      form.append("purpose", "business_logo");
+      form.append("file", new Blob([bytes], { type: mimeType }), filename);
+
+      const uploadRes = await fetch("https://files.stripe.com/v1/files", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${stripeKey}` },
+        body: form,
       });
+      const uploadJson = await uploadRes.json();
+      if (!uploadRes.ok) {
+        const msg = uploadJson?.error?.message ?? `HTTP ${uploadRes.status}`;
+        return json({ error: "stripe_error", detail: msg }, 500);
+      }
+      const fileId = uploadJson.id as string;
 
       // Asociar el file al account.settings.branding.logo.
       const accountId = await getOwnAccountId(stripe);
       await stripe.accounts.update(accountId, {
-        settings: { branding: { logo: file.id } },
+        settings: { branding: { logo: fileId } },
       });
 
       // Crear link público para preview en la UI.
       let logoUrl: string | null = null;
       try {
-        const link = await stripe.fileLinks.create({ file: file.id });
+        const link = await stripe.fileLinks.create({ file: fileId });
         logoUrl = link.url;
       } catch (_) {
         // No bloqueante.
       }
 
-      return json({ ok: true, logo_file_id: file.id, logo_url: logoUrl }, 200);
+      return json({ ok: true, logo_file_id: fileId, logo_url: logoUrl }, 200);
     } catch (e) {
       return json(
         { error: "stripe_error", detail: (e as Error).message },
