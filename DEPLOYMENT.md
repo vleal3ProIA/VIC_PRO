@@ -87,6 +87,7 @@ supabase functions deploy webhook-dispatch
 supabase functions deploy create-pat
 supabase functions deploy upload-file
 supabase functions deploy admin-users
+supabase functions deploy broadcast-dispatch
 # ... (todas las que están en supabase/functions/)
 ```
 
@@ -210,6 +211,8 @@ A partir de aquí, todo se gestiona desde la UI.
 | 3.L Branding | Wizard `/setup` se ejecuta solo la primera vez. No requiere acción manual. |
 | 3.M Emails | Pasos 3.b (SMTP secrets), 5 (Auth Hook), 7 fila SMTP, 9 verify email log |
 | 3.N Admin Users | Desplegar Edge Function `admin-users` (paso 4). Sin pasos extra. |
+| 3.O Admin Metrics | Migración 0031. Sin pasos extra. |
+| 3.P Broadcasts | Migración 0032 + desplegar Edge Function `broadcast-dispatch` (paso 4). Sin pasos extra. |
 
 > En cada PR nueva, este archivo se actualiza. **Antes de desplegar,
 > relee la lista completa**, no solo lo que es "nuevo".

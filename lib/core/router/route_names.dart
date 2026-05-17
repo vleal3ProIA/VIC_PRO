@@ -32,6 +32,9 @@ class RouteNames {
   static const String adminUsers = 'admin_users';
   static const String adminUserDetail = 'admin_user_detail';
   static const String adminMetrics = 'admin_metrics';
+  static const String adminBroadcasts = 'admin_broadcasts';
+  static const String adminBroadcastsNew = 'admin_broadcasts_new';
+  static const String adminBroadcastDetail = 'admin_broadcast_detail';
   static const String accountSettings = 'account_settings';
   static const String changePassword = 'change_password';
   static const String changePasswordDone = 'change_password_done';
@@ -99,6 +102,12 @@ class RoutePaths {
   static const String adminUsers = '/admin/users';
   static const String adminUserDetail = '/admin/users/:id';
   static const String adminMetrics = '/admin/metrics';
+  static const String adminBroadcasts = '/admin/broadcasts';
+  static const String adminBroadcastsNew = '/admin/broadcasts/new';
+  // Detalle por id. Ojo: el path /broadcasts/new debe estar declarado
+  // ANTES de /broadcasts/:id en el router para que 'new' no se
+  // interprete como un id.
+  static const String adminBroadcastDetail = '/admin/broadcasts/:id';
   static const String accountSettings = '/account-settings';
   static const String changePassword = '/change-password';
   static const String changePasswordDone = '/change-password-done';
