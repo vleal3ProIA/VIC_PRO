@@ -664,5 +664,17 @@
   "sessionsRevoked": "Session revoked.",
   "sessionsRevokeError": "Couldn't revoke the session.",
 
-  "a11ySkipToContent": "Skip to main content"
+  "a11ySkipToContent": "Skip to main content",
+
+  "notificationsTitle": "Notifications",
+  "notificationsLoadError": "Couldn't load notifications.",
+  "notificationsEmptyTitle": "You're all caught up",
+  "notificationsEmptyBody": "When something happens that needs your attention, it'll show up here.",
+  "notificationsMarkAllRead": "Mark all as read",
+  "notificationsMarkedAllRead": "{count} notifications marked as read.",
+  "@notificationsMarkedAllRead": {"placeholders": {"count": {"type": "int"}}},
+  "notificationsActionError": "Operation failed.",
+  "notificationsBellTooltipEmpty": "Notifications",
+  "notificationsBellTooltipCount": "Notifications ({count} unread)",
+  "@notificationsBellTooltipCount": {"placeholders": {"count": {"type": "int"}}}
 }

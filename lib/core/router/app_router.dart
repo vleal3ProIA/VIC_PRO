@@ -46,6 +46,7 @@ import 'package:myapp/features/home/presentation/pages/home_page.dart';
 import 'package:myapp/features/legal/presentation/pages/cookies_page.dart';
 import 'package:myapp/features/legal/presentation/pages/privacy_page.dart';
 import 'package:myapp/features/legal/presentation/pages/terms_page.dart';
+import 'package:myapp/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:myapp/features/shell/presentation/widgets/private_shell.dart';
 import 'package:myapp/features/tenants/presentation/pages/accept_invite_page.dart';
 import 'package:myapp/features/tenants/presentation/pages/team_page.dart';
@@ -224,6 +225,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const AccountSessionsPage(),
       ),
       GoRoute(
+        path: RoutePaths.notifications,
+        name: RouteNames.notifications,
+        builder: (_, __) => const NotificationsPage(),
+      ),
+      GoRoute(
         path: RoutePaths.auditLog,
         name: RouteNames.auditLog,
         builder: (_, __) => const AuditLogPage(),
@@ -358,6 +364,7 @@ const _privateRoutes = <String>{
   RoutePaths.deleteAccount,
   RoutePaths.passkeys,
   RoutePaths.sessions,
+  RoutePaths.notifications,
   RoutePaths.auditLog,
   RoutePaths.team,
   RoutePaths.plans,
