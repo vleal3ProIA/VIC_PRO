@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/features/branding/application/branding_providers.dart';
 import 'package:myapp/features/welcome/presentation/widgets/top_bar.dart';
 
-class WelcomePage extends StatelessWidget {
+class WelcomePage extends ConsumerWidget {
   const WelcomePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Branding del deploy — nombre comercial + tagline + logo opcional.
+    // Si aún no se ha cargado, usamos los fallbacks de i18n existentes.
+    final branding = ref.watch(brandingOrFallbackProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final logoUrl = branding.logoFor(isDark: isDark);
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: const PublicTopBar(),
@@ -27,20 +35,42 @@ class WelcomePage extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.engineering_outlined,
-                        size: context.isMobile ? 96 : 144,
-                        color: context.colors.primary,
-                      ),
+                      if (logoUrl != null)
+                        Image.network(
+                          logoUrl,
+                          height: context.isMobile ? 96 : 144,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Icon(
+                            Icons.engineering_outlined,
+                            size: context.isMobile ? 96 : 144,
+                            color: context.colors.primary,
+                          ),
+                        )
+                      else
+                        Icon(
+                          Icons.engineering_outlined,
+                          size: context.isMobile ? 96 : 144,
+                          color: context.colors.primary,
+                        ),
                       const SizedBox(height: 32),
                       Text(
-                        context.l10n.appTitle,
+                        branding.commercialName,
                         style: context.textTheme.displaySmall?.copyWith(
                           fontWeight: FontWeight.w800,
                           letterSpacing: -1,
                         ),
                         textAlign: TextAlign.center,
                       ),
+                      if (branding.tagline?.isNotEmpty ?? false) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          branding.tagline!,
+                          style: context.textTheme.titleMedium?.copyWith(
+                            color: context.colors.onSurfaceVariant,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       Text(
                         context.l10n.underConstruction,

@@ -2,14 +2,17 @@ import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'package:myapp/core/theme/app_colors.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
+import 'package:myapp/features/branding/presentation/branding_palettes.dart';
 
-/// Tema light + dark generados con FlexColorScheme.
+/// Tema light + dark generados con FlexColorScheme. La paleta de
+/// colores es configurable por deploy via [BrandingPalettes] —
+/// el `AppTheme` toma la paleta como parámetro y devuelve los temas
+/// correspondientes.
 ///
 /// **Decisiones de diseño**:
-/// - **Brand color** = `AppColors.primary` (azul) — mantiene el branding
-///   coherente con login/welcome.
+/// - **Brand color** viene del `BrandingPalette` activo (ver
+///   `app_branding.color_palette` en BD). Default `blue`.
 /// - **M3** activado, pero con M2-style dividers (más visibles, ayudan
 ///   en listas densas tipo `/admin`).
 /// - **Radii** consistentes con `AppRadii.md` (12) para inputs/buttons,
@@ -23,35 +26,24 @@ import 'package:myapp/core/theme/app_tokens.dart';
 class AppTheme {
   AppTheme._();
 
-  static ThemeData get light => _baseTheme(
-        scheme: const FlexSchemeColor(
-          primary: AppColors.primary,
-          primaryContainer: AppColors.primaryDark,
-          secondary: AppColors.secondary,
-          secondaryContainer: AppColors.secondary,
-          tertiary: AppColors.info,
-          tertiaryContainer: AppColors.info,
-          appBarColor: AppColors.surface,
-          error: AppColors.error,
-        ),
+  /// Tema light para la paleta dada. Usar con [BrandingPalettes.bySlug].
+  static ThemeData lightFor(BrandingPalette palette) => _baseTheme(
+        scheme: palette.lightScheme,
         isDark: false,
         baseTextTheme: GoogleFonts.interTextTheme(),
       );
 
-  static ThemeData get dark => _baseTheme(
-        scheme: const FlexSchemeColor(
-          primary: AppColors.primary,
-          primaryContainer: AppColors.primaryDark,
-          secondary: AppColors.secondary,
-          secondaryContainer: AppColors.secondary,
-          tertiary: AppColors.info,
-          tertiaryContainer: AppColors.info,
-          appBarColor: AppColors.surfaceDark,
-          error: AppColors.error,
-        ),
+  /// Tema dark para la paleta dada.
+  static ThemeData darkFor(BrandingPalette palette) => _baseTheme(
+        scheme: palette.darkScheme,
         isDark: true,
         baseTextTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
       );
+
+  /// Atajo con la paleta por defecto. Útil para tests y para builders
+  /// que aún no consumen el provider de branding.
+  static ThemeData get light => lightFor(BrandingPalettes.fallback);
+  static ThemeData get dark => darkFor(BrandingPalettes.fallback);
 
   /// Common config compartido entre light y dark. Centralizar aquí evita
   /// que se desincronicen los dos modos al iterar el diseño.

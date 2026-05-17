@@ -26,6 +26,8 @@ class RouteNames {
   static const String adminTrash = 'admin_trash';
   static const String adminChangelog = 'admin_changelog';
   static const String changelog = 'changelog';
+  static const String adminAppBranding = 'admin_app_branding';
+  static const String setup = 'setup';
   static const String accountSettings = 'account_settings';
   static const String changePassword = 'change_password';
   static const String changePasswordDone = 'change_password_done';
@@ -87,6 +89,8 @@ class RoutePaths {
   static const String adminTrash = '/admin/trash';
   static const String adminChangelog = '/admin/changelog';
   static const String changelog = '/changelog';
+  static const String adminAppBranding = '/admin/app-branding';
+  static const String setup = '/setup';
   static const String accountSettings = '/account-settings';
   static const String changePassword = '/change-password';
   static const String changePasswordDone = '/change-password-done';
