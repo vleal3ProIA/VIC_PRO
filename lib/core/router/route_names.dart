@@ -31,6 +31,7 @@ class RouteNames {
   static const String adminEmailLog = 'admin_email_log';
   static const String adminUsers = 'admin_users';
   static const String adminUserDetail = 'admin_user_detail';
+  static const String adminMetrics = 'admin_metrics';
   static const String accountSettings = 'account_settings';
   static const String changePassword = 'change_password';
   static const String changePasswordDone = 'change_password_done';
@@ -97,6 +98,7 @@ class RoutePaths {
   static const String adminEmailLog = '/admin/email-log';
   static const String adminUsers = '/admin/users';
   static const String adminUserDetail = '/admin/users/:id';
+  static const String adminMetrics = '/admin/metrics';
   static const String accountSettings = '/account-settings';
   static const String changePassword = '/change-password';
   static const String changePasswordDone = '/change-password-done';

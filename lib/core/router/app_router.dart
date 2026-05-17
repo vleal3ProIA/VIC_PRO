@@ -9,6 +9,7 @@ import 'package:myapp/features/account/presentation/pages/account_sessions_page.
 import 'package:myapp/features/account/presentation/pages/account_settings_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_trash_page.dart';
+import 'package:myapp/features/admin_metrics/presentation/pages/admin_metrics_page.dart';
 import 'package:myapp/features/admin_users/presentation/pages/admin_user_detail_page.dart';
 import 'package:myapp/features/admin_users/presentation/pages/admin_users_page.dart';
 import 'package:myapp/features/audit/presentation/pages/activity_feed_page.dart';
@@ -349,6 +350,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: RoutePaths.adminMetrics,
+        name: RouteNames.adminMetrics,
+        builder: (_, __) => const AdminMetricsPage(),
+      ),
+      GoRoute(
         path: RoutePaths.plans,
         name: RouteNames.plans,
         builder: (_, __) => const PlansPage(),
@@ -443,6 +449,7 @@ const _privateRoutes = <String>{
   RoutePaths.adminAppBranding,
   RoutePaths.adminEmailLog,
   RoutePaths.adminUsers,
+  RoutePaths.adminMetrics,
   RoutePaths.changelog,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
@@ -484,6 +491,7 @@ const _adminRoutes = <String>{
   RoutePaths.adminAppBranding,
   RoutePaths.adminEmailLog,
   RoutePaths.adminUsers,
+  RoutePaths.adminMetrics,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.
