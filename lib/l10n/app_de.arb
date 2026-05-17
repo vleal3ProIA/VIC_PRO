@@ -625,5 +625,23 @@
   "notificationsMarkedAllRead": "{count} Benachrichtigungen als gelesen markiert.",
   "notificationsActionError": "Vorgang fehlgeschlagen.",
   "notificationsBellTooltipEmpty": "Benachrichtigungen",
-  "notificationsBellTooltipCount": "Benachrichtigungen ({count} ungelesen)"
+  "notificationsBellTooltipCount": "Benachrichtigungen ({count} ungelesen)",
+
+  "onboardingStepCounter": "Schritt {current} von {total}",
+  "onboardingSkipAll": "Später",
+  "onboardingBack": "Zurück",
+  "onboardingNext": "Weiter",
+  "onboardingFinish": "Loslegen",
+  "onboardingFinishError": "Fortschritt konnte nicht gespeichert werden.",
+  "onboardingWelcomeTitle": "Hi {name}, willkommen bei {app}",
+  "onboardingWelcomeTitleGeneric": "Willkommen bei {app}",
+  "onboardingWelcomeBody": "Zwei Minuten für deine Einstellungen und dein Team — dann bist du fertig.",
+  "onboardingPreferencesTitle": "Mach es zu deinem",
+  "onboardingPreferencesBody": "Wähle das Theme, das für dich am angenehmsten ist. Du kannst es jederzeit oben ändern.",
+  "onboardingTeamTitle": "Hol dein Team rein",
+  "onboardingTeamBody": "Lade Teamkollegen ein, damit alle denselben Workspace, Plan und dieselbe Abrechnung teilen.",
+  "onboardingTeamInviteCta": "Teammitglieder einladen",
+  "onboardingTeamInviteHint": "Öffne die Team-Seite, um Einladungen zu senden.",
+  "onboardingTeamGo": "Team öffnen",
+  "onboardingTeamSkipNote": "Du kannst das später unter Einstellungen → Team erledigen."
 }

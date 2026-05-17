@@ -625,5 +625,23 @@
   "notificationsMarkedAllRead": "{count} notificações marcadas como lidas.",
   "notificationsActionError": "Operação falhada.",
   "notificationsBellTooltipEmpty": "Notificações",
-  "notificationsBellTooltipCount": "Notificações ({count} por ler)"
+  "notificationsBellTooltipCount": "Notificações ({count} por ler)",
+
+  "onboardingStepCounter": "Passo {current} de {total}",
+  "onboardingSkipAll": "Saltar por agora",
+  "onboardingBack": "Voltar",
+  "onboardingNext": "Seguinte",
+  "onboardingFinish": "Começar",
+  "onboardingFinishError": "Não foi possível guardar o teu progresso.",
+  "onboardingWelcomeTitle": "Olá {name}, bem-vindo ao {app}",
+  "onboardingWelcomeTitleGeneric": "Bem-vindo ao {app}",
+  "onboardingWelcomeBody": "Dois minutos para configurar as tuas preferências e convidar a equipa — e está feito.",
+  "onboardingPreferencesTitle": "À tua maneira",
+  "onboardingPreferencesBody": "Escolhe o tema mais confortável para os teus olhos. Podes mudá-lo a qualquer momento na barra superior.",
+  "onboardingTeamTitle": "Traz a tua equipa",
+  "onboardingTeamBody": "Convida colegas para que todos partilhem workspace, plano e faturação.",
+  "onboardingTeamInviteCta": "Convidar equipa",
+  "onboardingTeamInviteHint": "Abre a página de equipa para enviar convites.",
+  "onboardingTeamGo": "Abrir equipa",
+  "onboardingTeamSkipNote": "Podes fazê-lo depois em Definições → Equipa."
 }

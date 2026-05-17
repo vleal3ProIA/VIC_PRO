@@ -625,5 +625,23 @@
   "notificationsMarkedAllRead": "{count} notifications marquées comme lues.",
   "notificationsActionError": "Opération échouée.",
   "notificationsBellTooltipEmpty": "Notifications",
-  "notificationsBellTooltipCount": "Notifications ({count} non lues)"
+  "notificationsBellTooltipCount": "Notifications ({count} non lues)",
+
+  "onboardingStepCounter": "Étape {current} sur {total}",
+  "onboardingSkipAll": "Passer pour l'instant",
+  "onboardingBack": "Retour",
+  "onboardingNext": "Suivant",
+  "onboardingFinish": "Commencer",
+  "onboardingFinishError": "Impossible de sauvegarder votre progression.",
+  "onboardingWelcomeTitle": "Salut {name}, bienvenue sur {app}",
+  "onboardingWelcomeTitleGeneric": "Bienvenue sur {app}",
+  "onboardingWelcomeBody": "Deux minutes pour configurer vos préférences et inviter votre équipe — et c'est tout.",
+  "onboardingPreferencesTitle": "À votre façon",
+  "onboardingPreferencesBody": "Choisissez le thème le plus agréable pour vos yeux. Vous pouvez le changer à tout moment depuis la barre supérieure.",
+  "onboardingTeamTitle": "Ajoutez votre équipe",
+  "onboardingTeamBody": "Invitez des coéquipiers pour que tout le monde partage le même espace, plan et facturation.",
+  "onboardingTeamInviteCta": "Inviter l'équipe",
+  "onboardingTeamInviteHint": "Ouvrez la page équipe pour envoyer des invitations.",
+  "onboardingTeamGo": "Ouvrir équipe",
+  "onboardingTeamSkipNote": "Vous pouvez le faire plus tard depuis Paramètres → Équipe."
 }

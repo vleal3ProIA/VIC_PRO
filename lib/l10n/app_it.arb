@@ -625,5 +625,23 @@
   "notificationsMarkedAllRead": "{count} notifiche segnate come lette.",
   "notificationsActionError": "Operazione fallita.",
   "notificationsBellTooltipEmpty": "Notifiche",
-  "notificationsBellTooltipCount": "Notifiche ({count} non lette)"
+  "notificationsBellTooltipCount": "Notifiche ({count} non lette)",
+
+  "onboardingStepCounter": "Passo {current} di {total}",
+  "onboardingSkipAll": "Salta per ora",
+  "onboardingBack": "Indietro",
+  "onboardingNext": "Avanti",
+  "onboardingFinish": "Iniziamo",
+  "onboardingFinishError": "Impossibile salvare i progressi.",
+  "onboardingWelcomeTitle": "Ciao {name}, benvenuto su {app}",
+  "onboardingWelcomeTitleGeneric": "Benvenuto su {app}",
+  "onboardingWelcomeBody": "Due minuti per configurare le tue preferenze e invitare il team — e hai finito.",
+  "onboardingPreferencesTitle": "A modo tuo",
+  "onboardingPreferencesBody": "Scegli il tema più comodo per i tuoi occhi. Puoi cambiarlo in qualsiasi momento dalla barra superiore.",
+  "onboardingTeamTitle": "Porta il tuo team",
+  "onboardingTeamBody": "Invita i colleghi così tutti condividete workspace, piano e fatturazione.",
+  "onboardingTeamInviteCta": "Invita il team",
+  "onboardingTeamInviteHint": "Apri la pagina team per inviare inviti.",
+  "onboardingTeamGo": "Apri team",
+  "onboardingTeamSkipNote": "Puoi farlo più tardi da Impostazioni → Team."
 }

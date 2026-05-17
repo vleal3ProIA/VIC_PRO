@@ -47,6 +47,8 @@ import 'package:myapp/features/legal/presentation/pages/cookies_page.dart';
 import 'package:myapp/features/legal/presentation/pages/privacy_page.dart';
 import 'package:myapp/features/legal/presentation/pages/terms_page.dart';
 import 'package:myapp/features/notifications/presentation/pages/notifications_page.dart';
+import 'package:myapp/features/onboarding/application/onboarding_providers.dart';
+import 'package:myapp/features/onboarding/presentation/pages/onboarding_page.dart';
 import 'package:myapp/features/shell/presentation/widgets/private_shell.dart';
 import 'package:myapp/features/tenants/presentation/pages/accept_invite_page.dart';
 import 'package:myapp/features/tenants/presentation/pages/team_page.dart';
@@ -230,6 +232,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const NotificationsPage(),
       ),
       GoRoute(
+        path: RoutePaths.onboarding,
+        name: RouteNames.onboarding,
+        builder: (_, __) => const OnboardingPage(),
+      ),
+      GoRoute(
         path: RoutePaths.auditLog,
         name: RouteNames.auditLog,
         builder: (_, __) => const AuditLogPage(),
@@ -365,6 +372,7 @@ const _privateRoutes = <String>{
   RoutePaths.passkeys,
   RoutePaths.sessions,
   RoutePaths.notifications,
+  RoutePaths.onboarding,
   RoutePaths.auditLog,
   RoutePaths.team,
   RoutePaths.plans,
@@ -440,8 +448,35 @@ String? _redirect(Ref ref, GoRouterState state) {
     if (!pending) return RoutePaths.home;
   }
 
+  // 5) Onboarding wizard: usuario autenticado sin onboarding completado
+  //    se redirige a /onboarding -- excepto si ya está allí o en rutas
+  //    transversales que NO queremos bloquear (logout, legal, callback).
+  //    Si el provider aún está cargando, NO redirigimos -- evita el
+  //    flash de /onboarding antes de saber el estado real.
+  if (isAuthed &&
+      loc != RoutePaths.onboarding &&
+      _onboardingGatedRoutes.contains(loc)) {
+    final completedAsync = ref.read(onboardingCompletedProvider);
+    final completed = completedAsync.valueOrNull;
+    if (completed == false) return RoutePaths.onboarding;
+  }
+
   return null;
 }
+
+/// Rutas donde el onboarding gate se aplica. Lista explícita (no
+/// "todas las privadas") porque /accept-invite, /change-email-sent y
+/// similares deben funcionar incluso pre-onboarding (link en email).
+const _onboardingGatedRoutes = <String>{
+  RoutePaths.home,
+  RoutePaths.admin,
+  RoutePaths.accountSettings,
+  RoutePaths.plans,
+  RoutePaths.billingInfo,
+  RoutePaths.invoices,
+  RoutePaths.team,
+  RoutePaths.notifications,
+};
 
 /// Adaptador entre el `StreamProvider<AuthState>` y el `Listenable` que
 /// `GoRouter.refreshListenable` espera. Cada vez que cambia el estado de
