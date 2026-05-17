@@ -643,5 +643,17 @@
   "onboardingTeamInviteCta": "Teammitglieder einladen",
   "onboardingTeamInviteHint": "Öffne die Team-Seite, um Einladungen zu senden.",
   "onboardingTeamGo": "Team öffnen",
-  "onboardingTeamSkipNote": "Du kannst das später unter Einstellungen → Team erledigen."
+  "onboardingTeamSkipNote": "Du kannst das später unter Einstellungen → Team erledigen.",
+
+  "searchTooltip": "Suche",
+  "searchHint": "Seiten, Aktionen suchen…",
+  "searchEmpty": "Keine Ergebnisse für \"{query}\".",
+  "searchSectionPages": "Seiten",
+  "searchSectionActions": "Aktionen",
+  "searchHintNavigate": "zum Navigieren",
+  "searchHintSelect": "zum Auswählen",
+  "searchHintClose": "zum Schließen",
+  "searchActionThemeSystem": "Theme auf System wechseln",
+  "searchActionThemeLight": "Theme auf Hell wechseln",
+  "searchActionThemeDark": "Theme auf Dunkel wechseln"
 }

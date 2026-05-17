@@ -643,5 +643,17 @@
   "onboardingTeamInviteCta": "Запросити команду",
   "onboardingTeamInviteHint": "Відкрий сторінку команди, щоб надіслати запрошення.",
   "onboardingTeamGo": "Відкрити команду",
-  "onboardingTeamSkipNote": "Це можна зробити пізніше в Налаштування → Команда."
+  "onboardingTeamSkipNote": "Це можна зробити пізніше в Налаштування → Команда.",
+
+  "searchTooltip": "Пошук",
+  "searchHint": "Пошук сторінок, дій…",
+  "searchEmpty": "Немає результатів для «{query}».",
+  "searchSectionPages": "Сторінки",
+  "searchSectionActions": "Дії",
+  "searchHintNavigate": "для навігації",
+  "searchHintSelect": "для вибору",
+  "searchHintClose": "для закриття",
+  "searchActionThemeSystem": "Змінити тему на системну",
+  "searchActionThemeLight": "Змінити тему на світлу",
+  "searchActionThemeDark": "Змінити тему на темну"
 }

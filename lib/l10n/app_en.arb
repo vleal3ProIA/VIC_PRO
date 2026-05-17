@@ -697,5 +697,18 @@
   "onboardingTeamInviteCta": "Invite teammates",
   "onboardingTeamInviteHint": "Open the team page to send invitations.",
   "onboardingTeamGo": "Open team",
-  "onboardingTeamSkipNote": "You can do this later from Settings → Team."
+  "onboardingTeamSkipNote": "You can do this later from Settings → Team.",
+
+  "searchTooltip": "Search",
+  "searchHint": "Search pages, actions…",
+  "searchEmpty": "No results for \"{query}\".",
+  "@searchEmpty": {"placeholders": {"query": {"type": "String"}}},
+  "searchSectionPages": "Pages",
+  "searchSectionActions": "Actions",
+  "searchHintNavigate": "to navigate",
+  "searchHintSelect": "to select",
+  "searchHintClose": "to close",
+  "searchActionThemeSystem": "Switch theme to system",
+  "searchActionThemeLight": "Switch theme to light",
+  "searchActionThemeDark": "Switch theme to dark"
 }

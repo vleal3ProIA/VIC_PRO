@@ -643,5 +643,17 @@
   "onboardingTeamInviteCta": "Convidar equipa",
   "onboardingTeamInviteHint": "Abre a página de equipa para enviar convites.",
   "onboardingTeamGo": "Abrir equipa",
-  "onboardingTeamSkipNote": "Podes fazê-lo depois em Definições → Equipa."
+  "onboardingTeamSkipNote": "Podes fazê-lo depois em Definições → Equipa.",
+
+  "searchTooltip": "Pesquisar",
+  "searchHint": "Pesquisa páginas, ações…",
+  "searchEmpty": "Sem resultados para «{query}».",
+  "searchSectionPages": "Páginas",
+  "searchSectionActions": "Ações",
+  "searchHintNavigate": "para navegar",
+  "searchHintSelect": "para selecionar",
+  "searchHintClose": "para fechar",
+  "searchActionThemeSystem": "Mudar tema para sistema",
+  "searchActionThemeLight": "Mudar tema para claro",
+  "searchActionThemeDark": "Mudar tema para escuro"
 }

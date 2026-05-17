@@ -6,6 +6,8 @@ import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/features/account/application/profile_providers.dart';
 import 'package:myapp/features/notifications/presentation/widgets/notification_bell.dart';
+import 'package:myapp/features/search/presentation/widgets/cmd_k_shortcut.dart';
+import 'package:myapp/features/search/presentation/widgets/search_button.dart';
 import 'package:myapp/features/shell/presentation/widgets/skip_to_content_link.dart';
 import 'package:myapp/features/shell/presentation/widgets/user_avatar_menu.dart';
 import 'package:myapp/features/welcome/presentation/widgets/language_picker.dart';
@@ -120,9 +122,10 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
           ),
         );
 
-    return Stack(
-      children: [
-        Scaffold(
+    return CmdKShortcut(
+      child: Stack(
+        children: [
+          Scaffold(
           appBar: AppBar(
             scrolledUnderElevation: 0,
             title: Text(
@@ -132,6 +135,7 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
               ),
             ),
             actions: const [
+              SearchButton(),
               NotificationBell(),
               LanguagePicker(),
               ThemeToggle(),
@@ -178,8 +182,9 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
         ),
         // Skip-to-content link: invisible salvo cuando recibe foco.
         // Por estar sobre el Stack, queda por encima del AppBar.
-        SkipToContentLink(targetFocusNode: _mainContentFocus),
-      ],
+          SkipToContentLink(targetFocusNode: _mainContentFocus),
+        ],
+      ),
     );
   }
 }
