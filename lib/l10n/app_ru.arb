@@ -643,5 +643,17 @@
   "onboardingTeamInviteCta": "Пригласить команду",
   "onboardingTeamInviteHint": "Открой страницу команды для отправки приглашений.",
   "onboardingTeamGo": "Открыть команду",
-  "onboardingTeamSkipNote": "Это можно сделать позже в Настройки → Команда."
+  "onboardingTeamSkipNote": "Это можно сделать позже в Настройки → Команда.",
+
+  "searchTooltip": "Поиск",
+  "searchHint": "Поиск страниц, действий…",
+  "searchEmpty": "Нет результатов для «{query}».",
+  "searchSectionPages": "Страницы",
+  "searchSectionActions": "Действия",
+  "searchHintNavigate": "для навигации",
+  "searchHintSelect": "для выбора",
+  "searchHintClose": "для закрытия",
+  "searchActionThemeSystem": "Сменить тему на системную",
+  "searchActionThemeLight": "Сменить тему на светлую",
+  "searchActionThemeDark": "Сменить тему на тёмную"
 }
