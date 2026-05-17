@@ -655,5 +655,22 @@
   "searchHintClose": "para fechar",
   "searchActionThemeSystem": "Mudar tema para sistema",
   "searchActionThemeLight": "Mudar tema para claro",
-  "searchActionThemeDark": "Mudar tema para escuro"
+  "searchActionThemeDark": "Mudar tema para escuro",
+
+  "activityTitle": "Atividade",
+  "activityHint": "Cronologia visual dos eventos recentes da tua conta.",
+  "activityLoadError": "Não foi possível carregar a atividade.",
+  "activityEmptyTitle": "Ainda nada",
+  "activityEmptyBody": "Inicia sessão, muda uma definição, ativa MFA… a tua cronologia vai-se preencher.",
+  "activityFilteredEmptyTitle": "Sem resultados",
+  "activityFilteredEmptyBody": "Tenta outro filtro ou remove-o.",
+  "activityFilterAll": "Tudo",
+  "activityCategoryAuth": "Auth",
+  "activityCategoryAccount": "Conta",
+  "activityCategoryMfa": "MFA",
+  "activityCategoryPasskey": "Passkeys",
+  "activityCategoryOther": "Outros",
+  "activityDayToday": "Hoje",
+  "activityDayYesterday": "Ontem",
+  "activityDayDaysAgo": "Há {n} dias"
 }

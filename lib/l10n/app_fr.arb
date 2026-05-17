@@ -655,5 +655,22 @@
   "searchHintClose": "pour fermer",
   "searchActionThemeSystem": "Passer au thème système",
   "searchActionThemeLight": "Passer au thème clair",
-  "searchActionThemeDark": "Passer au thème sombre"
+  "searchActionThemeDark": "Passer au thème sombre",
+
+  "activityTitle": "Activité",
+  "activityHint": "Chronologie visuelle des événements récents de votre compte.",
+  "activityLoadError": "Impossible de charger l'activité.",
+  "activityEmptyTitle": "Rien ne s'est encore passé",
+  "activityEmptyBody": "Connectez-vous, changez un paramètre, activez la MFA… votre chronologie va se remplir.",
+  "activityFilteredEmptyTitle": "Aucun résultat",
+  "activityFilteredEmptyBody": "Essayez un autre filtre ou supprimez-le.",
+  "activityFilterAll": "Tout",
+  "activityCategoryAuth": "Auth",
+  "activityCategoryAccount": "Compte",
+  "activityCategoryMfa": "MFA",
+  "activityCategoryPasskey": "Passkeys",
+  "activityCategoryOther": "Autre",
+  "activityDayToday": "Aujourd'hui",
+  "activityDayYesterday": "Hier",
+  "activityDayDaysAgo": "Il y a {n} jours"
 }

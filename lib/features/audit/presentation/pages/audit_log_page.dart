@@ -6,9 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/features/audit/application/audit_logger.dart';
-import 'package:myapp/features/audit/domain/audit_events.dart';
 import 'package:myapp/features/audit/domain/audit_log_entry.dart';
-import 'package:myapp/generated/l10n/app_localizations.dart';
+import 'package:myapp/features/audit/presentation/audit_event_visuals.dart';
 
 /// Página `/audit-log` — lista los últimos eventos del usuario (login,
 /// cambios de cuenta, MFA, passkey…). Append-only por RLS: el usuario
@@ -96,39 +95,10 @@ class _AuditTile extends StatelessWidget {
     final localeCode = Localizations.localeOf(context).languageCode;
     final formatter = DateFormat.yMMMd(localeCode).add_Hm();
     return ListTile(
-      leading: Icon(_iconFor(entry.event), color: context.colors.primary),
-      title: Text(_labelFor(l, entry.event)),
+      leading: Icon(iconForAuditEvent(entry.event), color: context.colors.primary),
+      title: Text(labelForAuditEvent(l, entry.event)),
       subtitle: Text(formatter.format(entry.occurredAt.toLocal())),
       dense: true,
     );
-  }
-
-  IconData _iconFor(String event) {
-    if (event.startsWith('auth.login')) return Icons.login;
-    if (event == AuditEvents.logout) return Icons.logout;
-    if (event.startsWith('mfa.')) return Icons.shield_outlined;
-    if (event.startsWith('passkey.')) return Icons.fingerprint;
-    if (event == AuditEvents.passwordChanged) return Icons.password_outlined;
-    if (event == AuditEvents.emailChangeRequested) {
-      return Icons.alternate_email;
-    }
-    return Icons.history;
-  }
-
-  String _labelFor(AppLocalizations l, String event) {
-    return switch (event) {
-      AuditEvents.loginPassword => l.auditEventLoginPassword,
-      AuditEvents.loginOauth => l.auditEventLoginOauth,
-      AuditEvents.loginPasskey => l.auditEventLoginPasskey,
-      AuditEvents.loginMfaRecovery => l.auditEventLoginMfaRecovery,
-      AuditEvents.logout => l.auditEventLogout,
-      AuditEvents.passwordChanged => l.auditEventPasswordChanged,
-      AuditEvents.emailChangeRequested => l.auditEventEmailChangeRequested,
-      AuditEvents.mfaEnabled => l.auditEventMfaEnabled,
-      AuditEvents.mfaDisabled => l.auditEventMfaDisabled,
-      AuditEvents.passkeyAdded => l.auditEventPasskeyAdded,
-      AuditEvents.passkeyRemoved => l.auditEventPasskeyRemoved,
-      _ => event,
-    };
   }
 }

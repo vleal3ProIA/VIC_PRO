@@ -655,5 +655,22 @@
   "searchHintClose": "per chiudere",
   "searchActionThemeSystem": "Cambia tema a sistema",
   "searchActionThemeLight": "Cambia tema a chiaro",
-  "searchActionThemeDark": "Cambia tema a scuro"
+  "searchActionThemeDark": "Cambia tema a scuro",
+
+  "activityTitle": "Attività",
+  "activityHint": "Timeline visuale degli eventi recenti del tuo account.",
+  "activityLoadError": "Impossibile caricare l'attività.",
+  "activityEmptyTitle": "Ancora niente",
+  "activityEmptyBody": "Accedi, cambia un'impostazione, attiva MFA… la tua timeline si riempirà.",
+  "activityFilteredEmptyTitle": "Nessun risultato",
+  "activityFilteredEmptyBody": "Prova un altro filtro o rimuovilo.",
+  "activityFilterAll": "Tutto",
+  "activityCategoryAuth": "Auth",
+  "activityCategoryAccount": "Account",
+  "activityCategoryMfa": "MFA",
+  "activityCategoryPasskey": "Passkeys",
+  "activityCategoryOther": "Altro",
+  "activityDayToday": "Oggi",
+  "activityDayYesterday": "Ieri",
+  "activityDayDaysAgo": "{n} giorni fa"
 }
