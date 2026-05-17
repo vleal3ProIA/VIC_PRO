@@ -12,6 +12,7 @@ import 'package:myapp/features/search/presentation/widgets/cmd_k_shortcut.dart';
 import 'package:myapp/features/search/presentation/widgets/search_button.dart';
 import 'package:myapp/features/shell/presentation/widgets/skip_to_content_link.dart';
 import 'package:myapp/features/shell/presentation/widgets/user_avatar_menu.dart';
+import 'package:myapp/features/status/presentation/widgets/maintenance_banner.dart';
 import 'package:myapp/features/welcome/presentation/widgets/language_picker.dart';
 import 'package:myapp/features/welcome/presentation/widgets/theme_toggle.dart';
 
@@ -164,27 +165,37 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
                     ),
                   ),
                 ),
-          body: isWide
-              ? Row(
-                  children: [
-                    NavigationRail(
-                      selectedIndex: selectedIndex,
-                      onDestinationSelected: goTo,
-                      labelType: NavigationRailLabelType.all,
-                      destinations: [
-                        for (final d in destinations)
-                          NavigationRailDestination(
-                            icon: Icon(d.icon),
-                            selectedIcon: Icon(d.selectedIcon),
-                            label: Text(d.label),
+          body: Column(
+            children: [
+              // Banner de incidente activo de severidad >= major (auto-
+              // ocultado si no aplica). Va ARRIBA del nav rail para que
+              // sea visible aunque el rail oculte parte del contenido.
+              const MaintenanceBanner(),
+              Expanded(
+                child: isWide
+                    ? Row(
+                        children: [
+                          NavigationRail(
+                            selectedIndex: selectedIndex,
+                            onDestinationSelected: goTo,
+                            labelType: NavigationRailLabelType.all,
+                            destinations: [
+                              for (final d in destinations)
+                                NavigationRailDestination(
+                                  icon: Icon(d.icon),
+                                  selectedIcon: Icon(d.selectedIcon),
+                                  label: Text(d.label),
+                                ),
+                            ],
                           ),
-                      ],
-                    ),
-                    const VerticalDivider(width: 1),
-                    Expanded(child: wrapBody(widget.child)),
-                  ],
-                )
-              : wrapBody(widget.child),
+                          const VerticalDivider(width: 1),
+                          Expanded(child: wrapBody(widget.child)),
+                        ],
+                      )
+                    : wrapBody(widget.child),
+              ),
+            ],
+          ),
         ),
         // Skip-to-content link: invisible salvo cuando recibe foco.
         // Por estar sobre el Stack, queda por encima del AppBar.
