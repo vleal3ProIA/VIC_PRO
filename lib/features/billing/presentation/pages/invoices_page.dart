@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/widgets/app_empty_state.dart';
+import 'package:myapp/core/widgets/app_error_state.dart';
+import 'package:myapp/core/widgets/app_loading_state.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -47,19 +50,19 @@ class InvoicesPage extends ConsumerWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 880),
           child: invoicesAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  l.invoicesLoadError,
-                  style: TextStyle(color: context.colors.error),
-                ),
-              ),
+            loading: () => const AppLoadingState(),
+            error: (e, _) => AppErrorState(
+              message: l.invoicesLoadError,
+              detail: e.toString(),
+              onRetry: () => ref.invalidate(myInvoicesProvider),
+              retryLabel: l.actionRetry,
             ),
             data: (invoices) {
               if (invoices.isEmpty) {
-                return _EmptyState(message: l.invoicesEmpty);
+                return AppEmptyState(
+                  icon: Icons.receipt_long_outlined,
+                  message: l.invoicesEmpty,
+                );
               }
               return ListView.separated(
                 padding: const EdgeInsets.all(16),
@@ -73,35 +76,6 @@ class InvoicesPage extends ConsumerWidget {
       ),
     );
   }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.message});
-  final String message;
-  @override
-  Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.receipt_long_outlined,
-                size: 64,
-                color: context.colors.outline,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: context.textTheme.bodyMedium?.copyWith(
-                  color: context.colors.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
 }
 
 class _InvoiceRow extends StatelessWidget {
