@@ -55,6 +55,8 @@ import 'package:myapp/features/tenants/presentation/pages/accept_invite_page.dar
 import 'package:myapp/features/tenants/presentation/pages/team_page.dart';
 import 'package:myapp/features/tokens/presentation/pages/tokens_page.dart';
 import 'package:myapp/features/uploads/presentation/pages/files_page.dart';
+import 'package:myapp/features/webhooks/presentation/pages/webhook_detail_page.dart';
+import 'package:myapp/features/webhooks/presentation/pages/webhooks_page.dart';
 import 'package:myapp/features/welcome/presentation/pages/welcome_page.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -240,6 +242,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const TokensPage(),
       ),
       GoRoute(
+        path: RoutePaths.webhooks,
+        name: RouteNames.webhooks,
+        builder: (_, __) => const WebhooksPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.webhookDetail,
+        name: RouteNames.webhookDetail,
+        builder: (_, state) => WebhookDetailPage(
+          endpointId: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
         path: RoutePaths.notifications,
         name: RouteNames.notifications,
         builder: (_, __) => const NotificationsPage(),
@@ -391,6 +405,7 @@ const _privateRoutes = <String>{
   RoutePaths.sessions,
   RoutePaths.files,
   RoutePaths.tokens,
+  RoutePaths.webhooks,
   RoutePaths.notifications,
   RoutePaths.onboarding,
   RoutePaths.auditLog,
@@ -429,6 +444,15 @@ const _publicOnly = <String>{
   RoutePaths.otpVerify,
 };
 
+/// `true` si la ruta necesita sesión. Lista exacta de `_privateRoutes`
+/// más los patrones parametrizados que el `Set` exacto no atrapa
+/// (ej. `/account-settings/webhooks/<uuid>`).
+bool _isPrivate(String loc) {
+  if (_privateRoutes.contains(loc)) return true;
+  if (loc.startsWith('/account-settings/webhooks/')) return true;
+  return false;
+}
+
 String? _redirect(Ref ref, GoRouterState state) {
   final loc = state.matchedLocation;
   if (_excludedFromGuard.contains(loc)) return null;
@@ -442,7 +466,7 @@ String? _redirect(Ref ref, GoRouterState state) {
   final isAuthed = ref.read(supabaseClientProvider).auth.currentSession != null;
 
   // 1) No autenticado y la ruta requiere sesión → login.
-  if (!isAuthed && _privateRoutes.contains(loc)) {
+  if (!isAuthed && _isPrivate(loc)) {
     return RoutePaths.login;
   }
 
