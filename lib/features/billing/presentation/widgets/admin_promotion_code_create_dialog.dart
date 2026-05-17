@@ -86,10 +86,12 @@ class _AdminPromotionCodeCreateDialogState
                     labelText: l.adminCouponsCodeFieldExpiresAt,
                     suffixIcon: _expiresAt == null
                         ? IconButton(
+                            tooltip: l.adminCouponsPickDate,
                             icon: const Icon(Icons.calendar_today_outlined),
                             onPressed: _pickDate,
                           )
                         : IconButton(
+                            tooltip: l.actionClear,
                             icon: const Icon(Icons.close),
                             onPressed: () => setState(() => _expiresAt = null),
                           ),

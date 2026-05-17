@@ -613,5 +613,7 @@
   "sessionsIp": "IP {ip}",
   "sessionsRevoke": "Выйти с этого устройства",
   "sessionsRevoked": "Сессия отозвана.",
-  "sessionsRevokeError": "Не удалось отозвать сессию."
+  "sessionsRevokeError": "Не удалось отозвать сессию.",
+
+  "a11ySkipToContent": "Перейти к основному содержимому"
 }

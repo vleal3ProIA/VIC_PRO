@@ -662,5 +662,7 @@
   "@sessionsIp": {"placeholders": {"ip": {"type": "String"}}},
   "sessionsRevoke": "Sign out this device",
   "sessionsRevoked": "Session revoked.",
-  "sessionsRevokeError": "Couldn't revoke the session."
+  "sessionsRevokeError": "Couldn't revoke the session.",
+
+  "a11ySkipToContent": "Skip to main content"
 }

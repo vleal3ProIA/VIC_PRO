@@ -613,5 +613,7 @@
   "sessionsIp": "IP {ip}",
   "sessionsRevoke": "Dieses Gerät abmelden",
   "sessionsRevoked": "Sitzung widerrufen.",
-  "sessionsRevokeError": "Sitzung konnte nicht widerrufen werden."
+  "sessionsRevokeError": "Sitzung konnte nicht widerrufen werden.",
+
+  "a11ySkipToContent": "Zum Hauptinhalt springen"
 }

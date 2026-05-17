@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/features/account/application/profile_providers.dart';
+import 'package:myapp/features/shell/presentation/widgets/skip_to_content_link.dart';
 import 'package:myapp/features/shell/presentation/widgets/user_avatar_menu.dart';
 import 'package:myapp/features/welcome/presentation/widgets/language_picker.dart';
 import 'package:myapp/features/welcome/presentation/widgets/theme_toggle.dart';
@@ -34,7 +35,7 @@ class _Destination {
 /// - ancho  → `NavigationRail` fijo a la izquierda.
 ///
 /// Se monta vía `ShellRoute`, así que persiste al navegar entre destinos.
-class PrivateShell extends ConsumerWidget {
+class PrivateShell extends ConsumerStatefulWidget {
   const PrivateShell({
     required this.location,
     required this.child,
@@ -46,7 +47,26 @@ class PrivateShell extends ConsumerWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PrivateShell> createState() => _PrivateShellState();
+}
+
+class _PrivateShellState extends ConsumerState<PrivateShell> {
+  /// Destino del skip-to-content link. Lo coloco en el `body` del
+  /// Scaffold para que la activación del skip-link mueva el foco
+  /// directamente al primer elemento del contenido principal,
+  /// saltándose el AppBar (LanguagePicker/ThemeToggle/Avatar) y el
+  /// NavigationRail/Drawer.
+  late final FocusNode _mainContentFocus =
+      FocusNode(debugLabel: 'private-shell-main-content', skipTraversal: true);
+
+  @override
+  void dispose() {
+    _mainContentFocus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l10n;
     final isAdmin = ref.watch(isAdminProvider);
     final destinations = <_Destination>[
@@ -76,7 +96,8 @@ class PrivateShell extends ConsumerWidget {
         ),
     ];
 
-    var selectedIndex = destinations.indexWhere((d) => location == d.path);
+    var selectedIndex =
+        destinations.indexWhere((d) => widget.location == d.path);
     if (selectedIndex < 0) selectedIndex = 0;
 
     void goTo(int index) {
@@ -85,58 +106,78 @@ class PrivateShell extends ConsumerWidget {
 
     final isWide = !context.isMobile;
 
-    return Scaffold(
-      appBar: AppBar(
-        scrolledUnderElevation: 0,
-        title: Text(
-          context.l10n.appTitle,
-          style: context.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
+    // El body se envuelve en Focus + FocusTraversalGroup para que el
+    // skip-link (debajo del Stack) pueda mover el foco aquí saltándose
+    // el AppBar y la navegación.
+    Widget wrapBody(Widget body) => FocusTraversalGroup(
+          child: Focus(
+            focusNode: _mainContentFocus,
+            // skipTraversal=true ya está en el FocusNode -> el propio
+            // Focus widget no se "ve" en el orden de Tab, solo sirve
+            // como destino programático para requestFocus().
+            child: body,
           ),
-        ),
-        actions: const [
-          LanguagePicker(),
-          ThemeToggle(),
-          SizedBox(width: 4),
-          UserAvatarMenu(),
-          SizedBox(width: 8),
-        ],
-      ),
-      drawer: isWide
-          ? null
-          : Drawer(
-              child: SafeArea(
-                child: _NavList(
-                  destinations: destinations,
-                  selectedIndex: selectedIndex,
-                  onSelected: (i) {
-                    Navigator.of(context).pop(); // cierra el drawer
-                    goTo(i);
-                  },
-                ),
+        );
+
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            scrolledUnderElevation: 0,
+            title: Text(
+              context.l10n.appTitle,
+              style: context.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
             ),
-      body: isWide
-          ? Row(
-              children: [
-                NavigationRail(
-                  selectedIndex: selectedIndex,
-                  onDestinationSelected: goTo,
-                  labelType: NavigationRailLabelType.all,
-                  destinations: [
-                    for (final d in destinations)
-                      NavigationRailDestination(
-                        icon: Icon(d.icon),
-                        selectedIcon: Icon(d.selectedIcon),
-                        label: Text(d.label),
-                      ),
-                  ],
+            actions: const [
+              LanguagePicker(),
+              ThemeToggle(),
+              SizedBox(width: 4),
+              UserAvatarMenu(),
+              SizedBox(width: 8),
+            ],
+          ),
+          drawer: isWide
+              ? null
+              : Drawer(
+                  child: SafeArea(
+                    child: _NavList(
+                      destinations: destinations,
+                      selectedIndex: selectedIndex,
+                      onSelected: (i) {
+                        Navigator.of(context).pop(); // cierra el drawer
+                        goTo(i);
+                      },
+                    ),
+                  ),
                 ),
-                const VerticalDivider(width: 1),
-                Expanded(child: child),
-              ],
-            )
-          : child,
+          body: isWide
+              ? Row(
+                  children: [
+                    NavigationRail(
+                      selectedIndex: selectedIndex,
+                      onDestinationSelected: goTo,
+                      labelType: NavigationRailLabelType.all,
+                      destinations: [
+                        for (final d in destinations)
+                          NavigationRailDestination(
+                            icon: Icon(d.icon),
+                            selectedIcon: Icon(d.selectedIcon),
+                            label: Text(d.label),
+                          ),
+                      ],
+                    ),
+                    const VerticalDivider(width: 1),
+                    Expanded(child: wrapBody(widget.child)),
+                  ],
+                )
+              : wrapBody(widget.child),
+        ),
+        // Skip-to-content link: invisible salvo cuando recibe foco.
+        // Por estar sobre el Stack, queda por encima del AppBar.
+        SkipToContentLink(targetFocusNode: _mainContentFocus),
+      ],
     );
   }
 }
