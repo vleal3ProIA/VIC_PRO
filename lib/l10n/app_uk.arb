@@ -615,5 +615,15 @@
   "sessionsRevoked": "Сесію відкликано.",
   "sessionsRevokeError": "Не вдалося відкликати сесію.",
 
-  "a11ySkipToContent": "Перейти до основного вмісту"
+  "a11ySkipToContent": "Перейти до основного вмісту",
+
+  "notificationsTitle": "Сповіщення",
+  "notificationsLoadError": "Не вдалося завантажити сповіщення.",
+  "notificationsEmptyTitle": "Все під контролем",
+  "notificationsEmptyBody": "Коли щось вимагатиме твоєї уваги — з'явиться тут.",
+  "notificationsMarkAllRead": "Позначити всі як прочитані",
+  "notificationsMarkedAllRead": "{count} сповіщень позначено як прочитані.",
+  "notificationsActionError": "Операція не вдалася.",
+  "notificationsBellTooltipEmpty": "Сповіщення",
+  "notificationsBellTooltipCount": "Сповіщення ({count} непрочитаних)"
 }

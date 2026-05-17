@@ -615,5 +615,15 @@
   "sessionsRevoked": "Сессия отозвана.",
   "sessionsRevokeError": "Не удалось отозвать сессию.",
 
-  "a11ySkipToContent": "Перейти к основному содержимому"
+  "a11ySkipToContent": "Перейти к основному содержимому",
+
+  "notificationsTitle": "Уведомления",
+  "notificationsLoadError": "Не удалось загрузить уведомления.",
+  "notificationsEmptyTitle": "Всё в порядке",
+  "notificationsEmptyBody": "Когда что-то потребует твоего внимания — появится здесь.",
+  "notificationsMarkAllRead": "Отметить все как прочитанные",
+  "notificationsMarkedAllRead": "{count} уведомлений отмечено как прочитанные.",
+  "notificationsActionError": "Операция не удалась.",
+  "notificationsBellTooltipEmpty": "Уведомления",
+  "notificationsBellTooltipCount": "Уведомления ({count} непрочитанных)"
 }

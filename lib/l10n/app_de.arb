@@ -615,5 +615,15 @@
   "sessionsRevoked": "Sitzung widerrufen.",
   "sessionsRevokeError": "Sitzung konnte nicht widerrufen werden.",
 
-  "a11ySkipToContent": "Zum Hauptinhalt springen"
+  "a11ySkipToContent": "Zum Hauptinhalt springen",
+
+  "notificationsTitle": "Benachrichtigungen",
+  "notificationsLoadError": "Benachrichtigungen konnten nicht geladen werden.",
+  "notificationsEmptyTitle": "Alles erledigt",
+  "notificationsEmptyBody": "Wenn etwas deine Aufmerksamkeit braucht, erscheint es hier.",
+  "notificationsMarkAllRead": "Alle als gelesen markieren",
+  "notificationsMarkedAllRead": "{count} Benachrichtigungen als gelesen markiert.",
+  "notificationsActionError": "Vorgang fehlgeschlagen.",
+  "notificationsBellTooltipEmpty": "Benachrichtigungen",
+  "notificationsBellTooltipCount": "Benachrichtigungen ({count} ungelesen)"
 }

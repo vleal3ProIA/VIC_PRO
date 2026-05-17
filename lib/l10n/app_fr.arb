@@ -615,5 +615,15 @@
   "sessionsRevoked": "Session révoquée.",
   "sessionsRevokeError": "Impossible de révoquer la session.",
 
-  "a11ySkipToContent": "Aller au contenu principal"
+  "a11ySkipToContent": "Aller au contenu principal",
+
+  "notificationsTitle": "Notifications",
+  "notificationsLoadError": "Impossible de charger les notifications.",
+  "notificationsEmptyTitle": "Tout est à jour",
+  "notificationsEmptyBody": "Quand quelque chose nécessite votre attention, ça apparaîtra ici.",
+  "notificationsMarkAllRead": "Tout marquer comme lu",
+  "notificationsMarkedAllRead": "{count} notifications marquées comme lues.",
+  "notificationsActionError": "Opération échouée.",
+  "notificationsBellTooltipEmpty": "Notifications",
+  "notificationsBellTooltipCount": "Notifications ({count} non lues)"
 }
