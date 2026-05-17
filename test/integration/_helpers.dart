@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -40,6 +41,19 @@ Future<Widget> buildAppForIntegration({
   List<Override> extraOverrides = const [],
   String initialLocation = '/',
 }) async {
+  // dotenv: cargamos valores sintéticos para que `EnvConfig.otpCodeLength`
+  // y similares no lancen `NotInitializedError` al ser leídos por widgets
+  // (p.ej. OtpRequestPage subtitle). En tests no usamos las credenciales
+  // reales de Supabase — el repo está mockeado.
+  dotenv.testLoad(
+    fileInput: '''
+APP_NAME=myapp-test
+SUPABASE_URL=https://test.supabase.co
+SUPABASE_ANON_KEY=test-anon-key
+OTP_CODE_LENGTH=6
+''',
+  );
+
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final prefs = await SharedPreferences.getInstance();
 
@@ -75,6 +89,23 @@ Future<Widget> buildAppForIntegration({
         path: '/forgot-password',
         name: 'forgot_password',
         builder: (_, __) => const ForgotPasswordPage(),
+      ),
+      // Destinos post-éxito que algunos forms navegan tras submit OK.
+      // Builder neutro — el contenido específico no se testea aquí.
+      GoRoute(
+        path: '/password-reset-sent',
+        name: 'password_reset_sent',
+        builder: emptyScaffold,
+      ),
+      GoRoute(
+        path: '/magic-link-sent',
+        name: 'magic_link_sent',
+        builder: emptyScaffold,
+      ),
+      GoRoute(
+        path: '/otp-verify',
+        name: 'otp_verify',
+        builder: emptyScaffold,
       ),
       GoRoute(
         path: '/magic-link',
