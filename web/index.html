@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -17,19 +17,76 @@
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Enterprise Flutter web application">
 
-  <!-- iOS meta tags & icons -->
+  <!--
+    SEO: estos meta tags los sustituye el script `scripts/generate_seo.dart`
+    en build time con los valores reales del proyecto (commercial name,
+    description, dominio, OG image). Los placeholders `__SEO_*__` quedan
+    como fallback si el script no se corre.
+
+    Para SEO por ruta, hay dos capas:
+    - Estatica: el script genera HTMLs separados para /welcome /terms etc.
+      con sus propias meta tags (servidas por Apache antes de la SPA).
+    - Runtime: lib/core/seo/meta_tags_sync.dart actualiza estas tags
+      cuando el user navega entre rutas en el navegador. Ayuda con
+      crawlers que sí ejecutan JS (Google moderno, GPTBot) pero NO con
+      cards de Twitter/LinkedIn (esos solo leen el HTML inicial).
+  -->
+  <title>__SEO_TITLE__</title>
+  <meta name="description" content="__SEO_DESCRIPTION__">
+  <meta name="keywords" content="__SEO_KEYWORDS__">
+  <meta name="theme-color" content="#2563EB">
+  <link rel="canonical" href="__SEO_CANONICAL__">
+
+  <!-- Open Graph (Facebook, LinkedIn, WhatsApp, Slack) -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="__SEO_TITLE__">
+  <meta property="og:description" content="__SEO_DESCRIPTION__">
+  <meta property="og:url" content="__SEO_CANONICAL__">
+  <meta property="og:site_name" content="__SEO_SITE_NAME__">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:image" content="__SEO_OG_IMAGE__">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="__SEO_TITLE__">
+  <meta name="twitter:description" content="__SEO_DESCRIPTION__">
+  <meta name="twitter:image" content="__SEO_OG_IMAGE__">
+
+  <!--
+    JSON-LD structured data — ayuda a Google a entender que esto es un
+    SaaS / WebApp. El campo `sameAs` se llena con perfiles sociales si
+    los configuras en /admin/app-branding.
+  -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "__SEO_SITE_NAME__",
+    "description": "__SEO_DESCRIPTION__",
+    "url": "__SEO_CANONICAL__",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Any",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "EUR"
+    }
+  }
+  </script>
+
+  <!-- iOS / Mobile web app -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="myapp">
+  <meta name="apple-mobile-web-app-title" content="__SEO_SITE_NAME__">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
-  <!-- Favicon -->
+  <!-- Favicon (puede sobrescribirse en runtime con DocumentBrandingSync) -->
   <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>myapp</title>
   <link rel="manifest" href="manifest.json">
 
   <!--
@@ -49,8 +106,52 @@
     disponible antes de mount.
   -->
   <script src="https://js.stripe.com/v3/" async></script>
+
+  <style>
+    /*
+      Loading skeleton para que el usuario vea algo (no pantalla blanca)
+      mientras carga el bundle de Flutter. Se oculta automáticamente cuando
+      la app monta (Flutter inyecta sus contenidos y este div queda detrás).
+      Cambia colores con prefers-color-scheme para evitar destellos.
+    */
+    html, body { margin: 0; padding: 0; height: 100%; background: #F3F4F6; }
+    @media (prefers-color-scheme: dark) {
+      html, body { background: #0F172A; }
+    }
+    #seo-loader {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      pointer-events: none;
+      z-index: -1; /* detrás del contenido de Flutter */
+    }
+    #seo-loader .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid rgba(37, 99, 235, 0.2);
+      border-top-color: #2563EB;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
+  <!--
+    Contenido HTML estático que ven los crawlers ANTES de que cargue el
+    bundle de Flutter. Para Google moderno (que ejecuta JS) acabará viendo
+    la app real; para crawlers tontos (LinkedIn, Slack, scrapers) verán
+    al menos este bloque que repite el contenido más importante.
+  -->
+  <noscript>
+    <h1>__SEO_SITE_NAME__</h1>
+    <p>__SEO_DESCRIPTION__</p>
+    <p>This application requires JavaScript to run. Please enable JavaScript in your browser settings.</p>
+  </noscript>
+
+  <div id="seo-loader" aria-hidden="true">
+    <div class="spinner"></div>
+  </div>
+
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

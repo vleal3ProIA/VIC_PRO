@@ -1,0 +1,49 @@
+# robots.txt — controla qué pueden indexar los crawlers
+# ----------------------------------------------------------------------
+# Reglas pensadas para un SaaS con zona pública + zona privada (auth).
+# Indexamos welcome, legal, status. Bloqueamos zona autenticada
+# (no aporta a SEO y expone URLs internas).
+#
+# Editar SITEMAP en `scripts/generate_seo.dart` -- esta plantilla
+# queda con `__SEO_SITE_URL__` y el script la sustituye con el
+# dominio real cuando construyes para producción.
+
+User-agent: *
+
+# ─── Bloqueado (zona autenticada / admin) ───
+# Sin valor SEO; protege URLs internas de scraping.
+Disallow: /admin
+Disallow: /admin/
+Disallow: /account-settings
+Disallow: /account-settings/
+Disallow: /home
+Disallow: /onboarding
+Disallow: /notifications
+Disallow: /activity
+Disallow: /audit-log
+Disallow: /team
+Disallow: /billing
+Disallow: /billing/
+Disallow: /change-password
+Disallow: /change-email
+Disallow: /delete-account
+Disallow: /passkeys
+Disallow: /mfa-setup
+Disallow: /mfa-challenge
+Disallow: /set-new-password
+Disallow: /password-updated
+Disallow: /verify-email-sent
+Disallow: /email-verified
+Disallow: /email-changed
+Disallow: /auth
+Disallow: /auth/
+
+# ─── Crawl-delay para crawlers agresivos ───
+# 5 segundos entre requests. Google ignora este header (usa su propio
+# rate limiting) pero ayuda con scrapers menos respetuosos.
+Crawl-delay: 5
+
+# ─── Sitemap ───
+# El script `scripts/generate_seo.dart` sustituye __SEO_SITE_URL__ con
+# el dominio real en build time.
+Sitemap: __SEO_SITE_URL__/sitemap.xml

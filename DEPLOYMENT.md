@@ -134,6 +134,24 @@ Detalles completos: `supabase/functions/auth-email-hook/README.md`
 
 ### 7. Build de Flutter Web y subida a Dondominio
 
+**Antes** de hacer `flutter build web`, ejecuta el script SEO para que
+`web/index.html`, `web/robots.txt` y `web/sitemap.xml` lleven el dominio,
+nombre y descripción reales:
+
+```bash
+# Opción A: lee del .env (SITE_URL + APP_NAME)
+dart run scripts/generate_seo.dart
+
+# Opción B: argumentos CLI explícitos
+dart run scripts/generate_seo.dart \
+  --site-url=https://tudominio.com \
+  --site-name="Mi SaaS" \
+  --description="La forma más simple de gestionar X" \
+  --og-image=https://tudominio.com/og.png
+```
+
+Luego construye:
+
 ```bash
 flutter build web --release --dart-define=APP_VERSION=1.0.0
 ```
@@ -213,6 +231,7 @@ A partir de aquí, todo se gestiona desde la UI.
 | 3.N Admin Users | Desplegar Edge Function `admin-users` (paso 4). Sin pasos extra. |
 | 3.O Admin Metrics | Migración 0031. Sin pasos extra. |
 | 3.P Broadcasts | Migración 0032 + desplegar Edge Function `broadcast-dispatch` (paso 4). Sin pasos extra. |
+| 3.Q SEO | Correr `dart run scripts/generate_seo.dart` ANTES de `flutter build web` (paso 7). Si NO se corre, la app funciona pero las meta tags llevan placeholders `__SEO_*__` literales. |
 
 > En cada PR nueva, este archivo se actualiza. **Antes de desplegar,
 > relee la lista completa**, no solo lo que es "nuevo".
@@ -223,8 +242,7 @@ A partir de aquí, todo se gestiona desde la UI.
 
 - `.htaccess` con SPA rewriting + security headers (PR final de deploy)
 - Pipeline GitHub Actions con FTP automático a Dondominio (PR final)
-- `robots.txt` + `sitemap.xml` + meta tags SEO (PR de SEO)
-- Pre-render de páginas públicas para indexación (PR de SEO)
+- Pre-render estático de páginas públicas por ruta (opcional, futuro)
 
 Cuando estas PRs estén mergeadas, este archivo tendrá la lista
 completa actualizada.
