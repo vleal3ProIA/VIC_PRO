@@ -35,6 +35,8 @@ class RouteNames {
   static const String sessions = 'sessions';
   static const String files = 'files';
   static const String tokens = 'tokens';
+  static const String webhooks = 'webhooks';
+  static const String webhookDetail = 'webhook_detail';
   static const String notifications = 'notifications';
   static const String onboarding = 'onboarding';
   static const String auditLog = 'audit_log';
@@ -92,6 +94,10 @@ class RoutePaths {
   static const String sessions = '/account-settings/sessions';
   static const String files = '/account-settings/files';
   static const String tokens = '/account-settings/tokens';
+  static const String webhooks = '/account-settings/webhooks';
+  // Detalle de endpoint; el `:id` lo rellena GoRouter desde
+  // `pathParameters: {'id': endpointId}` o `state.pathParameters['id']`.
+  static const String webhookDetail = '/account-settings/webhooks/:id';
   static const String notifications = '/notifications';
   static const String onboarding = '/onboarding';
   static const String auditLog = '/audit-log';
