@@ -916,5 +916,21 @@
   "adminAppBrandingOgImageUrl": "Зображення превʼю для соцмереж (опціонально)",
   "adminAppBrandingOgImageUrlHint": "Використовується в OpenGraph-картках при шерингу в соцмережах.",
   "adminAppBrandingRegistrationEnabled": "Публічна реєстрація відкрита",
-  "adminAppBrandingRegistrationEnabledHint": "Якщо вимкнено, акаунти можуть створювати лише адміни. Корисно для приватної бети."
+  "adminAppBrandingRegistrationEnabledHint": "Якщо вимкнено, акаунти можуть створювати лише адміни. Корисно для приватної бети.",
+  "adminEmailLogTitle": "Лог листів",
+  "adminEmailLogHint": "Аудит кожного листа, надісланого застосунком.",
+  "adminEmailLogLoadError": "Не вдалося завантажити лог листів.",
+  "adminEmailLogEmptyTitle": "Листів ще не надсилали",
+  "adminEmailLogEmptyBody": "Запустіть подію (тест, реєстрація, зміна плану), і записи з'являться тут.",
+  "adminEmailLogSendTest": "Надіслати тест",
+  "adminEmailLogTestSent": "Тестовий лист надіслано на {email}.",
+  "adminEmailLogTestFailed": "Тест не вдався: {error}.",
+  "adminEmailLogTestNoEmail": "До вашого акаунту не привʼязано email.",
+  "adminEmailLogStatusSent": "Надіслано",
+  "adminEmailLogStatusFailed": "Не вдалося",
+  "adminEmailLogStatusQueued": "У черзі",
+  "adminEmailLogProvider": "Провайдер",
+  "adminEmailLogSentAt": "Надіслано",
+  "adminEmailLogError": "Помилка",
+  "adminEmailLogMeta": "Метадані"
 }

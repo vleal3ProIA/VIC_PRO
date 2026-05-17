@@ -916,5 +916,21 @@
   "adminAppBrandingOgImageUrl": "Imagem preview social (opcional)",
   "adminAppBrandingOgImageUrlHint": "Usada nos cartões OpenGraph ao partilhar em redes sociais.",
   "adminAppBrandingRegistrationEnabled": "Registo público ativo",
-  "adminAppBrandingRegistrationEnabledHint": "Se desativado, só os admins podem criar contas. Útil para beta privada."
+  "adminAppBrandingRegistrationEnabledHint": "Se desativado, só os admins podem criar contas. Útil para beta privada.",
+  "adminEmailLogTitle": "Log de emails",
+  "adminEmailLogHint": "Auditoria de cada email enviado pela app.",
+  "adminEmailLogLoadError": "Não foi possível carregar o log de emails.",
+  "adminEmailLogEmptyTitle": "Ainda não foram enviados emails",
+  "adminEmailLogEmptyBody": "Aciona um evento (teste, registo, mudança de plano) e as entradas vão aparecer aqui.",
+  "adminEmailLogSendTest": "Enviar teste",
+  "adminEmailLogTestSent": "Email de teste enviado para {email}.",
+  "adminEmailLogTestFailed": "Teste falhou: {error}.",
+  "adminEmailLogTestNoEmail": "A tua conta não tem email associado.",
+  "adminEmailLogStatusSent": "Enviado",
+  "adminEmailLogStatusFailed": "Falhado",
+  "adminEmailLogStatusQueued": "Em fila",
+  "adminEmailLogProvider": "Fornecedor",
+  "adminEmailLogSentAt": "Enviado em",
+  "adminEmailLogError": "Erro",
+  "adminEmailLogMeta": "Metadata"
 }

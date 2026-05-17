@@ -916,5 +916,21 @@
   "adminAppBrandingOgImageUrl": "Social-Preview-Bild (optional)",
   "adminAppBrandingOgImageUrlHint": "Wird in OpenGraph-Karten beim Teilen in sozialen Medien verwendet.",
   "adminAppBrandingRegistrationEnabled": "Öffentliche Registrierung aktiviert",
-  "adminAppBrandingRegistrationEnabledHint": "Wenn aus, können nur Admins neue Konten erstellen. Nützlich für Private Beta."
+  "adminAppBrandingRegistrationEnabledHint": "Wenn aus, können nur Admins neue Konten erstellen. Nützlich für Private Beta.",
+  "adminEmailLogTitle": "E-Mail-Log",
+  "adminEmailLogHint": "Audit jeder von der App gesendeten E-Mail.",
+  "adminEmailLogLoadError": "E-Mail-Log konnte nicht geladen werden.",
+  "adminEmailLogEmptyTitle": "Noch keine E-Mails gesendet",
+  "adminEmailLogEmptyBody": "Löse ein Ereignis aus (Test, Registrierung, Planwechsel) und die Einträge erscheinen hier.",
+  "adminEmailLogSendTest": "Test senden",
+  "adminEmailLogTestSent": "Test-E-Mail an {email} gesendet.",
+  "adminEmailLogTestFailed": "Test fehlgeschlagen: {error}.",
+  "adminEmailLogTestNoEmail": "Dein Konto hat keine E-Mail-Adresse.",
+  "adminEmailLogStatusSent": "Gesendet",
+  "adminEmailLogStatusFailed": "Fehlgeschlagen",
+  "adminEmailLogStatusQueued": "In Warteschlange",
+  "adminEmailLogProvider": "Anbieter",
+  "adminEmailLogSentAt": "Gesendet am",
+  "adminEmailLogError": "Fehler",
+  "adminEmailLogMeta": "Metadaten"
 }
