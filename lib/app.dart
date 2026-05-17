@@ -10,6 +10,9 @@ import 'package:myapp/core/providers/theme_provider.dart';
 import 'package:myapp/core/router/app_router.dart';
 import 'package:myapp/core/theme/app_theme.dart';
 import 'package:myapp/features/account/application/profile_preferences_sync.dart';
+import 'package:myapp/features/branding/application/branding_providers.dart';
+import 'package:myapp/features/branding/presentation/branding_palettes.dart';
+import 'package:myapp/features/branding/presentation/widgets/document_branding_sync.dart';
 import 'package:myapp/features/legal/presentation/widgets/cookie_consent_banner.dart';
 import 'package:myapp/features/tenants/application/tenant_sentry_sync.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
@@ -30,17 +33,26 @@ class MyApp extends ConsumerWidget {
     final themeMode = ref.watch(themeNotifierProvider);
     final locale = ref.watch(effectiveLocaleProvider);
 
+    // Branding del deploy (nombre comercial, paleta). Usamos el helper
+    // sin "loading state" — mientras carga usa el fallback (azul + "myapp")
+    // y al hidratarse fuerza un rebuild con la paleta real.
+    final branding = ref.watch(brandingOrFallbackProvider);
+    final palette = BrandingPalettes.bySlug(branding.colorPalette);
+
     return MaterialApp.router(
-      title: AppConstants.appName,
+      title: branding.commercialName.isNotEmpty
+          ? branding.commercialName
+          : AppConstants.appName,
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
+      theme: AppTheme.lightFor(palette),
+      darkTheme: AppTheme.darkFor(palette),
       themeMode: themeMode,
       locale: locale,
       supportedLocales: AppLocales.all,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       routerConfig: router,
-      builder: (context, child) => ProfilePreferencesSync(
+      builder: (context, child) => DocumentBrandingSync(
+        child: ProfilePreferencesSync(
         child: _EnvBanner(
           child: Stack(
             children: [
@@ -65,6 +77,7 @@ class MyApp extends ConsumerWidget {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

@@ -42,6 +42,9 @@ import 'package:myapp/features/billing/presentation/pages/billing_success_page.d
 import 'package:myapp/features/billing/presentation/pages/embedded_checkout_page.dart';
 import 'package:myapp/features/billing/presentation/pages/invoices_page.dart';
 import 'package:myapp/features/billing/presentation/pages/plans_page.dart';
+import 'package:myapp/features/branding/application/branding_providers.dart';
+import 'package:myapp/features/branding/presentation/pages/admin_app_branding_page.dart';
+import 'package:myapp/features/branding/presentation/pages/setup_page.dart';
 import 'package:myapp/features/flags/presentation/pages/admin_flags_page.dart';
 import 'package:myapp/features/help/presentation/pages/admin_changelog_page.dart';
 import 'package:myapp/features/help/presentation/pages/changelog_page.dart';
@@ -316,6 +319,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const ChangelogPage(),
       ),
       GoRoute(
+        path: RoutePaths.adminAppBranding,
+        name: RouteNames.adminAppBranding,
+        builder: (_, __) => const AdminAppBrandingPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.setup,
+        name: RouteNames.setup,
+        builder: (_, __) => const SetupPage(),
+      ),
+      GoRoute(
         path: RoutePaths.plans,
         name: RouteNames.plans,
         builder: (_, __) => const PlansPage(),
@@ -407,6 +420,7 @@ const _privateRoutes = <String>{
   RoutePaths.adminCoupons,
   RoutePaths.adminTrash,
   RoutePaths.adminChangelog,
+  RoutePaths.adminAppBranding,
   RoutePaths.changelog,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
@@ -445,6 +459,7 @@ const _adminRoutes = <String>{
   RoutePaths.adminCoupons,
   RoutePaths.adminTrash,
   RoutePaths.adminChangelog,
+  RoutePaths.adminAppBranding,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.
@@ -472,6 +487,30 @@ String? _redirect(Ref ref, GoRouterState state) {
   final loc = state.matchedLocation;
   if (_excludedFromGuard.contains(loc)) return null;
 
+  // ─────────────── Gate 0: setup_completed ───────────────
+  // Antes de cualquier otra cosa, si el deploy no ha pasado por
+  // /setup, fuerza al usuario a entrar ahí. Excepción: /setup mismo
+  // y rutas de auth necesarias para crear el primer admin (el wizard
+  // las usa internamente). Tambien excluimos /auth/callback que sirve
+  // para confirmar el email del admin si Supabase lo exige.
+  final branding = ref.read(brandingOrFallbackProvider);
+  if (!branding.setupCompleted && loc != RoutePaths.setup) {
+    // Excluimos las rutas que el propio wizard puede necesitar
+    // (auth callback de email verify, verify-email-sent).
+    const setupAllowed = {
+      RoutePaths.authCallback,
+      RoutePaths.verifyEmailSent,
+      RoutePaths.emailVerified,
+    };
+    if (!setupAllowed.contains(loc)) {
+      return RoutePaths.setup;
+    }
+  }
+  // Si ya está completado y alguien intenta volver a /setup, fuera.
+  if (branding.setupCompleted && loc == RoutePaths.setup) {
+    return RoutePaths.welcome;
+  }
+
   // Leemos la sesión DIRECTAMENTE del cliente, no de `isAuthenticatedProvider`.
   // Ese provider se alimenta del stream `onAuthStateChange`, que entrega los
   // eventos de forma asíncrona: justo tras un `signIn` el provider aún puede
@@ -482,6 +521,15 @@ String? _redirect(Ref ref, GoRouterState state) {
 
   // 1) No autenticado y la ruta requiere sesión → login.
   if (!isAuthed && _isPrivate(loc)) {
+    return RoutePaths.login;
+  }
+
+  // 1b) Gate de registro: si está cerrado y alguien intenta /register,
+  //     lo mandamos a /login con un toast (lo gestiona la propia
+  //     pantalla register al detectar la flag).
+  if (!isAuthed &&
+      loc == RoutePaths.register &&
+      !branding.registrationEnabled) {
     return RoutePaths.login;
   }
 

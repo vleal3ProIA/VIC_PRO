@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/features/account/application/profile_providers.dart';
+import 'package:myapp/features/branding/application/branding_providers.dart';
 import 'package:myapp/features/help/presentation/widgets/help_menu_button.dart';
 import 'package:myapp/features/notifications/presentation/widgets/notification_bell.dart';
 import 'package:myapp/features/search/presentation/widgets/cmd_k_shortcut.dart';
@@ -130,7 +131,7 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
           appBar: AppBar(
             scrolledUnderElevation: 0,
             title: Text(
-              context.l10n.appTitle,
+              ref.watch(brandingOrFallbackProvider).commercialName,
               style: context.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -153,6 +154,9 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
                     child: _NavList(
                       destinations: destinations,
                       selectedIndex: selectedIndex,
+                      commercialName: ref
+                          .watch(brandingOrFallbackProvider)
+                          .commercialName,
                       onSelected: (i) {
                         Navigator.of(context).pop(); // cierra el drawer
                         goTo(i);
@@ -196,11 +200,13 @@ class _NavList extends StatelessWidget {
   const _NavList({
     required this.destinations,
     required this.selectedIndex,
+    required this.commercialName,
     required this.onSelected,
   });
 
   final List<_Destination> destinations;
   final int selectedIndex;
+  final String commercialName;
   final ValueChanged<int> onSelected;
 
   @override
@@ -211,7 +217,7 @@ class _NavList extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
           child: Text(
-            context.l10n.appTitle,
+            commercialName,
             style: context.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w800,
             ),
