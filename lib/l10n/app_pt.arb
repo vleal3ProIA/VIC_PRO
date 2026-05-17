@@ -613,5 +613,7 @@
   "sessionsIp": "IP {ip}",
   "sessionsRevoke": "Terminar este dispositivo",
   "sessionsRevoked": "Sessão revogada.",
-  "sessionsRevokeError": "Não foi possível revogar a sessão."
+  "sessionsRevokeError": "Não foi possível revogar a sessão.",
+
+  "a11ySkipToContent": "Saltar para o conteúdo principal"
 }

@@ -23,6 +23,11 @@ class UserAvatar extends StatelessWidget {
     final trimmed = name.trim();
     final initial = trimmed.isNotEmpty ? trimmed[0].toUpperCase() : '?';
 
+    // a11y: el lector de pantalla anuncia "<nombre>, avatar" en vez de
+    // "imagen" genérica. `image: true` marca el rol semántico correcto.
+    final semanticsLabel =
+        trimmed.isNotEmpty ? '$trimmed, avatar' : 'User avatar';
+
     final fallback = CircleAvatar(
       radius: radius,
       backgroundColor: context.colors.primaryContainer,
@@ -37,19 +42,25 @@ class UserAvatar extends StatelessWidget {
     );
 
     final url = avatarUrl;
-    if (url == null || url.isEmpty) return fallback;
+    if (url == null || url.isEmpty) {
+      return Semantics(image: true, label: semanticsLabel, child: fallback);
+    }
 
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: context.colors.primaryContainer,
-      child: ClipOval(
-        child: CachedNetworkImage(
-          imageUrl: url,
-          width: radius * 2,
-          height: radius * 2,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => fallback,
-          errorWidget: (_, __, ___) => fallback,
+    return Semantics(
+      image: true,
+      label: semanticsLabel,
+      child: CircleAvatar(
+        radius: radius,
+        backgroundColor: context.colors.primaryContainer,
+        child: ClipOval(
+          child: CachedNetworkImage(
+            imageUrl: url,
+            width: radius * 2,
+            height: radius * 2,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => fallback,
+            errorWidget: (_, __, ___) => fallback,
+          ),
         ),
       ),
     );

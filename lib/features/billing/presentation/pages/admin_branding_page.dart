@@ -34,6 +34,7 @@ class AdminBrandingPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.goNamed(RouteNames.admin),
         ),
@@ -392,6 +393,7 @@ class _LogoPreview extends StatelessWidget {
             )
           : Image.network(
               logoUrl!,
+              semanticLabel: 'Stripe branding logo',
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => Icon(
                 Icons.broken_image_outlined,

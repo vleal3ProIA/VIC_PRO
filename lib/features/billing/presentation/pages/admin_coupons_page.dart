@@ -33,6 +33,7 @@ class AdminCouponsPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.goNamed(RouteNames.admin),
         ),
