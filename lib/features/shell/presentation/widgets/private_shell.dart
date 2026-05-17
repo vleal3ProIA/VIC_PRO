@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/features/account/application/profile_providers.dart';
+import 'package:myapp/features/help/presentation/widgets/help_menu_button.dart';
 import 'package:myapp/features/notifications/presentation/widgets/notification_bell.dart';
 import 'package:myapp/features/search/presentation/widgets/cmd_k_shortcut.dart';
 import 'package:myapp/features/search/presentation/widgets/search_button.dart';
@@ -137,6 +138,7 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
             actions: const [
               SearchButton(),
               NotificationBell(),
+              HelpMenuButton(),
               LanguagePicker(),
               ThemeToggle(),
               SizedBox(width: 4),
