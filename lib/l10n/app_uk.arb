@@ -625,5 +625,23 @@
   "notificationsMarkedAllRead": "{count} сповіщень позначено як прочитані.",
   "notificationsActionError": "Операція не вдалася.",
   "notificationsBellTooltipEmpty": "Сповіщення",
-  "notificationsBellTooltipCount": "Сповіщення ({count} непрочитаних)"
+  "notificationsBellTooltipCount": "Сповіщення ({count} непрочитаних)",
+
+  "onboardingStepCounter": "Крок {current} з {total}",
+  "onboardingSkipAll": "Пропустити",
+  "onboardingBack": "Назад",
+  "onboardingNext": "Далі",
+  "onboardingFinish": "Почати",
+  "onboardingFinishError": "Не вдалося зберегти прогрес.",
+  "onboardingWelcomeTitle": "Привіт, {name}, ласкаво просимо до {app}",
+  "onboardingWelcomeTitleGeneric": "Ласкаво просимо до {app}",
+  "onboardingWelcomeBody": "Дві хвилини на налаштування та запрошення команди — і готово.",
+  "onboardingPreferencesTitle": "По-твоєму",
+  "onboardingPreferencesBody": "Обери тему, зручну для очей. Можна змінити в будь-який момент з верхньої панелі.",
+  "onboardingTeamTitle": "Запроси команду",
+  "onboardingTeamBody": "Запроси колег, щоб усі ділили workspace, план та біллінг.",
+  "onboardingTeamInviteCta": "Запросити команду",
+  "onboardingTeamInviteHint": "Відкрий сторінку команди, щоб надіслати запрошення.",
+  "onboardingTeamGo": "Відкрити команду",
+  "onboardingTeamSkipNote": "Це можна зробити пізніше в Налаштування → Команда."
 }

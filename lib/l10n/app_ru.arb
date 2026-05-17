@@ -625,5 +625,23 @@
   "notificationsMarkedAllRead": "{count} уведомлений отмечено как прочитанные.",
   "notificationsActionError": "Операция не удалась.",
   "notificationsBellTooltipEmpty": "Уведомления",
-  "notificationsBellTooltipCount": "Уведомления ({count} непрочитанных)"
+  "notificationsBellTooltipCount": "Уведомления ({count} непрочитанных)",
+
+  "onboardingStepCounter": "Шаг {current} из {total}",
+  "onboardingSkipAll": "Пропустить",
+  "onboardingBack": "Назад",
+  "onboardingNext": "Далее",
+  "onboardingFinish": "Начать",
+  "onboardingFinishError": "Не удалось сохранить прогресс.",
+  "onboardingWelcomeTitle": "Привет, {name}, добро пожаловать в {app}",
+  "onboardingWelcomeTitleGeneric": "Добро пожаловать в {app}",
+  "onboardingWelcomeBody": "Две минуты на настройку и приглашение команды — и готово.",
+  "onboardingPreferencesTitle": "По-твоему",
+  "onboardingPreferencesBody": "Выбери тему, удобную для глаз. Можно менять в любой момент из верхней панели.",
+  "onboardingTeamTitle": "Подключи команду",
+  "onboardingTeamBody": "Пригласи коллег, чтобы все делили workspace, тариф и биллинг.",
+  "onboardingTeamInviteCta": "Пригласить команду",
+  "onboardingTeamInviteHint": "Открой страницу команды для отправки приглашений.",
+  "onboardingTeamGo": "Открыть команду",
+  "onboardingTeamSkipNote": "Это можно сделать позже в Настройки → Команда."
 }

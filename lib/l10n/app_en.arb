@@ -676,5 +676,26 @@
   "notificationsActionError": "Operation failed.",
   "notificationsBellTooltipEmpty": "Notifications",
   "notificationsBellTooltipCount": "Notifications ({count} unread)",
-  "@notificationsBellTooltipCount": {"placeholders": {"count": {"type": "int"}}}
+  "@notificationsBellTooltipCount": {"placeholders": {"count": {"type": "int"}}},
+
+  "onboardingStepCounter": "Step {current} of {total}",
+  "@onboardingStepCounter": {"placeholders": {"current": {"type": "int"}, "total": {"type": "int"}}},
+  "onboardingSkipAll": "Skip for now",
+  "onboardingBack": "Back",
+  "onboardingNext": "Next",
+  "onboardingFinish": "Get started",
+  "onboardingFinishError": "Couldn't save your progress.",
+  "onboardingWelcomeTitle": "Hey {name}, welcome to {app}",
+  "@onboardingWelcomeTitle": {"placeholders": {"name": {"type": "String"}, "app": {"type": "String"}}},
+  "onboardingWelcomeTitleGeneric": "Welcome to {app}",
+  "@onboardingWelcomeTitleGeneric": {"placeholders": {"app": {"type": "String"}}},
+  "onboardingWelcomeBody": "Two minutes to set up your preferences and invite your team — then you're done.",
+  "onboardingPreferencesTitle": "Make it yours",
+  "onboardingPreferencesBody": "Pick the theme that's easier on your eyes. You can change it anytime from the top bar.",
+  "onboardingTeamTitle": "Bring your team",
+  "onboardingTeamBody": "Invite teammates so everyone shares the same workspace, plan and billing.",
+  "onboardingTeamInviteCta": "Invite teammates",
+  "onboardingTeamInviteHint": "Open the team page to send invitations.",
+  "onboardingTeamGo": "Open team",
+  "onboardingTeamSkipNote": "You can do this later from Settings → Team."
 }

@@ -625,5 +625,23 @@
   "notificationsMarkedAllRead": "{count} notificaciones marcadas como leídas.",
   "notificationsActionError": "Operación fallida.",
   "notificationsBellTooltipEmpty": "Notificaciones",
-  "notificationsBellTooltipCount": "Notificaciones ({count} sin leer)"
+  "notificationsBellTooltipCount": "Notificaciones ({count} sin leer)",
+
+  "onboardingStepCounter": "Paso {current} de {total}",
+  "onboardingSkipAll": "Saltar por ahora",
+  "onboardingBack": "Atrás",
+  "onboardingNext": "Siguiente",
+  "onboardingFinish": "Empezar",
+  "onboardingFinishError": "No se pudo guardar tu progreso.",
+  "onboardingWelcomeTitle": "Hola {name}, bienvenido a {app}",
+  "onboardingWelcomeTitleGeneric": "Bienvenido a {app}",
+  "onboardingWelcomeBody": "Dos minutos para configurar tus preferencias e invitar a tu equipo — y listo.",
+  "onboardingPreferencesTitle": "A tu manera",
+  "onboardingPreferencesBody": "Elige el tema que mejor te siente. Puedes cambiarlo en cualquier momento desde la barra superior.",
+  "onboardingTeamTitle": "Trae a tu equipo",
+  "onboardingTeamBody": "Invita a compañeros para que todos compartáis workspace, plan y facturación.",
+  "onboardingTeamInviteCta": "Invitar al equipo",
+  "onboardingTeamInviteHint": "Abre la página de equipo para enviar invitaciones.",
+  "onboardingTeamGo": "Abrir equipo",
+  "onboardingTeamSkipNote": "Puedes hacerlo después desde Ajustes → Equipo."
 }
