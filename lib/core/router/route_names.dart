@@ -36,6 +36,7 @@ class RouteNames {
   static const String notifications = 'notifications';
   static const String onboarding = 'onboarding';
   static const String auditLog = 'audit_log';
+  static const String activity = 'activity';
   static const String team = 'team';
   static const String acceptInvite = 'accept_invite';
   static const String plans = 'plans';
@@ -90,6 +91,7 @@ class RoutePaths {
   static const String notifications = '/notifications';
   static const String onboarding = '/onboarding';
   static const String auditLog = '/audit-log';
+  static const String activity = '/activity';
   static const String team = '/team';
   static const String acceptInvite = '/accept-invite';
   static const String plans = '/billing/plans';

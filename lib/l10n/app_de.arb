@@ -655,5 +655,22 @@
   "searchHintClose": "zum Schließen",
   "searchActionThemeSystem": "Theme auf System wechseln",
   "searchActionThemeLight": "Theme auf Hell wechseln",
-  "searchActionThemeDark": "Theme auf Dunkel wechseln"
+  "searchActionThemeDark": "Theme auf Dunkel wechseln",
+
+  "activityTitle": "Aktivität",
+  "activityHint": "Visuelle Zeitleiste der jüngsten Ereignisse deines Kontos.",
+  "activityLoadError": "Aktivität konnte nicht geladen werden.",
+  "activityEmptyTitle": "Noch nichts passiert",
+  "activityEmptyBody": "Anmelden, eine Einstellung ändern, MFA aktivieren… deine Zeitleiste füllt sich.",
+  "activityFilteredEmptyTitle": "Keine Treffer",
+  "activityFilteredEmptyBody": "Versuch einen anderen Filter oder entferne ihn.",
+  "activityFilterAll": "Alle",
+  "activityCategoryAuth": "Auth",
+  "activityCategoryAccount": "Konto",
+  "activityCategoryMfa": "MFA",
+  "activityCategoryPasskey": "Passkeys",
+  "activityCategoryOther": "Andere",
+  "activityDayToday": "Heute",
+  "activityDayYesterday": "Gestern",
+  "activityDayDaysAgo": "Vor {n} Tagen"
 }

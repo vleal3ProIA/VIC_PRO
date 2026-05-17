@@ -655,5 +655,22 @@
   "searchHintClose": "для закриття",
   "searchActionThemeSystem": "Змінити тему на системну",
   "searchActionThemeLight": "Змінити тему на світлу",
-  "searchActionThemeDark": "Змінити тему на темну"
+  "searchActionThemeDark": "Змінити тему на темну",
+
+  "activityTitle": "Активність",
+  "activityHint": "Візуальна стрічка недавніх подій твого акаунту.",
+  "activityLoadError": "Не вдалося завантажити активність.",
+  "activityEmptyTitle": "Поки нічого",
+  "activityEmptyBody": "Увійди, зміни налаштування, увімкни MFA… твоя стрічка почне заповнюватися.",
+  "activityFilteredEmptyTitle": "Без збігів",
+  "activityFilteredEmptyBody": "Спробуй інший фільтр або зніми його.",
+  "activityFilterAll": "Усі",
+  "activityCategoryAuth": "Auth",
+  "activityCategoryAccount": "Акаунт",
+  "activityCategoryMfa": "MFA",
+  "activityCategoryPasskey": "Passkeys",
+  "activityCategoryOther": "Інше",
+  "activityDayToday": "Сьогодні",
+  "activityDayYesterday": "Вчора",
+  "activityDayDaysAgo": "{n} дн. тому"
 }

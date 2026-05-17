@@ -655,5 +655,22 @@
   "searchHintClose": "для закрытия",
   "searchActionThemeSystem": "Сменить тему на системную",
   "searchActionThemeLight": "Сменить тему на светлую",
-  "searchActionThemeDark": "Сменить тему на тёмную"
+  "searchActionThemeDark": "Сменить тему на тёмную",
+
+  "activityTitle": "Активность",
+  "activityHint": "Визуальная лента недавних событий твоего аккаунта.",
+  "activityLoadError": "Не удалось загрузить активность.",
+  "activityEmptyTitle": "Пока ничего",
+  "activityEmptyBody": "Войди, измени настройку, включи MFA… твоя лента начнёт заполняться.",
+  "activityFilteredEmptyTitle": "Нет совпадений",
+  "activityFilteredEmptyBody": "Попробуй другой фильтр или сними его.",
+  "activityFilterAll": "Все",
+  "activityCategoryAuth": "Auth",
+  "activityCategoryAccount": "Аккаунт",
+  "activityCategoryMfa": "MFA",
+  "activityCategoryPasskey": "Passkeys",
+  "activityCategoryOther": "Другое",
+  "activityDayToday": "Сегодня",
+  "activityDayYesterday": "Вчера",
+  "activityDayDaysAgo": "{n} дн. назад"
 }

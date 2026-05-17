@@ -9,6 +9,7 @@ import 'package:myapp/features/account/presentation/pages/account_sessions_page.
 import 'package:myapp/features/account/presentation/pages/account_settings_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_trash_page.dart';
+import 'package:myapp/features/audit/presentation/pages/activity_feed_page.dart';
 import 'package:myapp/features/audit/presentation/pages/audit_log_page.dart';
 import 'package:myapp/features/auth/application/mfa_providers.dart';
 import 'package:myapp/features/auth/presentation/pages/auth_callback_page.dart';
@@ -242,6 +243,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const AuditLogPage(),
       ),
       GoRoute(
+        path: RoutePaths.activity,
+        name: RouteNames.activity,
+        builder: (_, __) => const ActivityFeedPage(),
+      ),
+      GoRoute(
         path: RoutePaths.team,
         name: RouteNames.team,
         builder: (_, __) => const TeamPage(),
@@ -374,6 +380,7 @@ const _privateRoutes = <String>{
   RoutePaths.notifications,
   RoutePaths.onboarding,
   RoutePaths.auditLog,
+  RoutePaths.activity,
   RoutePaths.team,
   RoutePaths.plans,
   RoutePaths.billingSuccess,
@@ -476,6 +483,7 @@ const _onboardingGatedRoutes = <String>{
   RoutePaths.invoices,
   RoutePaths.team,
   RoutePaths.notifications,
+  RoutePaths.activity,
 };
 
 /// Adaptador entre el `StreamProvider<AuthState>` y el `Listenable` que

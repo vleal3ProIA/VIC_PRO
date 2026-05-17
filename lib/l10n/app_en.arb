@@ -710,5 +710,23 @@
   "searchHintClose": "to close",
   "searchActionThemeSystem": "Switch theme to system",
   "searchActionThemeLight": "Switch theme to light",
-  "searchActionThemeDark": "Switch theme to dark"
+  "searchActionThemeDark": "Switch theme to dark",
+
+  "activityTitle": "Activity",
+  "activityHint": "Visual timeline of recent events on your account.",
+  "activityLoadError": "Couldn't load activity.",
+  "activityEmptyTitle": "Nothing happened yet",
+  "activityEmptyBody": "Sign in, change a setting, enable MFA… your timeline will start filling up.",
+  "activityFilteredEmptyTitle": "No matches",
+  "activityFilteredEmptyBody": "Try a different filter or clear it.",
+  "activityFilterAll": "All",
+  "activityCategoryAuth": "Auth",
+  "activityCategoryAccount": "Account",
+  "activityCategoryMfa": "MFA",
+  "activityCategoryPasskey": "Passkeys",
+  "activityCategoryOther": "Other",
+  "activityDayToday": "Today",
+  "activityDayYesterday": "Yesterday",
+  "activityDayDaysAgo": "{n} days ago",
+  "@activityDayDaysAgo": {"placeholders": {"n": {"type": "int"}}}
 }

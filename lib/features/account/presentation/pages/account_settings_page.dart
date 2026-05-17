@@ -347,6 +347,14 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
                     // `audit_log_visible` está off (gated por feature flag).
                     if (ref.watch(flagEnabledProvider('audit_log_visible'))) ...[
                       ListTile(
+                        leading: const Icon(Icons.timeline),
+                        title: Text(l.activityTitle),
+                        subtitle: Text(l.activityHint),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.goNamed(RouteNames.activity),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
                         leading: const Icon(Icons.history),
                         title: Text(l.settingsAuditLog),
                         subtitle: Text(l.settingsAuditLogHint),
