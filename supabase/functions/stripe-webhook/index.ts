@@ -24,6 +24,8 @@ import {
   stripeNotConfigured,
   verifyWebhookSignature,
 } from "../_shared/stripe.ts";
+import { sendEmail } from "../_shared/email.ts";
+import { fetchAppName, renderEmail } from "../_shared/email_templates.ts";
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -169,6 +171,22 @@ async function handleSubscriptionUpserted(
     stripe_customer_id: sub.customer as string,
   };
 
+  // Detectamos cambio de plan: la primera vez (no existing) SIEMPRE
+  // es cambio (free -> paid); si hay existing y el plan_id cambia,
+  // tambien lo es. Si solo cambian campos administrativos (status,
+  // cancel_at_period_end, period dates por renovacion), NO mandamos
+  // email para evitar spammar al user en cada ciclo de renovacion.
+  let priorPlanId: string | undefined;
+  if (existing) {
+    const { data: existingFull } = await admin
+      .from("tenant_subscriptions")
+      .select("plan_id")
+      .eq("id", existing.id)
+      .maybeSingle();
+    priorPlanId = existingFull?.plan_id as string | undefined;
+  }
+  const planChanged = !existing || priorPlanId !== planId;
+
   if (existing) {
     await admin
       .from("tenant_subscriptions")
@@ -199,6 +217,115 @@ async function handleSubscriptionUpserted(
       );
     }
   }
+
+  // Email "plan changed" al user que pago. Best-effort: si SMTP no
+  // esta configurado o falla, NO bloqueamos el resto del webhook (la
+  // suscripcion ya quedo persistida).
+  if (planChanged && status === "active") {
+    await dispatchPlanChangedEmail(admin, {
+      tenantId,
+      planId,
+      periodEnd: currentPeriodEnd,
+      createdByUserId: (sub.metadata as Record<string, string>)
+        ?.created_by_user_id,
+    }).catch((e) => {
+      console.warn("dispatchPlanChangedEmail failed:", (e as Error).message);
+    });
+  }
+}
+
+/// Envia el email "plan changed" al user que pago. Lookup:
+///   - el user_id viene del metadata `created_by_user_id` (lo setea
+///     el flow de checkout cuando crea la sub).
+///   - el email desde auth.users.
+///   - el locale desde profiles.
+///   - el plan_name desde public.plans.name.
+async function dispatchPlanChangedEmail(
+  admin: ReturnType<typeof createClient>,
+  params: {
+    tenantId: string;
+    planId: string | undefined;
+    periodEnd: string | null;
+    createdByUserId: string | undefined;
+  },
+): Promise<void> {
+  if (!params.createdByUserId || !params.planId) return;
+
+  // Lookup user + locale (profile lo tiene; user.email viene de
+  // auth.users via la vista admin).
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("locale")
+    .eq("id", params.createdByUserId)
+    .maybeSingle();
+  // deno-lint-ignore no-explicit-any
+  const { data: userData } = await (admin.auth as any).admin.getUserById(
+    params.createdByUserId,
+  );
+  const userEmail = userData?.user?.email as string | undefined;
+  if (!userEmail) return;
+
+  const locale = (profile?.locale as string | undefined) ?? "en";
+
+  // Lookup plan name.
+  const { data: plan } = await admin
+    .from("plans")
+    .select("name")
+    .eq("id", params.planId)
+    .maybeSingle();
+  const planName = (plan?.name as string | undefined) ?? "Plan";
+
+  // App name + branding.
+  const appName = await fetchAppName(admin);
+
+  // URL al area de cliente: site_url + /billing/invoices.
+  const siteUrl = Deno.env.get("SITE_URL")
+    ?? Deno.env.get("PUBLIC_SITE_URL")
+    ?? "";
+  const actionUrl = siteUrl
+    ? `${siteUrl.replace(/\/$/, "")}/billing/invoices`
+    : "/billing/invoices";
+
+  // Format period_end al locale del user. Usamos Intl.DateTimeFormat
+  // que respeta el locale (ej. "15 de mayo de 2026" en es, "May 15,
+  // 2026" en en).
+  let periodEndFmt = "";
+  if (params.periodEnd) {
+    try {
+      const d = new Date(params.periodEnd);
+      periodEndFmt = new Intl.DateTimeFormat(locale, {
+        dateStyle: "long",
+      }).format(d);
+    } catch (_) {
+      periodEndFmt = params.periodEnd;
+    }
+  }
+
+  const rendered = renderEmail({
+    type: "plan_changed",
+    locale,
+    appName,
+    data: {
+      action_url: actionUrl,
+      plan_name: planName,
+      period_end: periodEndFmt,
+    },
+  });
+
+  await sendEmail(admin, {
+    type: "plan_changed",
+    to: userEmail,
+    toUserId: params.createdByUserId,
+    locale,
+    subject: rendered.subject,
+    htmlBody: rendered.htmlBody,
+    textBody: rendered.textBody,
+    meta: {
+      tenant_id: params.tenantId,
+      plan_id: params.planId,
+      plan_name: planName,
+    },
+  });
 }
 
 /// Lee el profile del user y actualiza name/address/tax_id en el Stripe

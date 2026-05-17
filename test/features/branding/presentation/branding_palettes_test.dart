@@ -24,10 +24,16 @@ void main() {
 
     test('every palette has light and dark schemes', () {
       for (final p in BrandingPalettes.all) {
-        expect(p.lightScheme.primary, isNotNull,
-            reason: '${p.slug} missing light primary');
-        expect(p.darkScheme.primary, isNotNull,
-            reason: '${p.slug} missing dark primary');
+        expect(
+          p.lightScheme.primary,
+          isNotNull,
+          reason: '${p.slug} missing light primary',
+        );
+        expect(
+          p.darkScheme.primary,
+          isNotNull,
+          reason: '${p.slug} missing dark primary',
+        );
       }
     });
 

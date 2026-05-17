@@ -997,5 +997,24 @@
   "adminAppBrandingOgImageUrl": "Social preview image (optional)",
   "adminAppBrandingOgImageUrlHint": "Used in OpenGraph cards when sharing on social media.",
   "adminAppBrandingRegistrationEnabled": "Public registration enabled",
-  "adminAppBrandingRegistrationEnabledHint": "If off, only admins can create new accounts. Useful for private beta."
+  "adminAppBrandingRegistrationEnabledHint": "If off, only admins can create new accounts. Useful for private beta.",
+
+  "adminEmailLogTitle": "Email log",
+  "adminEmailLogHint": "Audit of every email sent by the app.",
+  "adminEmailLogLoadError": "Couldn't load the email log.",
+  "adminEmailLogEmptyTitle": "No emails sent yet",
+  "adminEmailLogEmptyBody": "Trigger any event (test ping, signup, plan change) and entries will appear here.",
+  "adminEmailLogSendTest": "Send test",
+  "adminEmailLogTestSent": "Test email sent to {email}.",
+  "@adminEmailLogTestSent": {"placeholders": {"email": {"type": "String"}}},
+  "adminEmailLogTestFailed": "Test failed: {error}.",
+  "@adminEmailLogTestFailed": {"placeholders": {"error": {"type": "String"}}},
+  "adminEmailLogTestNoEmail": "Your account has no email address.",
+  "adminEmailLogStatusSent": "Sent",
+  "adminEmailLogStatusFailed": "Failed",
+  "adminEmailLogStatusQueued": "Queued",
+  "adminEmailLogProvider": "Provider",
+  "adminEmailLogSentAt": "Sent at",
+  "adminEmailLogError": "Error",
+  "adminEmailLogMeta": "Metadata"
 }

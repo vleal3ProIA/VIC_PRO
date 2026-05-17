@@ -45,6 +45,7 @@ import 'package:myapp/features/billing/presentation/pages/plans_page.dart';
 import 'package:myapp/features/branding/application/branding_providers.dart';
 import 'package:myapp/features/branding/presentation/pages/admin_app_branding_page.dart';
 import 'package:myapp/features/branding/presentation/pages/setup_page.dart';
+import 'package:myapp/features/emails/presentation/pages/admin_email_log_page.dart';
 import 'package:myapp/features/flags/presentation/pages/admin_flags_page.dart';
 import 'package:myapp/features/help/presentation/pages/admin_changelog_page.dart';
 import 'package:myapp/features/help/presentation/pages/changelog_page.dart';
@@ -329,6 +330,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const SetupPage(),
       ),
       GoRoute(
+        path: RoutePaths.adminEmailLog,
+        name: RouteNames.adminEmailLog,
+        builder: (_, __) => const AdminEmailLogPage(),
+      ),
+      GoRoute(
         path: RoutePaths.plans,
         name: RouteNames.plans,
         builder: (_, __) => const PlansPage(),
@@ -421,6 +427,7 @@ const _privateRoutes = <String>{
   RoutePaths.adminTrash,
   RoutePaths.adminChangelog,
   RoutePaths.adminAppBranding,
+  RoutePaths.adminEmailLog,
   RoutePaths.changelog,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
@@ -460,6 +467,7 @@ const _adminRoutes = <String>{
   RoutePaths.adminTrash,
   RoutePaths.adminChangelog,
   RoutePaths.adminAppBranding,
+  RoutePaths.adminEmailLog,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.

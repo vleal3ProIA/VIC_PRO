@@ -916,5 +916,21 @@
   "adminAppBrandingOgImageUrl": "Изображение превью для соцсетей (опционально)",
   "adminAppBrandingOgImageUrlHint": "Используется в OpenGraph-карточках при шеринге в соцсетях.",
   "adminAppBrandingRegistrationEnabled": "Публичная регистрация открыта",
-  "adminAppBrandingRegistrationEnabledHint": "Если выключено, аккаунты могут создавать только админы. Полезно для приватной беты."
+  "adminAppBrandingRegistrationEnabledHint": "Если выключено, аккаунты могут создавать только админы. Полезно для приватной беты.",
+  "adminEmailLogTitle": "Лог писем",
+  "adminEmailLogHint": "Аудит каждого письма, отправленного приложением.",
+  "adminEmailLogLoadError": "Не удалось загрузить лог писем.",
+  "adminEmailLogEmptyTitle": "Писем пока не отправлено",
+  "adminEmailLogEmptyBody": "Запустите событие (тест, регистрация, смена плана), и записи появятся здесь.",
+  "adminEmailLogSendTest": "Отправить тест",
+  "adminEmailLogTestSent": "Тестовое письмо отправлено на {email}.",
+  "adminEmailLogTestFailed": "Тест не прошёл: {error}.",
+  "adminEmailLogTestNoEmail": "К вашему аккаунту не привязан email.",
+  "adminEmailLogStatusSent": "Отправлено",
+  "adminEmailLogStatusFailed": "Не удалось",
+  "adminEmailLogStatusQueued": "В очереди",
+  "adminEmailLogProvider": "Провайдер",
+  "adminEmailLogSentAt": "Отправлено",
+  "adminEmailLogError": "Ошибка",
+  "adminEmailLogMeta": "Метаданные"
 }
