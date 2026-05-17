@@ -53,6 +53,7 @@ import 'package:myapp/features/onboarding/presentation/pages/onboarding_page.dar
 import 'package:myapp/features/shell/presentation/widgets/private_shell.dart';
 import 'package:myapp/features/tenants/presentation/pages/accept_invite_page.dart';
 import 'package:myapp/features/tenants/presentation/pages/team_page.dart';
+import 'package:myapp/features/tokens/presentation/pages/tokens_page.dart';
 import 'package:myapp/features/uploads/presentation/pages/files_page.dart';
 import 'package:myapp/features/welcome/presentation/pages/welcome_page.dart';
 
@@ -234,6 +235,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const FilesPage(),
       ),
       GoRoute(
+        path: RoutePaths.tokens,
+        name: RouteNames.tokens,
+        builder: (_, __) => const TokensPage(),
+      ),
+      GoRoute(
         path: RoutePaths.notifications,
         name: RouteNames.notifications,
         builder: (_, __) => const NotificationsPage(),
@@ -384,6 +390,7 @@ const _privateRoutes = <String>{
   RoutePaths.passkeys,
   RoutePaths.sessions,
   RoutePaths.files,
+  RoutePaths.tokens,
   RoutePaths.notifications,
   RoutePaths.onboarding,
   RoutePaths.auditLog,
