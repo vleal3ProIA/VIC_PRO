@@ -43,6 +43,8 @@ import 'package:myapp/features/billing/presentation/pages/embedded_checkout_page
 import 'package:myapp/features/billing/presentation/pages/invoices_page.dart';
 import 'package:myapp/features/billing/presentation/pages/plans_page.dart';
 import 'package:myapp/features/flags/presentation/pages/admin_flags_page.dart';
+import 'package:myapp/features/help/presentation/pages/admin_changelog_page.dart';
+import 'package:myapp/features/help/presentation/pages/changelog_page.dart';
 import 'package:myapp/features/home/presentation/pages/home_page.dart';
 import 'package:myapp/features/legal/presentation/pages/cookies_page.dart';
 import 'package:myapp/features/legal/presentation/pages/privacy_page.dart';
@@ -304,6 +306,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const AdminTrashPage(),
       ),
       GoRoute(
+        path: RoutePaths.adminChangelog,
+        name: RouteNames.adminChangelog,
+        builder: (_, __) => const AdminChangelogPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.changelog,
+        name: RouteNames.changelog,
+        builder: (_, __) => const ChangelogPage(),
+      ),
+      GoRoute(
         path: RoutePaths.plans,
         name: RouteNames.plans,
         builder: (_, __) => const PlansPage(),
@@ -394,6 +406,8 @@ const _privateRoutes = <String>{
   RoutePaths.adminBranding,
   RoutePaths.adminCoupons,
   RoutePaths.adminTrash,
+  RoutePaths.adminChangelog,
+  RoutePaths.changelog,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
   RoutePaths.changePassword,
@@ -430,6 +444,7 @@ const _adminRoutes = <String>{
   RoutePaths.adminBranding,
   RoutePaths.adminCoupons,
   RoutePaths.adminTrash,
+  RoutePaths.adminChangelog,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.
