@@ -147,6 +147,11 @@ class _LegalFooter extends StatelessWidget {
             onPressed: () => context.goNamed(RouteNames.cookies),
             child: Text(l.cookiesTitle),
           ),
+          Text('·', style: style),
+          TextButton(
+            onPressed: () => context.goNamed(RouteNames.status),
+            child: Text(l.statusFooterLink),
+          ),
         ],
       ),
     );

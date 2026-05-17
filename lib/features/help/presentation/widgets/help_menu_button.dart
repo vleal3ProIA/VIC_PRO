@@ -43,6 +43,8 @@ class HelpMenuButton extends ConsumerWidget {
                   context: context,
                   builder: (_) => const KeyboardShortcutsDialog(),
                 );
+              case _HelpAction.status:
+                context.goNamed(RouteNames.status);
               case _HelpAction.docs:
                 if (docsUrl != null && docsUrl.isNotEmpty) {
                   final ok = await launchUrl(
@@ -111,6 +113,16 @@ class HelpMenuButton extends ConsumerWidget {
                 ],
               ),
             ),
+            PopupMenuItem(
+              value: _HelpAction.status,
+              child: Row(
+                children: [
+                  const Icon(Icons.health_and_safety_outlined, size: 18),
+                  const SizedBox(width: 8),
+                  Text(l.helpStatus),
+                ],
+              ),
+            ),
             if (docsUrl != null && docsUrl.isNotEmpty)
               PopupMenuItem(
                 value: _HelpAction.docs,
@@ -163,4 +175,4 @@ class HelpMenuButton extends ConsumerWidget {
   }
 }
 
-enum _HelpAction { changelog, shortcuts, docs, support }
+enum _HelpAction { changelog, shortcuts, status, docs, support }

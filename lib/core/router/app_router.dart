@@ -63,6 +63,8 @@ import 'package:myapp/features/notifications/presentation/pages/notifications_pa
 import 'package:myapp/features/onboarding/application/onboarding_providers.dart';
 import 'package:myapp/features/onboarding/presentation/pages/onboarding_page.dart';
 import 'package:myapp/features/shell/presentation/widgets/private_shell.dart';
+import 'package:myapp/features/status/presentation/pages/admin_incidents_page.dart';
+import 'package:myapp/features/status/presentation/pages/status_page.dart';
 import 'package:myapp/features/tenants/presentation/pages/accept_invite_page.dart';
 import 'package:myapp/features/tenants/presentation/pages/team_page.dart';
 import 'package:myapp/features/tokens/presentation/pages/tokens_page.dart';
@@ -377,6 +379,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: RoutePaths.adminIncidents,
+        name: RouteNames.adminIncidents,
+        builder: (_, __) => const AdminIncidentsPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.status,
+        name: RouteNames.status,
+        builder: (_, __) => const StatusPage(),
+      ),
+      GoRoute(
         path: RoutePaths.plans,
         name: RouteNames.plans,
         builder: (_, __) => const PlansPage(),
@@ -456,6 +468,10 @@ const _excludedFromGuard = <String>{
   RoutePaths.terms,
   RoutePaths.privacy,
   RoutePaths.cookies,
+  // `/status` es publico: util enseñarlo a evaluadores que aun no
+  // tienen sesion y a usuarios logueados que entran a investigar un
+  // incidente. NO redirigir aunque haya sesion.
+  RoutePaths.status,
 };
 
 /// Rutas privadas (requieren sesión activa).
@@ -474,6 +490,7 @@ const _privateRoutes = <String>{
   RoutePaths.adminMetrics,
   RoutePaths.adminBroadcasts,
   RoutePaths.adminBroadcastsNew,
+  RoutePaths.adminIncidents,
   RoutePaths.changelog,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
@@ -518,6 +535,7 @@ const _adminRoutes = <String>{
   RoutePaths.adminMetrics,
   RoutePaths.adminBroadcasts,
   RoutePaths.adminBroadcastsNew,
+  RoutePaths.adminIncidents,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.
