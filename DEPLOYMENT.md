@@ -12,14 +12,38 @@ externa.
 
 ---
 
-## Orden recomendado
+## Modos de deploy
+
+Tienes dos:
+
+### Modo A — Automatizado con GitHub Actions (recomendado)
+
+Configurado en `.github/workflows/deploy.yml`. Tras hacer la
+configuración de **una vez** (sección "Setup inicial" más abajo), cada
+`git push` a `main` o cada merge de PR redespliega solo:
+1. CI corre tests + analyze
+2. Genera meta tags + sitemap con el dominio real
+3. Build de Flutter Web con las env vars de producción
+4. Sube `build/web/` a Dondominio via FTPS
+5. Te avisa por GitHub si algo falla
+
+### Modo B — Manual
+
+Haces los pasos 1-9 de "Setup inicial" + ejecutas localmente:
+```bash
+dart run scripts/generate_seo.dart
+flutter build web --release --dart-define-from-file=production.env
+# Sube build/web/* via FTP de cPanel o FileZilla a public_html/
+```
+
+---
+
+## Setup inicial (una vez)
 
 Hazlos en este orden — algunos pasos asumen que los anteriores ya están
 hechos.
 
 ### 1. Cuentas externas a tener listas
-
-Antes de tocar código de despliegue, necesitas:
 
 - [ ] **Cuenta Supabase** — proyecto creado, URL y anon key copiados,
       service_role key guardado en un sitio seguro (NUNCA en el repo).
@@ -30,6 +54,8 @@ Antes de tocar código de despliegue, necesitas:
       con SSL activado (Let's Encrypt o el SSL del panel).
 - [ ] **Cuenta de email en Dondominio** — por ejemplo
       `no-reply@tudominio.com`. Anota host SMTP, puerto y password.
+- [ ] **Credenciales FTP** del cPanel: host, usuario, password,
+      directorio (`/public_html/` normalmente).
 - [ ] **(Opcional) Cuenta Sentry** — para tracking de errores en
       producción. Sin esto, los errores siguen logueándose en consola
       pero no agregan en un dashboard.
@@ -43,39 +69,47 @@ supabase link --project-ref <tu-project-ref>
 supabase db push
 ```
 
-Esto aplica todas las migraciones `0001_*` hasta `0029_*` en orden.
-Si alguna falla, las anteriores ya están aplicadas — corrige y vuelve
-a correr (las migraciones son idempotentes salvo errores).
+Esto aplica todas las migraciones `0001_*` hasta `0032_*` en orden.
 
 ### 3. Variables de entorno
 
-**a) `.env` del cliente Flutter** (copia desde `.env.example` y rellena):
-
-| Variable | Valor |
-|---|---|
-| `APP_NAME` | nombre interno del proyecto (no es el comercial — ese se configura via UI) |
-| `SUPABASE_URL` | la URL de tu proyecto Supabase |
-| `SUPABASE_ANON_KEY` | la "anon public" key |
-| `SENTRY_DSN` | tu DSN de Sentry (vacío para deshabilitar) |
-| `OTP_CODE_LENGTH` | 6 (debe coincidir con Supabase Dashboard → Auth) |
+**a) `.env` del cliente Flutter** (copia desde `.env.example` y rellena
+para builds locales). En CI los valores los inyectamos via dart-defines
+(siguiente subsección).
 
 **b) Secrets de Edge Functions** (Dashboard Supabase → Project Settings → Edge Functions → Secrets):
 
 | Variable | Para qué |
 |---|---|
-| `SMTP_HOST` | `smtp.dondominio.com` (o el host de tu proveedor) |
+| `SMTP_HOST` | `smtp.dondominio.com` |
 | `SMTP_PORT` | `465` (SSL) o `587` (STARTTLS) |
 | `SMTP_USER` | `no-reply@tudominio.com` |
 | `SMTP_PASSWORD` | password de la cuenta de email |
-| `SMTP_FROM` | `no-reply@tudominio.com` (el From: visible) |
+| `SMTP_FROM` | `no-reply@tudominio.com` |
 | `SMTP_FROM_NAME` | nombre comercial (ej. `myapp`) |
 | `SMTP_USE_TLS` | `true` para puerto 465, `false` para 587 |
 | `SITE_URL` | `https://tudominio.com` — sin slash final |
-| `AUTH_HOOK_SECRET` | se genera en el siguiente paso (Auth Hook) |
+| `AUTH_HOOK_SECRET` | se genera en el paso 5 (Auth Hook) |
 | `STRIPE_SECRET_KEY` | `sk_test_...` para empezar |
 | `STRIPE_WEBHOOK_SECRET` | se genera al crear el webhook en Stripe |
 | `STRIPE_PUBLISHABLE_KEY` | `pk_test_...` |
 | `SENTRY_DSN` | (opcional) el mismo del cliente |
+
+**c) Secrets de GitHub Actions** (Settings → Secrets and variables →
+Actions → New repository secret):
+
+| Variable | Para qué |
+|---|---|
+| `FTP_HOST` | `ftp.tudominio.com` (lo da Dondominio) |
+| `FTP_USERNAME` | usuario FTP del cPanel |
+| `FTP_PASSWORD` | password FTP |
+| `FTP_DIR` | `/public_html/` (o subcarpeta) |
+| `SITE_URL` | `https://tudominio.com` |
+| `APP_NAME_PROD` | nombre comercial |
+| `SEO_DESCRIPTION` | descripción para meta tags |
+| `SUPABASE_URL_PROD` | URL del proyecto Supabase |
+| `SUPABASE_ANON_KEY_PROD` | anon key del proyecto Supabase |
+| `SENTRY_DSN_PROD` | (opcional) DSN de Sentry |
 
 ### 4. Desplegar Edge Functions
 
@@ -95,10 +129,6 @@ supabase functions deploy broadcast-dispatch
 `stripe-webhook` (Stripe nos llama) y `auth-email-hook` (Supabase nos
 llama).
 
-Alternativa rápida: `supabase functions deploy` sin argumento despliega
-todas — pero pierdes el control de `--no-verify-jwt`. Mejor una a una
-si es la primera vez.
-
 ### 5. Activar el Send Email Hook de Supabase
 
 Para que los emails de auth (signup, recovery, magic link, etc.) salgan
@@ -112,7 +142,6 @@ default de Supabase:
 5. Click "**Generate secret**" → copia el valor (empieza por `v1,whsec_...`)
 6. Guardar
 7. Pegar el secret en Edge Functions → Secrets como `AUTH_HOOK_SECRET`
-   (lo dejaste pendiente en el paso 3)
 
 Detalles completos: `supabase/functions/auth-email-hook/README.md`
 
@@ -132,92 +161,74 @@ Detalles completos: `supabase/functions/auth-email-hook/README.md`
 6. **Repetir todo el bloque para Stripe live** cuando hagas el switch
    (los webhooks son por modo)
 
-### 7. Build de Flutter Web y subida a Dondominio
+### 7. Activar el deploy automático
 
-**Antes** de hacer `flutter build web`, ejecuta el script SEO para que
-`web/index.html`, `web/robots.txt` y `web/sitemap.xml` lleven el dominio,
-nombre y descripción reales:
+Una vez configurados los secrets del paso 3.c, simplemente:
 
 ```bash
-# Opción A: lee del .env (SITE_URL + APP_NAME)
-dart run scripts/generate_seo.dart
-
-# Opción B: argumentos CLI explícitos
-dart run scripts/generate_seo.dart \
-  --site-url=https://tudominio.com \
-  --site-name="Mi SaaS" \
-  --description="La forma más simple de gestionar X" \
-  --og-image=https://tudominio.com/og.png
+# Cualquier merge a main o push directo a main dispara el deploy.
+git checkout main
+git merge feat/mi-rama
+git push origin main
 ```
 
-Luego construye:
+GitHub Actions:
+1. Corre tests + analyze (gates)
+2. Ejecuta `dart run scripts/generate_seo.dart` con tus secrets
+3. Hace `flutter build web --release` con dart-defines de prod
+4. Sube `build/web/` via FTPS a Dondominio
+5. El sitio se actualiza ~2 min después del push
 
-```bash
-flutter build web --release --dart-define=APP_VERSION=1.0.0
-```
+Para forzar un deploy sin push: Actions → Deploy → Run workflow.
 
-Esto genera `build/web/` con los archivos estáticos. Súbelos al
-`public_html/` de tu hosting via FTP/SFTP (Dondominio tiene panel con
-File Manager).
-
-**Archivos críticos:**
-- `build/web/index.html` — punto de entrada
-- `build/web/main.dart.js` — el bundle compilado
-- `build/web/assets/` — recursos
-- `build/web/canvaskit/` — engine de renderizado
-
-**Configuración Apache (`.htaccess`)** — pendiente de generar en una
-PR futura (la PR final de "deploy"). Sin esto, las rutas `/login`,
-`/admin/users`, etc. devolverán 404 al refrescar — porque Flutter Web
-es SPA y necesita que TODAS las rutas sirvan `index.html` y dejen
-que el JS resuelva la ruta.
+**Primera vez:** crea el environment "production" en Settings →
+Environments con "Required reviewers" si quieres approval manual
+antes de cada deploy.
 
 ### 8. Wizard de primera vez en producción
 
 Una vez subido:
 
 1. Entras a `https://tudominio.com/` → te redirige automáticamente a
-   `/setup` (porque `setup_completed = false` en `app_branding`).
+   `/setup`
 2. Rellenas los 3 pasos:
    - **Marca**: nombre comercial, tagline, email soporte
    - **Visual**: paleta de colores, URLs de logo/favicon
-   - **Primer admin**: tu email + password → este será el admin del
-     proyecto
+   - **Primer admin**: tu email + password
 3. Al pulsar Finish: tu cuenta se promociona a admin automáticamente y
-   `setup_completed = true`. No volverás a ver `/setup`.
-
-A partir de aquí, todo se gestiona desde la UI.
+   `setup_completed = true`
 
 ### 9. Verificación end-to-end
 
-- [ ] `/admin/email-log` → "Send test" → debe llegar el email a tu
-      bandeja en menos de 30 segundos
-- [ ] `/admin/app-branding` → cambia el nombre comercial → recarga
-      cualquier página y verifica que el AppBar y la pestaña del
-      navegador lo reflejan
-- [ ] `/status` → debe ser accesible sin login
-- [ ] Registro de un user de prueba con `registration_enabled=true` →
-      verifica que recibe el email de confirmación con NUESTRO template
-      (no el default de Supabase)
-- [ ] Comprar un plan en modo test (tarjeta `4242 4242 4242 4242`) →
-      verifica que llega el email `plan_changed` a tu bandeja
-- [ ] Recovery password → verifica email con nuestro template
+- [ ] `https://tudominio.com/status` → accesible sin login, ve la
+      página, sin certificate warning
+- [ ] `https://tudominio.com/robots.txt` → ves el contenido (sin
+      placeholders `__SEO_*__`)
+- [ ] `https://tudominio.com/sitemap.xml` → ves las 8 URLs con tu
+      dominio real
+- [ ] DevTools → Network → recarga la home → assets con cache largo
+      (`main.dart.js`, `.wasm`); `index.html` sin cache
+- [ ] DevTools → Console → sin errores rojos
+- [ ] DevTools → Lighthouse → SEO score >90, Best Practices >90
+- [ ] [securityheaders.com](https://securityheaders.com/?q=tudominio.com)
+      → grade A o B
+- [ ] [ssllabs.com](https://www.ssllabs.com/ssltest/) → grade A
+- [ ] [opengraph.xyz](https://www.opengraph.xyz/) — pega la URL y
+      verifica que la preview se ve con tu logo y descripción
+- [ ] `/admin/email-log` → "Send test" → te llega
+- [ ] Cambia branding en `/admin/app-branding` → recarga → cambios
+      aplicados en AppBar + pestaña del navegador
 
 ### 10. (Opcional) Switch a Stripe Live cuando estés listo
 
-1. En Stripe Dashboard cambia a modo Live (toggle arriba a la derecha)
-2. Repite el paso 6 (webhook) en modo live → te dará un nuevo signing
-   secret
+1. En Stripe Dashboard cambia a modo Live
+2. Repite el paso 6 en modo live → nuevo signing secret
 3. En Supabase Edge Functions → Secrets, sustituye:
    - `STRIPE_SECRET_KEY` por `sk_live_...`
    - `STRIPE_PUBLISHABLE_KEY` por `pk_live_...`
    - `STRIPE_WEBHOOK_SECRET` por el del webhook live
-4. **No tocas código** — el switch es solo cambiar las env vars y
-   redeployar functions:
-   ```bash
-   supabase functions deploy stripe-webhook
-   ```
-5. Considera abrir registro pública (`/admin/app-branding` → toggle
+4. Hacer commit vacío o `gh workflow run deploy.yml` para redeploy
+5. Considera abrir registro público (`/admin/app-branding` → toggle
    "Registration enabled") cuando estés listo para usuarios reales
 
 ---
@@ -226,36 +237,53 @@ A partir de aquí, todo se gestiona desde la UI.
 
 | PR | Pasos manuales que aportó |
 |---|---|
-| 3.L Branding | Wizard `/setup` se ejecuta solo la primera vez. No requiere acción manual. |
-| 3.M Emails | Pasos 3.b (SMTP secrets), 5 (Auth Hook), 7 fila SMTP, 9 verify email log |
-| 3.N Admin Users | Desplegar Edge Function `admin-users` (paso 4). Sin pasos extra. |
+| 3.L Branding | Wizard `/setup` se ejecuta solo la primera vez. Sin pasos extra. |
+| 3.M Emails | Pasos 3.b (SMTP secrets), 5 (Auth Hook). |
+| 3.N Admin Users | Desplegar Edge Function `admin-users` (paso 4). |
 | 3.O Admin Metrics | Migración 0031. Sin pasos extra. |
-| 3.P Broadcasts | Migración 0032 + desplegar Edge Function `broadcast-dispatch` (paso 4). Sin pasos extra. |
-| 3.Q SEO | Correr `dart run scripts/generate_seo.dart` ANTES de `flutter build web` (paso 7). Si NO se corre, la app funciona pero las meta tags llevan placeholders `__SEO_*__` literales. |
+| 3.P Broadcasts | Migración 0032 + Edge Function `broadcast-dispatch` (paso 4). |
+| 3.Q SEO | `dart run scripts/generate_seo.dart` (ahora automático en CI). |
+| 3.R Deploy | `.htaccess` + workflow de GitHub Actions. **Activa secrets del paso 3.c**. |
 
 > En cada PR nueva, este archivo se actualiza. **Antes de desplegar,
 > relee la lista completa**, no solo lo que es "nuevo".
 
 ---
 
-## Cosas que NO están en esta lista (porque las haré yo en futuras PRs)
+## Troubleshooting común
 
-- `.htaccess` con SPA rewriting + security headers (PR final de deploy)
-- Pipeline GitHub Actions con FTP automático a Dondominio (PR final)
-- Pre-render estático de páginas públicas por ruta (opcional, futuro)
+### "404 al refrescar `/admin/users`" tras subir
+- Falta el `.htaccess` en `public_html/`. Verifica que está subido.
+- O Apache tiene `AllowOverride None` — pide soporte que active al
+  menos `AllowOverride FileInfo Indexes Limit Options`.
 
-Cuando estas PRs estén mergeadas, este archivo tendrá la lista
-completa actualizada.
+### "Mixed content blocked" en la consola
+- El `.env` tiene URLs http://. Cambia todo a https://.
+
+### Los emails caen en spam
+- Configura SPF / DKIM / DMARC en el panel DNS de Dondominio. Sin
+  estos records, los emails desde no-reply@tudominio.com los marca
+  Gmail/Outlook como spam.
+
+### El sitio sigue viendo el branding antiguo
+- Force-refresh con Ctrl+Shift+R. La cache de `index.html` no debería
+  pasar de unos segundos pero el navegador puede agarrar la versión
+  anterior si tienes el sitio abierto.
+
+### GitHub Actions falla en "Upload to Dondominio"
+- Verifica que el `FTP_HOST` es correcto (Dondominio panel → FTP).
+- Algunos hostings limitan IPs externas — puede que tengas que
+  permitir las IPs de GitHub Actions (rango público variable).
+- Como fallback rápido: descarga `build/web/` del artefacto del job y
+  súbelo manualmente con FileZilla.
 
 ---
 
 ## En caso de duda
 
-Si despliegas y algo no funciona:
-1. Mira `/admin/email-log` — si los emails están en `failed` con
-   `smtp_not_configured`, falta configurar SMTP
-2. Mira Supabase Dashboard → Logs → Edge Functions para ver errores
-   de runtime
-3. Mira la consola del navegador con DevTools abierto
-4. Si todo lo anterior está bien y aún falla, abre una conversación
+1. Mira `/admin/email-log` si los emails no llegan
+2. Supabase Dashboard → Logs → Edge Functions para errores de runtime
+3. GitHub Actions → último run para fallos de build
+4. DevTools en el navegador para errores de cliente
+5. Si todo lo anterior está bien y aún falla, abre una conversación
    nueva conmigo con el error específico

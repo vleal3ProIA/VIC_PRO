@@ -1,0 +1,195 @@
+# ============================================================================
+# .htaccess para servir el build de Flutter Web en Apache compartido
+# (Dondominio / cPanel). Pensado para subir junto a `build/web/` al
+# `public_html/` del hosting.
+# ----------------------------------------------------------------------------
+# Módulos Apache asumidos (todos suelen estar activos por defecto en
+# hostings tipo cPanel):
+#   - mod_rewrite       (SPA fallback + HTTPS redirect)
+#   - mod_headers       (security headers)
+#   - mod_deflate       (gzip compression)
+#   - mod_expires       (cache control)
+#   - mod_mime          (.wasm, .json correctos)
+#
+# Si tu hosting limita `AllowOverride`, las directivas que no se
+# permitan generarán 500 -- pídele al soporte que active al menos
+# `AllowOverride All` o `AllowOverride FileInfo Indexes Limit Options`.
+# ============================================================================
+
+# ─────────────────────────── HTTPS redirect ───────────────────────────
+# Fuerza HTTPS — Dondominio incluye Let's Encrypt gratis si lo activas
+# en el panel. Sin HTTPS, Flutter Web da warnings de service worker.
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Si la request es HTTP (no llega como HTTPS), redirige a HTTPS 301.
+  # Algunos hostings ponen el flag en `HTTP_X_FORWARDED_PROTO` (detrás
+  # de proxy) y otros en `HTTPS`. Cubrimos ambos.
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+</IfModule>
+
+# ─────────────────────────── SPA fallback ───────────────────────────
+# Cualquier ruta que NO sea un archivo/directorio existente (asset
+# real) se sirve como `index.html` para que el router de Flutter
+# resuelva la URL. Sin esto, refresh en /login o /admin/users da 404.
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Excluciones: si existe el archivo o directorio, servirlo tal cual.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # NO redirigir robots.txt, sitemap.xml ni la API (si la tuvieras
+  # bajo /api proxy). Estos ya están cubiertos por la regla anterior
+  # cuando los archivos existen, pero por si acaso:
+  RewriteRule ^(robots\.txt|sitemap\.xml)$ - [L]
+
+  # Todo lo demás → index.html. El cliente lo navegará via JS.
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# ─────────────────────────── Security headers ───────────────────────────
+# OWASP baseline + lo mínimo razonable para una SPA con auth y Stripe.
+
+<IfModule mod_headers.c>
+  # HSTS: fuerza HTTPS durante 1 año + subdominios. Si tienes
+  # subdominios que NO usan HTTPS, quita `includeSubDomains`.
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+  # MIME-type sniffing OFF (mitiga ataques de tipo de contenido).
+  Header always set X-Content-Type-Options "nosniff"
+
+  # Click-jacking: solo permitir mismo origen en <iframe>. Stripe
+  # Embedded Checkout funciona via Element (iframe propio de Stripe);
+  # si necesitas embeber TU app en otro dominio, quita esto.
+  Header always set X-Frame-Options "SAMEORIGIN"
+
+  # Privacy: enviar referrer solo al mismo origen + downgrade-safe.
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+  # Permissions Policy: deshabilitar APIs que la app NO usa. Si añades
+  # geolocation o camera, quítalo de la lista.
+  Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(self 'https://js.stripe.com')"
+
+  # Cross-Origin: permitir cross-origin resources (Stripe.js,
+  # webauthn lib via unpkg).
+  Header always set Cross-Origin-Opener-Policy "same-origin-allow-popups"
+
+  # Content Security Policy (CSP): mínimo que permite que la app cargue
+  # con todas sus dependencias externas. Si añades más sources externos
+  # (Google Fonts, Plausible, etc.) añádelos a la lista.
+  #
+  # NOTA: `'unsafe-inline'` en script-src es necesario para que Flutter
+  # Web cargue su bootstrap script con `<script src>`. `'unsafe-eval'`
+  # lo necesita CanvasKit. Estos relajan CSP pero son práctica habitual
+  # en builds de Flutter Web — sin ellos la app NO carga.
+  Header always set Content-Security-Policy "default-src 'self'; \
+script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://unpkg.com https://www.gstatic.com; \
+style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
+font-src 'self' data: https://fonts.gstatic.com; \
+img-src 'self' data: blob: https:; \
+connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com; \
+frame-src 'self' https://js.stripe.com https://hooks.stripe.com; \
+worker-src 'self' blob:; \
+object-src 'none'; \
+base-uri 'self'; \
+form-action 'self'"
+</IfModule>
+
+# ─────────────────────────── Cache control ───────────────────────────
+# Estrategia:
+#   - index.html / robots.txt / sitemap.xml / manifest.json → SIN cache.
+#     Estos cambian en cada deploy y son el "punto de entrada"; queremos
+#     que el cliente siempre vea la última versión y se entere de un
+#     nuevo bundle.
+#   - main.dart.js + assets con hash en el nombre → cache fuerte 1 año.
+#     Flutter Web pone hash en el nombre del fichero (`main.dart.js?v=xxx`
+#     no, pero `flutter_service_worker.js?v=xxx`) — el bootstrap fetchea
+#     con cache-busting via query string así que podemos cachear duro.
+#   - Imágenes / fuentes → cache 1 mes.
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault                              "access plus 1 hour"
+
+  # Sin cache para puntos de entrada.
+  ExpiresByType text/html                     "access plus 0 seconds"
+  <FilesMatch "^(index\.html|robots\.txt|sitemap\.xml|manifest\.json|flutter_bootstrap\.js|flutter_service_worker\.js)$">
+    ExpiresActive Off
+    <IfModule mod_headers.c>
+      Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+      Header set Pragma "no-cache"
+      Header set Expires "0"
+    </IfModule>
+  </FilesMatch>
+
+  # JS / CSS / WASM compilados → cache largo (el hash en el query
+  # string del bootstrap rompe la cache cuando hay nueva version).
+  ExpiresByType application/javascript        "access plus 1 year"
+  ExpiresByType application/wasm              "access plus 1 year"
+  ExpiresByType text/css                      "access plus 1 year"
+
+  # Fuentes web.
+  ExpiresByType font/woff                     "access plus 1 month"
+  ExpiresByType font/woff2                    "access plus 1 month"
+  ExpiresByType application/font-woff         "access plus 1 month"
+  ExpiresByType application/font-woff2        "access plus 1 month"
+
+  # Imágenes.
+  ExpiresByType image/png                     "access plus 1 month"
+  ExpiresByType image/jpg                     "access plus 1 month"
+  ExpiresByType image/jpeg                    "access plus 1 month"
+  ExpiresByType image/gif                     "access plus 1 month"
+  ExpiresByType image/svg+xml                 "access plus 1 month"
+  ExpiresByType image/webp                    "access plus 1 month"
+  ExpiresByType image/x-icon                  "access plus 1 month"
+</IfModule>
+
+# ─────────────────────────── MIME types ───────────────────────────
+# Flutter Web usa WASM (CanvasKit). Algunos hostings antiguos no
+# tienen el MIME registrado y devuelven `application/octet-stream`,
+# lo cual rompe la carga.
+
+<IfModule mod_mime.c>
+  AddType application/wasm        .wasm
+  AddType application/manifest+json .webmanifest
+  AddType application/json        .json
+  AddType image/svg+xml           .svg
+  AddType font/woff2              .woff2
+  AddType font/woff               .woff
+</IfModule>
+
+# ─────────────────────────── Compression (gzip) ───────────────────────────
+# Reduce el tamaño del bundle ~70%. Brotli es mejor pero no siempre
+# está disponible en hostings compartidos; gzip sí.
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript
+  AddOutputFilterByType DEFLATE application/javascript application/json application/xml
+  AddOutputFilterByType DEFLATE application/wasm
+  AddOutputFilterByType DEFLATE image/svg+xml font/woff font/woff2
+</IfModule>
+
+# ─────────────────────────── Errors ───────────────────────────
+# 404 / 500 personalizados — Flutter no los maneja desde Apache; lo
+# delegamos al SPA via la regla de SPA fallback de arriba. El router
+# de Flutter (`errorBuilder` en GoRouter) muestra una pantalla bonita.
+#
+# Si quieres una pantalla 404 estática SIN cargar el bundle (para
+# casos extremos), crea un `404.html` en el root y descomenta:
+# ErrorDocument 404 /404.html
+
+# ─────────────────────────── Hidden files ───────────────────────────
+# Bloquear acceso a .env, .git, etc. Por defecto Apache no los sirve
+# pero por si acaso.
+
+<FilesMatch "^\.">
+  Order Allow,Deny
+  Deny from all
+</FilesMatch>

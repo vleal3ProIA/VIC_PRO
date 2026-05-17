@@ -1,0 +1,162 @@
+# ============================================================================
+# Deploy a producción (Dondominio hosting compartido via FTPS)
+# ----------------------------------------------------------------------------
+# Triggers:
+#   - push a `main` (auto-deploy tras merge de PR)
+#   - workflow_dispatch (manual desde la UI de GitHub Actions)
+#
+# Flujo:
+#   1. Checkout
+#   2. Flutter setup
+#   3. flutter pub get + gen-l10n
+#   4. flutter analyze (gate)
+#   5. flutter test (gate)
+#   6. scripts/generate_seo.dart (rellena meta tags + sitemap + robots)
+#   7. flutter build web --release (con --dart-define-from-file=production.env)
+#   8. Sube build/web/ via FTPS a public_html/ de Dondominio
+#
+# **Secrets requeridos** en GitHub → Settings → Secrets → Actions:
+#   - FTP_HOST           ftp.tudominio.com (lo da Dondominio)
+#   - FTP_USERNAME       usuario FTP del cPanel
+#   - FTP_PASSWORD       password FTP
+#   - FTP_DIR            /public_html/ (o subcarpeta si está en subdomain)
+#   - SITE_URL           https://tudominio.com (sin slash final)
+#   - APP_NAME_PROD      nombre comercial (usado para meta tags)
+#   - SEO_DESCRIPTION    descripción para meta tags
+#   - SUPABASE_URL_PROD  URL del proyecto Supabase de produccion
+#   - SUPABASE_ANON_KEY_PROD  anon key del proyecto Supabase de produccion
+#   - SENTRY_DSN_PROD    (opcional) DSN de Sentry para errores en prod
+#
+# **Variables (no secrets)** en GitHub → Settings → Variables → Actions:
+#   - FLUTTER_VERSION    debe coincidir con el ci.yml (3.41.6)
+#
+# Si falta algún secret obligatorio, el job falla rápido en el step
+# "Validate secrets" antes de gastar minutos en build/deploy.
+# ============================================================================
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Solo permitir un deploy a la vez — si llega un push nuevo mientras
+# uno está en curso, espera (NO cancela, para no dejar producción
+# en estado intermedio).
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build · Generate SEO · FTP upload
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Para que requiera approval manual la primera vez (proteccion
+    # extra), crea el environment "production" en Settings → Environments
+    # con "Required reviewers". Mientras no lo crees, el deploy va auto.
+    environment:
+      name: production
+      url: ${{ secrets.SITE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ─── Validate secrets antes de gastar minutos ───
+      - name: Validate required secrets
+        run: |
+          missing=""
+          [ -z "${{ secrets.FTP_HOST }}" ]            && missing="$missing FTP_HOST"
+          [ -z "${{ secrets.FTP_USERNAME }}" ]        && missing="$missing FTP_USERNAME"
+          [ -z "${{ secrets.FTP_PASSWORD }}" ]        && missing="$missing FTP_PASSWORD"
+          [ -z "${{ secrets.SITE_URL }}" ]            && missing="$missing SITE_URL"
+          [ -z "${{ secrets.SUPABASE_URL_PROD }}" ]   && missing="$missing SUPABASE_URL_PROD"
+          [ -z "${{ secrets.SUPABASE_ANON_KEY_PROD }}" ] && missing="$missing SUPABASE_ANON_KEY_PROD"
+          if [ -n "$missing" ]; then
+            echo "❌ Missing required secrets:$missing"
+            echo "   Configure them in Settings → Secrets → Actions."
+            exit 1
+          fi
+          echo "✓ All required secrets present"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ vars.FLUTTER_VERSION || '3.41.6' }}
+          channel: stable
+          cache: true
+
+      - name: pub get
+        run: flutter pub get
+
+      - name: gen-l10n
+        run: flutter gen-l10n
+
+      # ─── Gates antes de desplegar ───
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test
+        run: flutter test --no-pub
+
+      # ─── Inyectar SEO meta tags ───
+      - name: Generate SEO assets
+        run: |
+          dart run scripts/generate_seo.dart \
+            --site-url="${{ secrets.SITE_URL }}" \
+            --site-name="${{ secrets.APP_NAME_PROD || 'myapp' }}" \
+            --description="${{ secrets.SEO_DESCRIPTION || 'A modern Flutter Web SaaS' }}"
+
+      # ─── Build con dart-defines de produccion ───
+      - name: Build web
+        run: |
+          flutter build web --release \
+            --dart-define=APP_VERSION=${{ github.sha }} \
+            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL_PROD }} \
+            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY_PROD }} \
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN_PROD }}
+
+      # ─── Verificar que el build tiene los archivos esperados ───
+      - name: Smoke check build output
+        run: |
+          test -f build/web/index.html
+          test -f build/web/main.dart.js
+          test -f build/web/flutter_bootstrap.js
+          test -f build/web/.htaccess
+          test -f build/web/robots.txt
+          test -f build/web/sitemap.xml
+          echo "✓ Build artifacts present"
+
+      # ─── FTPS upload a Dondominio ───
+      # Usamos SamKirkland/FTP-Deploy-Action: estable, soporta FTPS, y
+      # solo sube los archivos que cambiaron (compara timestamps).
+      - name: Upload to Dondominio via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./build/web/
+          server-dir: ${{ secrets.FTP_DIR || '/public_html/' }}
+          # FTPS implicito por defecto en Dondominio (puerto 990) o
+          # explicito (puerto 21 con STARTTLS). Si el host no soporta
+          # FTPS, baja a `ftp` (no recomendado — credenciales en claro).
+          protocol: ftps
+          security: strict
+          # Borra archivos en el servidor que ya no estan en el build
+          # (clean deploy). Excluye archivos que el usuario subio
+          # manualmente al hosting (avatares, uploads, etc).
+          dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            uploads/**
+
+      - name: Notify success
+        if: success()
+        run: |
+          echo "✅ Deployed to ${{ secrets.SITE_URL }}"
+          echo "Commit: ${{ github.sha }}"
