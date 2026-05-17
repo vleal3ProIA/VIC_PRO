@@ -33,6 +33,7 @@ class RouteNames {
   static const String deleteAccount = 'delete_account';
   static const String passkeys = 'passkeys';
   static const String sessions = 'sessions';
+  static const String files = 'files';
   static const String notifications = 'notifications';
   static const String onboarding = 'onboarding';
   static const String auditLog = 'audit_log';
@@ -88,6 +89,7 @@ class RoutePaths {
   static const String deleteAccount = '/delete-account';
   static const String passkeys = '/passkeys';
   static const String sessions = '/account-settings/sessions';
+  static const String files = '/account-settings/files';
   static const String notifications = '/notifications';
   static const String onboarding = '/onboarding';
   static const String auditLog = '/audit-log';
