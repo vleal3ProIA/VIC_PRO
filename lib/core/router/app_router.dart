@@ -9,6 +9,8 @@ import 'package:myapp/features/account/presentation/pages/account_sessions_page.
 import 'package:myapp/features/account/presentation/pages/account_settings_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_trash_page.dart';
+import 'package:myapp/features/admin_users/presentation/pages/admin_user_detail_page.dart';
+import 'package:myapp/features/admin_users/presentation/pages/admin_users_page.dart';
 import 'package:myapp/features/audit/presentation/pages/activity_feed_page.dart';
 import 'package:myapp/features/audit/presentation/pages/audit_log_page.dart';
 import 'package:myapp/features/auth/application/mfa_providers.dart';
@@ -335,6 +337,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const AdminEmailLogPage(),
       ),
       GoRoute(
+        path: RoutePaths.adminUsers,
+        name: RouteNames.adminUsers,
+        builder: (_, __) => const AdminUsersPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.adminUserDetail,
+        name: RouteNames.adminUserDetail,
+        builder: (_, state) => AdminUserDetailPage(
+          userId: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
         path: RoutePaths.plans,
         name: RouteNames.plans,
         builder: (_, __) => const PlansPage(),
@@ -428,6 +442,7 @@ const _privateRoutes = <String>{
   RoutePaths.adminChangelog,
   RoutePaths.adminAppBranding,
   RoutePaths.adminEmailLog,
+  RoutePaths.adminUsers,
   RoutePaths.changelog,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
@@ -468,6 +483,7 @@ const _adminRoutes = <String>{
   RoutePaths.adminChangelog,
   RoutePaths.adminAppBranding,
   RoutePaths.adminEmailLog,
+  RoutePaths.adminUsers,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.
@@ -488,6 +504,14 @@ const _publicOnly = <String>{
 bool _isPrivate(String loc) {
   if (_privateRoutes.contains(loc)) return true;
   if (loc.startsWith('/account-settings/webhooks/')) return true;
+  if (loc.startsWith('/admin/users/')) return true;
+  return false;
+}
+
+/// Mismo concepto que `_isPrivate` pero para rutas SOLO admin.
+bool _isAdmin(String loc) {
+  if (_adminRoutes.contains(loc)) return true;
+  if (loc.startsWith('/admin/users/')) return true;
   return false;
 }
 
@@ -549,7 +573,7 @@ String? _redirect(Ref ref, GoRouterState state) {
   }
 
   // 2b) Ruta solo-admin y el usuario no tiene ese rol → /home.
-  if (isAuthed && _adminRoutes.contains(loc) && !ref.read(isAdminProvider)) {
+  if (isAuthed && _isAdmin(loc) && !ref.read(isAdminProvider)) {
     return RoutePaths.home;
   }
 

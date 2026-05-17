@@ -4,7 +4,7 @@ import 'package:myapp/features/emails/domain/email_log_entry.dart';
 void main() {
   group('EmailLogEntry.fromMap', () {
     test('parses a fully populated sent entry', () {
-      final e = EmailLogEntry.fromMap(const {
+      final e = EmailLogEntry.fromMap(const <String, dynamic>{
         'id': '11111111-1111-1111-1111-111111111111',
         'type': 'plan_changed',
         'to_email': 'user@example.com',
@@ -30,7 +30,7 @@ void main() {
     });
 
     test('parses a failed entry', () {
-      final e = EmailLogEntry.fromMap(const {
+      final e = EmailLogEntry.fromMap(const <String, dynamic>{
         'id': '1',
         'type': 'recovery',
         'to_email': 'x@x.com',
@@ -39,7 +39,7 @@ void main() {
         'status': 'failed',
         'error': 'smtp_timeout',
         'provider': 'smtp',
-        'meta': {},
+        'meta': <String, dynamic>{},
         'created_at': '2026-05-15T10:00:00Z',
       });
       expect(e.status, EmailLogStatus.failed);
@@ -49,7 +49,7 @@ void main() {
     });
 
     test('parses a queued entry (still in-flight)', () {
-      final e = EmailLogEntry.fromMap(const {
+      final e = EmailLogEntry.fromMap(const <String, dynamic>{
         'id': '1',
         'type': 'signup',
         'to_email': 'x@x.com',
@@ -57,7 +57,7 @@ void main() {
         'subject': 'Confirm your email',
         'status': 'queued',
         'provider': 'smtp',
-        'meta': {},
+        'meta': <String, dynamic>{},
         'created_at': '2026-05-15T10:00:00Z',
       });
       expect(e.status, EmailLogStatus.queued);
@@ -66,7 +66,7 @@ void main() {
     });
 
     test('unknown status defaults to queued', () {
-      final e = EmailLogEntry.fromMap(const {
+      final e = EmailLogEntry.fromMap(const <String, dynamic>{
         'id': '1',
         'type': 'test',
         'to_email': 'x@x.com',
@@ -74,14 +74,14 @@ void main() {
         'subject': 's',
         'status': 'banana',
         'provider': 'smtp',
-        'meta': {},
+        'meta': <String, dynamic>{},
         'created_at': '2026-05-15T10:00:00Z',
       });
       expect(e.status, EmailLogStatus.queued);
     });
 
     test('defaults locale/provider/meta when missing', () {
-      final e = EmailLogEntry.fromMap(const {
+      final e = EmailLogEntry.fromMap(const <String, dynamic>{
         'id': '1',
         'type': 'test',
         'to_email': 'x@x.com',
