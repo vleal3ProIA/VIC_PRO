@@ -48,6 +48,9 @@ import 'package:myapp/features/billing/presentation/pages/plans_page.dart';
 import 'package:myapp/features/branding/application/branding_providers.dart';
 import 'package:myapp/features/branding/presentation/pages/admin_app_branding_page.dart';
 import 'package:myapp/features/branding/presentation/pages/setup_page.dart';
+import 'package:myapp/features/broadcasts/presentation/pages/admin_broadcast_detail_page.dart';
+import 'package:myapp/features/broadcasts/presentation/pages/admin_broadcast_new_page.dart';
+import 'package:myapp/features/broadcasts/presentation/pages/admin_broadcasts_page.dart';
 import 'package:myapp/features/emails/presentation/pages/admin_email_log_page.dart';
 import 'package:myapp/features/flags/presentation/pages/admin_flags_page.dart';
 import 'package:myapp/features/help/presentation/pages/admin_changelog_page.dart';
@@ -355,6 +358,25 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const AdminMetricsPage(),
       ),
       GoRoute(
+        path: RoutePaths.adminBroadcasts,
+        name: RouteNames.adminBroadcasts,
+        builder: (_, __) => const AdminBroadcastsPage(),
+      ),
+      // /new debe ir antes que /:id; GoRouter prueba en orden y :id
+      // matchearia con 'new' lo cual romperia.
+      GoRoute(
+        path: RoutePaths.adminBroadcastsNew,
+        name: RouteNames.adminBroadcastsNew,
+        builder: (_, __) => const AdminBroadcastNewPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.adminBroadcastDetail,
+        name: RouteNames.adminBroadcastDetail,
+        builder: (_, state) => AdminBroadcastDetailPage(
+          broadcastId: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
         path: RoutePaths.plans,
         name: RouteNames.plans,
         builder: (_, __) => const PlansPage(),
@@ -450,6 +472,8 @@ const _privateRoutes = <String>{
   RoutePaths.adminEmailLog,
   RoutePaths.adminUsers,
   RoutePaths.adminMetrics,
+  RoutePaths.adminBroadcasts,
+  RoutePaths.adminBroadcastsNew,
   RoutePaths.changelog,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
@@ -492,6 +516,8 @@ const _adminRoutes = <String>{
   RoutePaths.adminEmailLog,
   RoutePaths.adminUsers,
   RoutePaths.adminMetrics,
+  RoutePaths.adminBroadcasts,
+  RoutePaths.adminBroadcastsNew,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.
@@ -513,6 +539,7 @@ bool _isPrivate(String loc) {
   if (_privateRoutes.contains(loc)) return true;
   if (loc.startsWith('/account-settings/webhooks/')) return true;
   if (loc.startsWith('/admin/users/')) return true;
+  if (loc.startsWith('/admin/broadcasts/')) return true;
   return false;
 }
 
@@ -520,6 +547,7 @@ bool _isPrivate(String loc) {
 bool _isAdmin(String loc) {
   if (_adminRoutes.contains(loc)) return true;
   if (loc.startsWith('/admin/users/')) return true;
+  if (loc.startsWith('/admin/broadcasts/')) return true;
   return false;
 }
 
