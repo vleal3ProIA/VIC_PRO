@@ -178,8 +178,8 @@ void main() {
 
   group('AdminUsersListResult', () {
     test('holds rows + total separately', () {
-      final r = AdminUsersListResult(
-        rows: const [],
+      const r = AdminUsersListResult(
+        rows: [],
         totalCount: 42,
       );
       expect(r.rows, isEmpty);
@@ -229,7 +229,7 @@ void main() {
         'email': 'x@x.com',
         'created_at': '2026-05-01T10:00:00Z',
         'status': 'active',
-        'profile': {},
+        'profile': <String, dynamic>{},
         'subscription': null,
         'tenants_count': 0,
         'sessions_count': 0,
