@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/seo/meta_tags_sync.dart';
+import 'package:myapp/core/seo/seo_meta.dart';
 import 'package:myapp/features/branding/application/branding_providers.dart';
 import 'package:myapp/features/welcome/presentation/widgets/top_bar.dart';
 
@@ -18,11 +20,24 @@ class WelcomePage extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final logoUrl = branding.logoFor(isDark: isDark);
 
+    // SEO runtime: actualiza meta tags al entrar. Si el branding tiene
+    // tagline, lo usamos como description.
+    final seoDescription = (branding.tagline?.isNotEmpty ?? false)
+        ? branding.tagline!
+        : context.l10n.comingSoonSubtitle;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: const PublicTopBar(),
       body: Column(
         children: [
+          MetaTagsSync(
+            meta: SeoMeta(
+              title: branding.commercialName,
+              description: seoDescription,
+              ogImageUrl: branding.ogImageUrl,
+            ),
+          ),
           Expanded(
             child: Center(
               child: ConstrainedBox(
