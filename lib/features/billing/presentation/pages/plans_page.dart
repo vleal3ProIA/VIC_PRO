@@ -776,48 +776,65 @@ class _UpgradeButton extends ConsumerStatefulWidget {
 }
 
 class _UpgradeButtonState extends ConsumerState<_UpgradeButton> {
+  bool _busy = false;
+
   Future<void> _onPressed() async {
     final tenantId = ref.read(currentTenantIdProvider);
     if (tenantId == null) return;
 
-    // Gate: el usuario debe tener su billing info completa ANTES de pagar.
-    // Si no, le redirigimos a /billing/info?return=/billing/plans para
-    // que rellene y vuelva.
-    final billingComplete = ref.read(billingInfoCompleteProvider);
-    if (!billingComplete) {
-      final ret = Uri.encodeComponent(RoutePaths.plans);
-      if (mounted) {
-        context.go('${RoutePaths.billingInfo}?return=$ret');
+    setState(() => _busy = true);
+    try {
+      // Gate: el usuario debe tener su billing info completa ANTES de pagar.
+      // Usamos `.future` para AWAITar a que el provider termine de cargar —
+      // si solo leyéramos sync con `valueOrNull`, durante un instante el
+      // provider está `loading` y valueOrNull devuelve null → gate triggea
+      // por error → reenvío al form aunque YA tenga los datos.
+      final info = await ref.read(myBillingInfoProvider.future);
+      if (!info.isCompleteForBilling) {
+        final ret = Uri.encodeComponent(RoutePaths.plans);
+        if (mounted) {
+          context.go('${RoutePaths.billingInfo}?return=$ret');
+        }
+        return;
       }
-      return;
-    }
 
-    // Navega a la pantalla embedded — el widget Stripe se monta dentro
-    // de nuestra app (no redirect). La pantalla embedded se encarga de
-    // crear la session y montar el widget.
-    //
-    // Si hay un código promocional aplicado, lo pasamos como query param
-    // para que la pantalla embedded lo incluya en el create-session.
-    final period = widget.yearly ? 'yearly' : 'monthly';
-    final applied = ref.read(appliedPromotionCodeProvider);
-    final promo = applied != null &&
-            (applied.appliesToPlanSlugs == null ||
-                applied.appliesToPlanSlugs!.contains(widget.plan.slug))
-        ? '&stripe_promotion_code_id=${Uri.encodeQueryComponent(applied.stripePromotionCodeId)}'
-        : '';
-    context.go(
-      '${RoutePaths.embeddedCheckout}'
-      '?plan_slug=${widget.plan.slug}'
-      '&billing_period=$period'
-      '$promo',
-    );
+      // Navega a la pantalla embedded — el widget Stripe se monta dentro
+      // de nuestra app (no redirect). La pantalla embedded se encarga de
+      // crear la session y montar el widget.
+      //
+      // Si hay un código promocional aplicado, lo pasamos como query param
+      // para que la pantalla embedded lo incluya en el create-session.
+      final period = widget.yearly ? 'yearly' : 'monthly';
+      final applied = ref.read(appliedPromotionCodeProvider);
+      final promo = applied != null &&
+              (applied.appliesToPlanSlugs == null ||
+                  applied.appliesToPlanSlugs!.contains(widget.plan.slug))
+          ? '&stripe_promotion_code_id=${Uri.encodeQueryComponent(applied.stripePromotionCodeId)}'
+          : '';
+      if (mounted) {
+        context.go(
+          '${RoutePaths.embeddedCheckout}'
+          '?plan_slug=${widget.plan.slug}'
+          '&billing_period=$period'
+          '$promo',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return FilledButton(
-      onPressed: _onPressed,
-      child: Text(context.l10n.plansUpgrade),
+      onPressed: _busy ? null : _onPressed,
+      child: _busy
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2.4),
+            )
+          : Text(context.l10n.plansUpgrade),
     );
   }
 }
