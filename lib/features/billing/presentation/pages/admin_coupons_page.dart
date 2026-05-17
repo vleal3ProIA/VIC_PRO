@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/widgets/app_confirm_dialog.dart';
+import 'package:myapp/core/widgets/app_empty_state.dart';
+import 'package:myapp/core/widgets/app_error_state.dart';
+import 'package:myapp/core/widgets/app_loading_state.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
 import '../../application/admin_coupons_providers.dart';
@@ -50,16 +54,19 @@ class AdminCouponsPage extends ConsumerWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 880),
           child: listAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Text(
-                l.adminCouponsLoadError,
-                style: TextStyle(color: context.colors.error),
-              ),
+            loading: () => const AppLoadingState(),
+            error: (e, _) => AppErrorState(
+              message: l.adminCouponsLoadError,
+              detail: e.toString(),
+              onRetry: () => ref.invalidate(adminCouponsListProvider),
+              retryLabel: l.actionRetry,
             ),
             data: (data) {
               if (data.coupons.isEmpty) {
-                return _Empty(message: l.adminCouponsEmpty);
+                return AppEmptyState(
+                  icon: Icons.local_offer_outlined,
+                  message: l.adminCouponsEmpty,
+                );
               }
               // Agrupamos los promotion_codes por coupon_id para pintar.
               final byCoupon = <String, List<PromotionCode>>{};
@@ -98,35 +105,6 @@ class AdminCouponsPage extends ConsumerWidget {
     if ((created ?? false) && context.mounted) {
       ref.invalidate(adminCouponsListProvider);
     }
-  }
-}
-
-class _Empty extends StatelessWidget {
-  const _Empty({required this.message});
-  final String message;
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.local_offer_outlined,
-            size: 48,
-            color: context.colors.onSurfaceVariant,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            style: context.textTheme.bodyMedium?.copyWith(
-              color: context.colors.onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -276,22 +254,13 @@ class _CouponCard extends ConsumerWidget {
     WidgetRef ref,
   ) async {
     final l = context.l10n;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(l.adminCouponsDeactivateConfirmTitle),
-        content: Text(l.adminCouponsDeactivateConfirmBody(coupon.name)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l.actionCancel),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l.adminCouponsDeactivate),
-          ),
-        ],
-      ),
+    final confirm = await AppConfirmDialog.show(
+      context,
+      title: l.adminCouponsDeactivateConfirmTitle,
+      body: l.adminCouponsDeactivateConfirmBody(coupon.name),
+      confirmLabel: l.adminCouponsDeactivate,
+      cancelLabel: l.actionCancel,
+      danger: true,
     );
     if (confirm != true) return;
     try {

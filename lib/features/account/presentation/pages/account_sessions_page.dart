@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/widgets/app_confirm_dialog.dart';
+import 'package:myapp/core/widgets/app_empty_state.dart';
+import 'package:myapp/core/widgets/app_error_state.dart';
+import 'package:myapp/core/widgets/app_loading_state.dart';
 
 import '../../application/auth_sessions_providers.dart';
 import '../../domain/auth_session.dart';
@@ -41,16 +45,19 @@ class AccountSessionsPage extends ConsumerWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
           child: async.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Text(
-                l.sessionsLoadError,
-                style: TextStyle(color: context.colors.error),
-              ),
+            loading: () => const AppLoadingState(),
+            error: (e, _) => AppErrorState(
+              message: l.sessionsLoadError,
+              detail: e.toString(),
+              onRetry: () => ref.invalidate(authSessionsProvider),
+              retryLabel: l.actionRetry,
             ),
             data: (sessions) {
               if (sessions.isEmpty) {
-                return Center(child: Text(l.sessionsEmpty));
+                return AppEmptyState(
+                  icon: Icons.devices_outlined,
+                  message: l.sessionsEmpty,
+                );
               }
               return ListView(
                 padding: const EdgeInsets.all(16),
@@ -132,26 +139,13 @@ class _HeaderState extends ConsumerState<_Header> {
 
   Future<void> _onRevokeOthers() async {
     final l = context.l10n;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(l.sessionsRevokeOthersConfirmTitle),
-        content: Text(l.sessionsRevokeOthersConfirmBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l.actionCancel),
-          ),
-          FilledButton.tonal(
-            style: FilledButton.styleFrom(
-              backgroundColor: context.colors.errorContainer,
-              foregroundColor: context.colors.onErrorContainer,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l.sessionsRevokeOthers),
-          ),
-        ],
-      ),
+    final ok = await AppConfirmDialog.show(
+      context,
+      title: l.sessionsRevokeOthersConfirmTitle,
+      body: l.sessionsRevokeOthersConfirmBody,
+      confirmLabel: l.sessionsRevokeOthers,
+      cancelLabel: l.actionCancel,
+      danger: true,
     );
     if (ok != true) return;
     setState(() => _busy = true);

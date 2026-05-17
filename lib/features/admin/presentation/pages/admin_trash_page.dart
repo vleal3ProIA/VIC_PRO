@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/widgets/app_confirm_dialog.dart';
+import 'package:myapp/core/widgets/app_empty_state.dart';
+import 'package:myapp/core/widgets/app_error_state.dart';
+import 'package:myapp/core/widgets/app_loading_state.dart';
 
 import '../../application/admin_trash_providers.dart';
 import '../../domain/deleted_tenant.dart';
@@ -42,15 +46,20 @@ class AdminTrashPage extends ConsumerWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 880),
           child: async.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Text(
-                l.adminTrashLoadError,
-                style: TextStyle(color: context.colors.error),
-              ),
+            loading: () => const AppLoadingState(),
+            error: (e, _) => AppErrorState(
+              message: l.adminTrashLoadError,
+              detail: e.toString(),
+              onRetry: () => ref.invalidate(deletedTenantsProvider),
+              retryLabel: l.actionRetry,
             ),
             data: (rows) {
-              if (rows.isEmpty) return _Empty(message: l.adminTrashEmpty);
+              if (rows.isEmpty) {
+                return AppEmptyState(
+                  icon: Icons.delete_outline,
+                  message: l.adminTrashEmpty,
+                );
+              }
               return ListView.separated(
                 padding: const EdgeInsets.all(16),
                 itemCount: rows.length,
@@ -60,35 +69,6 @@ class AdminTrashPage extends ConsumerWidget {
             },
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _Empty extends StatelessWidget {
-  const _Empty({required this.message});
-  final String message;
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.delete_outline,
-            size: 48,
-            color: context.colors.onSurfaceVariant,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            style: context.textTheme.bodyMedium?.copyWith(
-              color: context.colors.onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
       ),
     );
   }
@@ -182,22 +162,12 @@ class _DeletedTenantCardState extends ConsumerState<_DeletedTenantCard> {
 
   Future<void> _onRestore() async {
     final l = context.l10n;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(l.adminTrashRestoreConfirmTitle),
-        content: Text(l.adminTrashRestoreConfirmBody(widget.tenant.name)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l.actionCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l.adminTrashRestore),
-          ),
-        ],
-      ),
+    final confirm = await AppConfirmDialog.show(
+      context,
+      title: l.adminTrashRestoreConfirmTitle,
+      body: l.adminTrashRestoreConfirmBody(widget.tenant.name),
+      confirmLabel: l.adminTrashRestore,
+      cancelLabel: l.actionCancel,
     );
     if (confirm != true) return;
     setState(() => _busy = true);
