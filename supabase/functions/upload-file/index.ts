@@ -424,13 +424,22 @@ Deno.serve(withSentry("upload-file", async (req) => {
     // el upload (deleted_at = now()) y la RLS de SELECT (que filtra
     // por `deleted_at IS NULL`) lo oculta automaticamente.
     //
-    // Llamamos via fetch con X-Internal-Auth en lugar de
-    // admin.functions.invoke porque queremos NO esperar a la respuesta
-    // -- el .catch() captura errores de red sin bloquear el return.
+    // Llamamos via fetch en lugar de admin.functions.invoke porque
+    // queremos NO esperar a la respuesta -- el .catch() captura
+    // errores de red sin bloquear el return.
+    //
+    // **CRITICO** dos headers:
+    //   - `authorization: Bearer <service_role>`: hace que el gateway
+    //     de Supabase deje pasar la request (las Edge Functions tienen
+    //     verify_jwt=true por defecto, sin authorization -> 401).
+    //   - `x-internal-auth: <service_role>`: lo verifica scan-upload
+    //     internamente como defense-in-depth (que la authorization no
+    //     sea simplemente un JWT user random).
     fetch(`${supabaseUrl}/functions/v1/scan-upload`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        "authorization": `Bearer ${serviceRoleKey}`,
         "x-internal-auth": serviceRoleKey,
       },
       body: JSON.stringify({ upload_id: row.id }),
