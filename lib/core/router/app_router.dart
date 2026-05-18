@@ -561,8 +561,19 @@ String? _redirect(Ref ref, GoRouterState state) {
   // y rutas de auth necesarias para crear el primer admin (el wizard
   // las usa internamente). Tambien excluimos /auth/callback que sirve
   // para confirmar el email del admin si Supabase lo exige.
-  final branding = ref.read(brandingOrFallbackProvider);
-  if (!branding.setupCompleted && loc != RoutePaths.setup) {
+  //
+  // OJO: leemos el `appBrandingProvider` async directamente (no el
+  // fallback síncrono) porque el fallback tiene `setupCompleted=false`
+  // por defecto. Si redirigieramos basándonos en el fallback durante
+  // el primer frame (mientras carga la query), mandaríamos al usuario
+  // a /setup aunque la BD ya tenga `setup_completed=true`. Solo
+  // redirigimos cuando el provider ha resuelto Y el valor es explícito.
+  // Mientras carga, `valueOrNull` es null → no redirigimos → no flash.
+  final brandingAsync = ref.read(appBrandingProvider);
+  final brandingValue = brandingAsync.valueOrNull;
+  if (brandingValue != null &&
+      !brandingValue.setupCompleted &&
+      loc != RoutePaths.setup) {
     // Excluimos las rutas que el propio wizard puede necesitar
     // (auth callback de email verify, verify-email-sent).
     const setupAllowed = {
@@ -575,7 +586,9 @@ String? _redirect(Ref ref, GoRouterState state) {
     }
   }
   // Si ya está completado y alguien intenta volver a /setup, fuera.
-  if (branding.setupCompleted && loc == RoutePaths.setup) {
+  if (brandingValue != null &&
+      brandingValue.setupCompleted &&
+      loc == RoutePaths.setup) {
     return RoutePaths.welcome;
   }
 
@@ -595,9 +608,13 @@ String? _redirect(Ref ref, GoRouterState state) {
   // 1b) Gate de registro: si está cerrado y alguien intenta /register,
   //     lo mandamos a /login con un toast (lo gestiona la propia
   //     pantalla register al detectar la flag).
+  //     Mientras el branding carga, asumimos abierto (mejor mostrar la
+  //     pantalla y dejar que la propia /register decida que hacer si
+  //     resulta estar cerrado, que bloquear de mas con un valor stale).
   if (!isAuthed &&
       loc == RoutePaths.register &&
-      !branding.registrationEnabled) {
+      brandingValue != null &&
+      !brandingValue.registrationEnabled) {
     return RoutePaths.login;
   }
 
@@ -671,16 +688,27 @@ class _AuthRefreshNotifier extends ChangeNotifier {
       currentRoleProvider,
       (_, __) => notifyListeners(),
     );
+    // El branding (app_branding row) tambien es async: en el primer frame
+    // `valueOrNull` es null y Gate 0 NO redirige (para evitar un flash a
+    // /setup mientras carga). Cuando la query resuelve, necesitamos que
+    // el router re-evalue para mandar al wizard si `setup_completed=false`,
+    // o para echar a alguien que esta en /setup si ya esta completado.
+    _brandingSub = _ref.listen(
+      appBrandingProvider,
+      (_, __) => notifyListeners(),
+    );
   }
 
   final Ref _ref;
   late final ProviderSubscription<dynamic> _authSub;
   late final ProviderSubscription<dynamic> _roleSub;
+  late final ProviderSubscription<dynamic> _brandingSub;
 
   @override
   void dispose() {
     _authSub.close();
     _roleSub.close();
+    _brandingSub.close();
     super.dispose();
   }
 }
