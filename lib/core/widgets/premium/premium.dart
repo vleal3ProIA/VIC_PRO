@@ -32,9 +32,11 @@ library;
 /// 5. Exportar aqui en el barrel.
 
 export 'kpi_card.dart';
+export 'page_header.dart';
 export 'premium_badge.dart';
 export 'premium_button.dart';
 export 'premium_card.dart';
 export 'premium_input.dart';
+export 'premium_tabs.dart';
 export 'section_header.dart';
 export 'skeleton_loader.dart';
