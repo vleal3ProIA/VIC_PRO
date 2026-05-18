@@ -353,23 +353,69 @@ whitelist en `verify-password/index.ts`; (b) llamar
 `consume_recent_verification` en la Edge Function destructiva;
 (c) mostrar `ReauthDialog.show()` en el frontend correspondiente.
 
-### 🟡 PR-C · Sin antivirus en uploads
+### ✅ PR-C · Antivirus VirusTotal async (cerrado 2026-05-18)
 
-**Riesgo**: archivo malicioso pasa los chequeos de magic bytes (es
-un PDF válido pero contiene exploit, o un docx con macro). Lo
-descarga otro user, su antivirus local lo detecta — pero ya estaba en
-nuestro Storage.
+**Riesgo original**: archivo malicioso pasa los chequeos de magic bytes
+(p.ej. PDF válido pero con exploit conocido, docx con macro malware).
+Lo descarga otro user, su antivirus local lo detecta — pero ya estaba
+en nuestro Storage.
 
-**Mitigación (PR-C)** (opcional, según decisión sobre VirusTotal):
-- Edge Function `scan-upload` async.
-- Tras upload exitoso → hash lookup en VirusTotal /files/{sha256}.
-- Si no existe, subir archivo (free tier hasta 32 MB).
-- Poll status hasta 90s.
-- Resultado en `uploads.virus_scan_status` (`pending|clean|suspicious|error`).
-- Si `suspicious`: soft-delete automático + email al admin.
+**Implementación**:
+- **Migración 0038**: añade a `uploads` las columnas
+  `virus_scan_status` (`pending|clean|suspicious|error|skipped`),
+  `virus_scan_result` (jsonb con stats + flagged_engines + report_url),
+  `virus_scan_at`. Backfill marca los uploads pre-PR-C como `skipped`
+  (no se reescanean — riesgo bajo porque ya pasaron por la whitelist
+  de PR-A). Índice parcial sobre suspicious para alertas. RPC
+  `admin_uploads_scan_stats(p_limit_suspicious)` para dashboard admin.
+- **`_shared/virustotal.ts`**: cliente VirusTotal API v3. Lookup por
+  sha256 PRIMERO (free, no consume cuota de uploads); si VT no conoce
+  el hash, sube el archivo (free tier acepta hasta 32 MB). Polleo
+  hasta 90s con backoff 3s→5s→8s→13s→21s. Extrae solo motores que
+  flagearon (no inflar JSONB).
+- **Edge Function `scan-upload`**: invocable solo con
+  `X-Internal-Auth: <service_role>` (futuro: admin re-scan manual).
+  Idempotente. Pre-skips por tamaño y falta de hash. Si suspicious:
+  soft-delete automático (`deleted_at=now()`) + entrada en
+  `audit_logs` con event `upload.virus_detected`.
+- **Hook en `upload-file/confirm_upload`**: tras marcar `confirmed_at`,
+  fire-and-forget invoca `scan-upload` con
+  `fetch(.../scan-upload, {x-internal-auth})`. NO bloquea la respuesta
+  al cliente: el upload aparece con `virus_scan_status='pending'` y
+  chip "Escaneando…" en la UI; cuando el scan termina, la query
+  `list()` siguiente trae el estado actualizado.
+- **UI `/files`**: chip de estado en cada tile mostrando
+  pending / clean (verified) / suspicious (warning) / error (error).
+  `skipped` se oculta para no contaminar la UI. i18n 8 idiomas.
 
-**Decisión pendiente**: ¿usamos VirusTotal o aceptamos el riesgo
-documentado?
+**Umbral de decisión**: marcamos `suspicious` solo si **>= 1 motor**
+flagea como `malicious` (no como `suspicious`). Muchos engines marcan
+packers / installers legítimos como `suspicious` generando falsos
+positivos; `malicious` es señal más fuerte y reduce el ruido.
+
+**Cuota free tier consumida por upload típico**:
+- 1 lookup por hash (free, no cuenta para los 500/día).
+- 1 upload solo si VT NO conoce el hash (raro para archivos comunes).
+- Estimación: 90% de uploads consumen 0 cuota. El 10% restante consume
+  1 upload + N polls.
+
+**Failure modes documentados**:
+- Si VT rate-limita → status `error`. Upload sigue accesible. Admin
+  puede reintentar manualmente (UI futura).
+- Si VT API key falta → status `skipped` con `reason='vt_not_configured'`.
+- Si red falla → status `error`. Sentry registra el problema.
+- Suspicious detectado → upload soft-deleted, audit log entry.
+
+**Limitaciones conocidas**:
+- No reescaneamos archivos viejos. El backfill los marca como
+  `skipped`. Si quieres revalidarlos: query manual + invoke scan-upload
+  por cada uno.
+- No notificamos al user por email cuando su upload es detectado como
+  malware. Por ahora, audit log + soft-delete silencioso (la UI no
+  muestra el archivo, el user ve "el archivo ha desaparecido"). PR
+  futuro: email auto-generado al user + admin.
+- 32 MB es el límite de scan. Para archivos > 32 MB confiamos en
+  whitelist + magic bytes + content-disposition.
 
 ### 🟡 PR-D · Sin audit log específico de uploads ni tests de seguridad
 
@@ -625,3 +671,4 @@ application/x-yaml): no hay magic bytes universal. Aplicamos:
 | 2026-05-18 | PR-B descargas con Content-Disposition: attachment forzado (3 sitios de createSignedUrl con `download:true`) | PR-B |
 | 2026-05-18 | PR-F re-auth para acciones críticas (parcial): tabla `auth_recent_verifications` + Edge Function `verify-password` + enforcement en `delete-account` y `create-pat` (scope write) + `ReauthDialog` reutilizable + i18n 8 idiomas. Deuda: change-email, webhook rotate, role change. | PR-F |
 | 2026-05-18 | PR-G E2E tests de route guards: refactor de la lógica de redirect a función pura en `router_guards.dart`. 40 tests cubriendo todos los gates (setup, auth, MFA, admin-only, publicOnly, onboarding) y rutas excluidas. | PR-G |
+| 2026-05-18 | PR-C antivirus async con VirusTotal: migración 0038 (columnas + RPC stats), helper `_shared/virustotal.ts`, Edge Function `scan-upload`, hook desde `upload-file/confirm_upload`, UI chip de status en `/files` con i18n 8 idiomas. | PR-C |

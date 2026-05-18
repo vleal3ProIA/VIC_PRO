@@ -221,9 +221,24 @@ class _FileTileState extends ConsumerState<_FileTile> {
       child: ListTile(
         leading: Icon(icon, color: context.colors.primary),
         title: Text(f.filename, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          '${formatBytes(f.sizeBytes)} • ${fmt.format(f.createdAt.toLocal())}',
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${formatBytes(f.sizeBytes)} • ${fmt.format(f.createdAt.toLocal())}',
+            ),
+            // PR-C: chip de estado del scan antivirus. Solo lo
+            // mostramos cuando aporta valor (clean tras un scan exitoso,
+            // pending mientras esta en cola, etc.). 'skipped' se oculta
+            // para no contaminar la UI con archivos viejos / grandes.
+            if (f.virusScanStatus != VirusScanStatus.skipped)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: _VirusScanChip(status: f.virusScanStatus),
+              ),
+          ],
         ),
+        isThreeLine: f.virusScanStatus != VirusScanStatus.skipped,
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -311,5 +326,75 @@ class _FileTileState extends ConsumerState<_FileTile> {
     if (mime.contains('word')) return Icons.description_outlined;
     if (mime == 'application/zip') return Icons.folder_zip_outlined;
     return Icons.insert_drive_file_outlined;
+  }
+}
+
+/// Chip visual que muestra el estado del scan antivirus de un upload.
+/// PR-C: ayuda al user a entender por que un archivo recien subido
+/// aparece marcado como "Escaneando..." (no es un bug, es VirusTotal
+/// procesando). Si suspicious, el upload ya esta soft-deleted asi que
+/// normalmente no se ve en la lista; el caso de mostrar 'suspicious'
+/// aqui es para admin (que ve uploads de todos los tenants).
+class _VirusScanChip extends StatelessWidget {
+  const _VirusScanChip({required this.status});
+
+  final VirusScanStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final theme = Theme.of(context);
+    final (label, icon, bg, fg) = switch (status) {
+      VirusScanStatus.pending => (
+          l.virusScanPending,
+          Icons.hourglass_top_outlined,
+          theme.colorScheme.surfaceContainerHighest,
+          theme.colorScheme.onSurfaceVariant,
+        ),
+      VirusScanStatus.clean => (
+          l.virusScanClean,
+          Icons.verified_outlined,
+          theme.colorScheme.tertiaryContainer,
+          theme.colorScheme.onTertiaryContainer,
+        ),
+      VirusScanStatus.suspicious => (
+          l.virusScanSuspicious,
+          Icons.warning_amber_outlined,
+          theme.colorScheme.errorContainer,
+          theme.colorScheme.onErrorContainer,
+        ),
+      VirusScanStatus.error => (
+          l.virusScanError,
+          Icons.error_outline,
+          theme.colorScheme.surfaceContainerHighest,
+          theme.colorScheme.onSurfaceVariant,
+        ),
+      // 'skipped' no debería renderizar; el caller ya filtra. Por
+      // seguridad damos un fallback discreto.
+      VirusScanStatus.skipped => (
+          l.virusScanSkipped,
+          Icons.info_outline,
+          theme.colorScheme.surfaceContainerHighest,
+          theme.colorScheme.onSurfaceVariant,
+        ),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: fg),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(color: fg),
+          ),
+        ],
+      ),
+    );
   }
 }
