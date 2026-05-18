@@ -76,16 +76,29 @@ import 'package:myapp/features/welcome/presentation/pages/welcome_page.dart';
 /// `true` si hay sesion activa del lado del SDK de Supabase. Lo lee
 /// el guard del router para decidir si dejar pasar a rutas privadas.
 ///
-/// En produccion lee directo del getter `currentSession` (no del stream
-/// `onAuthStateChange`) porque ese stream entrega los eventos de forma
-/// asincrona y justo tras `signIn` podria estar "stale" durante un tick.
-/// El getter `currentSession` siempre esta fresco.
+/// **Critico** que dependa del stream `authStateChangesProvider`:
+/// Riverpod cachea el valor de un Provider hasta que alguna de sus
+/// dependencias cambia. Sin el `ref.watch(authStateChangesProvider)`,
+/// el provider se evaluaria a `false` al cargar /login, quedaria
+/// cacheado, y un `signIn` posterior NO invalidaria el cache -> el
+/// guard del router veria estado stale y el user se quedaria en /login
+/// tras pulsar "iniciar sesion" (solo despues de un F5 que recrea el
+/// container funcionaria).
+///
+/// El stream NO modifica el valor que devolvemos -- seguimos leyendo
+/// el getter `currentSession` que es siempre fresco. Solo lo usamos
+/// como TRIGGER para que Riverpod invalide el cache en cada signIn /
+/// signOut / token refresh.
 ///
 /// Existe como provider separado para que los tests E2E del router
 /// puedan overridearlo con `true` / `false` sin tener que construir un
 /// `Session` real ni inicializar el cliente Supabase. Ver
 /// `test/core/router/app_router_guards_test.dart`.
 final routerIsAuthenticatedProvider = Provider<bool>((ref) {
+  // Trigger de re-evaluacion: cualquier cambio en el stream de auth
+  // invalida este provider y la proxima lectura lee currentSession
+  // fresco. Sin esto, queda cacheado al primer read y nunca se actualiza.
+  ref.watch(authStateChangesProvider);
   return ref.watch(supabaseClientProvider).auth.currentSession != null;
 });
 
