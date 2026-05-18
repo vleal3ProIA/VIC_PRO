@@ -220,6 +220,12 @@
   "reauthErrorGeneric": "No pudimos verificar tu contraseña. Inténtalo de nuevo.",
 
   "settingsTitle": "Ajustes",
+  "settingsSubtitle": "Gestiona tu perfil, seguridad y preferencias.",
+  "settingsTabAccount": "Cuenta",
+  "settingsTabWorkspace": "Workspace",
+  "settingsTabBilling": "Facturación",
+  "settingsTabSecurity": "Seguridad",
+  "settingsDangerZone": "Zona peligrosa",
   "settingsProfileSection": "Perfil",
   "settingsPreferencesSection": "Preferencias",
   "settingsSecuritySection": "Seguridad",

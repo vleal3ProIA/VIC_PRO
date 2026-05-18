@@ -220,6 +220,12 @@
   "reauthErrorGeneric": "Impossible de vérifier votre mot de passe. Veuillez réessayer.",
 
   "settingsTitle": "Paramètres",
+  "settingsSubtitle": "Gérez votre profil, sécurité et préférences.",
+  "settingsTabAccount": "Compte",
+  "settingsTabWorkspace": "Workspace",
+  "settingsTabBilling": "Facturation",
+  "settingsTabSecurity": "Sécurité",
+  "settingsDangerZone": "Zone dangereuse",
   "settingsProfileSection": "Profil",
   "settingsPreferencesSection": "Préférences",
   "settingsSecuritySection": "Sécurité",

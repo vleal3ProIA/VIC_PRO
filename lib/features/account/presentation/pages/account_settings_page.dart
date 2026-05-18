@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+
 import 'package:myapp/core/constants/supported_locales.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/theme/app_tokens.dart';
+import 'package:myapp/core/widgets/premium/premium.dart';
 import 'package:myapp/features/account/application/data_export_notifier.dart';
 import 'package:myapp/features/account/application/profile_settings_notifier.dart';
 import 'package:myapp/features/account/presentation/widgets/profile_failure_message.dart';
@@ -13,6 +16,25 @@ import 'package:myapp/features/account/presentation/widgets/user_avatar.dart';
 import 'package:myapp/features/flags/application/feature_flags_providers.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
+/// `/account-settings` -- pagina de configuracion del user.
+///
+/// **Rediseno (Fase 5 Premium UI)**: pasamos de una lista vertical de
+/// 17 ListTiles a 4 tabs internas (Account / Workspace / Billing /
+/// Security). Inspirado en MaterialPro y Stripe Account Settings.
+///
+/// **Logica preservada al 100%**:
+/// - `ProfileSettingsNotifier`: state management de profile + saves.
+/// - `DataExportNotifier`: export GDPR.
+/// - Avatar upload con ImagePicker + content-type detection.
+/// - Snackbars de feedback (saved / failure).
+/// - Feature flag `audit_log_visible` para Activity + Audit log.
+///
+/// **Tabs**:
+/// - Account: profile (avatar, name, username, email) + preferences
+///   (language, theme).
+/// - Workspace: files, tokens, webhooks, team, activity, audit log.
+/// - Billing: plans, billing info, invoices, data export.
+/// - Security: password, email, MFA, passkeys, sessions, delete.
 class AccountSettingsPage extends ConsumerStatefulWidget {
   const AccountSettingsPage({super.key});
 
@@ -24,6 +46,7 @@ class AccountSettingsPage extends ConsumerStatefulWidget {
 class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
   final _displayNameCtrl = TextEditingController();
   String? _lastSyncedName;
+  int _currentTab = 0;
 
   @override
   void dispose() {
@@ -31,7 +54,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     super.dispose();
   }
 
-  /// Abre el selector de imágenes y sube la elegida como avatar.
+  /// Abre el selector de imagenes y sube la elegida como avatar.
   Future<void> _pickAvatar(ProfileSettingsNotifier notifier) async {
     final file = await ImagePicker().pickImage(
       source: ImageSource.gallery,
@@ -127,373 +150,501 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     String email,
     AppLocalizations l,
   ) {
-    final profile = state.profile!;
-    final exportState = ref.watch(dataExportNotifierProvider);
     return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                l.settingsTitle,
-                style: context.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ─── Header de pagina ───
+            PageHeader(
+              title: l.settingsTitle,
+              subtitle: l.settingsSubtitle,
+            ),
+            // ─── Tabs ───
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
               ),
-              const SizedBox(height: 20),
-              // ----- Perfil -----
-              _SectionHeader(l.settingsProfileSection),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Center(
-                        child: Stack(
-                          children: [
-                            UserAvatar(
-                              name: profile.effectiveName,
-                              avatarUrl: profile.avatarUrl,
-                              radius: 44,
-                            ),
-                            Positioned(
-                              right: 0,
-                              bottom: 0,
-                              child: Material(
-                                color: context.colors.primary,
-                                shape: const CircleBorder(),
-                                child: InkWell(
-                                  customBorder: const CircleBorder(),
-                                  onTap: state.isSaving
-                                      ? null
-                                      : () => _pickAvatar(notifier),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(6),
-                                    child: Icon(
-                                      Icons.camera_alt_outlined,
-                                      size: 16,
-                                      color: context.colors.onPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Center(
-                        child: TextButton(
-                          onPressed: state.isSaving
-                              ? null
-                              : () => _pickAvatar(notifier),
-                          child: Text(l.settingsChangeAvatar),
-                        ),
-                      ),
-                      const Divider(height: 24),
-                      TextField(
-                        controller: _displayNameCtrl,
-                        enabled: !state.isSaving,
-                        decoration: InputDecoration(
-                          labelText: l.settingsFieldDisplayName,
-                          prefixIcon: const Icon(Icons.badge_outlined),
-                        ),
-                        onSubmitted: notifier.saveDisplayName,
-                      ),
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: FilledButton.tonal(
-                          onPressed: state.isSaving
-                              ? null
-                              : () => notifier.saveDisplayName(
-                                    _displayNameCtrl.text,
-                                  ),
-                          child: Text(l.actionSave),
-                        ),
-                      ),
-                      const Divider(height: 24),
-                      _ReadOnlyRow(
-                        icon: Icons.alternate_email,
-                        label: l.settingsFieldUsername,
-                        value: profile.username ?? '—',
-                      ),
-                      const SizedBox(height: 12),
-                      _ReadOnlyRow(
-                        icon: Icons.email_outlined,
-                        label: l.settingsFieldEmail,
-                        value: email,
-                      ),
-                    ],
+              child: PremiumTabs(
+                tabs: [
+                  PremiumTabItem(
+                    label: l.settingsTabAccount,
+                    icon: Icons.person_outline,
+                  ),
+                  PremiumTabItem(
+                    label: l.settingsTabWorkspace,
+                    icon: Icons.workspaces_outline,
+                  ),
+                  PremiumTabItem(
+                    label: l.settingsTabBilling,
+                    icon: Icons.receipt_long_outlined,
+                  ),
+                  PremiumTabItem(
+                    label: l.settingsTabSecurity,
+                    icon: Icons.lock_outline,
+                  ),
+                ],
+                currentIndex: _currentTab,
+                onChanged: (i) => setState(() => _currentTab = i),
+              ),
+            ),
+            // ─── Contenido de la tab activa ───
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.lg,
+                ),
+                child: switch (_currentTab) {
+                  0 => _AccountTab(
+                      state: state,
+                      notifier: notifier,
+                      displayNameCtrl: _displayNameCtrl,
+                      email: email,
+                      onPickAvatar: () => _pickAvatar(notifier),
+                    ),
+                  1 => const _WorkspaceTab(),
+                  2 => const _BillingTab(),
+                  _ => const _SecurityTab(),
+                },
+              ),
+            ),
+            if (state.isSaving)
+              const Padding(
+                padding: EdgeInsets.only(bottom: AppSpacing.md),
+                child: Center(
+                  child: SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2.4),
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // ----- Preferencias -----
-              _SectionHeader(l.settingsPreferencesSection),
-              Card(
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.language_outlined),
-                      title: Text(l.settingsLanguage),
-                      trailing: DropdownButton<String>(
-                        value: profile.locale,
-                        underline: const SizedBox.shrink(),
-                        onChanged: state.isSaving
-                            ? null
-                            : (code) {
-                                if (code != null) {
-                                  notifier.changeLocale(Locale(code));
-                                }
-                              },
-                        items: [
-                          for (final loc in AppLocales.all)
-                            DropdownMenuItem(
-                              value: loc.languageCode,
-                              child: Text(
-                                '${AppLocales.flag[loc.languageCode] ?? ''}  '
-                                '${AppLocales.nativeName[loc.languageCode] ?? loc.languageCode}',
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.brightness_6_outlined),
-                      title: Text(l.settingsTheme),
-                      trailing: DropdownButton<ThemeMode>(
-                        value: profile.themeModeEnum,
-                        underline: const SizedBox.shrink(),
-                        onChanged: state.isSaving
-                            ? null
-                            : (mode) {
-                                if (mode != null) {
-                                  notifier.changeThemeMode(mode);
-                                }
-                              },
-                        items: [
-                          DropdownMenuItem(
-                            value: ThemeMode.system,
-                            child: Text(context.l10n.themeSystem),
-                          ),
-                          DropdownMenuItem(
-                            value: ThemeMode.light,
-                            child: Text(context.l10n.themeLight),
-                          ),
-                          DropdownMenuItem(
-                            value: ThemeMode.dark,
-                            child: Text(context.l10n.themeDark),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // ----- Seguridad -----
-              _SectionHeader(l.settingsSecuritySection),
-              Card(
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.password_outlined),
-                      title: Text(l.settingsChangePassword),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () =>
-                          context.goNamed(RouteNames.changePassword),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.alternate_email),
-                      title: Text(l.settingsChangeEmail),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.goNamed(RouteNames.changeEmail),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.shield_outlined),
-                      title: Text(context.l10n.actionEnableMfa),
-                      subtitle: Text(l.settingsSecurityHint),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.goNamed(RouteNames.mfaSetup),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.fingerprint),
-                      title: Text(l.settingsPasskeys),
-                      subtitle: Text(l.settingsPasskeysHint),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.goNamed(RouteNames.passkeys),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.devices_outlined),
-                      title: Text(l.settingsSessions),
-                      subtitle: Text(l.settingsSessionsHint),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.goNamed(RouteNames.sessions),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.cloud_outlined),
-                      title: Text(l.filesTitle),
-                      subtitle: Text(l.filesHint),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.goNamed(RouteNames.files),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.vpn_key_outlined),
-                      title: Text(l.tokensTitle),
-                      subtitle: Text(l.tokensHint),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.goNamed(RouteNames.tokens),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.webhook_outlined),
-                      title: Text(l.webhooksTitle),
-                      subtitle: Text(l.webhooksHint),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.goNamed(RouteNames.webhooks),
-                    ),
-                    const Divider(height: 1),
-                    // El tile de "Recent activity" se oculta si el flag
-                    // `audit_log_visible` está off (gated por feature flag).
-                    if (ref.watch(flagEnabledProvider('audit_log_visible'))) ...[
-                      ListTile(
-                        leading: const Icon(Icons.timeline),
-                        title: Text(l.activityTitle),
-                        subtitle: Text(l.activityHint),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => context.goNamed(RouteNames.activity),
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(Icons.history),
-                        title: Text(l.settingsAuditLog),
-                        subtitle: Text(l.settingsAuditLogHint),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => context.goNamed(RouteNames.auditLog),
-                      ),
-                      const Divider(height: 1),
-                    ],
-                    ListTile(
-                      leading: const Icon(Icons.groups_outlined),
-                      title: Text(l.settingsTeam),
-                      subtitle: Text(l.settingsTeamHint),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.goNamed(RouteNames.team),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.workspace_premium_outlined),
-                      title: Text(l.settingsPlans),
-                      subtitle: Text(l.settingsPlansHint),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.goNamed(RouteNames.plans),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.receipt_long_outlined),
-                      title: Text(l.settingsBillingInfo),
-                      subtitle: Text(l.settingsBillingInfoHint),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.goNamed(RouteNames.billingInfo),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.description_outlined),
-                      title: Text(l.settingsInvoices),
-                      subtitle: Text(l.settingsInvoicesHint),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.goNamed(RouteNames.invoices),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.download_outlined),
-                      title: Text(l.settingsDownloadData),
-                      subtitle: Text(l.settingsDownloadDataHint),
-                      trailing: exportState.isBuilding
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.4,
-                              ),
-                            )
-                          : const Icon(Icons.chevron_right),
-                      onTap: exportState.isBuilding
-                          ? null
-                          : () => ref
-                              .read(dataExportNotifierProvider.notifier)
-                              .exportAndDownload(),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: Icon(
-                        Icons.delete_forever_outlined,
-                        color: context.colors.error,
-                      ),
-                      title: Text(
-                        l.settingsDeleteAccount,
-                        style: TextStyle(color: context.colors.error),
-                      ),
-                      trailing: Icon(
-                        Icons.chevron_right,
-                        color: context.colors.error,
-                      ),
-                      onTap: () =>
-                          context.goNamed(RouteNames.deleteAccount),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (state.isSaving)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Center(
-                    child: SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2.4),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.text);
-  final String text;
+// ═══════════════════════════════════════════════════════════════════
+// Tab 1: Account
+// Profile (avatar + name + username + email) + preferences (language +
+// theme). Datos editables del user.
+// ═══════════════════════════════════════════════════════════════════
+
+class _AccountTab extends ConsumerWidget {
+  const _AccountTab({
+    required this.state,
+    required this.notifier,
+    required this.displayNameCtrl,
+    required this.email,
+    required this.onPickAvatar,
+  });
+
+  final ProfileSettingsState state;
+  final ProfileSettingsNotifier notifier;
+  final TextEditingController displayNameCtrl;
+  final String email;
+  final VoidCallback onPickAvatar;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final profile = state.profile!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ─── Card: Profile ───
+        SectionHeader(title: l.settingsProfileSection, compact: true),
+        AppSpacing.gapMd,
+        PremiumCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Stack(
+                  children: [
+                    UserAvatar(
+                      name: profile.effectiveName,
+                      avatarUrl: profile.avatarUrl,
+                      radius: 44,
+                    ),
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Material(
+                        color: context.colors.primary,
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: state.isSaving ? null : onPickAvatar,
+                          child: Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Icon(
+                              Icons.camera_alt_outlined,
+                              size: 16,
+                              color: context.colors.onPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  onPressed: state.isSaving ? null : onPickAvatar,
+                  child: Text(l.settingsChangeAvatar),
+                ),
+              ),
+              const Divider(height: 24),
+              TextField(
+                controller: displayNameCtrl,
+                enabled: !state.isSaving,
+                decoration: InputDecoration(
+                  labelText: l.settingsFieldDisplayName,
+                  prefixIcon: const Icon(Icons.badge_outlined),
+                ),
+                onSubmitted: notifier.saveDisplayName,
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton.tonal(
+                  onPressed: state.isSaving
+                      ? null
+                      : () => notifier.saveDisplayName(displayNameCtrl.text),
+                  child: Text(l.actionSave),
+                ),
+              ),
+              const Divider(height: 24),
+              _ReadOnlyRow(
+                icon: Icons.alternate_email,
+                label: l.settingsFieldUsername,
+                value: profile.username ?? '—',
+              ),
+              const SizedBox(height: 12),
+              _ReadOnlyRow(
+                icon: Icons.email_outlined,
+                label: l.settingsFieldEmail,
+                value: email,
+              ),
+            ],
+          ),
+        ),
+        AppSpacing.gapLg,
+        // ─── Card: Preferences ───
+        SectionHeader(title: l.settingsPreferencesSection, compact: true),
+        AppSpacing.gapMd,
+        PremiumCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.language_outlined),
+                title: Text(l.settingsLanguage),
+                trailing: DropdownButton<String>(
+                  value: profile.locale,
+                  underline: const SizedBox.shrink(),
+                  onChanged: state.isSaving
+                      ? null
+                      : (code) {
+                          if (code != null) {
+                            notifier.changeLocale(Locale(code));
+                          }
+                        },
+                  items: [
+                    for (final loc in AppLocales.all)
+                      DropdownMenuItem(
+                        value: loc.languageCode,
+                        child: Text(
+                          '${AppLocales.flag[loc.languageCode] ?? ''}  '
+                          '${AppLocales.nativeName[loc.languageCode] ?? loc.languageCode}',
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.brightness_6_outlined),
+                title: Text(l.settingsTheme),
+                trailing: DropdownButton<ThemeMode>(
+                  value: profile.themeModeEnum,
+                  underline: const SizedBox.shrink(),
+                  onChanged: state.isSaving
+                      ? null
+                      : (mode) {
+                          if (mode != null) {
+                            notifier.changeThemeMode(mode);
+                          }
+                        },
+                  items: [
+                    DropdownMenuItem(
+                      value: ThemeMode.system,
+                      child: Text(context.l10n.themeSystem),
+                    ),
+                    DropdownMenuItem(
+                      value: ThemeMode.light,
+                      child: Text(context.l10n.themeLight),
+                    ),
+                    DropdownMenuItem(
+                      value: ThemeMode.dark,
+                      child: Text(context.l10n.themeDark),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Tab 2: Workspace
+// Files, tokens, webhooks, team, activity, audit log.
+// ═══════════════════════════════════════════════════════════════════
+
+class _WorkspaceTab extends ConsumerWidget {
+  const _WorkspaceTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final auditLogVisible = ref.watch(flagEnabledProvider('audit_log_visible'));
+
+    return PremiumCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          _LinkTile(
+            icon: Icons.cloud_outlined,
+            title: l.filesTitle,
+            subtitle: l.filesHint,
+            onTap: () => context.goNamed(RouteNames.files),
+          ),
+          const Divider(height: 1),
+          _LinkTile(
+            icon: Icons.vpn_key_outlined,
+            title: l.tokensTitle,
+            subtitle: l.tokensHint,
+            onTap: () => context.goNamed(RouteNames.tokens),
+          ),
+          const Divider(height: 1),
+          _LinkTile(
+            icon: Icons.webhook_outlined,
+            title: l.webhooksTitle,
+            subtitle: l.webhooksHint,
+            onTap: () => context.goNamed(RouteNames.webhooks),
+          ),
+          const Divider(height: 1),
+          _LinkTile(
+            icon: Icons.groups_outlined,
+            title: l.settingsTeam,
+            subtitle: l.settingsTeamHint,
+            onTap: () => context.goNamed(RouteNames.team),
+          ),
+          // Activity y Audit log estan gated por feature flag
+          // `audit_log_visible`.
+          if (auditLogVisible) ...[
+            const Divider(height: 1),
+            _LinkTile(
+              icon: Icons.timeline,
+              title: l.activityTitle,
+              subtitle: l.activityHint,
+              onTap: () => context.goNamed(RouteNames.activity),
+            ),
+            const Divider(height: 1),
+            _LinkTile(
+              icon: Icons.history,
+              title: l.settingsAuditLog,
+              subtitle: l.settingsAuditLogHint,
+              onTap: () => context.goNamed(RouteNames.auditLog),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Tab 3: Billing
+// Plans, billing info, invoices, data export (GDPR).
+// ═══════════════════════════════════════════════════════════════════
+
+class _BillingTab extends ConsumerWidget {
+  const _BillingTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final exportState = ref.watch(dataExportNotifierProvider);
+
+    return PremiumCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          _LinkTile(
+            icon: Icons.workspace_premium_outlined,
+            title: l.settingsPlans,
+            subtitle: l.settingsPlansHint,
+            onTap: () => context.goNamed(RouteNames.plans),
+          ),
+          const Divider(height: 1),
+          _LinkTile(
+            icon: Icons.receipt_long_outlined,
+            title: l.settingsBillingInfo,
+            subtitle: l.settingsBillingInfoHint,
+            onTap: () => context.goNamed(RouteNames.billingInfo),
+          ),
+          const Divider(height: 1),
+          _LinkTile(
+            icon: Icons.description_outlined,
+            title: l.settingsInvoices,
+            subtitle: l.settingsInvoicesHint,
+            onTap: () => context.goNamed(RouteNames.invoices),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.download_outlined),
+            title: Text(l.settingsDownloadData),
+            subtitle: Text(l.settingsDownloadDataHint),
+            trailing: exportState.isBuilding
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.4),
+                  )
+                : const Icon(Icons.chevron_right),
+            onTap: exportState.isBuilding
+                ? null
+                : () => ref
+                    .read(dataExportNotifierProvider.notifier)
+                    .exportAndDownload(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Tab 4: Security
+// Password, email change, MFA, passkeys, sessions, delete account.
+// El delete account va al final con estilo destructive.
+// ═══════════════════════════════════════════════════════════════════
+
+class _SecurityTab extends StatelessWidget {
+  const _SecurityTab();
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8, left: 4),
-      child: Text(
-        text.toUpperCase(),
-        style: context.textTheme.labelMedium?.copyWith(
-          color: context.colors.primary,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.8,
+    final l = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PremiumCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              _LinkTile(
+                icon: Icons.password_outlined,
+                title: l.settingsChangePassword,
+                onTap: () => context.goNamed(RouteNames.changePassword),
+              ),
+              const Divider(height: 1),
+              _LinkTile(
+                icon: Icons.alternate_email,
+                title: l.settingsChangeEmail,
+                onTap: () => context.goNamed(RouteNames.changeEmail),
+              ),
+              const Divider(height: 1),
+              _LinkTile(
+                icon: Icons.shield_outlined,
+                title: context.l10n.actionEnableMfa,
+                subtitle: l.settingsSecurityHint,
+                onTap: () => context.goNamed(RouteNames.mfaSetup),
+              ),
+              const Divider(height: 1),
+              _LinkTile(
+                icon: Icons.fingerprint,
+                title: l.settingsPasskeys,
+                subtitle: l.settingsPasskeysHint,
+                onTap: () => context.goNamed(RouteNames.passkeys),
+              ),
+              const Divider(height: 1),
+              _LinkTile(
+                icon: Icons.devices_outlined,
+                title: l.settingsSessions,
+                subtitle: l.settingsSessionsHint,
+                onTap: () => context.goNamed(RouteNames.sessions),
+              ),
+            ],
+          ),
         ),
-      ),
+        AppSpacing.gapLg,
+        // ─── Danger zone ───
+        SectionHeader(title: l.settingsDangerZone, compact: true),
+        AppSpacing.gapMd,
+        PremiumCard(
+          padding: EdgeInsets.zero,
+          child: ListTile(
+            leading: Icon(
+              Icons.delete_forever_outlined,
+              color: context.colors.error,
+            ),
+            title: Text(
+              l.settingsDeleteAccount,
+              style: TextStyle(color: context.colors.error),
+            ),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: context.colors.error,
+            ),
+            onTap: () => context.goNamed(RouteNames.deleteAccount),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════════════════════════════════
+
+/// ListTile estandar para entradas de Settings que navegan a otra ruta.
+/// Centraliza el patron (icon + title + optional subtitle + chevron).
+class _LinkTile extends StatelessWidget {
+  const _LinkTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      subtitle: subtitle != null ? Text(subtitle!) : null,
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
     );
   }
 }

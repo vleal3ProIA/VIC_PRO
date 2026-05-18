@@ -232,6 +232,12 @@
   "reauthErrorGeneric": "We couldn't verify your password. Please try again.",
 
   "settingsTitle": "Settings",
+  "settingsSubtitle": "Manage your profile, security and preferences.",
+  "settingsTabAccount": "Account",
+  "settingsTabWorkspace": "Workspace",
+  "settingsTabBilling": "Billing",
+  "settingsTabSecurity": "Security",
+  "settingsDangerZone": "Danger zone",
   "settingsProfileSection": "Profile",
   "settingsPreferencesSection": "Preferences",
   "settingsSecuritySection": "Security",
