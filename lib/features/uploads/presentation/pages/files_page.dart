@@ -174,11 +174,23 @@ class _FilesPageState extends ConsumerState<FilesPage> {
       case 'quota_exceeded':
         return l.filesQuotaExceeded;
       case 'file_too_large':
+      case 'size_mismatch': // server cazo size declarado != real
         return l.filesTooLarge;
+      case 'file_too_small':
+        return l.filesEmptyFile;
       case 'unsupported_mime':
         return l.filesUnsupportedType;
+      case 'magic_bytes_mismatch': // el archivo no corresponde al MIME declarado
+      case 'invalid_utf8_text':    // .txt/.csv etc. con contenido binario
+        return l.filesContentRejected;
       case 'rate_limited':
         return l.filesRateLimited;
+      // Errores intermedios del flow 2 pasos -> mismo mensaje generico
+      // (el user no necesita distinguir signed_url_error de put_failed).
+      case 'signed_url_error':
+      case 'put_failed':
+      case 'object_not_found':
+      case 'forbidden':
       default:
         return l.filesUploadError;
     }

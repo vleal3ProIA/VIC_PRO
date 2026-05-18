@@ -244,6 +244,7 @@ Una vez subido:
 | 3.P Broadcasts | Migración 0032 + Edge Function `broadcast-dispatch` (paso 4). |
 | 3.Q SEO | `dart run scripts/generate_seo.dart` (ahora automático en CI). |
 | 3.R Deploy | `.htaccess` + workflow de GitHub Actions. **Activa secrets del paso 3.c**. |
+| PR-A Security Uploads | Migración 0036. Re-desplegar Edge Function `upload-file`. Nuevo flow de 2 pasos (signed upload URL) — el cliente sube directo a Storage. Límite subido a 50 MB. Whitelist nueva de 27 MIMEs (sin HTML, sin SVG). Validación de magic bytes server-side. Si tienes Storage CORS configurado, revisa que el bucket `user-uploads` permita `PUT` desde tu dominio (Supabase Dashboard → Storage → bucket → "CORS" tab → añadir tu origin si no estaba). |
 
 > En cada PR nueva, este archivo se actualiza. **Antes de desplegar,
 > relee la lista completa**, no solo lo que es "nuevo".
