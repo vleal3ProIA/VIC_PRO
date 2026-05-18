@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -32,11 +34,52 @@ class FilesPage extends ConsumerStatefulWidget {
 
 class _FilesPageState extends ConsumerState<FilesPage> {
   bool _uploading = false;
+  Timer? _scanPollTimer;
+
+  @override
+  void dispose() {
+    _scanPollTimer?.cancel();
+    super.dispose();
+  }
+
+  /// PR-C UX: cuando hay uploads con `virus_scan_status='pending'`, el
+  /// chip muestra "Escaneando..." pero el scan se hace en background
+  /// (Edge Function `scan-upload` tarda ~5-30s). Sin polling el user
+  /// tiene que pulsar F5 para ver el resultado. Aqui re-fetchamos la
+  /// lista cada 5s mientras quede algun pending; en cuanto todos
+  /// resuelven (clean/suspicious/error/skipped) cancelamos el timer.
+  void _maybePollPendingScans(List<UploadedFile> files) {
+    final hasPending =
+        files.any((f) => f.virusScanStatus == VirusScanStatus.pending);
+    if (hasPending) {
+      if (_scanPollTimer == null || !_scanPollTimer!.isActive) {
+        _scanPollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+          // Si el widget se desmonto entre tick y tick, paramos.
+          if (!mounted) {
+            _scanPollTimer?.cancel();
+            _scanPollTimer = null;
+            return;
+          }
+          ref.invalidate(tenantUploadsProvider);
+        });
+      }
+    } else if (_scanPollTimer != null) {
+      _scanPollTimer!.cancel();
+      _scanPollTimer = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     final async = ref.watch(tenantUploadsProvider);
+    // Cuando el provider tenga datos, decidimos si hay que pollear.
+    // Lo metemos en addPostFrameCallback para no setState durante build.
+    async.whenData((files) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _maybePollPendingScans(files);
+      });
+    });
 
     return Scaffold(
       appBar: AppBar(
