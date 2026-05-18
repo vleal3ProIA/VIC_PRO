@@ -91,3 +91,131 @@ class AppMaxWidths {
   /// Para layouts wide tipo dashboard con paneles laterales.
   static const double wide = 1200;
 }
+
+/// Breakpoints responsive. Mobile-first: usar `>= sm` para "tablet+",
+/// `>= md` para "desktop pequeño", etc. Compatible con la convención
+/// de TailwindCSS / Bootstrap para que el equipo lo encuentre familiar.
+///
+/// Ejemplos de uso:
+/// ```dart
+/// final w = MediaQuery.of(context).size.width;
+/// if (w >= AppBreakpoints.md) {
+///   // layout desktop
+/// } else {
+///   // layout mobile
+/// }
+/// ```
+class AppBreakpoints {
+  AppBreakpoints._();
+  /// Móvil pequeño (< 640): un solo column, padding mínimo.
+  static const double sm = 640;
+  /// Tablet / móvil grande: 2 columnas, padding medio.
+  static const double md = 768;
+  /// Laptop pequeña: 3 columnas, sidebar opcional.
+  static const double lg = 1024;
+  /// Desktop estándar: layout completo con sidebar.
+  static const double xl = 1280;
+  /// Pantalla grande: cuidado con líneas demasiado largas (usar AppMaxWidths).
+  static const double xxl = 1536;
+
+  /// `true` si el ancho actual califica como "desktop" (>= lg).
+  static bool isDesktop(BuildContext ctx) =>
+      MediaQuery.of(ctx).size.width >= lg;
+
+  /// `true` si es tablet (>= md y < lg).
+  static bool isTablet(BuildContext ctx) {
+    final w = MediaQuery.of(ctx).size.width;
+    return w >= md && w < lg;
+  }
+
+  /// `true` si el ancho actual califica como "mobile" (< md).
+  static bool isMobile(BuildContext ctx) =>
+      MediaQuery.of(ctx).size.width < md;
+}
+
+/// Sombras premium estilo Stripe / Linear / Notion. Sombras suaves,
+/// difusas, con offset corto en Y. **Nunca usar `Colors.black` puro** —
+/// siempre con opacity baja para que se vea "premium" en lugar de
+/// "Material elevation cruda".
+///
+/// Cada nivel tiene una variante para light y dark. En dark mode las
+/// sombras son menos visibles (fondo ya oscuro) pero seguimos teniendo
+/// para mantener separación visual.
+///
+/// Uso típico:
+/// ```dart
+/// Container(
+///   decoration: BoxDecoration(
+///     borderRadius: AppRadii.brMd,
+///     boxShadow: AppShadows.card(theme.brightness),
+///   ),
+///   ...
+/// )
+/// ```
+class AppShadows {
+  AppShadows._();
+
+  /// Sombra mínima para elementos que necesitan separación pero NO
+  /// elevación (ej. botones secondary).
+  static List<BoxShadow> sm(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    return [
+      BoxShadow(
+        color: Color.fromRGBO(0, 0, 0, isDark ? 0.20 : 0.04),
+        blurRadius: 2,
+        offset: const Offset(0, 1),
+      ),
+    ];
+  }
+
+  /// Sombra para cards estándar. Suave, 12px de blur. Lo más usado.
+  static List<BoxShadow> card(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    return [
+      BoxShadow(
+        color: Color.fromRGBO(0, 0, 0, isDark ? 0.25 : 0.05),
+        blurRadius: 12,
+        offset: const Offset(0, 2),
+      ),
+      BoxShadow(
+        color: Color.fromRGBO(0, 0, 0, isDark ? 0.10 : 0.02),
+        blurRadius: 4,
+        offset: const Offset(0, 1),
+      ),
+    ];
+  }
+
+  /// Sombra elevada para elementos flotantes (popovers, dropdowns, FAB).
+  static List<BoxShadow> elevated(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    return [
+      BoxShadow(
+        color: Color.fromRGBO(0, 0, 0, isDark ? 0.35 : 0.08),
+        blurRadius: 24,
+        offset: const Offset(0, 8),
+      ),
+      BoxShadow(
+        color: Color.fromRGBO(0, 0, 0, isDark ? 0.15 : 0.03),
+        blurRadius: 8,
+        offset: const Offset(0, 2),
+      ),
+    ];
+  }
+
+  /// Sombra máxima para modales y dialogs centrados.
+  static List<BoxShadow> modal(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    return [
+      BoxShadow(
+        color: Color.fromRGBO(0, 0, 0, isDark ? 0.50 : 0.12),
+        blurRadius: 40,
+        offset: const Offset(0, 12),
+      ),
+      BoxShadow(
+        color: Color.fromRGBO(0, 0, 0, isDark ? 0.25 : 0.04),
+        blurRadius: 12,
+        offset: const Offset(0, 4),
+      ),
+    ];
+  }
+}
