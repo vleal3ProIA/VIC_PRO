@@ -424,9 +424,11 @@ Deno.serve(withSentry("upload-file", async (req) => {
     // el upload (deleted_at = now()) y la RLS de SELECT (que filtra
     // por `deleted_at IS NULL`) lo oculta automaticamente.
     //
-    // Llamamos via fetch en lugar de admin.functions.invoke porque
-    // queremos NO esperar a la respuesta -- el .catch() captura
-    // errores de red sin bloquear el return.
+    // **CRITICO** el `EdgeRuntime.waitUntil()`: sin esto el Deno
+    // runtime mata el worker en cuanto la function retorna su response,
+    // y el `fetch()` async sin await queda colgado / cancelado antes
+    // de enviarse. `waitUntil` registra una promesa que el runtime
+    // espera completar antes de cerrar el worker.
     //
     // **CRITICO** dos headers:
     //   - `authorization: Bearer <service_role>`: hace que el gateway
@@ -435,21 +437,24 @@ Deno.serve(withSentry("upload-file", async (req) => {
     //   - `x-internal-auth: <service_role>`: lo verifica scan-upload
     //     internamente como defense-in-depth (que la authorization no
     //     sea simplemente un JWT user random).
-    fetch(`${supabaseUrl}/functions/v1/scan-upload`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "authorization": `Bearer ${serviceRoleKey}`,
-        "x-internal-auth": serviceRoleKey,
-      },
-      body: JSON.stringify({ upload_id: row.id }),
-    }).catch((e) => {
-      captureError(e instanceof Error ? e : new Error(String(e)), {
-        fn: "upload-file",
-        stage: "scan_upload_invoke",
-        upload_id: row.id,
-      });
-    });
+    // deno-lint-ignore no-explicit-any
+    (globalThis as any).EdgeRuntime?.waitUntil?.(
+      fetch(`${supabaseUrl}/functions/v1/scan-upload`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "authorization": `Bearer ${serviceRoleKey}`,
+          "x-internal-auth": serviceRoleKey,
+        },
+        body: JSON.stringify({ upload_id: row.id }),
+      }).catch((e) => {
+        captureError(e instanceof Error ? e : new Error(String(e)), {
+          fn: "upload-file",
+          stage: "scan_upload_invoke",
+          upload_id: row.id,
+        });
+      }),
+    );
 
     // Signed URL para descarga. PR-B: download:true fuerza
     // Content-Disposition: attachment para que cualquier archivo
