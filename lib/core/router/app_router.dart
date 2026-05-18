@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/router/router_guards.dart';
 import 'package:myapp/features/account/application/profile_providers.dart';
 import 'package:myapp/features/account/presentation/pages/account_sessions_page.dart';
 import 'package:myapp/features/account/presentation/pages/account_settings_page.dart';
@@ -73,6 +73,22 @@ import 'package:myapp/features/webhooks/presentation/pages/webhook_detail_page.d
 import 'package:myapp/features/webhooks/presentation/pages/webhooks_page.dart';
 import 'package:myapp/features/welcome/presentation/pages/welcome_page.dart';
 
+/// `true` si hay sesion activa del lado del SDK de Supabase. Lo lee
+/// el guard del router para decidir si dejar pasar a rutas privadas.
+///
+/// En produccion lee directo del getter `currentSession` (no del stream
+/// `onAuthStateChange`) porque ese stream entrega los eventos de forma
+/// asincrona y justo tras `signIn` podria estar "stale" durante un tick.
+/// El getter `currentSession` siempre esta fresco.
+///
+/// Existe como provider separado para que los tests E2E del router
+/// puedan overridearlo con `true` / `false` sin tener que construir un
+/// `Session` real ni inicializar el cliente Supabase. Ver
+/// `test/core/router/app_router_guards_test.dart`.
+final routerIsAuthenticatedProvider = Provider<bool>((ref) {
+  return ref.watch(supabaseClientProvider).auth.currentSession != null;
+});
+
 final goRouterProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _AuthRefreshNotifier(ref);
   ref.onDispose(refreshNotifier.dispose);
@@ -81,7 +97,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: RoutePaths.welcome,
     debugLogDiagnostics: true,
     refreshListenable: refreshNotifier,
-    redirect: (context, state) => _redirect(ref, state),
+    redirect: (context, state) => appRouterRedirect(ref, state),
     routes: [
       GoRoute(
         path: RoutePaths.welcome,
@@ -450,245 +466,24 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Rutas que NO se ven afectadas por los guards de auth:
-/// - `/auth/callback` siempre debe poder procesar el code.
-/// - `/set-new-password` requiere sesión activa (la del recovery) y NO debe
-///   redirigir a /home al detectar sesión.
-/// - `/password-updated` cierra sesión al entrar, así que debe poder mostrarse.
-/// - `/email-verified` igualmente: visible sin importar el estado.
-/// - `/terms` y `/privacy` son documentos legales: accesibles siempre, con o
-///   sin sesión (se enlazan desde el registro y el footer público).
-const _excludedFromGuard = <String>{
-  RoutePaths.authCallback,
-  RoutePaths.setNewPassword,
-  RoutePaths.passwordUpdated,
-  RoutePaths.emailVerified,
-  RoutePaths.verifyEmailSent,
-  RoutePaths.emailChanged,
-  RoutePaths.terms,
-  RoutePaths.privacy,
-  RoutePaths.cookies,
-  // `/status` es publico: util enseñarlo a evaluadores que aun no
-  // tienen sesion y a usuarios logueados que entran a investigar un
-  // incidente. NO redirigir aunque haya sesion.
-  RoutePaths.status,
-};
-
-/// Rutas privadas (requieren sesión activa).
-const _privateRoutes = <String>{
-  RoutePaths.home,
-  RoutePaths.admin,
-  RoutePaths.adminFlags,
-  RoutePaths.adminPlans,
-  RoutePaths.adminBranding,
-  RoutePaths.adminCoupons,
-  RoutePaths.adminTrash,
-  RoutePaths.adminChangelog,
-  RoutePaths.adminAppBranding,
-  RoutePaths.adminEmailLog,
-  RoutePaths.adminUsers,
-  RoutePaths.adminMetrics,
-  RoutePaths.adminBroadcasts,
-  RoutePaths.adminBroadcastsNew,
-  RoutePaths.adminIncidents,
-  RoutePaths.changelog,
-  RoutePaths.mfaSetup,
-  RoutePaths.accountSettings,
-  RoutePaths.changePassword,
-  RoutePaths.changePasswordDone,
-  RoutePaths.changeEmail,
-  RoutePaths.changeEmailSent,
-  RoutePaths.deleteAccount,
-  RoutePaths.passkeys,
-  RoutePaths.sessions,
-  RoutePaths.files,
-  RoutePaths.tokens,
-  RoutePaths.webhooks,
-  RoutePaths.notifications,
-  RoutePaths.onboarding,
-  RoutePaths.auditLog,
-  RoutePaths.activity,
-  RoutePaths.team,
-  RoutePaths.plans,
-  RoutePaths.billingSuccess,
-  RoutePaths.billingInfo,
-  RoutePaths.embeddedCheckout,
-  RoutePaths.invoices,
-  // `acceptInvite` se gestiona dentro de la propia página: si no hay sesión,
-  // redirige al login él mismo. No la metemos como privada para que un
-  // usuario sin sesión pueda al menos VER el error si el link es inválido.
-};
-
-/// Rutas que además requieren rol `admin`. Un usuario autenticado sin ese
-/// rol que las pida es redirigido a `/home`.
-const _adminRoutes = <String>{
-  RoutePaths.admin,
-  RoutePaths.adminFlags,
-  RoutePaths.adminPlans,
-  RoutePaths.adminBranding,
-  RoutePaths.adminCoupons,
-  RoutePaths.adminTrash,
-  RoutePaths.adminChangelog,
-  RoutePaths.adminAppBranding,
-  RoutePaths.adminEmailLog,
-  RoutePaths.adminUsers,
-  RoutePaths.adminMetrics,
-  RoutePaths.adminBroadcasts,
-  RoutePaths.adminBroadcastsNew,
-  RoutePaths.adminIncidents,
-};
-
-/// Rutas públicas en las que NO queremos estar si ya hay sesión.
-const _publicOnly = <String>{
-  RoutePaths.login,
-  RoutePaths.register,
-  RoutePaths.forgotPassword,
-  RoutePaths.passwordResetSent,
-  RoutePaths.magicLink,
-  RoutePaths.magicLinkSent,
-  RoutePaths.otpRequest,
-  RoutePaths.otpVerify,
-};
-
-/// `true` si la ruta necesita sesión. Lista exacta de `_privateRoutes`
-/// más los patrones parametrizados que el `Set` exacto no atrapa
-/// (ej. `/account-settings/webhooks/<uuid>`).
-bool _isPrivate(String loc) {
-  if (_privateRoutes.contains(loc)) return true;
-  if (loc.startsWith('/account-settings/webhooks/')) return true;
-  if (loc.startsWith('/admin/users/')) return true;
-  if (loc.startsWith('/admin/broadcasts/')) return true;
-  return false;
+/// Wrapper que lee los providers necesarios desde Riverpod y delega a
+/// `evaluateRouterRedirect` (funcion pura definida en
+/// `lib/core/router/router_guards.dart`). Es el callback que pasamos a
+/// `GoRouter.redirect` en produccion.
+///
+/// La logica del guard vive en `router_guards.dart` para que los tests
+/// la puedan importar sin arrastrar dependencias web-only (webauthn_js,
+/// stripe_js) que `app_router.dart` trae via las pages.
+String? appRouterRedirect(Ref ref, GoRouterState state) {
+  return evaluateRouterRedirect(
+    matchedLocation: state.matchedLocation,
+    isAuthenticated: ref.read(routerIsAuthenticatedProvider),
+    branding: ref.read(appBrandingProvider).valueOrNull,
+    mfaPending: ref.read(mfaChallengePendingProvider),
+    isAdmin: ref.read(isAdminProvider),
+    onboardingCompleted: ref.read(onboardingCompletedProvider).valueOrNull,
+  );
 }
-
-/// Mismo concepto que `_isPrivate` pero para rutas SOLO admin.
-bool _isAdmin(String loc) {
-  if (_adminRoutes.contains(loc)) return true;
-  if (loc.startsWith('/admin/users/')) return true;
-  if (loc.startsWith('/admin/broadcasts/')) return true;
-  return false;
-}
-
-String? _redirect(Ref ref, GoRouterState state) {
-  final loc = state.matchedLocation;
-  if (_excludedFromGuard.contains(loc)) return null;
-
-  // ─────────────── Gate 0: setup_completed ───────────────
-  // Antes de cualquier otra cosa, si el deploy no ha pasado por
-  // /setup, fuerza al usuario a entrar ahí. Excepción: /setup mismo
-  // y rutas de auth necesarias para crear el primer admin (el wizard
-  // las usa internamente). Tambien excluimos /auth/callback que sirve
-  // para confirmar el email del admin si Supabase lo exige.
-  //
-  // OJO: leemos el `appBrandingProvider` async directamente (no el
-  // fallback síncrono) porque el fallback tiene `setupCompleted=false`
-  // por defecto. Si redirigieramos basándonos en el fallback durante
-  // el primer frame (mientras carga la query), mandaríamos al usuario
-  // a /setup aunque la BD ya tenga `setup_completed=true`. Solo
-  // redirigimos cuando el provider ha resuelto Y el valor es explícito.
-  // Mientras carga, `valueOrNull` es null → no redirigimos → no flash.
-  final brandingAsync = ref.read(appBrandingProvider);
-  final brandingValue = brandingAsync.valueOrNull;
-  if (brandingValue != null &&
-      !brandingValue.setupCompleted &&
-      loc != RoutePaths.setup) {
-    // Excluimos las rutas que el propio wizard puede necesitar
-    // (auth callback de email verify, verify-email-sent).
-    const setupAllowed = {
-      RoutePaths.authCallback,
-      RoutePaths.verifyEmailSent,
-      RoutePaths.emailVerified,
-    };
-    if (!setupAllowed.contains(loc)) {
-      return RoutePaths.setup;
-    }
-  }
-  // Si ya está completado y alguien intenta volver a /setup, fuera.
-  if (brandingValue != null &&
-      brandingValue.setupCompleted &&
-      loc == RoutePaths.setup) {
-    return RoutePaths.welcome;
-  }
-
-  // Leemos la sesión DIRECTAMENTE del cliente, no de `isAuthenticatedProvider`.
-  // Ese provider se alimenta del stream `onAuthStateChange`, que entrega los
-  // eventos de forma asíncrona: justo tras un `signIn` el provider aún puede
-  // estar "stale" (false) aunque la sesión ya exista. `currentSession` es la
-  // verdad en memoria del SDK y siempre está fresca. `_AuthRefreshNotifier`
-  // sigue disparando la re-evaluación; aquí solo cambiamos QUÉ se lee.
-  final isAuthed = ref.read(supabaseClientProvider).auth.currentSession != null;
-
-  // 1) No autenticado y la ruta requiere sesión → login.
-  if (!isAuthed && _isPrivate(loc)) {
-    return RoutePaths.login;
-  }
-
-  // 1b) Gate de registro: si está cerrado y alguien intenta /register,
-  //     lo mandamos a /login con un toast (lo gestiona la propia
-  //     pantalla register al detectar la flag).
-  //     Mientras el branding carga, asumimos abierto (mejor mostrar la
-  //     pantalla y dejar que la propia /register decida que hacer si
-  //     resulta estar cerrado, que bloquear de mas con un valor stale).
-  if (!isAuthed &&
-      loc == RoutePaths.register &&
-      brandingValue != null &&
-      !brandingValue.registrationEnabled) {
-    return RoutePaths.login;
-  }
-
-  // 2) Si está autenticado pero su AAL no es el requerido (MFA pendiente),
-  //    cualquier ruta lleva a /mfa-challenge salvo la propia /mfa-challenge.
-  if (isAuthed && loc != RoutePaths.mfaChallenge) {
-    final pending = ref.read(mfaChallengePendingProvider);
-    if (pending) return RoutePaths.mfaChallenge;
-  }
-
-  // 2b) Ruta solo-admin y el usuario no tiene ese rol → /home.
-  if (isAuthed && _isAdmin(loc) && !ref.read(isAdminProvider)) {
-    return RoutePaths.home;
-  }
-
-  // 3) Autenticado (y sin MFA pendiente) en ruta solo para invitados.
-  if (isAuthed && _publicOnly.contains(loc)) {
-    return RoutePaths.home;
-  }
-
-  // 4) Si ya completó MFA y está en /mfa-challenge → /home.
-  if (isAuthed && loc == RoutePaths.mfaChallenge) {
-    final pending = ref.read(mfaChallengePendingProvider);
-    if (!pending) return RoutePaths.home;
-  }
-
-  // 5) Onboarding wizard: usuario autenticado sin onboarding completado
-  //    se redirige a /onboarding -- excepto si ya está allí o en rutas
-  //    transversales que NO queremos bloquear (logout, legal, callback).
-  //    Si el provider aún está cargando, NO redirigimos -- evita el
-  //    flash de /onboarding antes de saber el estado real.
-  if (isAuthed &&
-      loc != RoutePaths.onboarding &&
-      _onboardingGatedRoutes.contains(loc)) {
-    final completedAsync = ref.read(onboardingCompletedProvider);
-    final completed = completedAsync.valueOrNull;
-    if (completed == false) return RoutePaths.onboarding;
-  }
-
-  return null;
-}
-
-/// Rutas donde el onboarding gate se aplica. Lista explícita (no
-/// "todas las privadas") porque /accept-invite, /change-email-sent y
-/// similares deben funcionar incluso pre-onboarding (link en email).
-const _onboardingGatedRoutes = <String>{
-  RoutePaths.home,
-  RoutePaths.admin,
-  RoutePaths.accountSettings,
-  RoutePaths.plans,
-  RoutePaths.billingInfo,
-  RoutePaths.invoices,
-  RoutePaths.team,
-  RoutePaths.notifications,
-  RoutePaths.activity,
-};
 
 /// Adaptador entre el `StreamProvider<AuthState>` y el `Listenable` que
 /// `GoRouter.refreshListenable` espera. Cada vez que cambia el estado de

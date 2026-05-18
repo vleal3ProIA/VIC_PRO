@@ -383,19 +383,50 @@ documentado?
   - Quota exhaustion (sub free intenta 1.1 GB → rechazado).
   - Rate limit aplicado (61ª upload en 1h → rechazado).
 
-### 🟢 PR-G · Sin E2E tests de route guards
+### ✅ PR-G · Tests E2E de route guards (cerrado 2026-05-18)
 
-**Riesgo**: regression silenciosa en `app_router.dart`. Hoy si alguien
-toca el `_redirect()` y rompe el gate de admin, no se entera nadie
-hasta que un user no-admin acceda a `/admin/users` en producción.
+**Riesgo original**: regresión silenciosa en `app_router.dart`. Si
+alguien toca `_redirect()` y rompe el gate de admin, no se entera
+nadie hasta que un user no-admin acceda a `/admin/users` en producción.
 
-**Mitigación (PR-G)**:
-- Tests integration con `flutter_test` + provider override:
-  - User no-admin → `/admin/users` → redirected `/home`.
-  - Sin sesión → `/home` → `/login`.
-  - MFA pendiente → cualquier ruta → `/mfa-challenge`.
-  - Onboarding incompleto → `/home` → `/onboarding`.
-  - `setup_completed=false` → cualquier ruta → `/setup`.
+**Implementación**:
+- **Refactor en 2 capas**:
+  - `lib/core/router/router_guards.dart` (nuevo) → función pura
+    `evaluateRouterRedirect(...)` sin dependencia de Riverpod ni
+    Supabase. Recibe el estado ya resuelto (isAuthenticated, branding,
+    mfaPending, isAdmin, onboardingCompleted) y devuelve `String?` con
+    la ruta a redirigir o null.
+  - `lib/core/router/app_router.dart` → wrapper `appRouterRedirect`
+    que lee los providers Riverpod y delega a la pura. Es lo que pasa
+    al `GoRouter.redirect`.
+- **`routerIsAuthenticatedProvider`** nuevo: provider que envuelve
+  `_client.auth.currentSession != null`. Existe para que los tests
+  puedan overridearlo sin tener que construir un `Session` real ni
+  inicializar Supabase.
+- **40 tests** en `test/core/router/app_router_guards_test.dart`
+  cubriendo:
+  - Gate 0 (setup wizard): 6 tests incluyendo el caso del fix del
+    flash (`branding=null` → no redirige).
+  - Gate 1 (sesion + registro cerrado): 9 tests incluyendo subrutas
+    parametrizadas (`/admin/users/<uuid>`, `/account-settings/webhooks/<uuid>`).
+  - Gate 2 (MFA pendiente): 4 tests.
+  - Gate admin-only: 6 tests.
+  - Gate publicOnly: 4 tests.
+  - Gate onboarding: 5 tests incluyendo el caso loading.
+  - Rutas excluidas del guard: 6 tests (callback, password-updated,
+    legal, status).
+
+**Por que pura?** Importar `app_router.dart` en un test VM falla
+porque arrastra `passkeys_page.dart` → `webauthn_js.dart` y
+`embedded_checkout_page.dart` → `stripe_js.dart`, ambos con JS
+interop que no compila fuera de target web. La función pura vive en
+un archivo aislado que solo importa `route_names.dart` y
+`app_branding.dart`.
+
+**Beneficio adicional**: la función pura es ahora reusable. Si en el
+futuro tenemos otro contexto que necesita decidir "donde redirigiría
+el router" (deep link interception, predictive navigation, etc.), se
+llama directo sin levantar la maquinaria de GoRouter.
 
 ---
 
@@ -464,7 +495,7 @@ y un beneficio bajo a esta escala. Mitigamos con:
 
 | # | Riesgo | Status proyecto |
 |---|---|---|
-| A01 | Broken Access Control | ✅ RLS + is_admin + tests. Falta PR-G para E2E. |
+| A01 | Broken Access Control | ✅ RLS + is_admin + tests. E2E route guards ✅ (PR-G, 40 tests). |
 | A02 | Cryptographic Failures | ✅ TLS forzado, passwords bcrypt (Supabase), secrets en env. |
 | A03 | Injection | ✅ PostgREST + RPCs paramétricas. Sin SQL crudo en frontend. |
 | A04 | Insecure Design | 🟡 Re-auth parcial ✅ (PR-F: delete-account + create-pat write; change-email + webhook rotate + role change pendientes). HTML sanitize ✅ (PR-E). |
@@ -593,3 +624,4 @@ application/x-yaml): no hay magic bytes universal. Aplicamos:
 | 2026-05-18 | PR-E broadcasts HTML sanitize (whitelist estricta server-side antes de persistir + render) | PR-E |
 | 2026-05-18 | PR-B descargas con Content-Disposition: attachment forzado (3 sitios de createSignedUrl con `download:true`) | PR-B |
 | 2026-05-18 | PR-F re-auth para acciones críticas (parcial): tabla `auth_recent_verifications` + Edge Function `verify-password` + enforcement en `delete-account` y `create-pat` (scope write) + `ReauthDialog` reutilizable + i18n 8 idiomas. Deuda: change-email, webhook rotate, role change. | PR-F |
+| 2026-05-18 | PR-G E2E tests de route guards: refactor de la lógica de redirect a función pura en `router_guards.dart`. 40 tests cubriendo todos los gates (setup, auth, MFA, admin-only, publicOnly, onboarding) y rutas excluidas. | PR-G |
