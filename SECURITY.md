@@ -269,17 +269,35 @@ Aunque la mayoría stripea `<script>`, hay vectores con `<style>`,
 - Frontend: `broadcasts_datasource.dart` ahora extrae el código de
   error del body de la respuesta (antes solo veía `http_400`).
 
-### 🟠 PR-B · Descargas sin Content-Disposition: attachment
+### ✅ PR-B · Descargas con Content-Disposition: attachment (cerrado 2026-05-18)
 
-**Riesgo**: HTML o SVG ya están fuera del whitelist con PR-A, pero
+**Riesgo original**: HTML o SVG ya están fuera del whitelist con PR-A, pero
 para defense-in-depth, todo download debería ser `attachment`
 explícito. Si por algún bug se cuela un HTML, evitamos que el
 navegador lo renderice.
 
-**Mitigación (PR-B)**:
-- En la generación de signed URLs, añadir `?download=<filename>` de
-  Supabase Storage → fuerza el header en la respuesta.
-- Confirmar que Supabase Storage emite `X-Content-Type-Options: nosniff`.
+**Implementación**:
+- Los TRES sitios en `upload-file/index.ts` que generan signed URLs
+  ahora pasan `{ download: true }` a `createSignedUrl()`:
+  - `confirm_upload` (caso idempotente: fila ya confirmada).
+  - `confirm_upload` (caso normal: tras validar magic bytes).
+  - `get_signed_url` (cuando el cliente pide URL fresca).
+- El query param `?download=` resultante hace que Supabase Storage
+  responda con `Content-Disposition: attachment` → el navegador descarga
+  al disco, no renderiza inline.
+- **Limitación aceptada**: Supabase Storage NO emite
+  `X-Content-Type-Options: nosniff` en signed URLs. No podemos
+  configurarlo (no es header del object). Mitigado por el
+  `Content-Disposition: attachment` que evita rendering inline; un
+  atacante que obtenga la signed URL y elimine `?download=` manualmente
+  podría hacer sniffing, pero ya tiene acceso al archivo entonces el
+  vector no escala.
+- Nuestro propio dominio (Flutter Web SPA en Apache) ya emite
+  `X-Content-Type-Options: nosniff` via `.htaccess` desde 3.R.
+- **Avatares no afectados**: el bucket `avatars` es público y se accede
+  via `getPublicUrl` (sin `download:`); las imágenes se muestran como
+  `<img>` y deben renderizar inline. La superficie de ataque ahí está
+  restringida porque RLS limita a `avatars/<uid>/...`.
 
 ### 🟠 PR-F · Acciones críticas sin re-autenticación
 
@@ -543,3 +561,4 @@ application/x-yaml): no hay magic bytes universal. Aplicamos:
 |---|---|---|
 | 2026-05-18 | Documento inicial + PR-A upload hardening (magic bytes, whitelist 27 MIMEs, signed upload URLs, 50 MB límite, columnas `sha256/magic_validated/confirmed_at` en `uploads`) | PR-A |
 | 2026-05-18 | PR-E broadcasts HTML sanitize (whitelist estricta server-side antes de persistir + render) | PR-E |
+| 2026-05-18 | PR-B descargas con Content-Disposition: attachment forzado (3 sitios de createSignedUrl con `download:true`) | PR-B |

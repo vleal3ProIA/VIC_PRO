@@ -292,9 +292,12 @@ Deno.serve(withSentry("upload-file", async (req) => {
     }
     if (row.confirmed_at) {
       // Idempotente: ya confirmado, devolvemos los datos.
+      // PR-B: download:true fuerza Content-Disposition: attachment.
       const { data: signed } = await admin.storage
         .from(row.bucket)
-        .createSignedUrl(row.path, SIGNED_DOWNLOAD_URL_TTL);
+        .createSignedUrl(row.path, SIGNED_DOWNLOAD_URL_TTL, {
+          download: true,
+        });
       return json(
         {
           upload_id: row.id,
@@ -413,10 +416,15 @@ Deno.serve(withSentry("upload-file", async (req) => {
       return json({ error: "db_error", detail: updErr.message }, 500);
     }
 
-    // Signed URL para descarga.
+    // Signed URL para descarga. PR-B: download:true fuerza
+    // Content-Disposition: attachment para que cualquier archivo
+    // (incluyendo los que se cuelen por bugs futuros del whitelist)
+    // se descargue en vez de renderizarse inline.
     const { data: signed } = await admin.storage
       .from(BUCKET)
-      .createSignedUrl(row.path, SIGNED_DOWNLOAD_URL_TTL);
+      .createSignedUrl(row.path, SIGNED_DOWNLOAD_URL_TTL, {
+        download: true,
+      });
 
     return json(
       {
