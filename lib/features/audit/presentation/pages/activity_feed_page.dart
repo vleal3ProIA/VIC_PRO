@@ -155,6 +155,8 @@ class _Filters extends StatelessWidget {
         return Icons.shield_outlined;
       case AuditEventCategory.passkey:
         return Icons.fingerprint;
+      case AuditEventCategory.upload:
+        return Icons.cloud_outlined;
       case AuditEventCategory.other:
         return Icons.history;
     }

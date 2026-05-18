@@ -201,12 +201,15 @@ async function _processScan(
         upload_id: uploadId,
       });
     }
+    // Insert con el schema real de audit_logs (migracion 0008):
+    // (user_id, event, metadata, occurred_at). NO hay actor_id ni
+    // target_user_id -- es un log por user. Para "system" eventos como
+    // este, usamos el user_id del dueno del upload (mismo target).
     try {
-      await admin.from("audit_logs").insert({
-        actor_id: null,
-        target_user_id: row.user_id,
+      const { error: auditErr } = await admin.from("audit_logs").insert({
+        user_id: row.user_id,
         event: "upload.virus_detected",
-        meta: {
+        metadata: {
           upload_id: uploadId,
           filename: row.filename,
           mime_type: row.mime_type,
@@ -215,6 +218,13 @@ async function _processScan(
           scan_summary: scanResult.result,
         },
       });
+      if (auditErr) {
+        await captureError(new Error(auditErr.message), {
+          fn: "scan-upload",
+          stage: "audit_log_insert",
+          upload_id: uploadId,
+        });
+      }
     } catch (e) {
       await captureError(
         e instanceof Error ? e : new Error(String(e)),

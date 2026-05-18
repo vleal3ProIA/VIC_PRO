@@ -417,17 +417,74 @@ positivos; `malicious` es señal más fuerte y reduce el ruido.
 - 32 MB es el límite de scan. Para archivos > 32 MB confiamos en
   whitelist + magic bytes + content-disposition.
 
-### 🟡 PR-D · Sin audit log específico de uploads ni tests de seguridad
+### ✅ PR-D · Audit log uploads + tests de seguridad (cerrado 2026-05-18)
 
-**Mitigación (PR-D)**:
-- Eventos nuevos en `audit_logs`: `upload.created`, `upload.deleted`,
-  `upload.virus_detected`.
-- Tests Deno (unit + integration):
-  - Magic bytes (PNG renombrado .pdf → rechazado).
-  - HTML/JS/EXE rechazados por whitelist.
-  - UTF-8 heuristic en .txt (binario disfrazado rechazado).
-  - Quota exhaustion (sub free intenta 1.1 GB → rechazado).
-  - Rate limit aplicado (61ª upload en 1h → rechazado).
+**Riesgo original**: sin entradas específicas en `audit_logs` para
+uploads, no había trazabilidad de qué archivos subió/borró cada user,
+ni qué uploads fueron detectados como malware por VirusTotal. Imposible
+investigar incidentes ("¿de dónde salió este archivo malicioso?").
+
+**Implementación**:
+- **3 events nuevos en `audit_logs`**:
+  - `upload.created` → emitido por `upload-file` tras `confirm_upload`
+    exitoso. Metadata: `upload_id, filename, mime_type, size_bytes,
+    sha256, tenant_id`.
+  - `upload.deleted` → emitido por `upload-file` action=delete tras
+    soft-delete OK. Metadata: `upload_id, filename, mime_type,
+    size_bytes`.
+  - `upload.virus_detected` → emitido por `scan-upload` cuando
+    VirusTotal flagea como malicious. El upload queda soft-deleted
+    automáticamente. Metadata: `upload_id, filename, mime_type,
+    size_bytes, sha256, scan_summary` (con stats + flagged_engines +
+    report_url).
+- **Fix de bug pre-existente**: la versión inicial de scan-upload (en
+  PR-C) intentaba insertar con `actor_id` / `target_user_id` / `meta`
+  que NO existen en el schema real. Ahora usa `user_id` / `event` /
+  `metadata` correctos. El INSERT fallaba silenciosamente dentro de
+  try/catch antes de este fix.
+- **`audit_events.dart`**: constantes Dart sincronizadas con los
+  event strings de BD.
+- **`audit_event_visuals.dart`**: nuevos icons, labels y categoría
+  `AuditEventCategory.upload` para los 3 events.
+- **i18n 8 idiomas**: `auditEventUploadCreated`,
+  `auditEventUploadDeleted`, `auditEventUploadVirusDetected`,
+  `activityCategoryUpload`.
+
+**Tests Deno** en `supabase/functions/_shared/__tests__/`:
+- `magic_bytes.test.ts` (30+ tests):
+  - Whitelist coverage (27 MIMEs + verificación de rechazos
+    HTML/SVG/JS).
+  - Magic bytes positivos (PNG, JPEG variants, GIF87/89, WEBP, PDF,
+    ZIP/docx/xlsx, OLE2 office viejo, RTF, TAR con offset 257).
+  - Anti-spoofing (PNG renombrado .pdf rechazado, .exe disfrazado de
+    PNG rechazado, MIMEs fuera de whitelist rechazados).
+  - UTF-8 heuristic (texto válido, unicode, NUL bytes detectados,
+    binario disfrazado de .txt rechazado).
+  - `sha256Hex` determinista y formato correcto.
+- `html_sanitize.test.ts` (25+ tests):
+  - Whitelist tags (p, strong, em, h1-h4, a, br, hr, ul, ol, li,
+    blockquote).
+  - Tags peligrosos eliminados (script, style, iframe, svg, form,
+    object, embed, link).
+  - href schemes: http/https/mailto aceptados; javascript:/data:/
+    vbscript: rechazados; bypasses con whitespace/control chars y
+    case insensitive.
+  - Atributos eliminados (style, on*).
+  - Escape de `<`, `>`, `&` en texto plano.
+  - Comentarios HTML eliminados.
+  - Robustez: input vacío, tags mal cerrados, input > 100 KB.
+
+**Cómo ejecutar los tests**: requiere Deno instalado.
+```bash
+cd supabase/functions
+deno test --allow-read _shared/__tests__/
+```
+
+**Deuda explícita** (NO en este PR):
+- Quota exhaustion + rate limit tests: requieren entorno Supabase con
+  fixtures. Mejor como integration tests en CI con BD efímera.
+- CI no corre los tests Deno todavía: hace falta añadir un job al
+  workflow. Issue futuro.
 
 ### ✅ PR-G · Tests E2E de route guards (cerrado 2026-05-18)
 
@@ -672,3 +729,4 @@ application/x-yaml): no hay magic bytes universal. Aplicamos:
 | 2026-05-18 | PR-F re-auth para acciones críticas (parcial): tabla `auth_recent_verifications` + Edge Function `verify-password` + enforcement en `delete-account` y `create-pat` (scope write) + `ReauthDialog` reutilizable + i18n 8 idiomas. Deuda: change-email, webhook rotate, role change. | PR-F |
 | 2026-05-18 | PR-G E2E tests de route guards: refactor de la lógica de redirect a función pura en `router_guards.dart`. 40 tests cubriendo todos los gates (setup, auth, MFA, admin-only, publicOnly, onboarding) y rutas excluidas. | PR-G |
 | 2026-05-18 | PR-C antivirus async con VirusTotal: migración 0038 (columnas + RPC stats), helper `_shared/virustotal.ts`, Edge Function `scan-upload`, hook desde `upload-file/confirm_upload`, UI chip de status en `/files` con i18n 8 idiomas. | PR-C |
+| 2026-05-18 | PR-D audit log uploads + tests Deno: 3 events nuevos (`upload.created`, `upload.deleted`, `upload.virus_detected`), fix de schema en scan-upload INSERT, categoría `upload` en activity feed con i18n 8 idiomas, 55+ tests Deno para `magic_bytes.ts` y `html_sanitize.ts`. Cierra lote de seguridad. | PR-D |
