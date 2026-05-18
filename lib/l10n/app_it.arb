@@ -220,6 +220,12 @@
   "reauthErrorGeneric": "Impossibile verificare la tua password. Riprova.",
 
   "settingsTitle": "Impostazioni",
+  "settingsSubtitle": "Gestisci il tuo profilo, sicurezza e preferenze.",
+  "settingsTabAccount": "Account",
+  "settingsTabWorkspace": "Workspace",
+  "settingsTabBilling": "Fatturazione",
+  "settingsTabSecurity": "Sicurezza",
+  "settingsDangerZone": "Zona pericolosa",
   "settingsProfileSection": "Profilo",
   "settingsPreferencesSection": "Preferenze",
   "settingsSecuritySection": "Sicurezza",

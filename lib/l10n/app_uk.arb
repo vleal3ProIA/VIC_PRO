@@ -220,6 +220,12 @@
   "reauthErrorGeneric": "Не вдалося перевірити пароль. Спробуй ще раз.",
 
   "settingsTitle": "Налаштування",
+  "settingsSubtitle": "Керуй профілем, безпекою та налаштуваннями.",
+  "settingsTabAccount": "Акаунт",
+  "settingsTabWorkspace": "Workspace",
+  "settingsTabBilling": "Білінг",
+  "settingsTabSecurity": "Безпека",
+  "settingsDangerZone": "Небезпечна зона",
   "settingsProfileSection": "Профіль",
   "settingsPreferencesSection": "Уподобання",
   "settingsSecuritySection": "Безпека",

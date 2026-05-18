@@ -220,6 +220,12 @@
   "reauthErrorGeneric": "Wir konnten dein Passwort nicht überprüfen. Bitte erneut versuchen.",
 
   "settingsTitle": "Einstellungen",
+  "settingsSubtitle": "Verwalte dein Profil, Sicherheit und Einstellungen.",
+  "settingsTabAccount": "Konto",
+  "settingsTabWorkspace": "Workspace",
+  "settingsTabBilling": "Abrechnung",
+  "settingsTabSecurity": "Sicherheit",
+  "settingsDangerZone": "Gefahrenzone",
   "settingsProfileSection": "Profil",
   "settingsPreferencesSection": "Einstellungen",
   "settingsSecuritySection": "Sicherheit",

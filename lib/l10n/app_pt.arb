@@ -220,6 +220,12 @@
   "reauthErrorGeneric": "Não foi possível verificar a tua palavra-passe. Tenta novamente.",
 
   "settingsTitle": "Definições",
+  "settingsSubtitle": "Gere o teu perfil, segurança e preferências.",
+  "settingsTabAccount": "Conta",
+  "settingsTabWorkspace": "Workspace",
+  "settingsTabBilling": "Faturação",
+  "settingsTabSecurity": "Segurança",
+  "settingsDangerZone": "Zona perigosa",
   "settingsProfileSection": "Perfil",
   "settingsPreferencesSection": "Preferências",
   "settingsSecuritySection": "Segurança",
