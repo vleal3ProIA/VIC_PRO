@@ -208,6 +208,17 @@
   "mfaRecoveryCodeHint": "Code de récupération",
   "actionCancel": "Annuler",
 
+  "reauthDialogTitle": "Confirmez votre mot de passe",
+  "reauthDialogMessage": "Pour votre sécurité, veuillez confirmer votre mot de passe pour continuer cette action sensible.",
+  "reauthPasswordLabel": "Mot de passe actuel",
+  "reauthPasswordRequired": "Le mot de passe est requis",
+  "reauthConfirm": "Confirmer",
+  "reauthShowPassword": "Afficher le mot de passe",
+  "reauthHidePassword": "Masquer le mot de passe",
+  "reauthErrorInvalidPassword": "Mot de passe incorrect.",
+  "reauthErrorRateLimited": "Trop de tentatives. Réessayez dans quelques minutes.",
+  "reauthErrorGeneric": "Impossible de vérifier votre mot de passe. Veuillez réessayer.",
+
   "settingsTitle": "Paramètres",
   "settingsProfileSection": "Profil",
   "settingsPreferencesSection": "Préférences",

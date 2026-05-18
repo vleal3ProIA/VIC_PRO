@@ -208,6 +208,17 @@
   "mfaRecoveryCodeHint": "Código de recuperação",
   "actionCancel": "Cancelar",
 
+  "reauthDialogTitle": "Confirma a tua palavra-passe",
+  "reauthDialogMessage": "Para tua segurança, confirma a tua palavra-passe para continuar esta ação sensível.",
+  "reauthPasswordLabel": "Palavra-passe atual",
+  "reauthPasswordRequired": "A palavra-passe é obrigatória",
+  "reauthConfirm": "Confirmar",
+  "reauthShowPassword": "Mostrar palavra-passe",
+  "reauthHidePassword": "Ocultar palavra-passe",
+  "reauthErrorInvalidPassword": "Palavra-passe incorreta.",
+  "reauthErrorRateLimited": "Demasiadas tentativas. Tenta novamente em alguns minutos.",
+  "reauthErrorGeneric": "Não foi possível verificar a tua palavra-passe. Tenta novamente.",
+
   "settingsTitle": "Definições",
   "settingsProfileSection": "Perfil",
   "settingsPreferencesSection": "Preferências",

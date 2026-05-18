@@ -299,29 +299,59 @@ navegador lo renderice.
   `<img>` y deben renderizar inline. La superficie de ataque ahí está
   restringida porque RLS limita a `avatars/<uid>/...`.
 
-### 🟠 PR-F · Acciones críticas sin re-autenticación
+### 🟡 PR-F · Re-autenticación para acciones críticas (cerrado parcial 2026-05-18)
 
-**Riesgo**: si una sesión queda activa en un dispositivo compartido o
-es secuestrada (XSS cualquiera, robo de cookie), el atacante puede:
-- Borrar la cuenta del user.
-- Cambiar el email a uno suyo.
-- Generar un PAT con scope `write` y exfiltrar datos.
+**Riesgo original**: si una sesión queda activa en un dispositivo
+compartido o es secuestrada (XSS cualquiera, robo de cookie), el
+atacante puede invocar directamente los endpoints destructivos
+saltándose el modal de password (que era solo client-side).
 
-**Mitigación (PR-F)**:
-- Tabla `auth_recent_verifications (user_id, action_kind, verified_at)`.
-- Endpoint `verify-password` que valida password actual y registra
-  verificación con TTL 5 min.
-- Frontend: modal con password antes de:
-  - `/account-settings/delete-account`
-  - `/account-settings/change-email`
-  - Crear PAT con cualquier scope distinto de `read`.
-  - **Regenerar `signing_secret` de un webhook endpoint** — rotar el
-    secret en una sesión robada permite al atacante recibir webhooks
-    firmados con un secret que solo él conoce.
-  - **Cambiar el `role` de otro user (admin)** — escalada de
-    privilegios silenciosa es exactamente lo que más queremos evitar.
-- El endpoint destructivo (delete-account, etc.) comprueba que
-  existe verificación fresca antes de ejecutar.
+**Implementación (cerrado en este PR)**:
+- **Migración 0037**: tabla `auth_recent_verifications` con
+  `user_id + action_kind + verified_at`. RLS: SELECT only own, INSERT
+  only service_role. RPCs `has_recent_verification(action_kind, ttl,
+  user_id?) -> bool` y `consume_recent_verification(...) -> bool`
+  (variante que borra al usar). TTL default 5 min.
+- **Edge Function `verify-password`**: valida password con
+  `signInWithPassword` temporal + INSERT en
+  `auth_recent_verifications`. Rate limit 10/h/user. Whitelist de
+  `action_kind` accepted server-side.
+- **`delete-account` Edge Function**: consume verification con
+  `action_kind='delete_account'` ANTES de borrar. Sin marker fresco
+  → 403 `reauth_required`.
+- **`create-pat` Edge Function**: si scopes incluye `'write'`, consume
+  verification con `action_kind='create_pat_write'`. PATs read-only
+  no necesitan re-auth (riesgo bajo).
+- **Frontend**:
+  - `lib/core/security/reauth_datasource.dart` + provider.
+  - `lib/core/widgets/reauth_dialog.dart` reutilizable.
+  - `AuthRepositoryImpl.deleteAccount`: ya NO usa `signInWithPassword`
+    para reautenticar; ahora llama a `verifyPasswordForAction` →
+    Edge Function `verify-password`. La UX del form de delete-account
+    se mantiene idéntica.
+  - `CreateTokenDialog`: si user pide scope `write`, abre
+    `ReauthDialog.show()` antes del POST a `create-pat`. Si cancela o
+    falla → no se crea el PAT.
+- i18n 8 idiomas con strings `reauthDialog*`, `reauthError*`,
+  `reauthPasswordLabel`, etc.
+
+**Acciones cubiertas en este PR** (cerradas):
+- ✅ `delete_account` → `/delete-account`
+- ✅ `create_pat_write` → crear PAT con scope `write`
+
+**Deuda explícita** (PR-F-bis o más adelante):
+- 🔲 `change_email` → hoy el flow va por `auth.updateUser({email})`
+  client-side; reescribir como Edge Function que primero verifique
+  password.
+- 🔲 `webhook_secret_rotate` → no hay endpoint server-side todavía
+  (la rotación se hace via SQL Editor / RLS UPDATE directo).
+- 🔲 `role_change` → no hay UI todavía (la promoción a admin se hace
+  manualmente desde SQL Editor).
+
+Cuando se implementen, basta con: (a) añadir el `action_kind` a la
+whitelist en `verify-password/index.ts`; (b) llamar
+`consume_recent_verification` en la Edge Function destructiva;
+(c) mostrar `ReauthDialog.show()` en el frontend correspondiente.
 
 ### 🟡 PR-C · Sin antivirus en uploads
 
@@ -437,7 +467,7 @@ y un beneficio bajo a esta escala. Mitigamos con:
 | A01 | Broken Access Control | ✅ RLS + is_admin + tests. Falta PR-G para E2E. |
 | A02 | Cryptographic Failures | ✅ TLS forzado, passwords bcrypt (Supabase), secrets en env. |
 | A03 | Injection | ✅ PostgREST + RPCs paramétricas. Sin SQL crudo en frontend. |
-| A04 | Insecure Design | 🟡 Re-auth pendiente (PR-F). HTML sanitize ✅ (PR-E). |
+| A04 | Insecure Design | 🟡 Re-auth parcial ✅ (PR-F: delete-account + create-pat write; change-email + webhook rotate + role change pendientes). HTML sanitize ✅ (PR-E). |
 | A05 | Security Misconfiguration | ✅ `.htaccess` security headers. RLS default-deny. |
 | A06 | Vulnerable Components | 🟡 `flutter pub outdated` + `deno info` manual. CI sin scan. |
 | A07 | Identification/Auth Failures | ✅ MFA, passkeys, rate limit en login, session revoke. |
@@ -562,3 +592,4 @@ application/x-yaml): no hay magic bytes universal. Aplicamos:
 | 2026-05-18 | Documento inicial + PR-A upload hardening (magic bytes, whitelist 27 MIMEs, signed upload URLs, 50 MB límite, columnas `sha256/magic_validated/confirmed_at` en `uploads`) | PR-A |
 | 2026-05-18 | PR-E broadcasts HTML sanitize (whitelist estricta server-side antes de persistir + render) | PR-E |
 | 2026-05-18 | PR-B descargas con Content-Disposition: attachment forzado (3 sitios de createSignedUrl con `download:true`) | PR-B |
+| 2026-05-18 | PR-F re-auth para acciones críticas (parcial): tabla `auth_recent_verifications` + Edge Function `verify-password` + enforcement en `delete-account` y `create-pat` (scope write) + `ReauthDialog` reutilizable + i18n 8 idiomas. Deuda: change-email, webhook rotate, role change. | PR-F |

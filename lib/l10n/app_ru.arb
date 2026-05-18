@@ -208,6 +208,17 @@
   "mfaRecoveryCodeHint": "Код восстановления",
   "actionCancel": "Отмена",
 
+  "reauthDialogTitle": "Подтверди пароль",
+  "reauthDialogMessage": "Для твоей безопасности подтверди пароль, чтобы продолжить это чувствительное действие.",
+  "reauthPasswordLabel": "Текущий пароль",
+  "reauthPasswordRequired": "Пароль обязателен",
+  "reauthConfirm": "Подтвердить",
+  "reauthShowPassword": "Показать пароль",
+  "reauthHidePassword": "Скрыть пароль",
+  "reauthErrorInvalidPassword": "Неверный пароль.",
+  "reauthErrorRateLimited": "Слишком много попыток. Повтори через несколько минут.",
+  "reauthErrorGeneric": "Не удалось проверить пароль. Повтори ещё раз.",
+
   "settingsTitle": "Настройки",
   "settingsProfileSection": "Профиль",
   "settingsPreferencesSection": "Предпочтения",
