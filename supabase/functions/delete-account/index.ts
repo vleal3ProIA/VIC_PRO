@@ -108,8 +108,33 @@ Deno.serve(withSentry("delete-account", async (req) => {
       return json({ error: "reauth_required" }, 403);
     }
 
+    // **Hotfix post-PR-F**: la tabla `public.tenants` tiene
+    // `owner_id ... on delete restrict` -> si intentamos borrar el user
+    // sin antes eliminar sus tenants, Postgres rechaza con
+    // "Database error deleting user". Patron: cada user tiene un tenant
+    // personal auto-creado en signup; el `delete account` debe llevarse
+    // ese tenant por delante (y los cascade asociados: tenant_members,
+    // tenant_subscriptions, etc.). Si el user fuera owner de tenants
+    // adicionales con otros miembros, esos miembros tambien pierden
+    // acceso -- coherente con la semantica de "borrar la cuenta = borrar
+    // todo lo del user".
+    //
+    // Hacemos esto ANTES del auth.admin.deleteUser para que cualquier
+    // FK que apunte a auth.users a traves de tenants ya este resuelta.
+    const { error: tenantErr } = await adminClient
+      .from("tenants")
+      .delete()
+      .eq("owner_id", user.id);
+    if (tenantErr) {
+      return json(
+        { error: "tenant_cleanup_failed", detail: tenantErr.message },
+        500,
+      );
+    }
+
     // 2) Borrar ese usuario con el cliente admin (service_role).
-    //    `public.profiles` se va por ON DELETE CASCADE.
+    //    `public.profiles` y demas tablas con FK on delete cascade se
+    //    van con el (uploads, audit_logs, etc.).
     const { error: deleteErr } = await adminClient.auth.admin.deleteUser(
       user.id,
     );
