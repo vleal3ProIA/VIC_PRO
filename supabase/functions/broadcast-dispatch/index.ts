@@ -32,6 +32,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withSentry, captureError } from "../_shared/sentry.ts";
 import { adminClient, sendEmail } from "../_shared/email.ts";
 import { fetchAppName, renderEmail } from "../_shared/email_templates.ts";
+import { cleanBroadcastHtml } from "../_shared/html_sanitize.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,11 +102,18 @@ Deno.serve(withSentry("broadcast-dispatch", async (req) => {
   if (action === "test") {
     if (isInternal) return json({ error: "forbidden" }, 403);
     const subject = (body.subject as string | undefined)?.trim();
-    const bodyHtml = (body.body_html as string | undefined)?.trim();
+    const bodyHtmlRaw = (body.body_html as string | undefined)?.trim();
     const to = body.to_email as string | undefined;
     const locale = (body.locale as string | undefined) ?? "en";
-    if (!subject || !bodyHtml || !to) {
+    if (!subject || !bodyHtmlRaw || !to) {
       return json({ error: "missing_fields" }, 400);
+    }
+    // PR-E: sanitize antes de renderizar para que el admin vea en el
+    // test el mismo HTML que recibira la audiencia real (consistencia)
+    // y para no enviarse a si mismo un payload peligroso.
+    const bodyHtml = cleanBroadcastHtml(bodyHtmlRaw);
+    if (!bodyHtml.trim()) {
+      return json({ error: "body_html_empty_after_sanitize" }, 400);
     }
     const appName = await fetchAppName(admin);
     const rendered = renderEmail({
@@ -134,15 +142,27 @@ Deno.serve(withSentry("broadcast-dispatch", async (req) => {
   if (action === "start") {
     if (isInternal) return json({ error: "forbidden" }, 403);
     const subject = (body.subject as string | undefined)?.trim();
-    const bodyHtml = (body.body_html as string | undefined)?.trim();
+    const bodyHtmlRaw = (body.body_html as string | undefined)?.trim();
     const targetType = body.target_type as string | undefined;
     const targetValue =
       (body.target_value as Record<string, unknown> | undefined) ?? {};
-    if (!subject || !bodyHtml || !targetType) {
+    if (!subject || !bodyHtmlRaw || !targetType) {
       return json({ error: "missing_fields" }, 400);
     }
     if (!["all", "plan", "language", "status"].includes(targetType)) {
       return json({ error: "invalid_target_type" }, 400);
+    }
+    // PR-E: sanitize HTML server-side ANTES de persistir. El admin
+    // podria tener cookie robada o ser malicioso; aceptar el HTML
+    // crudo y mandarselo a toda la base es vector de phishing.
+    // Whitelist estricta de tags+attrs (ver _shared/html_sanitize.ts).
+    // Lo persistimos ya saneado para que NO haya que volver a
+    // sanitizar en cada batch del processBroadcast loop.
+    const bodyHtml = cleanBroadcastHtml(bodyHtmlRaw);
+    if (!bodyHtml.trim()) {
+      // Si tras sanitize no queda nada util (admin puso solo <script>
+      // y similares), rechazamos: el broadcast saldria vacio.
+      return json({ error: "body_html_empty_after_sanitize" }, 400);
     }
 
     // 1) Estimar la audiencia.

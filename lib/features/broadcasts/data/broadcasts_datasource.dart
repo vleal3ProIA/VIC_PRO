@@ -104,6 +104,22 @@ class BroadcastsDataSource {
         detail: payload['detail'] as String?,
       );
     } on FunctionException catch (e) {
+      // PR-E: extraer el code del body si la edge function lo devolvio
+      // estructurado (ej. body_html_empty_after_sanitize, missing_fields,
+      // invalid_target_type). Asi el snack muestra el motivo real en
+      // vez de un generico "http_400".
+      final details = e.details;
+      if (details is Map) {
+        final m = details.cast<String, dynamic>();
+        final code = m['error'] as String?;
+        if (code != null) {
+          return BroadcastActionResult(
+            ok: false,
+            error: code,
+            detail: m['detail'] as String?,
+          );
+        }
+      }
       return BroadcastActionResult(ok: false, error: 'http_${e.status}');
     } catch (_) {
       return const BroadcastActionResult(ok: false, error: 'unknown');
