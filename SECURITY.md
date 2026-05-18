@@ -236,22 +236,38 @@ ejecutarlo si Apache no fuerza Content-Disposition.
   6 MB de Edge Functions).
 - Añadir columnas `sha256`, `magic_validated` a tabla `uploads`.
 
-### 🔴 PR-E · Broadcasts sin sanitización HTML
+### ✅ PR-E · Broadcasts sanitización HTML (cerrado 2026-05-18)
 
-**Riesgo**: admin (o admin con cookie robada) escribe `body_html` con
-`<script>` u `<img src=x onerror=...>`. Clientes de email modernos
+**Riesgo original**: admin (o admin con cookie robada) escribe `body_html`
+con `<script>` u `<img src=x onerror=...>`. Clientes de email modernos
 (Gmail web, Apple Mail) ejecutan JS en el body en algunos contextos.
 Aunque la mayoría stripea `<script>`, hay vectores con `<style>`,
 `<svg onload>`, eventos en links.
 
-**Mitigación (PR-E)**:
-- `sanitize-html` (lib Deno) server-side en `broadcast-dispatch`
-  action=start.
-- Whitelist tags: `p, br, strong, em, b, i, u, a, ul, ol, li,
-  h1, h2, h3, h4, blockquote, hr`.
-- `<a>` conserva solo `href`. Forzamos `rel="noopener noreferrer"`.
-- Strip **todos** los demás atributos. Sin `style`, sin `on*`.
-- Aplica también a `test` action (no solo a `start`).
+**Implementación**:
+- Helper propio `supabase/functions/_shared/html_sanitize.ts` (no usamos
+  `sanitize-html` de npm para no inflar cold-start de la Edge Function).
+- Tokenizador manual + whitelist estricta:
+  - **Tags permitidos**: `p, br, hr, blockquote, h1-h4, strong, em,
+    b, i, u, ul, ol, li, a`.
+  - **Atributos permitidos**: solo `href` en `<a>`. Resto stripeado.
+  - **Esquemas href**: `http, https, mailto` + URLs relativas / fragmentos.
+    Bloqueados explícitamente: `javascript:, vbscript:, data:`.
+  - **Force**: `rel="noopener noreferrer" target="_blank"` en todos los links.
+  - **Tags peligrosos** (`script, style, iframe, svg, math, link, meta,
+    object, embed, form, input, etc.`) → eliminados COMPLETOS con su
+    contenido (no unwrap).
+  - **Tags benignos no whitelisted** (`div, span, table, td, etc.`)
+    → unwrap (contenido se conserva, tag se elimina).
+- Aplicado en `broadcast-dispatch`:
+  - `action=start` → sanitiza antes de persistir en BD. El render del
+    loop usa lo ya sanitizado (no doble proceso).
+  - `action=test` → sanitiza antes del render para que el preview del
+    admin sea fiel al broadcast real.
+  - Si tras sanitize queda vacío (admin solo metió `<script>` etc.)
+    → error `body_html_empty_after_sanitize` → snack en UI.
+- Frontend: `broadcasts_datasource.dart` ahora extrae el código de
+  error del body de la respuesta (antes solo veía `http_400`).
 
 ### 🟠 PR-B · Descargas sin Content-Disposition: attachment
 
@@ -403,7 +419,7 @@ y un beneficio bajo a esta escala. Mitigamos con:
 | A01 | Broken Access Control | ✅ RLS + is_admin + tests. Falta PR-G para E2E. |
 | A02 | Cryptographic Failures | ✅ TLS forzado, passwords bcrypt (Supabase), secrets en env. |
 | A03 | Injection | ✅ PostgREST + RPCs paramétricas. Sin SQL crudo en frontend. |
-| A04 | Insecure Design | 🟡 Re-auth pendiente (PR-F). HTML sanitize pendiente (PR-E). |
+| A04 | Insecure Design | 🟡 Re-auth pendiente (PR-F). HTML sanitize ✅ (PR-E). |
 | A05 | Security Misconfiguration | ✅ `.htaccess` security headers. RLS default-deny. |
 | A06 | Vulnerable Components | 🟡 `flutter pub outdated` + `deno info` manual. CI sin scan. |
 | A07 | Identification/Auth Failures | ✅ MFA, passkeys, rate limit en login, session revoke. |
@@ -525,4 +541,5 @@ application/x-yaml): no hay magic bytes universal. Aplicamos:
 
 | Fecha | Cambio | PR |
 |---|---|---|
-| 2026-05-18 | Documento inicial | — |
+| 2026-05-18 | Documento inicial + PR-A upload hardening (magic bytes, whitelist 27 MIMEs, signed upload URLs, 50 MB límite, columnas `sha256/magic_validated/confirmed_at` en `uploads`) | PR-A |
+| 2026-05-18 | PR-E broadcasts HTML sanitize (whitelist estricta server-side antes de persistir + render) | PR-E |
