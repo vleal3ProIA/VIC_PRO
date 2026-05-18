@@ -208,6 +208,17 @@
   "mfaRecoveryCodeHint": "Код відновлення",
   "actionCancel": "Скасувати",
 
+  "reauthDialogTitle": "Підтверди свій пароль",
+  "reauthDialogMessage": "Для твоєї безпеки підтверди пароль, щоб продовжити цю чутливу дію.",
+  "reauthPasswordLabel": "Поточний пароль",
+  "reauthPasswordRequired": "Пароль обов'язковий",
+  "reauthConfirm": "Підтвердити",
+  "reauthShowPassword": "Показати пароль",
+  "reauthHidePassword": "Сховати пароль",
+  "reauthErrorInvalidPassword": "Неправильний пароль.",
+  "reauthErrorRateLimited": "Забагато спроб. Спробуй знову за кілька хвилин.",
+  "reauthErrorGeneric": "Не вдалося перевірити пароль. Спробуй ще раз.",
+
   "settingsTitle": "Налаштування",
   "settingsProfileSection": "Профіль",
   "settingsPreferencesSection": "Уподобання",

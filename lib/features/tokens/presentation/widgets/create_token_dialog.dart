@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
+import 'package:myapp/core/widgets/reauth_dialog.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
 import '../../application/tokens_providers.dart';
@@ -192,6 +193,24 @@ class _CreateTokenDialogState extends ConsumerState<CreateTokenDialog> {
       setState(() => _errorMsg = l.tokensScopesRequired);
       return;
     }
+
+    // PR-F: PATs con scope 'write' permiten mutar TODO el contenido del
+    // user via API. Exigimos re-auth con password antes de crearlos.
+    // PATs solo-lectura no necesitan re-auth (riesgo bajo).
+    if (_scopes.contains('write')) {
+      final ok = await ReauthDialog.show(
+        context,
+        ref: ref,
+        actionKind: 'create_pat_write',
+      );
+      if (!mounted) return;
+      if (ok != true) {
+        // User cancelo o password incorrecto -> abortamos creacion sin
+        // mostrar error extra (el dialog ya lo mostro).
+        return;
+      }
+    }
+
     setState(() {
       _saving = true;
       _errorMsg = null;
@@ -231,6 +250,10 @@ class _CreateTokenDialogState extends ConsumerState<CreateTokenDialog> {
         return l.tokensExpiryInvalid;
       case 'rate_limited':
         return l.tokensRateLimited;
+      case 'reauth_required':
+        // PR-F: la verificacion de password expiro entre el dialog y el
+        // POST (TTL 5 min). El user debe pedir uno nuevo.
+        return l.reauthErrorGeneric;
       default:
         return l.tokensCreateError;
     }

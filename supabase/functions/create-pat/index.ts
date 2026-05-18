@@ -142,6 +142,29 @@ Deno.serve(withSentry("create-pat", async (req) => {
     scopes = cleaned;
   }
 
+  // **PR-F**: si el PAT incluye scope 'write', exigimos re-auth con
+  // password reciente. Un PAT solo-lectura es bajo riesgo (no puede
+  // mutar datos), pero un PAT con write robado equivale a poder
+  // borrar/modificar todo el contenido del user. Same TTL 5 min.
+  if (scopes.includes("write")) {
+    const { data: verified, error: vErr } = await admin.rpc(
+      "consume_recent_verification",
+      {
+        p_action_kind: "create_pat_write",
+        p_user_id: user.id,
+      },
+    );
+    if (vErr) {
+      return json(
+        { error: "reauth_check_failed", detail: vErr.message },
+        500,
+      );
+    }
+    if (verified !== true) {
+      return json({ error: "reauth_required" }, 403);
+    }
+  }
+
   let expiresAt: string | null = null;
   if (body.expires_in_days !== undefined && body.expires_in_days !== null) {
     const days = Number(body.expires_in_days);

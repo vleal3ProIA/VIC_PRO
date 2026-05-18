@@ -208,6 +208,17 @@
   "mfaRecoveryCodeHint": "Wiederherstellungscode",
   "actionCancel": "Abbrechen",
 
+  "reauthDialogTitle": "Passwort bestätigen",
+  "reauthDialogMessage": "Aus Sicherheitsgründen bestätige bitte dein Passwort, um mit dieser sensiblen Aktion fortzufahren.",
+  "reauthPasswordLabel": "Aktuelles Passwort",
+  "reauthPasswordRequired": "Passwort ist erforderlich",
+  "reauthConfirm": "Bestätigen",
+  "reauthShowPassword": "Passwort anzeigen",
+  "reauthHidePassword": "Passwort verbergen",
+  "reauthErrorInvalidPassword": "Falsches Passwort.",
+  "reauthErrorRateLimited": "Zu viele Versuche. Bitte in wenigen Minuten erneut versuchen.",
+  "reauthErrorGeneric": "Wir konnten dein Passwort nicht überprüfen. Bitte erneut versuchen.",
+
   "settingsTitle": "Einstellungen",
   "settingsProfileSection": "Profil",
   "settingsPreferencesSection": "Einstellungen",

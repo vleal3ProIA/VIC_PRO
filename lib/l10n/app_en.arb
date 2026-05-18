@@ -220,6 +220,17 @@
   "mfaRecoveryCodeHint": "Recovery code",
   "actionCancel": "Cancel",
 
+  "reauthDialogTitle": "Confirm your password",
+  "reauthDialogMessage": "For your security, please confirm your password to continue with this sensitive action.",
+  "reauthPasswordLabel": "Current password",
+  "reauthPasswordRequired": "Password is required",
+  "reauthConfirm": "Confirm",
+  "reauthShowPassword": "Show password",
+  "reauthHidePassword": "Hide password",
+  "reauthErrorInvalidPassword": "Incorrect password.",
+  "reauthErrorRateLimited": "Too many attempts. Try again in a few minutes.",
+  "reauthErrorGeneric": "We couldn't verify your password. Please try again.",
+
   "settingsTitle": "Settings",
   "settingsProfileSection": "Profile",
   "settingsPreferencesSection": "Preferences",

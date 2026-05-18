@@ -135,6 +135,41 @@ class AuthSupabaseDataSource {
     }
   }
 
+  /// Verifica el [password] del user actual via Edge Function
+  /// `verify-password` y registra una "recent verification" para el
+  /// [actionKind] dado (TTL 5 min server-side). PR-F: las Edge Functions
+  /// destructivas (delete-account, create-pat con scope write)
+  /// consultan esa marca antes de actuar.
+  ///
+  /// Lanza `AuthException` con `statusCode='401'` y `message='invalid_password'`
+  /// si el password es incorrecto, `'429'` si rate-limited.
+  Future<void> verifyPasswordForAction({
+    required String password,
+    required String actionKind,
+  }) async {
+    final res = await _client.functions.invoke(
+      'verify-password',
+      body: {'password': password, 'action_kind': actionKind},
+    );
+    final data = res.data;
+    if (res.status == 200 && data is Map && data['ok'] == true) {
+      return;
+    }
+    // Extraer codigo del body si esta estructurado. Traducimos
+    // 'invalid_password' (lo que devuelve verify-password) a
+    // 'invalid_credentials' (el codigo estandar que _mapAuthException
+    // reconoce y mapea a AuthInvalidCredentials).
+    String code = 'unknown';
+    if (data is Map) {
+      final m = data.cast<String, dynamic>();
+      final c = m['error'] as String?;
+      if (c != null) {
+        code = c == 'invalid_password' ? 'invalid_credentials' : c;
+      }
+    }
+    throw AuthException(code, statusCode: '${res.status}');
+  }
+
   /// Envía un magic link (passwordless email).
   ///
   /// Si `shouldCreateUser` es `true`, se crea el usuario al firmar por

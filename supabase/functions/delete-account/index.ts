@@ -13,7 +13,13 @@
 //   - `verify_jwt` está activo por defecto → solo se puede invocar con un JWT
 //     válido. Identificamos al usuario por SU PROPIO token y solo borramos a
 //     ESE usuario. Nadie puede borrar la cuenta de otro.
-//   - La app, además, reautentica con contraseña antes de invocar esto.
+//   - **PR-F**: ademas del JWT, exigimos que el user haya pasado por
+//     `verify-password` con `action_kind='delete_account'` en los
+//     ultimos 5 minutos. Sin ese marker fresco -> 403. Asi un atacante
+//     con JWT robado NO puede borrar la cuenta saltandose el modal de
+//     password (antes de PR-F, la proteccion de password era SOLO
+//     client-side y se podia invocar este endpoint directo).
+//   - La verificacion se CONSUME (delete) al usarse -> evita replays.
 //
 // Al borrar el usuario de `auth.users`, la fila de `public.profiles` (y
 // cualquier tabla con FK `on delete cascade`) se elimina con él.
@@ -82,6 +88,25 @@ Deno.serve(withSentry("delete-account", async (req) => {
       windowSeconds: 3600,
     });
     if (!ok) return json({ error: "rate_limited" }, 429);
+
+    // **PR-F**: confirmar re-auth fresca con password ANTES de borrar.
+    // El cliente debe haber llamado a `verify-password` con
+    // action_kind='delete_account' en los ultimos 5 min (TTL del RPC).
+    // `consume_recent_verification` borra la fila si existe -> evita
+    // replays. Si no hay verificacion fresca, 403.
+    const { data: verified, error: vErr } = await adminClient.rpc(
+      "consume_recent_verification",
+      {
+        p_action_kind: "delete_account",
+        p_user_id: user.id,
+      },
+    );
+    if (vErr) {
+      return json({ error: "reauth_check_failed", detail: vErr.message }, 500);
+    }
+    if (verified !== true) {
+      return json({ error: "reauth_required" }, 403);
+    }
 
     // 2) Borrar ese usuario con el cliente admin (service_role).
     //    `public.profiles` se va por ON DELETE CASCADE.

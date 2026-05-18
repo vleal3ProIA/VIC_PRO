@@ -190,16 +190,29 @@ class AuthRepositoryImpl implements AuthRepository {
     if (email == null) {
       return const Left(AuthUnknown(message: 'No active session'));
     }
-    // 1) Reautenticar: confirma que es realmente el dueño de la cuenta.
+    // 1) Re-autenticacion via Edge Function `verify-password` (PR-F).
+    //    Antes (pre PR-F) llamabamos a signInWithPassword en cliente, lo
+    //    cual rotaba la sesion + no dejaba marker server-side. Ahora
+    //    `verify-password` valida server-side, registra una "recent
+    //    verification" con action_kind='delete_account' (TTL 5 min),
+    //    y la Edge Function `delete-account` la consume antes de borrar
+    //    al user. Esto cierra el agujero de "JWT robado que llama
+    //    directo a delete-account saltandose el form de password".
     try {
-      await _dataSource.signInWithPassword(email: email, password: password);
+      await _dataSource.verifyPasswordForAction(
+        password: password,
+        actionKind: 'delete_account',
+      );
     } on AuthException catch (e, st) {
-      AppLogger.w('deleteAccount reauth failed: ${e.code}');
+      AppLogger.w('deleteAccount reauth failed: ${e.message}');
       return Left(_mapAuthException(e, st));
     } catch (e) {
       return Left(AuthUnknown(cause: e, message: e.toString()));
     }
     // 2) Invocar la Edge Function que borra el usuario de auth.users.
+    //    `delete-account` chequea has_recent_verification('delete_account')
+    //    en el servidor antes de actuar; si por algun bug no estuviera,
+    //    devuelve 403 reauth_required.
     try {
       await _dataSource.deleteAccount();
     } on AuthException catch (e, st) {
