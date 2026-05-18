@@ -28,4 +28,15 @@ class AuditEvents {
   // ---- Passkeys -----------------------------------------------------------
   static const String passkeyAdded = 'passkey.added';
   static const String passkeyRemoved = 'passkey.removed';
+
+  // ---- Uploads (PR-D) -----------------------------------------------------
+  /// Upload confirmado tras validacion magic bytes + sha256. La metadata
+  /// incluye: upload_id, filename, mime_type, size_bytes, sha256.
+  static const String uploadCreated = 'upload.created';
+  /// Soft-delete por accion del user. La metadata incluye upload_id +
+  /// filename para auditoria.
+  static const String uploadDeleted = 'upload.deleted';
+  /// VirusTotal detecto malware -> el upload queda soft-deleted
+  /// automaticamente. La metadata incluye stats + flagged_engines.
+  static const String uploadVirusDetected = 'upload.virus_detected';
 }

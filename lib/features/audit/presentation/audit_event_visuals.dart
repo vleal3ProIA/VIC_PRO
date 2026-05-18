@@ -9,13 +9,14 @@ import 'package:myapp/generated/l10n/app_localizations.dart';
 
 /// Categorías de eventos — useful para filtros y para colorear iconos
 /// por grupo.
-enum AuditEventCategory { auth, account, mfa, passkey, other }
+enum AuditEventCategory { auth, account, mfa, passkey, upload, other }
 
 AuditEventCategory categoryFor(String event) {
   if (event.startsWith('auth.')) return AuditEventCategory.auth;
   if (event.startsWith('mfa.')) return AuditEventCategory.mfa;
   if (event.startsWith('passkey.')) return AuditEventCategory.passkey;
   if (event.startsWith('account.')) return AuditEventCategory.account;
+  if (event.startsWith('upload.')) return AuditEventCategory.upload;
   return AuditEventCategory.other;
 }
 
@@ -26,6 +27,12 @@ IconData iconForAuditEvent(String event) {
   if (event.startsWith('passkey.')) return Icons.fingerprint;
   if (event == AuditEvents.passwordChanged) return Icons.password_outlined;
   if (event == AuditEvents.emailChangeRequested) return Icons.alternate_email;
+  // PR-D: events de uploads
+  if (event == AuditEvents.uploadCreated) return Icons.cloud_upload_outlined;
+  if (event == AuditEvents.uploadDeleted) return Icons.delete_outline;
+  if (event == AuditEvents.uploadVirusDetected) {
+    return Icons.warning_amber_outlined;
+  }
   return Icons.history;
 }
 
@@ -44,6 +51,10 @@ String labelForAuditEvent(AppLocalizations l, String event) {
     AuditEvents.mfaDisabled => l.auditEventMfaDisabled,
     AuditEvents.passkeyAdded => l.auditEventPasskeyAdded,
     AuditEvents.passkeyRemoved => l.auditEventPasskeyRemoved,
+    // PR-D events
+    AuditEvents.uploadCreated => l.auditEventUploadCreated,
+    AuditEvents.uploadDeleted => l.auditEventUploadDeleted,
+    AuditEvents.uploadVirusDetected => l.auditEventUploadVirusDetected,
     _ => event,
   };
 }
@@ -59,6 +70,8 @@ Color colorForCategory(ColorScheme scheme, AuditEventCategory cat) {
       return scheme.tertiary;
     case AuditEventCategory.account:
       return scheme.secondary;
+    case AuditEventCategory.upload:
+      return scheme.primary;
     case AuditEventCategory.other:
       return scheme.onSurfaceVariant;
   }
@@ -75,6 +88,8 @@ String labelForCategory(AppLocalizations l, AuditEventCategory cat) {
       return l.activityCategoryMfa;
     case AuditEventCategory.passkey:
       return l.activityCategoryPasskey;
+    case AuditEventCategory.upload:
+      return l.activityCategoryUpload;
     case AuditEventCategory.other:
       return l.activityCategoryOther;
   }

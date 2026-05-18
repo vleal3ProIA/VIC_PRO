@@ -487,6 +487,38 @@ Deno.serve(withSentry("upload-file", async (req) => {
         download: true,
       });
 
+    // **PR-D**: registrar el upload exitoso en `audit_logs`. El log es
+    // append-only y per-user (no hay tenant_id en el schema actual);
+    // sirve a la pantalla /activity y a futuros dashboards admin.
+    // Failure aqui NO bloquea la respuesta exitosa al cliente -- el
+    // upload ya esta confirmado.
+    try {
+      const { error: auditErr } = await admin.from("audit_logs").insert({
+        user_id: user.id,
+        event: "upload.created",
+        metadata: {
+          upload_id: row.id,
+          filename: row.filename,
+          mime_type: row.mime_type,
+          size_bytes: actualSize,
+          sha256: hash,
+          tenant_id: row.tenant_id,
+        },
+      });
+      if (auditErr) {
+        await captureError(new Error(auditErr.message), {
+          fn: "upload-file",
+          stage: "audit_log_created",
+          upload_id: row.id,
+        });
+      }
+    } catch (e) {
+      await captureError(
+        e instanceof Error ? e : new Error(String(e)),
+        { fn: "upload-file", stage: "audit_log_created" },
+      );
+    }
+
     return json(
       {
         upload_id: row.id,
@@ -532,12 +564,44 @@ Deno.serve(withSentry("upload-file", async (req) => {
     const uploadId = body.upload_id as string | undefined;
     if (!uploadId) return json({ error: "missing_upload_id" }, 400);
 
+    // Antes de borrar, leemos el filename para el audit log. Si RLS
+    // bloquea (no es propio del user) el select devuelve null y
+    // saltamos limpiamente.
+    const { data: uploadRow } = await userClient
+      .from("uploads")
+      .select("filename, mime_type, size_bytes")
+      .eq("id", uploadId)
+      .maybeSingle();
+
     // Soft delete -- RLS limita a propias.
     const { error } = await userClient
       .from("uploads")
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", uploadId);
     if (error) return json({ error: "db_error", detail: error.message }, 500);
+
+    // **PR-D**: registrar el delete en audit_logs. Useful para
+    // soporte ("borro el user su archivo o se lo borramos nosotros?")
+    // y para la pantalla /activity. Failure no bloquea.
+    if (uploadRow) {
+      try {
+        await admin.from("audit_logs").insert({
+          user_id: user.id,
+          event: "upload.deleted",
+          metadata: {
+            upload_id: uploadId,
+            filename: uploadRow.filename,
+            mime_type: uploadRow.mime_type,
+            size_bytes: uploadRow.size_bytes,
+          },
+        });
+      } catch (e) {
+        await captureError(
+          e instanceof Error ? e : new Error(String(e)),
+          { fn: "upload-file", stage: "audit_log_deleted" },
+        );
+      }
+    }
 
     return json({ ok: true }, 200);
   }
