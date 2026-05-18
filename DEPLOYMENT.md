@@ -246,6 +246,7 @@ Una vez subido:
 | 3.R Deploy | `.htaccess` + workflow de GitHub Actions. **Activa secrets del paso 3.c**. |
 | PR-A Security Uploads | Migración 0036. Re-desplegar Edge Function `upload-file`. Nuevo flow de 2 pasos (signed upload URL) — el cliente sube directo a Storage. Límite subido a 50 MB. Whitelist nueva de 27 MIMEs (sin HTML, sin SVG). Validación de magic bytes server-side. Si tienes Storage CORS configurado, revisa que el bucket `user-uploads` permita `PUT` desde tu dominio (Supabase Dashboard → Storage → bucket → "CORS" tab → añadir tu origin si no estaba). |
 | PR-E Broadcasts HTML sanitize | Re-desplegar Edge Function `broadcast-dispatch` (`supabase functions deploy broadcast-dispatch`). Sin migración. Defensiva: sanitiza `body_html` server-side con whitelist estricta antes de persistir y antes de enviar tests. Un admin con cookie robada (o malicioso) ya no puede inyectar `<script>`, `<style>`, `<iframe>` o links `javascript:` en broadcasts. |
+| PR-B Content-Disposition attachment | Re-desplegar Edge Function `upload-file` (`supabase functions deploy upload-file`). Sin migración. Sin cambios de UI. Defensiva: todas las signed URLs de descarga llevan `?download=` → fuerza al navegador a descargar el archivo en vez de renderizarlo inline. Sumado a PR-A (whitelist sin HTML/SVG), un usuario no puede explotar la zona de descarga ni con vectores polyglot ni renombrando extensiones. |
 
 > En cada PR nueva, este archivo se actualiza. **Antes de desplegar,
 > relee la lista completa**, no solo lo que es "nuevo".
