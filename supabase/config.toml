@@ -12,3 +12,20 @@
 # firmando el body con `STRIPE_WEBHOOK_SECRET` dentro del handler.
 [functions.stripe-webhook]
 verify_jwt = false
+
+# scan-upload se invoca SERVER-TO-SERVER desde upload-file (fire-and-forget
+# tras confirm_upload). La authorization es `Bearer <SERVICE_ROLE_KEY>` que
+# tras la migracion de Supabase a tokens opacos (sb_secret_...) ya no parsea
+# como JWT legacy -> el gateway lo rechazaria con UNAUTHORIZED_INVALID_JWT_FORMAT.
+# La authenticidad se verifica internamente comparando el header
+# `X-Internal-Auth` con SERVICE_ROLE_KEY (custom auth logic). Patron oficial
+# recomendado por Supabase para este caso.
+[functions.scan-upload]
+verify_jwt = false
+
+# auth-email-hook lo invoca Supabase Auth (con su propio sistema de firma
+# HMAC v1/whsec_); no manda JWT. Verificamos `AUTH_HOOK_SECRET` en el body.
+# (Esta entrada ya deberia haberse anyadido en su PR original; la dejamos
+# aqui por defensa-en-profundidad si se hubiera perdido en algun merge).
+[functions.auth-email-hook]
+verify_jwt = false
