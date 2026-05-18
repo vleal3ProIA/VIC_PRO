@@ -416,45 +416,66 @@ Deno.serve(withSentry("upload-file", async (req) => {
       return json({ error: "db_error", detail: updErr.message }, 500);
     }
 
-    // **PR-C**: fire-and-forget scan antivirus. No bloqueamos la
-    // respuesta -- el cliente ve el upload con `virus_scan_status='pending'`
-    // (RLS no oculta por esto; el chip en UI muestra "Escaneando..."),
-    // y cuando `scan-upload` termine actualizara a 'clean' o
-    // 'suspicious'. Si VT detecta malware, scan-upload soft-deletea
-    // el upload (deleted_at = now()) y la RLS de SELECT (que filtra
-    // por `deleted_at IS NULL`) lo oculta automaticamente.
+    // **PR-C + hotfixes**: dispara el scan antivirus en scan-upload.
+    // Hacemos `await fetch` porque scan-upload responde 200 inmediato
+    // (~50ms) y luego procesa el work pesado en background con
+    // EdgeRuntime.waitUntil interno. NO bloqueamos al cliente esperando
+    // los 30s del scan completo -- solo confirmamos que la request salio.
     //
-    // **CRITICO** el `EdgeRuntime.waitUntil()`: sin esto el Deno
-    // runtime mata el worker en cuanto la function retorna su response,
-    // y el `fetch()` async sin await queda colgado / cancelado antes
-    // de enviarse. `waitUntil` registra una promesa que el runtime
-    // espera completar antes de cerrar el worker.
+    // **Por que no fire-and-forget desde aqui**: cuando upload-file
+    // retorna su response, el Deno runtime mata el worker y cualquier
+    // promesa pending (incluido el fetch sin await) se cancela ANTES
+    // de salir al gateway. Resultado: el request nunca llega a
+    // scan-upload. Probado tras hotfix de `EdgeRuntime.waitUntil` aqui
+    // -- tampoco funciono. Movimos la responsabilidad de "mantener vivo
+    // el worker" a scan-upload (donde sabemos que el runtime lo soporta).
     //
-    // **CRITICO** dos headers:
-    //   - `authorization: Bearer <service_role>`: hace que el gateway
-    //     de Supabase deje pasar la request (las Edge Functions tienen
-    //     verify_jwt=true por defecto, sin authorization -> 401).
+    // **Errores aqui no bloquean al cliente**: si scan-upload no
+    // responde por cualquier razon, capturamos en Sentry pero el upload
+    // se considera exitoso. La fila queda en `virus_scan_status='pending'`
+    // y un cron job futuro la reprocesa (V2).
+    //
+    // Headers criticos:
+    //   - `authorization: Bearer <service_role>`: pasa el gateway de
+    //     Supabase (verify_jwt=true por defecto).
     //   - `x-internal-auth: <service_role>`: lo verifica scan-upload
-    //     internamente como defense-in-depth (que la authorization no
-    //     sea simplemente un JWT user random).
-    // deno-lint-ignore no-explicit-any
-    (globalThis as any).EdgeRuntime?.waitUntil?.(
-      fetch(`${supabaseUrl}/functions/v1/scan-upload`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "authorization": `Bearer ${serviceRoleKey}`,
-          "x-internal-auth": serviceRoleKey,
+    //     internamente como defense-in-depth.
+    try {
+      const scanRes = await fetch(
+        `${supabaseUrl}/functions/v1/scan-upload`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${serviceRoleKey}`,
+            "x-internal-auth": serviceRoleKey,
+          },
+          body: JSON.stringify({ upload_id: row.id }),
         },
-        body: JSON.stringify({ upload_id: row.id }),
-      }).catch((e) => {
-        captureError(e instanceof Error ? e : new Error(String(e)), {
+      );
+      // Drenamos el body para que la conexion se cierre limpiamente.
+      // No usamos el contenido; basta con que el fetch haya completado.
+      await scanRes.text().catch(() => "");
+      if (!scanRes.ok) {
+        await captureError(
+          new Error(`scan-upload returned ${scanRes.status}`),
+          {
+            fn: "upload-file",
+            stage: "scan_upload_invoke_status",
+            upload_id: row.id,
+          },
+        );
+      }
+    } catch (e) {
+      await captureError(
+        e instanceof Error ? e : new Error(String(e)),
+        {
           fn: "upload-file",
-          stage: "scan_upload_invoke",
+          stage: "scan_upload_invoke_network",
           upload_id: row.id,
-        });
-      }),
-    );
+        },
+      );
+    }
 
     // Signed URL para descarga. PR-B: download:true fuerza
     // Content-Disposition: attachment para que cualquier archivo

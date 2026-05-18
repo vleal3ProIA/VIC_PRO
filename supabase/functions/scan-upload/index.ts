@@ -85,6 +85,45 @@ Deno.serve(withSentry("scan-upload", async (req) => {
 
   const admin = createClient(supabaseUrl, serviceRoleKey);
 
+  // **CAMBIO DE ESTRATEGIA** (hotfix post PR-C):
+  // Respondemos 200 INMEDIATO al caller (upload-file) tras una
+  // validacion minima del input. El work pesado (descargar object +
+  // llamar a VT + actualizar BD) lo hacemos en background via
+  // `EdgeRuntime.waitUntil`. Asi:
+  //   - upload-file puede hacer `await fetch(scan-upload)` sin
+  //     bloquearse 30s esperando el scan completo.
+  //   - El gateway no mata el worker porque sigue habiendo promesa
+  //     registrada.
+  //
+  // Si `EdgeRuntime.waitUntil` no existe en este runtime (test local,
+  // version vieja), caemos al modo sincrono (await del scan completo
+  // antes de responder). Funcional pero lento.
+
+  // deno-lint-ignore no-explicit-any
+  const waitUntil = (globalThis as any).EdgeRuntime?.waitUntil?.bind(
+    // deno-lint-ignore no-explicit-any
+    (globalThis as any).EdgeRuntime,
+  );
+
+  if (typeof waitUntil === "function") {
+    waitUntil(_processScan(admin, uploadId));
+    return json({ ok: true, queued: true }, 200);
+  } else {
+    // Fallback sincrono.
+    await _processScan(admin, uploadId);
+    return json({ ok: true, queued: false }, 200);
+  }
+}));
+
+// ─────────────────────────────────────────────────────────────────────
+// Toda la logica de scan/update/cleanup encapsulada para que se pueda
+// invocar via waitUntil (background) o await (sync fallback).
+// ─────────────────────────────────────────────────────────────────────
+async function _processScan(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  uploadId: string,
+): Promise<void> {
   // 1) Leer la fila.
   const { data: row, error: readErr } = await admin
     .from("uploads")
@@ -95,27 +134,23 @@ Deno.serve(withSentry("scan-upload", async (req) => {
     .eq("id", uploadId)
     .maybeSingle();
   if (readErr || !row) {
-    return json(
-      { error: "upload_not_found", detail: readErr?.message },
-      404,
+    await captureError(
+      new Error(`scan-upload: upload not found ${uploadId}`),
+      { fn: "scan-upload", stage: "read_row" },
     );
+    return;
   }
 
-  // 2) Idempotente: si ya esta resuelto, no hacemos nada.
-  if (row.virus_scan_status !== "pending") {
-    return json(
-      { ok: true, idempotent: true, status: row.virus_scan_status },
-      200,
-    );
-  }
+  // 2) Idempotente.
+  if (row.virus_scan_status !== "pending") return;
 
-  // 3) Pre-skip por tamanyo o falta de hash.
+  // 3) Pre-skips.
   if (!row.sha256) {
     await _markStatus(admin, uploadId, "skipped", {
       reason: "no_sha256",
       note: "Upload legacy sin sha256 -- no escaneable.",
     });
-    return json({ ok: true, status: "skipped" }, 200);
+    return;
   }
   if ((row.size_bytes as number) > VT_MAX_FILE_BYTES) {
     await _markStatus(admin, uploadId, "skipped", {
@@ -123,20 +158,10 @@ Deno.serve(withSentry("scan-upload", async (req) => {
       size_bytes: row.size_bytes,
       max_bytes: VT_MAX_FILE_BYTES,
     });
-    return json({ ok: true, status: "skipped" }, 200);
+    return;
   }
 
-  // 4) Llamamos al helper. Primero intenta lookup por hash (free); solo
-  //    descargamos bytes si VT no conoce el hash (caso menos comun).
-  // Para evitar descargar siempre, hacemos el lookup primero en el
-  // helper. Pero el helper necesita bytes para el caso unknown -- los
-  // descargamos solo si falla el lookup. Sin embargo, no podemos saber
-  // a priori si va a fallar. Compromiso: descargamos siempre (el upload
-  // ya esta en memoria del SDK), pero el lookup va antes asi que la
-  // mayoria de veces NO subimos a VT.
-  //
-  // Optimizacion futura: hacer lookup HEAD a VT desde aqui, y solo
-  // descargar si 404. V2.
+  // 4) Descargar bytes (necesarios si VT no conoce el hash).
   let bytes: Uint8Array | null = null;
   try {
     const { data: blob, error: dlErr } = await admin.storage
@@ -146,14 +171,13 @@ Deno.serve(withSentry("scan-upload", async (req) => {
       bytes = new Uint8Array(await blob.arrayBuffer());
     }
   } catch (e) {
-    // Si no podemos descargar, igual intentamos lookup por hash.
     await captureError(
       e instanceof Error ? e : new Error(String(e)),
       { fn: "scan-upload", stage: "download", upload_id: uploadId },
     );
   }
 
-  // 5) Scan.
+  // 5) Scan via VirusTotal.
   const scanResult = await scanFileVirusTotal({
     sha256: row.sha256 as string,
     bytes,
@@ -161,7 +185,7 @@ Deno.serve(withSentry("scan-upload", async (req) => {
     mimeType: row.mime_type as string,
   });
 
-  // 6) Update.
+  // 6) Update BD.
   await _markStatus(admin, uploadId, scanResult.status, scanResult.result);
 
   // 7) Si suspicious -> soft-delete + audit_log entry.
@@ -177,11 +201,9 @@ Deno.serve(withSentry("scan-upload", async (req) => {
         upload_id: uploadId,
       });
     }
-
-    // Entry en audit_log para visibilidad admin. No bloqueante.
     try {
       await admin.from("audit_logs").insert({
-        actor_id: null, // system
+        actor_id: null,
         target_user_id: row.user_id,
         event: "upload.virus_detected",
         meta: {
@@ -194,24 +216,13 @@ Deno.serve(withSentry("scan-upload", async (req) => {
         },
       });
     } catch (e) {
-      // El audit_log puede tener schema distinto al esperado -- no
-      // bloqueamos el flow por esto.
       await captureError(
         e instanceof Error ? e : new Error(String(e)),
         { fn: "scan-upload", stage: "audit_log_insert" },
       );
     }
   }
-
-  return json(
-    {
-      ok: true,
-      status: scanResult.status,
-      summary: scanResult.result,
-    },
-    200,
-  );
-}));
+}
 
 // ─────────────────────────────────────────────────────────────────────
 // Helper: actualiza virus_scan_status/result/at en una fila uploads.
