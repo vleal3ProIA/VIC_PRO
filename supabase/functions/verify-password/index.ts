@@ -151,10 +151,17 @@ Deno.serve(withSentry("verify-password", async (req) => {
     return json({ error: "user_mismatch" }, 401);
   }
 
-  // 5) Cerrar la sesion temporal. NO afecta al JWT del user en el
-  //    cliente real -- ese sigue valido.
+  // 5) Cerrar la sesion temporal. CRITICO usar scope='local':
+  //    el default `scope: 'global'` revocaria TODAS las sesiones del
+  //    user (incluyendo la del navegador real) -> la siguiente llamada
+  //    de la app con su JWT vendria como invalid_token. `'local'` solo
+  //    olvida la sesion en el cliente actual (que vive en memoria de
+  //    esta Edge Function y se destruye al return).
+  //    Trade-off: el refresh token de la sesion temp queda vivo en
+  //    `auth.sessions` hasta expirar (~1h). No es vector de ataque:
+  //    nadie tiene ese token excepto este worker que ya termino.
   try {
-    await tempClient.auth.signOut();
+    await tempClient.auth.signOut({ scope: "local" });
   } catch (_) {
     // signOut puede fallar si la sesion ya expiro o por red. No
     // bloqueamos la verificacion por esto.
