@@ -99,7 +99,7 @@ class UploadsDataSource {
         .from('uploads')
         .select(
           'id, user_id, tenant_id, bucket, path, filename, '
-          'mime_type, size_bytes, created_at',
+          'mime_type, size_bytes, created_at, virus_scan_status',
         )
         .filter('deleted_at', 'is', null);
     if (tenantId != null) {

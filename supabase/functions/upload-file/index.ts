@@ -416,6 +416,32 @@ Deno.serve(withSentry("upload-file", async (req) => {
       return json({ error: "db_error", detail: updErr.message }, 500);
     }
 
+    // **PR-C**: fire-and-forget scan antivirus. No bloqueamos la
+    // respuesta -- el cliente ve el upload con `virus_scan_status='pending'`
+    // (RLS no oculta por esto; el chip en UI muestra "Escaneando..."),
+    // y cuando `scan-upload` termine actualizara a 'clean' o
+    // 'suspicious'. Si VT detecta malware, scan-upload soft-deletea
+    // el upload (deleted_at = now()) y la RLS de SELECT (que filtra
+    // por `deleted_at IS NULL`) lo oculta automaticamente.
+    //
+    // Llamamos via fetch con X-Internal-Auth en lugar de
+    // admin.functions.invoke porque queremos NO esperar a la respuesta
+    // -- el .catch() captura errores de red sin bloquear el return.
+    fetch(`${supabaseUrl}/functions/v1/scan-upload`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-internal-auth": serviceRoleKey,
+      },
+      body: JSON.stringify({ upload_id: row.id }),
+    }).catch((e) => {
+      captureError(e instanceof Error ? e : new Error(String(e)), {
+        fn: "upload-file",
+        stage: "scan_upload_invoke",
+        upload_id: row.id,
+      });
+    });
+
     // Signed URL para descarga. PR-B: download:true fuerza
     // Content-Disposition: attachment para que cualquier archivo
     // (incluyendo los que se cuelen por bugs futuros del whitelist)

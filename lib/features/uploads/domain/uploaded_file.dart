@@ -4,6 +4,33 @@ import 'package:meta/meta.dart';
 /// "VO maestro": cualquier feature que necesite mostrar un archivo
 /// (avatares, adjuntos, etc.) referencia un `UploadedFile.id` en su
 /// propia tabla y resuelve el `signedUrl` cuando lo necesita.
+/// Estado del scan antivirus de un upload (PR-C). Sincronizado con
+/// `uploads.virus_scan_status` en BD (check constraint).
+enum VirusScanStatus {
+  /// En cola; la Edge Function `scan-upload` aun no termino.
+  pending,
+  /// Limpio segun VirusTotal (ningun motor flagea como malicious).
+  clean,
+  /// >=1 motor lo flageo como malicious. El upload queda
+  /// soft-deleted automaticamente -- no deberia aparecer en la UI.
+  suspicious,
+  /// Fallo en VirusTotal (red, quota, etc.). Reintentable manual.
+  /// El archivo SE MANTIENE accesible al user (no bloqueamos por error
+  /// de servicio externo).
+  error,
+  /// Archivo no escaneado por motivo conocido: > 32 MB (free tier),
+  /// upload legacy sin sha256, o VT_API_KEY no configurada.
+  skipped;
+
+  static VirusScanStatus fromString(String? s) => switch (s) {
+        'clean' => VirusScanStatus.clean,
+        'suspicious' => VirusScanStatus.suspicious,
+        'error' => VirusScanStatus.error,
+        'skipped' => VirusScanStatus.skipped,
+        _ => VirusScanStatus.pending,
+      };
+}
+
 @immutable
 class UploadedFile {
   const UploadedFile({
@@ -17,6 +44,7 @@ class UploadedFile {
     required this.sizeBytes,
     required this.createdAt,
     this.signedUrl,
+    this.virusScanStatus = VirusScanStatus.pending,
   });
 
   factory UploadedFile.fromMap(Map<String, dynamic> m, {String? signedUrl}) {
@@ -31,6 +59,8 @@ class UploadedFile {
       sizeBytes: (m['size_bytes'] as num).toInt(),
       createdAt: DateTime.parse(m['created_at'] as String),
       signedUrl: signedUrl ?? m['signed_url'] as String?,
+      virusScanStatus:
+          VirusScanStatus.fromString(m['virus_scan_status'] as String?),
     );
   }
 
@@ -48,6 +78,9 @@ class UploadedFile {
   /// cuando hace falta renderizar el archivo. Puede ser null si la
   /// consulta no la incluyó (lista paginada, por ejemplo).
   final String? signedUrl;
+
+  /// Estado del scan antivirus (PR-C). Default pending.
+  final VirusScanStatus virusScanStatus;
 
   /// `true` si es una imagen renderizable como `Image.network`.
   bool get isImage => mimeType.startsWith('image/');
@@ -67,6 +100,7 @@ class UploadedFile {
       sizeBytes: sizeBytes,
       createdAt: createdAt,
       signedUrl: signedUrl ?? this.signedUrl,
+      virusScanStatus: virusScanStatus,
     );
   }
 }
