@@ -564,43 +564,61 @@ Deno.serve(withSentry("upload-file", async (req) => {
     const uploadId = body.upload_id as string | undefined;
     if (!uploadId) return json({ error: "missing_upload_id" }, 400);
 
-    // Antes de borrar, leemos el filename para el audit log. Si RLS
-    // bloquea (no es propio del user) el select devuelve null y
-    // saltamos limpiamente.
-    const { data: uploadRow } = await userClient
+    // **Verificar ownership con admin** (service_role) antes del
+    // update. Antes haciamos el UPDATE con userClient confiando en la
+    // policy RLS `uploads_soft_delete_own`, pero algun caso edge
+    // (probablemente policy desincronizada en remoto, o un row pending
+    // que ya no es visible por la nueva policy SELECT de 0036)
+    // generaba "new row violates row-level security policy" en el
+    // WITH CHECK.
+    //
+    // Patron mas robusto: leer la fila con admin (bypassa RLS),
+    // verificar manualmente que user_id == caller, y luego UPDATE
+    // tambien con admin. La seguridad la garantiza el chequeo de
+    // ownership server-side, no la RLS.
+    const { data: uploadRow, error: readErr } = await admin
       .from("uploads")
-      .select("filename, mime_type, size_bytes")
+      .select("user_id, filename, mime_type, size_bytes, deleted_at")
       .eq("id", uploadId)
       .maybeSingle();
+    if (readErr) {
+      return json({ error: "db_error", detail: readErr.message }, 500);
+    }
+    if (!uploadRow) {
+      return json({ error: "not_found" }, 404);
+    }
+    if (uploadRow.user_id !== user.id) {
+      return json({ error: "forbidden" }, 403);
+    }
+    if (uploadRow.deleted_at) {
+      // Idempotente: ya estaba soft-deleted.
+      return json({ ok: true, already_deleted: true }, 200);
+    }
 
-    // Soft delete -- RLS limita a propias.
-    const { error } = await userClient
+    // Soft delete con admin (bypassa RLS, ownership ya verificado).
+    const { error } = await admin
       .from("uploads")
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", uploadId);
     if (error) return json({ error: "db_error", detail: error.message }, 500);
 
-    // **PR-D**: registrar el delete en audit_logs. Useful para
-    // soporte ("borro el user su archivo o se lo borramos nosotros?")
-    // y para la pantalla /activity. Failure no bloquea.
-    if (uploadRow) {
-      try {
-        await admin.from("audit_logs").insert({
-          user_id: user.id,
-          event: "upload.deleted",
-          metadata: {
-            upload_id: uploadId,
-            filename: uploadRow.filename,
-            mime_type: uploadRow.mime_type,
-            size_bytes: uploadRow.size_bytes,
-          },
-        });
-      } catch (e) {
-        await captureError(
-          e instanceof Error ? e : new Error(String(e)),
-          { fn: "upload-file", stage: "audit_log_deleted" },
-        );
-      }
+    // **PR-D**: registrar el delete en audit_logs. Failure no bloquea.
+    try {
+      await admin.from("audit_logs").insert({
+        user_id: user.id,
+        event: "upload.deleted",
+        metadata: {
+          upload_id: uploadId,
+          filename: uploadRow.filename,
+          mime_type: uploadRow.mime_type,
+          size_bytes: uploadRow.size_bytes,
+        },
+      });
+    } catch (e) {
+      await captureError(
+        e instanceof Error ? e : new Error(String(e)),
+        { fn: "upload-file", stage: "audit_log_deleted" },
+      );
     }
 
     return json({ ok: true }, 200);
