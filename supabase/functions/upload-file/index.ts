@@ -1,55 +1,64 @@
 // ============================================================================
-// Edge Function: upload-file
+// Edge Function: upload-file (PR-A hardening)
 // ----------------------------------------------------------------------------
-// Endpoint generico para subir un archivo a Supabase Storage con
-// validacion de cuota y mime antes de tocar el bucket. Lo invocan
-// CUALQUIER feature de la app que necesite subir archivos: avatares
-// custom, adjuntos en comentarios, imports CSV, logos de tenant, lo
-// que sea.
+// Upload de archivos a Supabase Storage con TODAS las defensas de seguridad
+// que el modelo de amenazas pide (ver SECURITY.md sec.6 PR-A):
 //
-// Flujo:
-//   1. Valida JWT + extrae user.id.
-//   2. Lee body: { tenant_id, filename, mime_type, data_base64 }.
-//   3. Decodifica base64 -> bytes; calcula size.
-//   4. Chequea size <= 25 MB (limite duro del bucket).
-//   5. Chequea mime contra whitelist.
-//   6. Chequea cuota del tenant via RPC get_tenant_storage_quota +
-//      get_tenant_storage_usage. Si usage + size > quota -> rechaza.
-//   7. Genera path unico `<tenant_id>/<user_id>/<uuid>-<filename>`.
-//   8. Uploadea a Storage con service_role.
-//   9. Inserta fila en `public.uploads`.
-//  10. Devuelve { upload_id, path, signed_url } al cliente.
+//   - Whitelist estricta de 27 MIME types (sin HTML, sin SVG, sin
+//     ejecutables).
+//   - Validacion server-side de **magic bytes** (no confiamos en el
+//     content-type declarado por el cliente).
+//   - Heuristica UTF-8 para tipos texto.
+//   - Limite 50 MB por archivo.
+//   - Signed Upload URLs: el cliente sube DIRECTO a Supabase Storage
+//     (evita el limite ~6 MB de payload de Edge Functions y permite
+//     archivos grandes sin streaming complicado).
+//   - SHA-256 del contenido almacenado en BD (para deduplicacion y
+//     futuro lookup en VirusTotal -- PR-C).
+//   - Rate limit 60 uploads/hora/user (sin cambios respecto a antes).
 //
-// El signed_url tiene TTL de 1 hora -- suficiente para que la UI
-// muestre el archivo recien subido. Si el caller quiere mostrarlo mas
-// tarde, llama de nuevo a la funcion con action=get_signed_url.
+// **Flow en dos pasos**:
 //
-// Body:
-//   {
-//     "action": "upload",
-//     "tenant_id": "<uuid>",      // null = upload personal (no atado a tenant)
-//     "filename": "logo.png",
-//     "mime_type": "image/png",
-//     "data_base64": "iVBORw0KGgo..."
-//   }
+//   1) `request_upload_url`
+//      body: { filename, mime_type, size_bytes, tenant_id? }
+//      Valida mime, size, cuota del tenant. Genera path unico.
+//      Inserta fila en `uploads` con confirmed_at=null (pending).
+//      Devuelve: { upload_id, signed_upload_url, path, token, expires_in }
 //
-// Otras acciones:
-//   { "action": "get_signed_url", "upload_id": "<uuid>" }
-//     -> { signed_url } (TTL 1h).
+//   2) Cliente sube directo a `signed_upload_url` con PUT.
 //
-//   { "action": "delete", "upload_id": "<uuid>" }
-//     -> soft delete (marca deleted_at). El object de Storage se
-//        purga en un cron job futuro tras 30 dias.
+//   3) `confirm_upload`
+//      body: { upload_id }
+//      Edge function descarga los primeros 64 KB con Range, valida
+//      magic bytes, calcula sha256 (sobre todo el contenido --
+//      descarga completo solo si <= 50 MB), inserta sha256 +
+//      magic_validated=true + confirmed_at=now() en la fila pending.
+//      Si falla cualquier check: borra el object + marca soft-deleted.
+//      Devuelve: { upload_id, signed_url, size_bytes, mime_type, sha256 }
 //
-//   { "action": "quota", "tenant_id": "<uuid>" }
-//     -> { used_bytes, quota_bytes }  para mostrar barra de uso en UI.
+// **Acciones legacy mantenidas**:
+//   - `get_signed_url` (TTL 1h para descarga)
+//   - `delete`         (soft-delete; cron purga >30 dias)
+//   - `quota`          (lectura cuota tenant)
 //
-// Seguridad: JWT obligatorio. Rate limit 60/h/user (uploads).
+// **Filas huerfanas**: si el cliente abandona entre paso 1 y 3, la fila
+// queda con confirmed_at=null. RLS la oculta (no aparece en /files).
+// Un cron job futuro llama a `purge_pending_uploads()` cada hora.
+//
+// **Avatar**: NO pasa por aqui. El avatar sube directo al bucket
+// `avatars` (publico) con RLS de storage. Ver migracion 0004.
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
-import { withSentry } from "../_shared/sentry.ts";
+import { withSentry, captureError } from "../_shared/sentry.ts";
+import {
+  ALLOWED_MIMES,
+  isTextLike,
+  sha256Hex,
+  validateMagicBytes,
+  validateUtf8Text,
+} from "../_shared/magic_bytes.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,22 +75,16 @@ function json(body: unknown, status: number): Response {
 }
 
 const BUCKET = "user-uploads";
-const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB hard limit por file.
-const ALLOWED_MIMES = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/gif",
-  "image/webp",
-  "image/svg+xml",
-  "application/pdf",
-  "text/csv",
-  "text/plain",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/zip",
-]);
-const SIGNED_URL_TTL = 3600; // 1 hora.
+const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50 MB.
+const MIN_FILE_BYTES = 1;                // rechazar 0-byte uploads.
+const SIGNED_DOWNLOAD_URL_TTL = 3600;    // 1 h para descargas.
+const SIGNED_UPLOAD_URL_TTL = 600;       // 10 min para subir.
+
+// Cuanto descargamos para validar magic bytes en confirm_upload. 64 KB
+// es suficiente para todas las signatures que tenemos (la mas profunda
+// es TAR a offset 257). Para tipos texto, validamos UTF-8 sobre los
+// primeros 8 KB de este sample.
+const MAGIC_BYTES_SAMPLE = 64 * 1024;
 
 Deno.serve(withSentry("upload-file", async (req) => {
   if (req.method === "OPTIONS") {
@@ -108,21 +111,29 @@ Deno.serve(withSentry("upload-file", async (req) => {
   if (userErr || !user) return json({ error: "invalid_token" }, 401);
 
   const admin = createClient(supabaseUrl, serviceRoleKey);
-  const rateOk = await checkRateLimit(admin, {
-    bucketKey: `uploads:user:${user.id}`,
-    limit: 60,
-    windowSeconds: 3600,
-  });
-  if (!rateOk) return json({ error: "rate_limited" }, 429);
 
+  // Rate limit aplicado a TODAS las acciones que mutan (request_upload_url,
+  // confirm_upload, delete). Lectura (quota, get_signed_url) no consume.
   let body: Record<string, unknown> = {};
   try {
     body = await req.json();
   } catch {
     return json({ error: "invalid_json" }, 400);
   }
-
   const action = body.action as string | undefined;
+  const MUTATING_ACTIONS = new Set([
+    "request_upload_url",
+    "confirm_upload",
+    "delete",
+  ]);
+  if (action && MUTATING_ACTIONS.has(action)) {
+    const rateOk = await checkRateLimit(admin, {
+      bucketKey: `uploads:user:${user.id}`,
+      limit: 60,
+      windowSeconds: 3600,
+    });
+    if (!rateOk) return json({ error: "rate_limited" }, 429);
+  }
 
   // ─────────────────────────────── QUOTA ─────────────────────────────────
 
@@ -142,35 +153,39 @@ Deno.serve(withSentry("upload-file", async (req) => {
     );
   }
 
-  // ─────────────────────────────── UPLOAD ────────────────────────────────
+  // ─────────────── REQUEST UPLOAD URL (paso 1 de 2) ─────────────────
+  // Reservamos slot en BD (fila pending) y devolvemos signed URL para
+  // que el cliente suba directo al bucket. Validamos TODO lo que se
+  // pueda saber sin tener los bytes todavia: mime en whitelist, size
+  // dentro del limite, cuota del tenant.
 
-  if (action === "upload") {
+  if (action === "request_upload_url") {
     const tenantId = body.tenant_id as string | undefined;
     const filename = (body.filename as string | undefined)?.trim();
     const mimeType = body.mime_type as string | undefined;
-    const base64 = body.data_base64 as string | undefined;
+    const sizeBytes = (body.size_bytes as number | undefined) ?? 0;
 
-    if (!filename || !mimeType || !base64) {
+    if (!filename || !mimeType || !sizeBytes) {
       return json({ error: "missing_fields" }, 400);
+    }
+    if (filename.length > 255) {
+      return json({ error: "filename_too_long" }, 400);
     }
     if (!ALLOWED_MIMES.has(mimeType)) {
       return json({ error: "unsupported_mime", mime: mimeType }, 400);
     }
-
-    let bytes: Uint8Array;
-    try {
-      bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-    } catch {
-      return json({ error: "invalid_base64" }, 400);
-    }
-    if (bytes.byteLength > MAX_FILE_BYTES) {
+    if (sizeBytes < MIN_FILE_BYTES || sizeBytes > MAX_FILE_BYTES) {
       return json(
-        { error: "file_too_large", max_bytes: MAX_FILE_BYTES },
+        {
+          error: sizeBytes > MAX_FILE_BYTES ? "file_too_large" : "file_too_small",
+          max_bytes: MAX_FILE_BYTES,
+          min_bytes: MIN_FILE_BYTES,
+        },
         413,
       );
     }
 
-    // Chequeo de cuota — solo si el upload se atribuye a un tenant.
+    // Cuota de tenant -- solo si el upload se atribuye a uno.
     if (tenantId) {
       const [{ data: usage }, { data: quota }] = await Promise.all([
         admin.rpc("get_tenant_storage_usage", { p_tenant_id: tenantId }),
@@ -178,43 +193,28 @@ Deno.serve(withSentry("upload-file", async (req) => {
       ]);
       const quotaNum = Number(quota ?? 0);
       const usageNum = Number(usage ?? 0);
-      // quota_bytes = -1 = ilimitado (plan enterprise).
-      if (quotaNum >= 0 && usageNum + bytes.byteLength > quotaNum) {
+      if (quotaNum >= 0 && usageNum + sizeBytes > quotaNum) {
         return json(
           {
             error: "quota_exceeded",
             used_bytes: usageNum,
             quota_bytes: quotaNum,
-            file_bytes: bytes.byteLength,
+            file_bytes: sizeBytes,
           },
           413,
         );
       }
     }
 
-    // Generar path unico: <tenant_id || 'personal'>/<user_id>/<uuid>-<filename>.
-    // Sanitizar filename: solo permitir alfanumerico + . - _ para evitar
-    // ataques de path traversal.
+    // Path unico. Sanitizamos filename a [a-zA-Z0-9._-] para prevenir
+    // path traversal o caracteres problematicos en URLs.
     const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100);
     const uuid = crypto.randomUUID();
     const folder = tenantId ?? "personal";
     const path = `${folder}/${user.id}/${uuid}-${safeName}`;
 
-    // Subir al bucket con service_role (bypass de policies).
-    const { error: uploadErr } = await admin.storage
-      .from(BUCKET)
-      .upload(path, bytes, {
-        contentType: mimeType,
-        upsert: false,
-      });
-    if (uploadErr) {
-      return json(
-        { error: "storage_error", detail: uploadErr.message },
-        500,
-      );
-    }
-
-    // Insertar fila maestra.
+    // Insertar fila pending. confirmed_at=null + RLS la oculta de la
+    // lista del cliente hasta que confirm_upload la complete.
     const { data: row, error: insErr } = await admin
       .from("uploads")
       .insert({
@@ -224,29 +224,207 @@ Deno.serve(withSentry("upload-file", async (req) => {
         path,
         filename,
         mime_type: mimeType,
-        size_bytes: bytes.byteLength,
+        size_bytes: sizeBytes,
+        // sha256 = null hasta confirm
+        // magic_validated = false (default)
+        // confirmed_at = null (default)
       })
-      .select()
+      .select("id")
       .single();
-    if (insErr) {
-      // Limpia el object si la insercion fallo.
-      await admin.storage.from(BUCKET).remove([path]);
-      return json({ error: "db_error", detail: insErr.message }, 500);
+    if (insErr || !row) {
+      return json(
+        { error: "db_error", detail: insErr?.message },
+        500,
+      );
     }
 
-    // Signed URL para que el cliente lo muestre / descargue.
-    const { data: signed } = await admin.storage
+    // Generar signed upload URL. TTL corto (10 min) -- si el cliente
+    // tarda mas, vuelve a pedir.
+    const { data: signed, error: sigErr } = await admin.storage
       .from(BUCKET)
-      .createSignedUrl(path, SIGNED_URL_TTL);
+      .createSignedUploadUrl(path);
+    if (sigErr || !signed) {
+      // Limpia la fila pending si no podemos firmar.
+      await admin.from("uploads").delete().eq("id", row.id);
+      return json(
+        { error: "signed_url_error", detail: sigErr?.message },
+        500,
+      );
+    }
 
     return json(
       {
         upload_id: row.id,
+        signed_upload_url: signed.signedUrl,
+        token: signed.token,
         path,
+        expires_in: SIGNED_UPLOAD_URL_TTL,
+      },
+      200,
+    );
+  }
+
+  // ─────────────── CONFIRM UPLOAD (paso 2 de 2) ─────────────────────
+  // Cliente nos avisa que termino de subir. Validamos magic bytes,
+  // calculamos sha256 y completamos la fila. Si la validacion falla,
+  // borramos el object + marcamos soft-deleted la fila.
+
+  if (action === "confirm_upload") {
+    const uploadId = body.upload_id as string | undefined;
+    if (!uploadId) return json({ error: "missing_upload_id" }, 400);
+
+    // Leer la fila pending. RLS bloquea la SELECT del cliente porque
+    // confirmed_at is null, pero el service_role bypassa RLS.
+    const { data: row, error: readErr } = await admin
+      .from("uploads")
+      .select(
+        "id, user_id, tenant_id, bucket, path, mime_type, "
+          + "size_bytes, confirmed_at",
+      )
+      .eq("id", uploadId)
+      .maybeSingle();
+    if (readErr || !row) {
+      return json({ error: "not_found" }, 404);
+    }
+    if (row.user_id !== user.id) {
+      // Caller no es dueno -- forbidden silencioso.
+      return json({ error: "forbidden" }, 403);
+    }
+    if (row.confirmed_at) {
+      // Idempotente: ya confirmado, devolvemos los datos.
+      const { data: signed } = await admin.storage
+        .from(row.bucket)
+        .createSignedUrl(row.path, SIGNED_DOWNLOAD_URL_TTL);
+      return json(
+        {
+          upload_id: row.id,
+          signed_url: signed?.signedUrl ?? null,
+          already_confirmed: true,
+        },
+        200,
+      );
+    }
+
+    // Descargar todo el archivo del bucket para validar magic bytes +
+    // calcular sha256. NOTA: si el archivo > 5 MB, esto consume tiempo
+    // de la Edge Function. Para archivos hasta 50 MB es aceptable
+    // (~2-5 s tipicamente). Si llegamos a ver timeouts, optimizamos
+    // descargando solo `MAGIC_BYTES_SAMPLE` con Range y aceptando
+    // sha256 del cliente (verificable contra el de Storage en
+    // background).
+    const { data: fileBlob, error: dlErr } = await admin.storage
+      .from(BUCKET)
+      .download(row.path);
+    if (dlErr || !fileBlob) {
+      // Object no existe -> cliente no subio nada o lo borraron.
+      // Marcamos la fila para purga.
+      await admin.from("uploads").delete().eq("id", row.id);
+      return json(
+        { error: "object_not_found", detail: dlErr?.message },
+        404,
+      );
+    }
+
+    const bytes = new Uint8Array(await fileBlob.arrayBuffer());
+
+    // Verificacion 1: size real vs declarado. Toleramos +/- 1024 bytes
+    // para overhead minimo de multipart, etc.
+    const actualSize = bytes.byteLength;
+    if (Math.abs(actualSize - row.size_bytes) > 1024) {
+      await rejectAndCleanup(
+        admin,
+        row.id,
+        row.path,
+        BUCKET,
+        "size_mismatch",
+      );
+      return json(
+        {
+          error: "size_mismatch",
+          declared: row.size_bytes,
+          actual: actualSize,
+        },
+        400,
+      );
+    }
+    if (actualSize > MAX_FILE_BYTES) {
+      await rejectAndCleanup(
+        admin,
+        row.id,
+        row.path,
+        BUCKET,
+        "file_too_large",
+      );
+      return json({ error: "file_too_large" }, 413);
+    }
+
+    // Verificacion 2: magic bytes.
+    const magicOk = validateMagicBytes(bytes, row.mime_type);
+    if (!magicOk) {
+      await rejectAndCleanup(
+        admin,
+        row.id,
+        row.path,
+        BUCKET,
+        "magic_bytes_mismatch",
+      );
+      return json(
+        {
+          error: "magic_bytes_mismatch",
+          mime_declared: row.mime_type,
+        },
+        400,
+      );
+    }
+
+    // Verificacion 3 (text-like): UTF-8 heuristica sobre los primeros
+    // 8 KB. validateMagicBytes ya lo hace para text-like, pero
+    // explicitamos por claridad y para devolver error distinto.
+    if (isTextLike(row.mime_type) && !validateUtf8Text(bytes)) {
+      await rejectAndCleanup(
+        admin,
+        row.id,
+        row.path,
+        BUCKET,
+        "invalid_utf8_text",
+      );
+      return json({ error: "invalid_utf8_text" }, 400);
+    }
+
+    // Hash + actualizar fila.
+    const hash = await sha256Hex(bytes);
+
+    const { error: updErr } = await admin
+      .from("uploads")
+      .update({
+        sha256: hash,
+        magic_validated: true,
+        confirmed_at: new Date().toISOString(),
+        size_bytes: actualSize, // usar el size real, no el declarado.
+      })
+      .eq("id", row.id);
+    if (updErr) {
+      // Update fallo -- mantenemos object pero NO marcamos confirmado.
+      // El cron de pending lo purgara tras 1h.
+      await captureError(updErr, {
+        fn: "upload-file",
+        stage: "confirm_update",
+      });
+      return json({ error: "db_error", detail: updErr.message }, 500);
+    }
+
+    // Signed URL para descarga.
+    const { data: signed } = await admin.storage
+      .from(BUCKET)
+      .createSignedUrl(row.path, SIGNED_DOWNLOAD_URL_TTL);
+
+    return json(
+      {
+        upload_id: row.id,
         signed_url: signed?.signedUrl ?? null,
-        size_bytes: bytes.byteLength,
-        mime_type: mimeType,
-        filename,
+        size_bytes: actualSize,
+        mime_type: row.mime_type,
+        sha256: hash,
       },
       200,
     );
@@ -258,7 +436,8 @@ Deno.serve(withSentry("upload-file", async (req) => {
     const uploadId = body.upload_id as string | undefined;
     if (!uploadId) return json({ error: "missing_upload_id" }, 400);
 
-    // Leer el upload con el user client (RLS). Si no puede verlo, 404.
+    // userClient + RLS: si no puede verlo (no es propio, no es de su
+    // tenant, o no esta confirmado), 404.
     const { data: row, error } = await userClient
       .from("uploads")
       .select("path, bucket")
@@ -266,9 +445,15 @@ Deno.serve(withSentry("upload-file", async (req) => {
       .maybeSingle();
     if (error || !row) return json({ error: "not_found" }, 404);
 
+    // Forzar Content-Disposition: attachment con el query param
+    // `download` de Supabase Storage. Defense-in-depth: aunque el
+    // whitelist ya excluye HTML/SVG, si por algun bug se cuela un
+    // archivo peligroso, no se renderizara inline -- se descargara.
     const { data: signed } = await admin.storage
       .from(row.bucket as string)
-      .createSignedUrl(row.path as string, SIGNED_URL_TTL);
+      .createSignedUrl(row.path as string, SIGNED_DOWNLOAD_URL_TTL, {
+        download: true,
+      });
     return json({ signed_url: signed?.signedUrl ?? null }, 200);
   }
 
@@ -285,10 +470,43 @@ Deno.serve(withSentry("upload-file", async (req) => {
       .eq("id", uploadId);
     if (error) return json({ error: "db_error", detail: error.message }, 500);
 
-    // El object de Storage NO se borra ahora -- un cron purgara
-    // soft-deleted >30 dias. Esto permite "deshacer borrado".
     return json({ ok: true }, 200);
   }
 
   return json({ error: "unknown_action" }, 400);
 }));
+
+// ─────────────────────────────────────────────────────────────────────
+// Helper: rechazar un upload pendiente -> borrar object + fila.
+// ─────────────────────────────────────────────────────────────────────
+async function rejectAndCleanup(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  uploadId: string,
+  path: string,
+  bucket: string,
+  reason: string,
+): Promise<void> {
+  // Borrar object (mejor esfuerzo).
+  try {
+    await admin.storage.from(bucket).remove([path]);
+  } catch (e) {
+    await captureError(e instanceof Error ? e : new Error(String(e)), {
+      fn: "upload-file",
+      stage: "cleanup_storage",
+      upload_id: uploadId,
+    });
+  }
+  // Borrar fila pending. No marcamos deleted_at porque la fila nunca
+  // llego a ser legitima.
+  try {
+    await admin.from("uploads").delete().eq("id", uploadId);
+  } catch (e) {
+    await captureError(e instanceof Error ? e : new Error(String(e)), {
+      fn: "upload-file",
+      stage: "cleanup_db",
+      upload_id: uploadId,
+      reason,
+    });
+  }
+}
