@@ -43,7 +43,20 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     setState(() => _saving = true);
     try {
       await ref.read(onboardingDataSourceProvider).markCompleted();
+      // CRITICO: esperar a que el provider re-fetche el nuevo valor
+      // ANTES de navegar. Con `ref.invalidate()` solo marcamos el
+      // provider como stale -- la proxima lectura dispara el rebuild
+      // PERO `valueOrNull` puede devolver el valor cached `false`
+      // hasta que el future resuelva. El router lee el provider y ve
+      // onboardingCompleted=false -> redirige a /onboarding -> el
+      // user se queda atascado, pulsa "Saltar" una segunda vez y ya
+      // si funciona porque el provider ya cargo true.
+      //
+      // `invalidate` + `read(...future)` fuerza el rebuild y espera
+      // al nuevo valor antes de navegar. Asi el guard del router lo ve
+      // true en su primera lectura post-navigation.
       ref.invalidate(onboardingCompletedProvider);
+      await ref.read(onboardingCompletedProvider.future);
       if (!mounted) return;
       context.goNamed(RouteNames.home);
     } catch (_) {
