@@ -1,10 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:myapp/core/providers/supabase_providers.dart';
-import 'package:myapp/features/account/application/data_export_builder.dart';
-import 'package:myapp/features/account/application/profile_providers.dart';
 import 'package:myapp/features/account/presentation/util/web_download.dart';
-import 'package:myapp/features/auth/application/mfa_providers.dart';
 
 /// Función que dispara la descarga del archivo. Está detrás de un provider
 /// para poder inyectar un fake en los tests.
@@ -42,8 +39,26 @@ class DataExportState {
   }
 }
 
-/// Genera y descarga una copia de los datos del usuario en JSON
-/// (portabilidad GDPR — Art. 20).
+/// Genera y descarga una copia de los datos del usuario en JSON.
+///
+/// **Compliance**: cubre **GDPR Article 15 (Right of Access)** y
+/// **Article 20 (Data Portability)**, asi como equivalentes (CCPA,
+/// LGPD).
+///
+/// **Antes (v1)**: el payload se construia client-side a partir de
+/// `User`, `Profile` y `mfaFactors`. Cobertura limitada: solo cuenta +
+/// perfil + factores MFA. Falto: uploads, audit_logs, tenants,
+/// notificaciones, emails recibidos, PATs, webhooks.
+///
+/// **Ahora (v2)**: llama la RPC SQL `get_my_data_export()` (migracion
+/// 0043) que recopila TODO en server-side y devuelve un JSONB. La RPC
+/// es `SECURITY DEFINER` con `auth.uid()`, asi que aunque bypassa RLS
+/// solo expone los datos del propio caller. Strippea secretos
+/// (token_hash, secret_hash) y info tecnica (Storage paths).
+///
+/// **Limit**: `audit_logs` y `email_log` se truncan a las 1000 entradas
+/// mas recientes server-side para evitar exports gigantes que rompan
+/// el browser. Para historial completo, contact support.
 class DataExportNotifier extends Notifier<DataExportState> {
   @override
   DataExportState build() => const DataExportState();
@@ -56,7 +71,8 @@ class DataExportNotifier extends Notifier<DataExportState> {
     );
 
     try {
-      final user = ref.read(supabaseClientProvider).auth.currentUser;
+      final client = ref.read(supabaseClientProvider);
+      final user = client.auth.currentUser;
       if (user == null) {
         state = state.copyWith(
           status: DataExportStatus.failure,
@@ -65,20 +81,23 @@ class DataExportNotifier extends Notifier<DataExportState> {
         return;
       }
 
-      // Asegura que perfil y factores MFA están cargados (si ya lo estaban,
-      // estos `.future` resuelven inmediatamente con el valor cacheado).
-      final profile = await ref.read(myProfileProvider.future);
-      final factors = await ref.read(mfaFactorsProvider.future);
-
-      final payload = buildDataExportPayload(
-        user: user,
-        profile: profile,
-        mfaFactors: factors,
-      );
+      // La RPC devuelve un JSONB con TODO. Es un Map<String, dynamic>
+      // anidado: cada seccion (account, profile, uploads, ...) es una
+      // sub-key. La RPC valida `auth.uid()` internamente y lanza
+      // `not_authenticated` si el JWT esta vacio (no deberia pasar
+      // tras el currentUser != null pero defense in depth).
+      final data = await client.rpc<dynamic>('get_my_data_export');
+      if (data is! Map) {
+        state = state.copyWith(
+          status: DataExportStatus.failure,
+          errorMessage: 'unexpected_response_shape',
+        );
+        return;
+      }
 
       ref.read(dataDownloaderProvider)(
         filename: _buildFilename(),
-        payload: payload,
+        payload: data.cast<String, dynamic>(),
       );
 
       state = state.copyWith(status: DataExportStatus.success);
