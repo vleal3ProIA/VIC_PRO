@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/theme/app_tokens.dart';
+import 'package:myapp/core/widgets/premium/premium.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../application/admin_stripe_branding_providers.dart';
@@ -49,7 +51,7 @@ class AdminBrandingPage extends ConsumerWidget {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 880),
+          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
           child: brandingAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => _LoadError(
@@ -115,68 +117,67 @@ class _BrandingView extends StatelessWidget {
           const SizedBox(height: 16),
 
           // ─────── Logo + colores ───────
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _SectionTitle(l.adminBrandingSectionVisuals),
-                  const SizedBox(height: 4),
-                  Text(
-                    l.adminBrandingSectionVisualsHint,
-                    style: context.textTheme.bodySmall?.copyWith(
-                      color: context.colors.onSurfaceVariant,
-                    ),
+          PremiumCard(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SectionTitle(l.adminBrandingSectionVisuals),
+                const SizedBox(height: 4),
+                Text(
+                  l.adminBrandingSectionVisualsHint,
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.colors.onSurfaceVariant,
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      _LogoPreview(logoUrl: branding.logoUrl),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _ReadOnlyField(
-                              label: l.adminBrandingPrimaryColor,
-                              value: branding.primaryColor,
-                              swatchColor: _parseHex(branding.primaryColor),
-                            ),
-                            const SizedBox(height: 12),
-                            _ReadOnlyField(
-                              label: l.adminBrandingSecondaryColor,
-                              value: branding.secondaryColor,
-                              swatchColor: _parseHex(branding.secondaryColor),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: FilledButton.icon(
-                      icon: const Icon(Icons.open_in_new),
-                      label: Text(l.adminBrandingOpenDashboardBranding),
-                      onPressed: () => _openUrl(
-                        context,
-                        AdminBrandingPage._dashboardBrandingUrl,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _LogoPreview(logoUrl: branding.logoUrl),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _ReadOnlyField(
+                            label: l.adminBrandingPrimaryColor,
+                            value: branding.primaryColor,
+                            swatchColor: _parseHex(branding.primaryColor),
+                          ),
+                          const SizedBox(height: AppSpacing.sm + 4),
+                          _ReadOnlyField(
+                            label: l.adminBrandingSecondaryColor,
+                            value: branding.secondaryColor,
+                            swatchColor: _parseHex(branding.secondaryColor),
+                          ),
+                        ],
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: PremiumButton(
+                    label: l.adminBrandingOpenDashboardBranding,
+                    variant: PremiumButtonVariant.secondary,
+                    size: PremiumButtonSize.sm,
+                    leadingIcon: Icons.open_in_new,
+                    onPressed: () => _openUrl(
+                      context,
+                      AdminBrandingPage._dashboardBrandingUrl,
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
 
           // ─────── Datos fiscales ───────
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+          PremiumCard(
+            padding: const EdgeInsets.all(AppSpacing.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -275,9 +276,11 @@ class _BrandingView extends StatelessWidget {
                   const SizedBox(height: 16),
                   Align(
                     alignment: Alignment.centerRight,
-                    child: FilledButton.icon(
-                      icon: const Icon(Icons.open_in_new),
-                      label: Text(l.adminBrandingOpenDashboardAccount),
+                    child: PremiumButton(
+                      label: l.adminBrandingOpenDashboardAccount,
+                      variant: PremiumButtonVariant.secondary,
+                      size: PremiumButtonSize.sm,
+                      leadingIcon: Icons.open_in_new,
                       onPressed: () => _openUrl(
                         context,
                         AdminBrandingPage._dashboardAccountUrl,
@@ -286,9 +289,8 @@ class _BrandingView extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );

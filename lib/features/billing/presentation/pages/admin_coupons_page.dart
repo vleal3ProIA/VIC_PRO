@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/premium/premium.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
 import '../../application/admin_coupons_providers.dart';
@@ -53,7 +55,7 @@ class AdminCouponsPage extends ConsumerWidget {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 880),
+          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
           child: listAsync.when(
             loading: () => const AppLoadingState(),
             error: (e, _) => AppErrorState(
@@ -75,9 +77,15 @@ class AdminCouponsPage extends ConsumerWidget {
                 byCoupon.putIfAbsent(pc.couponId, () => []).add(pc);
               }
               return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  96,
+                ),
                 itemCount: data.coupons.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: AppSpacing.sm),
                 itemBuilder: (_, i) {
                   final c = data.coupons[i];
                   return _CouponCard(
@@ -118,52 +126,49 @@ class _CouponCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final inactive = !coupon.isActive;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              coupon.name,
-                              style: context.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                decoration: inactive
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                                color: inactive
-                                    ? context.colors.onSurfaceVariant
-                                    : null,
-                              ),
+    return PremiumCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            coupon.name,
+                            style: context.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              decoration: inactive
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                              color: inactive
+                                  ? context.colors.onSurfaceVariant
+                                  : null,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Chip(
-                            label: Text(coupon.formatDiscount()),
-                            visualDensity: VisualDensity.compact,
-                            side: BorderSide.none,
-                            backgroundColor: context.colors.primaryContainer,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        PremiumBadge(
+                          label: coupon.formatDiscount(),
+                          variant: PremiumBadgeVariant.info,
+                          dense: true,
+                        ),
+                        if (inactive) ...[
+                          const SizedBox(width: AppSpacing.sm),
+                          PremiumBadge(
+                            label: l.adminCouponsInactive,
+                            variant: PremiumBadgeVariant.error,
+                            dense: true,
                           ),
-                          if (inactive) ...[
-                            const SizedBox(width: 8),
-                            Chip(
-                              label: Text(l.adminCouponsInactive),
-                              visualDensity: VisualDensity.compact,
-                              side: BorderSide.none,
-                              backgroundColor: context.colors.errorContainer,
-                            ),
-                          ],
                         ],
-                      ),
+                      ],
+                    ),
                       const SizedBox(height: 6),
                       Text(
                         _summary(context, coupon),
@@ -215,7 +220,6 @@ class _CouponCard extends ConsumerWidget {
               ...codes.map((pc) => _PromotionCodeRow(promo: pc)),
           ],
         ),
-      ),
     );
   }
 
