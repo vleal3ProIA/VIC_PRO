@@ -348,8 +348,13 @@ saltándose el modal de password (que era solo client-side).
   saltando el dialog. Defense-in-depth completa requeriría una EF
   intermediaria `change-email` que llame al user-context endpoint
   REST tras verificar `consume_recent_verification` server-side.
-- 🔲 `webhook_secret_rotate` → no hay endpoint server-side todavía
-  (la rotación se hace via SQL Editor / RLS UPDATE directo).
+- ✅ `webhook_secret_rotate` → **cerrado (2026-05-19, feat/webhook-rotate-secret)**:
+  nueva acción `action: "rotate_secret"` en EF `webhook-dispatch`
+  que valida JWT + ownership + `consume_recent_verification('webhook_secret_rotate')`
+  antes de generar un nuevo HMAC secret. UI en
+  `/account-settings/webhooks/:id` con botón "Rotate signing secret"
+  → `ReauthDialog` → mostrar nuevo secret una vez en dialog copiable
+  (Clipboard API). El secret viejo deja de funcionar inmediatamente.
 - 🔲 `role_change` → no hay UI todavía (la promoción a admin se hace
   manualmente desde SQL Editor). Cuando se construya, se añade el
   gate desde el inicio: la whitelist en `verify-password` ya tiene
@@ -608,7 +613,7 @@ y un beneficio bajo a esta escala. Mitigamos con:
 | A01 | Broken Access Control | ✅ RLS + is_admin + tests. E2E route guards ✅ (PR-G, 40 tests). |
 | A02 | Cryptographic Failures | ✅ TLS forzado, passwords bcrypt (Supabase), secrets en env. |
 | A03 | Injection | ✅ PostgREST + RPCs paramétricas. Sin SQL crudo en frontend. |
-| A04 | Insecure Design | 🟡 Re-auth ✅ (PR-F: delete-account + create-pat write; feat/reauth-change-email: change-email client-side; webhook rotate + role change pendientes -- features no construidas todavía). HTML sanitize ✅ (PR-E). Avatar magic bytes ✅ (feat/avatar-magic-bytes, client-side mirror del server-side de PR-A). |
+| A04 | Insecure Design | 🟢 Re-auth ✅ (PR-F: delete-account + create-pat write; feat/reauth-change-email: change-email client-side; feat/webhook-rotate-secret: webhook rotate server-side. Solo queda role-change pendiente -- feature no construida todavía). HTML sanitize ✅ (PR-E). Avatar magic bytes ✅ (feat/avatar-magic-bytes, client-side mirror del server-side de PR-A). |
 | A05 | Security Misconfiguration | ✅ `.htaccess` security headers. RLS default-deny. |
 | A06 | Vulnerable Components | 🟡 `flutter pub outdated` + `deno info` manual. CI sin scan. |
 | A07 | Identification/Auth Failures | ✅ MFA, passkeys, rate limit en login, session revoke. |
@@ -709,17 +714,19 @@ application/x-yaml): no hay magic bytes universal. Aplicamos:
 ```
 ✅ delete-account                        (PR-F, server-side enforcement)
 ✅ create-pat con scope != 'read'        (PR-F, server-side enforcement)
+✅ regenerar webhook signing_secret      (feat/webhook-rotate-secret,
+                                          server-side enforcement)
 🟡 change-email                          (feat/reauth-change-email, client-side gate;
                                           server-side defense requires future EF)
 🔲 cambiar role de otro user             (no UI built yet)
-🔲 regenerar webhook signing_secret      (no endpoint built yet)
 ```
 
 Whitelist actual de `action_kind` en `verify-password/index.ts`:
-`delete_account`, `create_pat_write`, `change_email`. Las dos
-restantes están comentadas como TODO en el array — al construir
-sus features se descomentan junto con el call a
-`consume_recent_verification` en sus EFs.
+`delete_account`, `create_pat_write`, `change_email`,
+`webhook_secret_rotate`. La única restante (`role_change`) está
+comentada como TODO en el array — al construir su feature se
+descomenta junto con el call a `consume_recent_verification` en
+su EF.
 
 ### 10.4 Rate limits actuales
 
@@ -753,3 +760,4 @@ sus features se descomentan junto con el call a
 | 2026-05-19 | DB maintenance — purgas extendidas: migración 0042 con 3 RPCs `admin_*_purge_old` para `audit_logs` (default 90d, floor 30d), `email_log` (180d, 60d) y `notifications` (60d, 14d; solo leídas por defecto, opcional `p_include_unread`). Todas `SECURITY DEFINER` con check `is_admin()` interno. Sin purgas, `/admin/email-log` se degrada a 2-5s tras 6-12 meses en producción. | chore/cron-purges-extended |
 | 2026-05-19 | GDPR data export v2 (Article 15 completo): migración 0043 con RPC `get_my_data_export()` que devuelve JSONB con 10 secciones (account, profile, tenants, uploads, PATs sin hash, webhooks sin secret, audit_logs 1000 últimos, notifications, emails recibidos 1000 últimos, export_meta). Antes el export era client-side limitado a 3 fuentes (user + profile + MFA factors). Notifier refactorizado para llamar la RPC; `data_export_builder.dart` eliminado (-5 tests obsoletos). UI idéntica visualmente — el JSON descargado pasa de 3 a 10 secciones automáticamente. | feat/gdpr-data-export |
 | 2026-05-19 | Cron mantenimiento automatizado: nueva Edge Function `maintenance-cron` autenticada con `X-Cron-Secret` header (env `CRON_SECRET`) + workflow `.github/workflows/maintenance.yml` con 3 jobs schedulados (recover_stuck cada 30 min; daily_purges + run_audit diario 04:00 UTC) + `workflow_dispatch` manual con `choice` input. La EF ejecuta con service_role internamente (bypassa is_admin) — whitelist de 3 tasks + rate limit 60/h global. Sustituye la doc "configura manualmente un cron externo" de PR-Audit-4 + chore/cron-purges-extended por setup en 3 pasos: generar secret → `supabase secrets set CRON_SECRET=…` → añadir el mismo secret en GitHub repo Settings. `verify_jwt=false` en config.toml (GitHub Actions no manda JWT). | chore/cron-maintenance-auto |
+| 2026-05-19 | Webhook secret rotate server-side (cierra TODO de PR-F): nueva acción `rotate_secret` en EF `webhook-dispatch` que valida JWT + ownership del endpoint + `consume_recent_verification('webhook_secret_rotate')` antes de regenerar el HMAC secret. `webhook_secret_rotate` añadido al whitelist de `verify-password`. UI nueva en `/account-settings/webhooks/:id` con botón "Rotate signing secret" que invoca `ReauthDialog` y al éxito muestra el secret nuevo una vez en un dialog copiable (Clipboard API). El secret viejo deja de funcionar inmediatamente. Bloquea el ataque "robo de cookie → rotación silenciosa → DoS del receptor real". i18n 9 strings × 8 idiomas. | feat/webhook-rotate-secret |

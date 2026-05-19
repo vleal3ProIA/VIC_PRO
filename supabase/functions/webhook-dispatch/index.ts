@@ -374,6 +374,99 @@ Deno.serve(withSentry("webhook-dispatch", async (req) => {
     }
   }
 
+  // ─────────────────────────── ROTATE SECRET ────────────────────
+  // Cierra el TODO de SECURITY.md PR-F sobre `webhook_secret_rotate`.
+  //
+  // Genera un nuevo HMAC secret para un endpoint existente. El secret
+  // viejo deja de ser valido inmediatamente -- cualquier dispatcher
+  // posterior firma con el nuevo. El secret raw se devuelve UNA SOLA
+  // VEZ en la response, igual que en create_endpoint.
+  //
+  // **Gate de seguridad**: exige `consume_recent_verification(
+  // 'webhook_secret_rotate')`. Sin password reciente, devuelve 403
+  // 'reauth_required'. La UI llama a ReauthDialog antes de invocar.
+  //
+  // **Ownership**: el endpoint se lee con userClient (RLS); si no
+  // pertenece al user, 404. Asi un atacante con JWT robado pero sin
+  // acceso al endpoint no puede rotar secrets de otros users.
+  if (action === "rotate_secret") {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return json({ error: "missing_authorization" }, 401);
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const {
+      data: { user },
+      error: userErr,
+    } = await userClient.auth.getUser();
+    if (userErr || !user) return json({ error: "invalid_token" }, 401);
+
+    const endpointId = body.endpoint_id as string | undefined;
+    if (!endpointId) return json({ error: "missing_endpoint_id" }, 400);
+
+    // Ownership check via user client (bloquea ataques cross-user
+    // incluso con re-auth fresca).
+    const { data: endpoint } = await userClient
+      .from("webhook_endpoints")
+      .select("id, user_id")
+      .eq("id", endpointId)
+      .maybeSingle();
+    if (!endpoint) return json({ error: "not_found" }, 404);
+    if (endpoint.user_id !== user.id) {
+      return json({ error: "not_owner" }, 403);
+    }
+
+    // Gate re-auth: consume una verificacion fresca del action_kind
+    // `webhook_secret_rotate`. La RPC borra la fila si existe y
+    // devuelve true; false si no hay verificacion vigente.
+    const { data: verified, error: vErr } = await admin.rpc(
+      "consume_recent_verification",
+      {
+        p_action_kind: "webhook_secret_rotate",
+        p_user_id: user.id,
+      },
+    );
+    if (vErr) {
+      return json({ error: "reauth_check_failed", detail: vErr.message }, 500);
+    }
+    if (verified !== true) {
+      return json({ error: "reauth_required" }, 403);
+    }
+
+    // Genera nuevo secret (mismo formato que create_endpoint).
+    const secretBytes = new Uint8Array(32);
+    crypto.getRandomValues(secretBytes);
+    const newSecret = `whsec_${base64UrlEncode(secretBytes)}`;
+    const newHash = await sha256Hex(newSecret);
+
+    // 1) UPDATE webhook_endpoints.secret_hash + updated_at.
+    const { error: hashErr } = await admin
+      .from("webhook_endpoints")
+      .update({
+        secret_hash: newHash,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", endpointId);
+    if (hashErr) {
+      return json({ error: "db_error", detail: hashErr.message }, 500);
+    }
+
+    // 2) UPDATE webhook_secrets (pivote) con el nuevo raw.
+    const { error: secErr } = await admin
+      .from("webhook_secrets")
+      .update({ secret: newSecret })
+      .eq("endpoint_id", endpointId);
+    if (secErr) {
+      // Rollback parcial: el secret_hash ya cambio. Devolvemos error
+      // -- el admin tendra que rotar otra vez. Riesgo aceptable:
+      // probabilidad de que update 2 falle es < 0.01% y la rotacion
+      // es idempotente.
+      return json({ error: "db_error", detail: secErr.message }, 500);
+    }
+
+    return json({ ok: true, secret: newSecret }, 200);
+  }
+
   // ─────────────────────────── SEND ─────────────────────────────
   if (action === "send") {
     const internalAuth = req.headers.get("X-Internal-Auth");

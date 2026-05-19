@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -7,9 +8,11 @@ import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/reauth_dialog.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
 import '../../application/webhooks_providers.dart';
+import '../../data/webhooks_datasource.dart';
 import '../../domain/webhook_delivery.dart';
 import '../../domain/webhook_endpoint.dart';
 
@@ -146,6 +149,8 @@ class _DetailBody extends StatelessWidget {
                     label: l.webhooksDisabledReason,
                     value: l.webhooksStatusAutoDisabled,
                   ),
+                const SizedBox(height: 16),
+                _RotateSecretButton(endpointId: endpoint.id),
               ],
             ),
           ),
@@ -363,5 +368,136 @@ class _DeliveryTile extends StatelessWidget {
       case WebhookDeliveryStatus.pending:
         return l.webhooksDeliveryPending;
     }
+  }
+}
+
+
+/// Boton + flow para rotar el HMAC secret del endpoint. Pide re-auth
+/// con `ReauthDialog` y al exito muestra el nuevo secret raw UNA VEZ
+/// en un dialog copiable. Si el user cierra el dialog sin copiar, el
+/// secret se pierde -- la EF ya no lo expone mas.
+class _RotateSecretButton extends ConsumerStatefulWidget {
+  const _RotateSecretButton({required this.endpointId});
+  final String endpointId;
+
+  @override
+  ConsumerState<_RotateSecretButton> createState() =>
+      _RotateSecretButtonState();
+}
+
+class _RotateSecretButtonState extends ConsumerState<_RotateSecretButton> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return OutlinedButton.icon(
+      icon: _busy
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.refresh, size: 18),
+      label: Text(l.webhooksRotateSecret),
+      onPressed: _busy ? null : _onRotate,
+    );
+  }
+
+  Future<void> _onRotate() async {
+    final l = context.l10n;
+    // 1) Re-auth gate. Si el user cancela o el password es incorrecto,
+    //    no invocamos la EF.
+    final ok = await ReauthDialog.show(
+      context,
+      ref: ref,
+      actionKind: 'webhook_secret_rotate',
+      titleOverride: l.webhooksRotateSecretReauthTitle,
+      messageOverride: l.webhooksRotateSecretReauthBody,
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      final newSecret = await ref
+          .read(webhooksDataSourceProvider)
+          .rotateSecret(widget.endpointId);
+      if (!mounted) return;
+      await _showNewSecret(newSecret);
+    } on WebhookException catch (e) {
+      if (!mounted) return;
+      context.showSnack(
+        e.code == 'reauth_required'
+            ? l.webhooksRotateSecretReauthExpired
+            : l.webhooksRotateSecretError,
+        isError: true,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      context.showSnack(l.webhooksRotateSecretError, isError: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Dialog modal con el secret nuevo + boton copy. El user lo cierra
+  /// manualmente -- no auto-cierra para evitar que pierda el valor.
+  Future<void> _showNewSecret(String secret) async {
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final copiedMsg = l.webhooksRotateSecretCopied;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.vpn_key_outlined, color: context.colors.primary),
+            const SizedBox(width: 8),
+            Expanded(child: Text(l.webhooksRotateSecretTitle)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l.webhooksRotateSecretWarning,
+              style: context.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: context.colors.surfaceContainerHighest
+                    .withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: SelectableText(
+                secret,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.copy_outlined, size: 18),
+            label: Text(l.webhooksRotateSecretCopy),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: secret));
+              messenger.showSnackBar(SnackBar(content: Text(copiedMsg)));
+            },
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l.actionClose),
+          ),
+        ],
+      ),
+    );
   }
 }

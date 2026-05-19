@@ -66,8 +66,14 @@ const VALID_ACTION_KINDS = new Set<string>([
   // 2 clicks (`updateUser` + click en el confirmation email). Forzar
   // password reciente le mete una segunda barrera.
   "change_email",
-  // Futuro (anyadir cuando se implementen los endpoints):
-  // 'webhook_secret_rotate',
+  // Re-auth necesario antes de rotar el HMAC secret de un webhook.
+  // Justificacion: si el atacante roba la cookie y rota el secret,
+  // los webhooks salientes empiezan a firmar con el secret del
+  // atacante -- el cliente real ya no puede verificar las
+  // firmas y deja de aceptar eventos. Rotacion = ataque silencioso
+  // de denegacion de servicio. Forzar password reciente lo bloquea.
+  "webhook_secret_rotate",
+  // Futuro (anyadir cuando se implemente el endpoint):
   // 'role_change',
 ]);
 

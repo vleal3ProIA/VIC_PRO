@@ -61,6 +61,28 @@ class WebhooksDataSource {
     );
   }
 
+  /// Rota el HMAC secret de un endpoint existente. El secret viejo
+  /// deja de funcionar inmediatamente -- futuros dispatchers firman
+  /// con el nuevo. Devuelve el secret raw UNA SOLA VEZ; el caller
+  /// debe enseyarlo al user inmediatamente (con copy-to-clipboard) y
+  /// olvidarlo.
+  ///
+  /// **Pre-requisito**: la EF exige `consume_recent_verification(
+  /// 'webhook_secret_rotate')`. El caller debe llamar primero a
+  /// `ReauthDialog.show(actionKind: 'webhook_secret_rotate')`. Si no
+  /// hay verificacion fresca, la EF devuelve `reauth_required` 403.
+  Future<String> rotateSecret(String endpointId) async {
+    final payload = await _invoke({
+      'action': 'rotate_secret',
+      'endpoint_id': endpointId,
+    });
+    final secret = payload['secret'] as String?;
+    if (secret == null || secret.isEmpty) {
+      throw const WebhookException('empty_response');
+    }
+    return secret;
+  }
+
   /// Pausa o reanuda un endpoint. Si se reanuda, resetea el contador
   /// de fallos.
   Future<bool> setActive(String endpointId, {required bool active}) async {
