@@ -6,9 +6,11 @@ import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/providers/locale_provider.dart';
 import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/premium/premium_badge.dart';
 
 import '../../application/email_log_providers.dart';
 import '../../domain/email_log_entry.dart';
@@ -48,7 +50,7 @@ class AdminEmailLogPage extends ConsumerWidget {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 880),
+          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
           child: async.when(
             loading: () => const AppLoadingState(),
             error: (e, _) => AppErrorState(
@@ -66,9 +68,15 @@ class AdminEmailLogPage extends ConsumerWidget {
                 );
               }
               return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  96,
+                ),
                 itemCount: entries.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 4),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: AppSpacing.xs),
                 itemBuilder: (_, i) => _EntryTile(entry: entries[i]),
               );
             },
@@ -118,6 +126,11 @@ class _EntryTile extends StatelessWidget {
       EmailLogStatus.failed => l.adminEmailLogStatusFailed,
       EmailLogStatus.queued => l.adminEmailLogStatusQueued,
     };
+    final statusVariant = switch (entry.status) {
+      EmailLogStatus.sent => PremiumBadgeVariant.success,
+      EmailLogStatus.failed => PremiumBadgeVariant.error,
+      EmailLogStatus.queued => PremiumBadgeVariant.neutral,
+    };
     return Card(
       margin: EdgeInsets.zero,
       child: ExpansionTile(
@@ -134,19 +147,10 @@ class _EntryTile extends StatelessWidget {
             color: context.colors.onSurfaceVariant,
           ),
         ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            statusLabel,
-            style: context.textTheme.labelSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+        trailing: PremiumBadge(
+          label: statusLabel,
+          variant: statusVariant,
+          dense: true,
         ),
         children: [
           Padding(

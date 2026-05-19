@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/admin_trash_providers.dart';
 import '../../domain/deleted_tenant.dart';
@@ -45,7 +47,7 @@ class AdminTrashPage extends ConsumerWidget {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 880),
+          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
           child: async.when(
             loading: () => const AppLoadingState(),
             error: (e, _) => AppErrorState(
@@ -62,9 +64,10 @@ class AdminTrashPage extends ConsumerWidget {
                 );
               }
               return ListView.separated(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 itemCount: rows.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: AppSpacing.sm),
                 itemBuilder: (_, i) => _DeletedTenantCard(tenant: rows[i]),
               );
             },
@@ -93,70 +96,72 @@ class _DeletedTenantCardState extends ConsumerState<_DeletedTenantCard> {
     final formattedDate = DateFormat.yMMMMd(localeCode)
         .add_Hm()
         .format(widget.tenant.deletedAt.toLocal());
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          widget.tenant.name,
-                          style: context.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            decoration: TextDecoration.lineThrough,
-                            color: context.colors.onSurfaceVariant,
-                          ),
+    return PremiumCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        widget.tenant.name,
+                        style: context.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          decoration: TextDecoration.lineThrough,
+                          color: context.colors.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: context.colors.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          widget.tenant.slug,
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                          ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: context.colors.surfaceContainerHighest
+                            .withValues(alpha: 0.6),
+                        borderRadius: AppRadii.brSm,
+                      ),
+                      child: Text(
+                        widget.tenant.slug,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    l.adminTrashDeletedAt(formattedDate),
-                    style: context.textTheme.bodySmall?.copyWith(
-                      color: context.colors.onSurfaceVariant,
                     ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l.adminTrashDeletedAt(formattedDate),
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.colors.onSurfaceVariant,
                   ),
-                  Text(
-                    l.adminTrashMemberCount(widget.tenant.memberCount),
-                    style: context.textTheme.bodySmall?.copyWith(
-                      color: context.colors.onSurfaceVariant,
-                    ),
+                ),
+                Text(
+                  l.adminTrashMemberCount(widget.tenant.memberCount),
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.colors.onSurfaceVariant,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            FilledButton.tonalIcon(
-              icon: const Icon(Icons.restore_outlined),
-              label: Text(l.adminTrashRestore),
-              onPressed: _busy ? null : _onRestore,
-            ),
-          ],
-        ),
+          ),
+          PremiumButton(
+            label: l.adminTrashRestore,
+            variant: PremiumButtonVariant.secondary,
+            size: PremiumButtonSize.sm,
+            leadingIcon: Icons.restore_outlined,
+            onPressed: _busy ? null : _onRestore,
+            loading: _busy,
+          ),
+        ],
       ),
     );
   }
