@@ -56,9 +56,17 @@ jobs:
     # Para que requiera approval manual la primera vez (proteccion
     # extra), crea el environment "production" en Settings → Environments
     # con "Required reviewers". Mientras no lo crees, el deploy va auto.
+    #
+    # NOTA: NO usar `url: ${{ secrets.SITE_URL }}` aqui. GitHub Actions
+    # rechaza el workflow ("Unrecognized named-value: 'secrets'")
+    # porque `environment.url` se evalua en parse-time, antes que el
+    # job tenga acceso al contexto de secrets. Si quieres mostrar la
+    # URL clickable en el dashboard de Environments, configura
+    # `SITE_URL` como REPOSITORY VARIABLE (Settings -> Variables, no
+    # Secrets) y usa `${{ vars.SITE_URL }}` -- las variables si son
+    # accesibles aqui porque son publicas.
     environment:
       name: production
-      url: ${{ secrets.SITE_URL }}
 
     steps:
       - name: Checkout
