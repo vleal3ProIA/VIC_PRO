@@ -56,6 +56,7 @@ const privateRoutes = <String>{
   RoutePaths.adminBroadcasts,
   RoutePaths.adminBroadcastsNew,
   RoutePaths.adminIncidents,
+  RoutePaths.adminAudit,
   RoutePaths.changelog,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
@@ -101,6 +102,7 @@ const adminRoutes = <String>{
   RoutePaths.adminBroadcasts,
   RoutePaths.adminBroadcastsNew,
   RoutePaths.adminIncidents,
+  RoutePaths.adminAudit,
 };
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.
@@ -138,6 +140,7 @@ bool isPrivateRoute(String loc) {
   if (loc.startsWith('/account-settings/webhooks/')) return true;
   if (loc.startsWith('/admin/users/')) return true;
   if (loc.startsWith('/admin/broadcasts/')) return true;
+  if (loc.startsWith('/admin/audit/')) return true;
   return false;
 }
 
@@ -146,6 +149,7 @@ bool isAdminRoute(String loc) {
   if (adminRoutes.contains(loc)) return true;
   if (loc.startsWith('/admin/users/')) return true;
   if (loc.startsWith('/admin/broadcasts/')) return true;
+  if (loc.startsWith('/admin/audit/')) return true;
   return false;
 }
 

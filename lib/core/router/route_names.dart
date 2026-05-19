@@ -36,6 +36,8 @@ class RouteNames {
   static const String adminBroadcastsNew = 'admin_broadcasts_new';
   static const String adminBroadcastDetail = 'admin_broadcast_detail';
   static const String adminIncidents = 'admin_incidents';
+  static const String adminAudit = 'admin_audit';
+  static const String adminAuditDetail = 'admin_audit_detail';
   static const String status = 'status';
   static const String accountSettings = 'account_settings';
   static const String changePassword = 'change_password';
@@ -111,6 +113,12 @@ class RoutePaths {
   // interprete como un id.
   static const String adminBroadcastDetail = '/admin/broadcasts/:id';
   static const String adminIncidents = '/admin/incidents';
+  static const String adminAudit = '/admin/audit';
+  // Detalle por id. /admin/audit/:id. Va declarado en el router despues
+  // de /admin/audit (sin barra final) -- aqui no hay /new ambiguo, asi
+  // que el orden no es critico, pero por consistencia con broadcasts
+  // mantenemos el patron.
+  static const String adminAuditDetail = '/admin/audit/:id';
   static const String status = '/status';
   static const String accountSettings = '/account-settings';
   static const String changePassword = '/change-password';

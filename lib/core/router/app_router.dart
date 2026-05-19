@@ -14,6 +14,8 @@ import 'package:myapp/features/admin_users/presentation/pages/admin_user_detail_
 import 'package:myapp/features/admin_users/presentation/pages/admin_users_page.dart';
 import 'package:myapp/features/audit/presentation/pages/activity_feed_page.dart';
 import 'package:myapp/features/audit/presentation/pages/audit_log_page.dart';
+import 'package:myapp/features/audit_center/presentation/pages/admin_audit_page.dart';
+import 'package:myapp/features/audit_center/presentation/pages/admin_audit_report_page.dart';
 import 'package:myapp/features/auth/application/mfa_providers.dart';
 import 'package:myapp/features/auth/presentation/pages/auth_callback_page.dart';
 import 'package:myapp/features/auth/presentation/pages/change_email_page.dart';
@@ -411,6 +413,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: RoutePaths.adminIncidents,
         name: RouteNames.adminIncidents,
         builder: (_, __) => const AdminIncidentsPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.adminAudit,
+        name: RouteNames.adminAudit,
+        builder: (_, __) => const AdminAuditPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.adminAuditDetail,
+        name: RouteNames.adminAuditDetail,
+        builder: (_, state) => AdminAuditReportPage(
+          reportId: state.pathParameters['id'] ?? '',
+        ),
       ),
       GoRoute(
         path: RoutePaths.status,
