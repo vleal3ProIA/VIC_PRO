@@ -15,6 +15,54 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ───────────────────────────────────────────────────────────────────────
+  # Job 1: Edge Function tests (Deno). Corre en paralelo al job Flutter
+  # porque sus dependencias son disjuntas (Deno vs Flutter SDK).
+  # ───────────────────────────────────────────────────────────────────────
+  deno-tests:
+    name: Edge Function tests (Deno)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          # `v1.x` para alinear con la version que actualmente corre
+          # Supabase Edge Runtime (la mayor parte del std existente se
+          # escribio en Deno 1.x). Si Supabase actualiza a Deno 2.x
+          # estable, cambiamos aqui y nos aseguramos de que los tests
+          # siguen pasando.
+          deno-version: v1.x
+
+      - name: Deno version
+        run: deno --version
+
+      # Los tests viven en `supabase/functions/_shared/__tests__/` y
+      # validan:
+      #   - html_sanitize.ts (PR-D Day 1): whitelist de tags, javascript:
+      #     href stripping, XSS vectors clasicos.
+      #   - magic_bytes.ts (PR-A Day 1): validacion del primer bloque
+      #     de bytes de un upload + heuristica UTF-8 + SHA-256.
+      #
+      # **Permisos**:
+      #   --allow-read    Los tests leen los .ts del proyecto para los
+      #                   imports relativos (sin esto los tests no
+      #                   resolverian `../html_sanitize.ts`).
+      #
+      # NO necesitamos --allow-net: Deno resuelve los imports remotos
+      # (deno.land/std) durante la fase de compilacion del modulo, no
+      # como llamadas en runtime. Una vez compilado, no hace fetches.
+      - name: Run Edge Function tests
+        run: deno test --allow-read _shared/__tests__/
+        working-directory: supabase/functions
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Job 2: Flutter analyze + tests + build web.
+  # ───────────────────────────────────────────────────────────────────────
   analyze-test-build:
     name: Analyze · Test · Build web
     runs-on: ubuntu-latest
