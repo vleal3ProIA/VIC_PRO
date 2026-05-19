@@ -270,6 +270,7 @@
   "profileErrorUsernameTaken": "That username is already taken.",
   "profileErrorNotFound": "Profile not found. Try signing in again.",
   "profileErrorNetwork": "Network error. Check your connection.",
+  "profileErrorInvalidImage": "That file isn't a valid PNG, JPEG, GIF or WebP image.",
   "profileErrorUnknown": "Something went wrong saving your profile.",
 
   "errorRequired": "This field is required",

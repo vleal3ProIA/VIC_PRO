@@ -257,6 +257,7 @@
   "profileErrorUsernameTaken": "Esse nome de utilizador já está em uso.",
   "profileErrorNotFound": "Perfil não encontrado. Inicia sessão novamente.",
   "profileErrorNetwork": "Erro de rede. Verifica a tua ligação.",
+  "profileErrorInvalidImage": "Esse ficheiro não é uma imagem PNG, JPEG, GIF ou WebP válida.",
   "profileErrorUnknown": "Algo correu mal ao guardar o teu perfil.",
 
   "errorRequired": "Este campo é obrigatório",

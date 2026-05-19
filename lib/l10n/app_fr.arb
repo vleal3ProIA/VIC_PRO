@@ -257,6 +257,7 @@
   "profileErrorUsernameTaken": "Ce nom d'utilisateur est déjà pris.",
   "profileErrorNotFound": "Profil introuvable. Reconnectez-vous.",
   "profileErrorNetwork": "Erreur réseau. Vérifiez votre connexion.",
+  "profileErrorInvalidImage": "Ce fichier n'est pas une image PNG, JPEG, GIF ou WebP valide.",
   "profileErrorUnknown": "Une erreur est survenue lors de l'enregistrement.",
 
   "errorRequired": "Ce champ est obligatoire",

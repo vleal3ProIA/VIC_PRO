@@ -257,6 +257,7 @@
   "profileErrorUsernameTaken": "Це ім'я користувача вже зайняте.",
   "profileErrorNotFound": "Профіль не знайдено. Увійдіть знову.",
   "profileErrorNetwork": "Помилка мережі. Перевірте підключення.",
+  "profileErrorInvalidImage": "Цей файл не є коректним зображенням PNG, JPEG, GIF або WebP.",
   "profileErrorUnknown": "Щось пішло не так під час збереження профілю.",
 
   "errorRequired": "Це поле обов'язкове",
