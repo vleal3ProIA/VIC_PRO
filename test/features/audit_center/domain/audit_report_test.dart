@@ -184,7 +184,7 @@ void main() {
         'id': 'abc',
         'started_at': '2026-05-19T14:30:00Z',
         'status': 'running',
-        'summary': {},
+        'summary': <String, dynamic>{},
       });
       expect(r.findings, isEmpty);
       expect(r.status, AuditReportStatus.running);
@@ -196,7 +196,7 @@ void main() {
         'id': 'x',
         'started_at': '2026-05-19T14:30:00Z',
         'status': 'completed',
-        'summary': {},
+        'summary': <String, dynamic>{},
         'findings': [
           {'check_id': 'a', 'severity': 'high', 'title': 'A'},
           {'check_id': 'b', 'severity': 'critical', 'title': 'B'},

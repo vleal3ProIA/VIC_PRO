@@ -66,6 +66,38 @@ export async function captureError(
 }
 
 /**
+ * Captura un mensaje sin excepcion asociada. Util para "alerts" donde
+ * no hay un error pero queremos que el admin reciba notificacion (ej.
+ * audits que detectan findings critical).
+ *
+ * `level` mapea a la severity en Sentry: 'fatal' | 'error' | 'warning'
+ * | 'info' | 'debug'. Por defecto 'warning' -- "no es un crash, pero
+ * mira esto".
+ *
+ * Safe no-op si no hay DSN.
+ */
+export async function captureMessage(
+  message: string,
+  level: "fatal" | "error" | "warning" | "info" | "debug" = "warning",
+  extra: Record<string, unknown> = {},
+): Promise<void> {
+  initOnce();
+  if (!Deno.env.get("SENTRY_DSN")) return;
+  try {
+    Sentry.withScope((scope) => {
+      scope.setLevel(level);
+      for (const [k, v] of Object.entries(extra)) {
+        scope.setExtra(k, v);
+      }
+      Sentry.captureMessage(message);
+    });
+    await Sentry.flush(2000);
+  } catch (_) {
+    console.error("Sentry message capture failed:", _);
+  }
+}
+
+/**
  * Wrapper para envolver un handler de `Deno.serve(...)` y reportar
  * automáticamente cualquier excepción que escape. La response sigue
  * siendo responsabilidad del handler.

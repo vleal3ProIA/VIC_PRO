@@ -1233,5 +1233,11 @@
   "adminAuditDurationSeconds": "{seconds}s",
   "@adminAuditDurationSeconds": {"placeholders": {"seconds": {"type": "String"}}},
   "adminAuditTxtFilename": "report-audit-{id}.txt",
-  "@adminAuditTxtFilename": {"placeholders": {"id": {"type": "String"}}}
+  "@adminAuditTxtFilename": {"placeholders": {"id": {"type": "String"}}},
+
+  "adminAuditStaleTitle": "Il tuo ultimo audit ha {days} giorni",
+  "@adminAuditStaleTitle": {"placeholders": {"days": {"type": "int"}}},
+  "adminAuditStaleBody": "Esegui un nuovo audit per confermare che il sistema sia ancora sano. Gli audit non cambiano nulla — solo ispezionano.",
+  "adminAuditStaleFailedTitle": "Il tuo ultimo audit è fallito",
+  "adminAuditStaleFailedBody": "Esegui un nuovo audit per confermare lo stato del sistema. Quello precedente non è terminato e potrebbe aver lasciato un quadro incompleto."
 }

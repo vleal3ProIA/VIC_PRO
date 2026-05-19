@@ -34,6 +34,7 @@ import 'package:myapp/core/widgets/premium/premium.dart';
 import '../../application/audit_center_providers.dart';
 import '../../data/audit_center_datasource.dart';
 import '../../domain/audit_report.dart';
+import '../../domain/audit_staleness.dart';
 import '../widgets/audit_severity_chip.dart';
 
 class AdminAuditPage extends ConsumerStatefulWidget {
@@ -236,9 +237,14 @@ class _AdminAuditPageState extends ConsumerState<AdminAuditPage> {
                           ),
                         );
                       }
+                      final staleness = evaluateAuditStaleness(rows);
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          if (staleness.isStale) ...[
+                            _StaleBanner(staleness: staleness),
+                            const SizedBox(height: AppSpacing.md),
+                          ],
                           for (final r in rows) ...[
                             _AuditReportRow(row: r),
                             const SizedBox(height: AppSpacing.sm),
@@ -430,5 +436,68 @@ class _StatusBadge extends StatelessWidget {
           dense: true,
         );
     }
+  }
+}
+
+/// Banner discreto sugiriendo lanzar un audit nuevo. Aparece cuando el
+/// ultimo report es failed o esta a >= 7 dias (logica en
+/// `evaluateAuditStaleness`). NO bloquea -- es solo un hint visual.
+class _StaleBanner extends StatelessWidget {
+  const _StaleBanner({required this.staleness});
+
+  final AuditStaleness staleness;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    final isFailed = staleness.reason == 'last_failed';
+
+    final title = isFailed
+        ? l.adminAuditStaleFailedTitle
+        : l.adminAuditStaleTitle(staleness.daysSinceLast ?? 0);
+    final body = isFailed
+        ? l.adminAuditStaleFailedBody
+        : l.adminAuditStaleBody;
+    final color = isFailed
+        ? scheme.error
+        : const Color(0xFFF59E0B); // amber-500 -- warning suave
+
+    return PremiumCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isFailed ? Icons.error_outline_rounded : Icons.schedule_outlined,
+            color: color,
+            size: 22,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: context.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  body,
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

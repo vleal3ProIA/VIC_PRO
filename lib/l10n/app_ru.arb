@@ -1233,5 +1233,11 @@
   "adminAuditDurationSeconds": "{seconds}с",
   "@adminAuditDurationSeconds": {"placeholders": {"seconds": {"type": "String"}}},
   "adminAuditTxtFilename": "otchet-audita-{id}.txt",
-  "@adminAuditTxtFilename": {"placeholders": {"id": {"type": "String"}}}
+  "@adminAuditTxtFilename": {"placeholders": {"id": {"type": "String"}}},
+
+  "adminAuditStaleTitle": "Вашему последнему аудиту {days} дней",
+  "@adminAuditStaleTitle": {"placeholders": {"days": {"type": "int"}}},
+  "adminAuditStaleBody": "Запустите новый аудит, чтобы убедиться, что система по-прежнему здорова. Аудит ничего не меняет — только проверяет.",
+  "adminAuditStaleFailedTitle": "Ваш последний аудит завершился сбоем",
+  "adminAuditStaleFailedBody": "Запустите новый аудит, чтобы подтвердить состояние системы. Предыдущий не завершился и мог оставить неполную картину."
 }

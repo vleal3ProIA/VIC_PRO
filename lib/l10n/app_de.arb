@@ -1233,5 +1233,11 @@
   "adminAuditDurationSeconds": "{seconds}s",
   "@adminAuditDurationSeconds": {"placeholders": {"seconds": {"type": "String"}}},
   "adminAuditTxtFilename": "audit-bericht-{id}.txt",
-  "@adminAuditTxtFilename": {"placeholders": {"id": {"type": "String"}}}
+  "@adminAuditTxtFilename": {"placeholders": {"id": {"type": "String"}}},
+
+  "adminAuditStaleTitle": "Dein letzter Audit ist {days} Tage alt",
+  "@adminAuditStaleTitle": {"placeholders": {"days": {"type": "int"}}},
+  "adminAuditStaleBody": "Starte einen frischen Audit, um sicherzustellen, dass das System weiterhin gesund ist. Audits ändern nichts — sie inspizieren nur.",
+  "adminAuditStaleFailedTitle": "Dein letzter Audit ist fehlgeschlagen",
+  "adminAuditStaleFailedBody": "Starte einen neuen Audit, um den Systemzustand zu bestätigen. Der vorherige wurde nicht abgeschlossen und könnte ein unvollständiges Bild hinterlassen haben."
 }

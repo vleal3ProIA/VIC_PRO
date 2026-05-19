@@ -1233,5 +1233,11 @@
   "adminAuditDurationSeconds": "{seconds}с",
   "@adminAuditDurationSeconds": {"placeholders": {"seconds": {"type": "String"}}},
   "adminAuditTxtFilename": "zvit-audytu-{id}.txt",
-  "@adminAuditTxtFilename": {"placeholders": {"id": {"type": "String"}}}
+  "@adminAuditTxtFilename": {"placeholders": {"id": {"type": "String"}}},
+
+  "adminAuditStaleTitle": "Вашому останньому аудиту {days} днів",
+  "@adminAuditStaleTitle": {"placeholders": {"days": {"type": "int"}}},
+  "adminAuditStaleBody": "Запустіть новий аудит, щоб переконатися, що система й далі здорова. Аудит нічого не змінює — лише перевіряє.",
+  "adminAuditStaleFailedTitle": "Ваш останній аудит зазнав збою",
+  "adminAuditStaleFailedBody": "Запустіть новий аудит, щоб підтвердити стан системи. Попередній не завершився і міг залишити неповну картину."
 }

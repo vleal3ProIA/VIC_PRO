@@ -252,9 +252,122 @@ Una vez subido:
 | PR-C VirusTotal antivirus | Migración 0038. Desplegar NUEVA Edge Function `scan-upload`: `supabase functions deploy scan-upload`. Re-desplegar `upload-file` (ahora invoca scan-upload tras confirm): `supabase functions deploy upload-file`. **Nuevo secret**: `VIRUSTOTAL_API_KEY` con la API key de tu cuenta free de virustotal.com → `supabase secrets set VIRUSTOTAL_API_KEY=<tu_key>`. Sin esa key el flow funciona pero marca todos los uploads como `skipped`. Tras configurar: cada upload nuevo se escanea async (no bloquea), si VirusTotal detecta malware el upload queda soft-deleted automáticamente y aparece en `audit_logs` con event `upload.virus_detected`. |
 | Audit Center V1 — PR-Audit-1 | Migración 0039 (tabla `audit_reports` + RPCs `admin_audit_reports_list` y `admin_audit_report_detail`). Desplegar NUEVA Edge Function `run-audit`: `supabase functions deploy run-audit`. Sin nuevos secrets. El esqueleto solo permite invocar el endpoint con admin JWT y guardar un report con un placeholder; los 12 checks reales llegan en PR-Audit-2 + UI en PR-Audit-3. **Sin acción inmediata para el user final** hasta que el módulo `/admin/audit` esté desplegado. |
 | Audit Center V1 — PR-Audit-2 | Migración 0040 (RPCs helper para `pg_tables`/`pg_policies` y agregados de MFA/email failure rate). Re-desplegar `run-audit`: `supabase functions deploy run-audit` (incluye ahora los 12 checks reales en `_checks/*.ts`). Sin nuevos secrets. Tras este PR el endpoint ya hace audits útiles, pero sin UI todavía — puedes probarlo con curl: `curl -X POST https://<project>.supabase.co/functions/v1/run-audit -H "Authorization: Bearer <ADMIN_JWT>"` y leer el resultado en SQL Editor con `select * from audit_reports order by started_at desc limit 1;`. |
+| Audit Center V1 — PR-Audit-3 | UI Flutter (`/admin/audit` + `/admin/audit/:id`). **Sin migración nueva, sin Edge Function nueva**. Solo `flutter build web` + subir `build/web/` al hosting. Tras desplegar, el admin tiene un módulo completo: listado de reports recientes con summary chips por severity, detail page con findings agrupados (critical → info), botón **Run new audit** que dispara la Edge Function (rate-limit 1/min/admin), polling automático mientras el report siga en `status='running'`, export a TXT del informe. **Acción admin**: una vez subido, entra a `/admin/audit` y lanza el primer audit para validar end-to-end (debería terminar en ~10s y mostrar los findings reales del proyecto). |
+| Audit Center V1 — PR-Audit-4 | Migración 0041 (RPCs `admin_audit_recover_stuck` + `admin_audit_purge_old`). Re-desplegar `run-audit`: `supabase functions deploy run-audit` (ahora emite Sentry events para findings critical/high). Sin nuevos secrets. **Acción admin**: configura un cron externo (GitHub Actions / Supabase Pro Cron / cron del hosting) que lance las dos RPCs de mantenimiento. Detalles en la sección **Audit Center maintenance** más abajo. La UI de `/admin/audit` ahora muestra un banner discreto si el último audit es de hace ≥ 7 días o falló — sirve de fallback visual si el cron deja de funcionar. |
 
 > En cada PR nueva, este archivo se actualiza. **Antes de desplegar,
 > relee la lista completa**, no solo lo que es "nuevo".
+
+---
+
+## Audit Center maintenance
+
+El módulo `/admin/audit` ejecuta auditorías a demanda (1/min/admin
+por el rate-limit), pero para que sea útil en producción necesita
+operaciones de mantenimiento automáticas. Estas se invocan
+**externamente** porque `pg_cron` no está disponible en plan free
+de Supabase.
+
+### Operaciones disponibles
+
+| RPC SQL | Qué hace | Frecuencia recomendada |
+|---|---|---|
+| `select public.admin_audit_recover_stuck();` | Marca como `failed` los audits cuyo `status='running'` lleva > 30 min. Sin esto, si la Edge Function `run-audit` muere a mitad (deploy, OOM, timeout), la row queda *stuck* para siempre y bloquea el rate-limit. Devuelve nº de rows recuperadas. | Cada 30 min. |
+| `select public.admin_audit_purge_old('90 days'::interval);` | Borra reports antiguos. Default 90 días, mínimo 7 (floor de seguridad). Devuelve nº de rows borradas. | Diario o semanal. |
+| `POST /functions/v1/run-audit` (con admin JWT) | Lanza una auditoría completa. La UI hace esto cuando el admin pulsa "Run new audit". Para auto-scheduling se puede llamar desde un cron externo. | Diario, ej. 04:00 UTC. |
+
+Las dos RPCs son `SECURITY DEFINER` con check `is_admin()` interno —
+necesitas una sesión admin (PAT con scope `admin` o JWT de un user
+con `role='admin'`) para invocarlas.
+
+### Opción A: GitHub Actions (recomendado para self-hosted)
+
+Crear `.github/workflows/audit-center-maintenance.yml`:
+
+```yaml
+name: Audit Center maintenance
+on:
+  schedule:
+    # 04:00 UTC daily: lanza audit, recover stuck, purge >90d.
+    - cron: '0 4 * * *'
+    # Cada 30 min: solo recover stuck.
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # manual trigger desde GitHub UI
+
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Recover stuck audits
+        run: |
+          curl -X POST \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/admin_audit_recover_stuck" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ADMIN_JWT }}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json"
+      - name: Run daily audit
+        # Solo en la ejecución de las 04:00, no cada 30 min.
+        if: github.event.schedule == '0 4 * * *'
+        run: |
+          curl -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/run-audit" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ADMIN_JWT }}" \
+            -H "Content-Type: application/json"
+      - name: Purge old audits
+        # Solo en la ejecución de las 04:00.
+        if: github.event.schedule == '0 4 * * *'
+        run: |
+          curl -X POST \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/admin_audit_purge_old" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ADMIN_JWT }}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"p_older_than": "90 days"}'
+```
+
+Secrets necesarios en GitHub repo settings → Secrets and variables:
+- `SUPABASE_URL` (ej. `https://abc.supabase.co`)
+- `SUPABASE_ANON_KEY` (ya lo tienes en `.env` para la app)
+- `SUPABASE_ADMIN_JWT` — JWT de un user con `role='admin'`. **Aviso**:
+  los JWT de Supabase Auth caducan en 1h por defecto. Para uso cron
+  prolongado usa un **PAT** con scope `admin` (`sb_secret_...`)
+  generado desde `/account-settings/tokens` — ese no caduca a menos
+  que lo revoques.
+
+### Opción B: Supabase Pro/Team Cron Jobs
+
+Si tienes plan Pro+, abre el dashboard → Database → Cron Jobs →
+*Create a new cron job*. Tres jobs:
+
+1. Nombre: `audit-recover-stuck`, schedule `*/30 * * * *`, SQL:
+   ```sql
+   select public.admin_audit_recover_stuck();
+   ```
+2. Nombre: `audit-daily-run`, schedule `0 4 * * *`. Lanzar la Edge
+   Function via `net.http_post()` o invocar manualmente la lógica
+   del `run-audit` (la Edge Function ya hace el INSERT en `running`
+   y procesa en background).
+3. Nombre: `audit-purge-old`, schedule `30 4 * * *`, SQL:
+   ```sql
+   select public.admin_audit_purge_old('90 days'::interval);
+   ```
+
+### Opción C: Manual / on-demand
+
+Si tu deployment es pequeño y prefieres no automatizar:
+- Entra a `/admin/audit` cada día y pulsa **Run new audit**. La UI te
+  avisa con un banner si el último audit tiene ≥ 7 días.
+- Ejecuta las RPCs de mantenimiento desde el SQL Editor de Supabase
+  cuando notes algo raro.
+
+### Sentry alerts (opcional)
+
+Si tienes `SENTRY_DSN` configurado en el secret de Supabase Functions,
+`run-audit` emite automáticamente un Sentry event cuando un audit
+termina con findings `critical` (level=`error`, dispara notificación
+inmediata) o `high` (level=`warning`). El event incluye `report_id`
+y los titulos de los findings para que en Sentry puedas hacer click
+y abrir directamente `/admin/audit/<id>`.
 
 ---
 
