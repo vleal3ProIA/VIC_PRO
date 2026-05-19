@@ -38,3 +38,9 @@ verify_jwt = false
 # con service_role).
 [functions.run-audit]
 verify_jwt = false
+
+# Endpoint llamado por cron externo (GitHub Actions). Validacion via
+# header `X-Cron-Secret` matchear env `CRON_SECRET`. Sin JWT porque
+# el cron no tiene sesion de Supabase.
+[functions.maintenance-cron]
+verify_jwt = false
