@@ -29,3 +29,12 @@ verify_jwt = false
 # aqui por defensa-en-profundidad si se hubiera perdido en algun merge).
 [functions.auth-email-hook]
 verify_jwt = false
+
+# run-audit es invocado desde el cliente del admin Y desde futuros crons
+# scheduled. Tras la migracion a tokens `sb_secret_...`, el gateway
+# `verify_jwt=true` por defecto rechaza el Authorization Bearer
+# (mismo problema que scan-upload, fix #103). La authenticidad la
+# verificamos dentro del handler (admin via JWT decoded o X-Internal-Auth
+# con service_role).
+[functions.run-audit]
+verify_jwt = false
