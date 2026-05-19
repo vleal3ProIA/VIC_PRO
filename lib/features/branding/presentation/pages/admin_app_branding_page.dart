@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/branding_providers.dart';
 import '../../domain/app_branding.dart';
@@ -86,7 +88,7 @@ class _AdminAppBrandingPageState
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
           child: async.when(
             loading: () => const AppLoadingState(),
             error: (e, _) => AppErrorState(
@@ -105,14 +107,13 @@ class _AdminAppBrandingPageState
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _Section(l.adminAppBrandingSectionCommercial),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              TextFormField(
-                                controller: _commercialName,
+                      PremiumCard(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            TextFormField(
+                              controller: _commercialName,
                                 enabled: !_saving,
                                 maxLength: 80,
                                 decoration: InputDecoration(
@@ -162,19 +163,17 @@ class _AdminAppBrandingPageState
                             ],
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.md),
                       _Section(l.adminAppBrandingSectionVisuals),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                l.setupFieldPalette,
-                                style: context.textTheme.labelLarge,
-                              ),
+                      PremiumCard(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              l.setupFieldPalette,
+                              style: context.textTheme.labelLarge,
+                            ),
                               const SizedBox(height: 8),
                               PalettePicker(
                                 selected: _paletteSlug,
@@ -235,11 +234,11 @@ class _AdminAppBrandingPageState
                               ),
                             ],
                           ),
-                        ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.md),
                       _Section(l.adminAppBrandingSectionAccess),
-                      Card(
+                      PremiumCard(
+                        padding: EdgeInsets.zero,
                         child: Column(
                           children: [
                             SwitchListTile(
@@ -264,20 +263,14 @@ class _AdminAppBrandingPageState
                           ],
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: AppSpacing.lg),
                       Align(
                         alignment: Alignment.centerRight,
-                        child: FilledButton(
+                        child: PremiumButton(
+                          label: l.actionSave,
+                          leadingIcon: Icons.save_outlined,
+                          loading: _saving,
                           onPressed: _saving ? null : _onSave,
-                          child: _saving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Text(l.actionSave),
                         ),
                       ),
                     ],

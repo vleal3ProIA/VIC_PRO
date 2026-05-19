@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/changelog_providers.dart';
 import '../../domain/changelog_entry.dart';
@@ -48,7 +50,7 @@ class AdminChangelogPage extends ConsumerWidget {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
           child: async.when(
             loading: () => const AppLoadingState(),
             error: (e, _) => AppErrorState(
@@ -66,9 +68,15 @@ class AdminChangelogPage extends ConsumerWidget {
                 );
               }
               return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  96,
+                ),
                 itemCount: entries.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 4),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: AppSpacing.sm),
                 itemBuilder: (_, i) => _EntryTile(entry: entries[i]),
               );
             },
@@ -110,39 +118,44 @@ class _EntryTileState extends ConsumerState<_EntryTile> {
     final e = widget.entry;
     final visuals = visualsFor(context, e.category);
 
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-        child: Row(
-          children: [
-            Icon(visuals.icon, color: visuals.color),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          e.title,
-                          style: context.textTheme.titleSmall,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+    return PremiumCard(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm + 4,
+        AppSpacing.sm,
+        AppSpacing.sm + 4,
+      ),
+      child: Row(
+        children: [
+          Icon(visuals.icon, color: visuals.color),
+          const SizedBox(width: AppSpacing.sm + 4),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        e.title,
+                        style: context.textTheme.titleSmall,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      if (e.isDraft)
-                        _StatusChip(
-                          label: l.adminChangelogStatusDraft,
-                          color: context.colors.onSurfaceVariant,
-                        )
-                      else
-                        _StatusChip(
-                          label: l.adminChangelogStatusPublished,
-                          color: context.colors.primary,
-                        ),
-                    ],
-                  ),
+                    ),
+                    if (e.isDraft)
+                      PremiumBadge(
+                        label: l.adminChangelogStatusDraft,
+                        variant: PremiumBadgeVariant.neutral,
+                        dense: true,
+                      )
+                    else
+                      PremiumBadge(
+                        label: l.adminChangelogStatusPublished,
+                        variant: PremiumBadgeVariant.info,
+                        dense: true,
+                      ),
+                  ],
+                ),
                   const SizedBox(height: 4),
                   Wrap(
                     spacing: 8,
@@ -248,7 +261,6 @@ class _EntryTileState extends ConsumerState<_EntryTile> {
               ],
             ),
           ],
-        ),
       ),
     );
   }
@@ -314,29 +326,5 @@ class _EntryTileState extends ConsumerState<_EntryTile> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label, required this.color});
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style: context.textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
   }
 }
