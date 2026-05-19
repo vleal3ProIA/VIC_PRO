@@ -1,0 +1,156 @@
+# ============================================================================
+# Scheduled maintenance: invoca la Edge Function `maintenance-cron`
+# ----------------------------------------------------------------------------
+# Reemplaza la doc "configura manualmente un cron" de PR-Audit-4 y
+# cron-purges-extended. Ahora el workflow corre out-of-the-box una vez
+# configurado el secret `CRON_SECRET`.
+#
+# **Schedules**:
+#   - Cada 30 min:           recover_stuck (audits zombie).
+#   - Diario 04:00 UTC:      daily_purges + run_audit.
+#   - workflow_dispatch:     manual trigger desde GitHub UI.
+#
+# **Secrets requeridos** (Settings -> Secrets -> Actions):
+#   - SUPABASE_URL           ya configurado para deploy.yml
+#   - CRON_SECRET            shared secret con la Edge Function;
+#                            generar con `openssl rand -hex 32` y
+#                            tambien `supabase secrets set CRON_SECRET=<valor>`.
+#
+# **Por que no usamos JWT admin**:
+# - Los JWTs de Supabase Auth caducan en 1 hora -- no aptos para cron.
+# - Loguear con email+password fresh JWT requiere un admin sin MFA,
+#   peligroso si esos secrets se filtran.
+# - El shared secret es minimal: solo permite invocar 3 tasks
+#   whitelisted, NO toda la API Supabase.
+# ============================================================================
+
+name: Maintenance
+
+on:
+  schedule:
+    # Cada 30 min: recover_stuck. Cron syntax UTC.
+    - cron: '*/30 * * * *'
+    # Diario 04:00 UTC: daily_purges + run_audit. Hora baja-trafico.
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task to run (recover_stuck | daily_purges | run_audit)'
+        required: true
+        type: choice
+        options:
+          - recover_stuck
+          - daily_purges
+          - run_audit
+
+# Solo permitir una ejecucion a la vez. Si un job esta corriendo
+# cuando llega el siguiente schedule, espera (NO cancela).
+concurrency:
+  group: maintenance
+  cancel-in-progress: false
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────
+  # Job 1: recover_stuck. Corre cada 30 min y en workflow_dispatch
+  # (cuando el input es recover_stuck).
+  # ───────────────────────────────────────────────────────────────────────
+  recover-stuck:
+    name: Recover stuck audits
+    if: |
+      github.event.schedule == '*/30 * * * *' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'recover_stuck')
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Validate required secrets
+        run: |
+          [ -z "${{ secrets.SUPABASE_URL }}" ]   && echo "::error::SUPABASE_URL missing"   && exit 1
+          [ -z "${{ secrets.CRON_SECRET }}" ]    && echo "::error::CRON_SECRET missing"    && exit 1
+          echo "✓ Secrets present"
+
+      - name: Invoke maintenance-cron · recover_stuck
+        run: |
+          response=$(curl -sS -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/maintenance-cron" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"task": "recover_stuck"}')
+          body=$(echo "$response" | sed '$d')
+          code=$(echo "$response" | tail -n 1)
+          echo "HTTP $code"
+          echo "$body"
+          if [ "$code" != "200" ]; then
+            echo "::error::recover_stuck failed (HTTP $code)"
+            exit 1
+          fi
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Job 2: daily_purges. Corre diario 04:00 UTC y en workflow_dispatch.
+  # ───────────────────────────────────────────────────────────────────────
+  daily-purges:
+    name: Daily purges
+    if: |
+      github.event.schedule == '0 4 * * *' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'daily_purges')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Validate required secrets
+        run: |
+          [ -z "${{ secrets.SUPABASE_URL }}" ]   && echo "::error::SUPABASE_URL missing"   && exit 1
+          [ -z "${{ secrets.CRON_SECRET }}" ]    && echo "::error::CRON_SECRET missing"    && exit 1
+          echo "✓ Secrets present"
+
+      - name: Invoke maintenance-cron · daily_purges
+        run: |
+          response=$(curl -sS -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/maintenance-cron" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"task": "daily_purges"}')
+          body=$(echo "$response" | sed '$d')
+          code=$(echo "$response" | tail -n 1)
+          echo "HTTP $code"
+          echo "$body"
+          if [ "$code" != "200" ]; then
+            echo "::error::daily_purges failed (HTTP $code)"
+            exit 1
+          fi
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Job 3: run_audit. Corre diario 04:00 UTC y en workflow_dispatch.
+  # Es independiente de daily_purges para que si una falla la otra
+  # no se vea afectada (separation of concerns).
+  # ───────────────────────────────────────────────────────────────────────
+  run-audit:
+    name: Run daily audit
+    if: |
+      github.event.schedule == '0 4 * * *' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'run_audit')
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Validate required secrets
+        run: |
+          [ -z "${{ secrets.SUPABASE_URL }}" ]   && echo "::error::SUPABASE_URL missing"   && exit 1
+          [ -z "${{ secrets.CRON_SECRET }}" ]    && echo "::error::CRON_SECRET missing"    && exit 1
+          echo "✓ Secrets present"
+
+      - name: Invoke maintenance-cron · run_audit
+        run: |
+          response=$(curl -sS -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/maintenance-cron" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"task": "run_audit"}')
+          body=$(echo "$response" | sed '$d')
+          code=$(echo "$response" | tail -n 1)
+          echo "HTTP $code"
+          echo "$body"
+          if [ "$code" != "200" ]; then
+            echo "::error::run_audit failed (HTTP $code)"
+            exit 1
+          fi

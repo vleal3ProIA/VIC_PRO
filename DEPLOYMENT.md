@@ -256,111 +256,107 @@ Una vez subido:
 | Audit Center V1 — PR-Audit-4 | Migración 0041 (RPCs `admin_audit_recover_stuck` + `admin_audit_purge_old`). Re-desplegar `run-audit`: `supabase functions deploy run-audit` (ahora emite Sentry events para findings critical/high). Sin nuevos secrets. **Acción admin**: configura un cron externo (GitHub Actions / Supabase Pro Cron / cron del hosting) que lance las dos RPCs de mantenimiento. Detalles en la sección **Audit Center maintenance** más abajo. La UI de `/admin/audit` ahora muestra un banner discreto si el último audit es de hace ≥ 7 días o falló — sirve de fallback visual si el cron deja de funcionar. |
 | DB maintenance · Purges extendidas | Migración 0042 (RPCs `admin_audit_logs_purge_old`, `admin_email_log_purge_old`, `admin_notifications_purge_old`). Sin Edge Functions nuevas, sin secrets. **Acción admin**: extender el cron externo de "Audit Center maintenance" para invocar también las nuevas RPCs (ver sección **Database maintenance** más abajo). Defaults conservadores (90d audit_logs, 180d email_log, 60d notifications leídas) con floor de seguridad por RPC. Sin estas purgas el dashboard `/admin/email-log` se vuelve más lento conforme la tabla crece. |
 | GDPR data export v2 | Migración 0043 (RPC `get_my_data_export`). **Sin Edge Functions nuevas, sin secrets**. El endpoint `/account-settings` → tab Billing → "Download my data" ya existía con cobertura mínima (user + profile + MFA factors). Tras la migración el JSON descargado se enriquece automáticamente con: uploads, audit_logs (1000 más recientes), tenants membership, notificaciones, emails recibidos, PATs (sin hash), webhooks (sin secret). **Acción admin**: ninguna (solo aplicar la migración con `supabase db push`). El user ya no necesita pedir export por soporte para casi todo el contenido. |
+| Cron maintenance auto | NUEVA Edge Function `maintenance-cron` (`supabase functions deploy maintenance-cron`) + workflow GitHub Actions `.github/workflows/maintenance.yml`. **Nuevo secret obligatorio**: `CRON_SECRET` (generar con `openssl rand -hex 32`), configurar en Supabase Functions (`supabase secrets set CRON_SECRET=<valor>`) Y en GitHub repo Settings → Secrets → Actions. Sustituye la documentación manual "configura tu cron externo" anterior; tras este PR el sistema queda auto-mantenido (cada 30 min recover stuck audits, diario 04:00 UTC purgas + audit). Ver sección **Mantenimiento automatizado** más abajo para validación. |
 
 > En cada PR nueva, este archivo se actualiza. **Antes de desplegar,
 > relee la lista completa**, no solo lo que es "nuevo".
 
 ---
 
-## Audit Center maintenance
+## Mantenimiento automatizado
 
-El módulo `/admin/audit` ejecuta auditorías a demanda (1/min/admin
-por el rate-limit), pero para que sea útil en producción necesita
-operaciones de mantenimiento automáticas. Estas se invocan
-**externamente** porque `pg_cron` no está disponible en plan free
-de Supabase.
+A partir del PR `chore/cron-maintenance-auto` el mantenimiento está
+**automatizado out-of-the-box** mediante un workflow GitHub Actions
+(`.github/workflows/maintenance.yml`) que invoca la Edge Function
+`maintenance-cron`. **Único setup admin**: configurar el secret
+`CRON_SECRET` en dos sitios (GitHub repo + Supabase Functions).
 
-### Operaciones disponibles
+### Lo que se automatiza
 
-| RPC SQL | Qué hace | Frecuencia recomendada |
+| Schedule | Task | Qué hace |
 |---|---|---|
-| `select public.admin_audit_recover_stuck();` | Marca como `failed` los audits cuyo `status='running'` lleva > 30 min. Sin esto, si la Edge Function `run-audit` muere a mitad (deploy, OOM, timeout), la row queda *stuck* para siempre y bloquea el rate-limit. Devuelve nº de rows recuperadas. | Cada 30 min. |
-| `select public.admin_audit_purge_old('90 days'::interval);` | Borra reports antiguos. Default 90 días, mínimo 7 (floor de seguridad). Devuelve nº de rows borradas. | Diario o semanal. |
-| `POST /functions/v1/run-audit` (con admin JWT) | Lanza una auditoría completa. La UI hace esto cuando el admin pulsa "Run new audit". Para auto-scheduling se puede llamar desde un cron externo. | Diario, ej. 04:00 UTC. |
+| Cada 30 min | `recover_stuck` | Marca como `failed` los audits `status='running'` > 30 min (PR-Audit-4). |
+| Diario 04:00 UTC | `daily_purges` | Purga: `audit_reports` > 90d, `audit_logs` > 90d, `email_log` > 180d, `notifications` > 60d **leídas** (PR cron-purges-extended). |
+| Diario 04:00 UTC | `run_audit` | Lanza un audit completo del sistema. El banner stale de `/admin/audit` desaparece si esto corre. |
 
-Las dos RPCs son `SECURITY DEFINER` con check `is_admin()` interno —
-necesitas una sesión admin (PAT con scope `admin` o JWT de un user
-con `role='admin'`) para invocarlas.
+Las tres son jobs independientes en el workflow — si una falla, las
+otras siguen.
 
-### Opción A: GitHub Actions (recomendado para self-hosted)
+### Setup (una vez)
 
-Crear `.github/workflows/audit-center-maintenance.yml`:
+1. Generar el secret:
 
-```yaml
-name: Audit Center maintenance
-on:
-  schedule:
-    # 04:00 UTC daily: lanza audit, recover stuck, purge >90d.
-    - cron: '0 4 * * *'
-    # Cada 30 min: solo recover stuck.
-    - cron: '*/30 * * * *'
-  workflow_dispatch: # manual trigger desde GitHub UI
+   ```powershell
+   # PowerShell: 32 bytes random en hex
+   $bytes = New-Object byte[] 32
+   [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+   $secret = -join ($bytes | ForEach-Object { '{0:x2}' -f $_ })
+   $secret  # guarda este valor
+   ```
 
-jobs:
-  maintenance:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Recover stuck audits
-        run: |
-          curl -X POST \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/admin_audit_recover_stuck" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ADMIN_JWT }}" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Content-Type: application/json"
-      - name: Run daily audit
-        # Solo en la ejecución de las 04:00, no cada 30 min.
-        if: github.event.schedule == '0 4 * * *'
-        run: |
-          curl -X POST \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/run-audit" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ADMIN_JWT }}" \
-            -H "Content-Type: application/json"
-      - name: Purge old audits
-        # Solo en la ejecución de las 04:00.
-        if: github.event.schedule == '0 4 * * *'
-        run: |
-          curl -X POST \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/admin_audit_purge_old" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ADMIN_JWT }}" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{"p_older_than": "90 days"}'
+   O en bash: `openssl rand -hex 32`.
+
+2. Configurarlo en **Supabase Functions** (env disponible al runtime
+   de la Edge Function):
+
+   ```powershell
+   supabase secrets set CRON_SECRET=<el-valor-generado>
+   ```
+
+3. Configurarlo en **GitHub repo** (Settings → Secrets and variables
+   → Actions → "New repository secret"):
+
+   - Name: `CRON_SECRET`
+   - Value: el mismo valor que en Supabase.
+
+4. Asegúrate de que `SUPABASE_URL` también está en GitHub secrets
+   (ya lo está si configuraste `deploy.yml`).
+
+5. **Trigger manual de prueba** (sin esperar al schedule):
+
+   - GitHub repo → Actions → "Maintenance" → "Run workflow" →
+     selecciona el task (recover_stuck / daily_purges / run_audit) → Run.
+   - Confirma que el job termina en verde y los logs muestran HTTP 200.
+
+### Validación
+
+Tras el primer `run_audit` automatico (mañana a las 04:00 UTC o tras
+un trigger manual), entra a `/admin/audit` y verifica:
+
+- Aparece un report nuevo con `triggered_by = null` (sin user humano).
+- El banner "Your last audit is N days old" desaparece.
+
+### Opcional: invocación manual desde PowerShell
+
+Si quieres lanzar un task de mantenimiento ad-hoc sin pasar por
+GitHub Actions:
+
+```powershell
+$body = '{"task": "daily_purges"}'
+Invoke-RestMethod `
+  -Uri "$env:SUPABASE_URL/functions/v1/maintenance-cron" `
+  -Method Post `
+  -Headers @{
+    "X-Cron-Secret" = $env:CRON_SECRET
+    "Content-Type"  = "application/json"
+  } `
+  -Body $body
 ```
 
-Secrets necesarios en GitHub repo settings → Secrets and variables:
-- `SUPABASE_URL` (ej. `https://abc.supabase.co`)
-- `SUPABASE_ANON_KEY` (ya lo tienes en `.env` para la app)
-- `SUPABASE_ADMIN_JWT` — JWT de un user con `role='admin'`. **Aviso**:
-  los JWT de Supabase Auth caducan en 1h por defecto. Para uso cron
-  prolongado usa un **PAT** con scope `admin` (`sb_secret_...`)
-  generado desde `/account-settings/tokens` — ese no caduca a menos
-  que lo revoques.
+### Si NO configuras el cron
 
-### Opción B: Supabase Pro/Team Cron Jobs
+El sistema **sigue funcionando**, pero:
 
-Si tienes plan Pro+, abre el dashboard → Database → Cron Jobs →
-*Create a new cron job*. Tres jobs:
+- Audits zombie (running > 30 min por crash) quedan bloqueados hasta
+  que un admin los recupere manualmente.
+- Las 4 tablas crecen sin limpieza → degradación progresiva del
+  dashboard `/admin/email-log` a partir de 6-12 meses.
+- El banner stale de `/admin/audit` aparece si el último audit > 7
+  días — un admin tendrá que pulsar "Run new audit" manualmente.
 
-1. Nombre: `audit-recover-stuck`, schedule `*/30 * * * *`, SQL:
-   ```sql
-   select public.admin_audit_recover_stuck();
-   ```
-2. Nombre: `audit-daily-run`, schedule `0 4 * * *`. Lanzar la Edge
-   Function via `net.http_post()` o invocar manualmente la lógica
-   del `run-audit` (la Edge Function ya hace el INSERT en `running`
-   y procesa en background).
-3. Nombre: `audit-purge-old`, schedule `30 4 * * *`, SQL:
-   ```sql
-   select public.admin_audit_purge_old('90 days'::interval);
-   ```
-
-### Opción C: Manual / on-demand
-
-Si tu deployment es pequeño y prefieres no automatizar:
-- Entra a `/admin/audit` cada día y pulsa **Run new audit**. La UI te
-  avisa con un banner si el último audit tiene ≥ 7 días.
-- Ejecuta las RPCs de mantenimiento desde el SQL Editor de Supabase
-  cuando notes algo raro.
+El gate `CRON_SECRET` no configurado hace que la EF devuelva
+`cron_secret_not_configured` 500 — el cron falla en rojo y no toca
+nada hasta que lo configures.
 
 ### Sentry alerts (opcional)
 
@@ -373,72 +369,33 @@ y abrir directamente `/admin/audit/<id>`.
 
 ---
 
-## Database maintenance
+## Database maintenance (purges)
 
-Conforme la app crece en producción, ciertas tablas crecen sin
-limpieza automática y empiezan a impactar rendimiento de las queries
-del admin. La migración **0042** añade 3 RPCs `admin_*_purge_old` que
-extienden el patrón de `admin_audit_purge_old` (PR-Audit-4) a:
+La migración **0042** añade 3 RPCs `admin_*_purge_old` para limpiar
+tablas que crecen sin parar:
 
-| RPC SQL | Tabla | Default | Floor | Frecuencia recomendada |
-|---|---|---|---|---|
-| `select public.admin_audit_logs_purge_old('90 days'::interval);` | `audit_logs` (activity feed por user) | 90 días | 30 días | Semanal |
-| `select public.admin_email_log_purge_old('180 days'::interval);` | `email_log` (auditoria SMTP) | 180 días | 60 días | Mensual |
-| `select public.admin_notifications_purge_old('60 days'::interval, false);` | `notifications` (in-app feed) | 60 días Y leídas | 14 días | Semanal |
+| RPC SQL | Tabla | Default | Floor |
+|---|---|---|---|
+| `admin_audit_logs_purge_old('90 days')` | `audit_logs` | 90 días | 30 días |
+| `admin_email_log_purge_old('180 days')` | `email_log` | 180 días | 60 días |
+| `admin_notifications_purge_old('60 days', false)` | `notifications` (solo leídas) | 60 días | 14 días |
 
-`admin_notifications_purge_old` por defecto solo borra las **leídas**.
-Para purga agresiva (ej. user con backlog enorme), pasa
-`p_include_unread => true` -- pero suele ser un error: el user
-**aún no ha visto** esas notificaciones.
+**Estas se invocan automáticamente** desde el workflow
+`maintenance.yml` (sección **Mantenimiento automatizado** arriba) en
+el schedule diario 04:00 UTC vía la task `daily_purges` de la Edge
+Function `maintenance-cron`. No tienes que configurar nada extra.
 
-Todas son `SECURITY DEFINER` con check `is_admin()` interno. Misma
-configuración de cron que las del Audit Center (opciones A/B/C de
-arriba). Si usas el **Opción A (GitHub Actions)**, extiende el
-workflow `.github/workflows/audit-center-maintenance.yml` con un
-job nuevo `db-maintenance`:
+`admin_notifications_purge_old` por defecto solo borra las **leídas**
+(`read_at IS NOT NULL`). Las no leídas se respetan porque el user
+aún no las ha visto.
 
-```yaml
-  db-maintenance:
-    runs-on: ubuntu-latest
-    # Mismo schedule que purge_old del Audit Center (1x al día).
-    if: github.event.schedule == '0 4 * * *'
-    steps:
-      - name: Purge old audit_logs (> 90d)
-        run: |
-          curl -X POST \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/admin_audit_logs_purge_old" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ADMIN_JWT }}" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{"p_older_than": "90 days"}'
-
-      - name: Purge old email_log (> 180d)
-        run: |
-          curl -X POST \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/admin_email_log_purge_old" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ADMIN_JWT }}" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{"p_older_than": "180 days"}'
-
-      - name: Purge old read notifications (> 60d)
-        run: |
-          curl -X POST \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/admin_notifications_purge_old" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ADMIN_JWT }}" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{"p_older_than": "60 days", "p_include_unread": false}'
-```
-
-**Consideraciones**:
-
-- Si no configuras nada, las tablas crecen indefinidamente. No es
-  bloqueante para producción a corto plazo, pero a los 6-12 meses
-  notarás latencia en `/admin/email-log` y `/admin/users/:id`.
-- Los floors de seguridad evitan accidentes (`p_older_than =>
-  '1 hour'` se convierte al mínimo de la RPC).
-- Las RPCs son idempotentes -- si no hay nada que purgar, devuelven 0.
+Si quieres invocar una purga ad-hoc fuera del schedule (ej. para
+recuperar storage tras una racha de uploads/notifications), usa el
+"workflow_dispatch" manual en GitHub Actions → Maintenance →
+selecciona `daily_purges`. O ejecuta las RPCs directamente desde el
+SQL Editor de Supabase si prefieres control fino sobre el intervalo
+(ej. `admin_email_log_purge_old('30 days'::interval)` -- el floor de
+60 días limita el valor mínimo efectivo).
 
 ---
 
