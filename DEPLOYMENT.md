@@ -254,6 +254,7 @@ Una vez subido:
 | Audit Center V1 — PR-Audit-2 | Migración 0040 (RPCs helper para `pg_tables`/`pg_policies` y agregados de MFA/email failure rate). Re-desplegar `run-audit`: `supabase functions deploy run-audit` (incluye ahora los 12 checks reales en `_checks/*.ts`). Sin nuevos secrets. Tras este PR el endpoint ya hace audits útiles, pero sin UI todavía — puedes probarlo con curl: `curl -X POST https://<project>.supabase.co/functions/v1/run-audit -H "Authorization: Bearer <ADMIN_JWT>"` y leer el resultado en SQL Editor con `select * from audit_reports order by started_at desc limit 1;`. |
 | Audit Center V1 — PR-Audit-3 | UI Flutter (`/admin/audit` + `/admin/audit/:id`). **Sin migración nueva, sin Edge Function nueva**. Solo `flutter build web` + subir `build/web/` al hosting. Tras desplegar, el admin tiene un módulo completo: listado de reports recientes con summary chips por severity, detail page con findings agrupados (critical → info), botón **Run new audit** que dispara la Edge Function (rate-limit 1/min/admin), polling automático mientras el report siga en `status='running'`, export a TXT del informe. **Acción admin**: una vez subido, entra a `/admin/audit` y lanza el primer audit para validar end-to-end (debería terminar en ~10s y mostrar los findings reales del proyecto). |
 | Audit Center V1 — PR-Audit-4 | Migración 0041 (RPCs `admin_audit_recover_stuck` + `admin_audit_purge_old`). Re-desplegar `run-audit`: `supabase functions deploy run-audit` (ahora emite Sentry events para findings critical/high). Sin nuevos secrets. **Acción admin**: configura un cron externo (GitHub Actions / Supabase Pro Cron / cron del hosting) que lance las dos RPCs de mantenimiento. Detalles en la sección **Audit Center maintenance** más abajo. La UI de `/admin/audit` ahora muestra un banner discreto si el último audit es de hace ≥ 7 días o falló — sirve de fallback visual si el cron deja de funcionar. |
+| DB maintenance · Purges extendidas | Migración 0042 (RPCs `admin_audit_logs_purge_old`, `admin_email_log_purge_old`, `admin_notifications_purge_old`). Sin Edge Functions nuevas, sin secrets. **Acción admin**: extender el cron externo de "Audit Center maintenance" para invocar también las nuevas RPCs (ver sección **Database maintenance** más abajo). Defaults conservadores (90d audit_logs, 180d email_log, 60d notifications leídas) con floor de seguridad por RPC. Sin estas purgas el dashboard `/admin/email-log` se vuelve más lento conforme la tabla crece. |
 
 > En cada PR nueva, este archivo se actualiza. **Antes de desplegar,
 > relee la lista completa**, no solo lo que es "nuevo".
@@ -368,6 +369,75 @@ termina con findings `critical` (level=`error`, dispara notificación
 inmediata) o `high` (level=`warning`). El event incluye `report_id`
 y los titulos de los findings para que en Sentry puedas hacer click
 y abrir directamente `/admin/audit/<id>`.
+
+---
+
+## Database maintenance
+
+Conforme la app crece en producción, ciertas tablas crecen sin
+limpieza automática y empiezan a impactar rendimiento de las queries
+del admin. La migración **0042** añade 3 RPCs `admin_*_purge_old` que
+extienden el patrón de `admin_audit_purge_old` (PR-Audit-4) a:
+
+| RPC SQL | Tabla | Default | Floor | Frecuencia recomendada |
+|---|---|---|---|---|
+| `select public.admin_audit_logs_purge_old('90 days'::interval);` | `audit_logs` (activity feed por user) | 90 días | 30 días | Semanal |
+| `select public.admin_email_log_purge_old('180 days'::interval);` | `email_log` (auditoria SMTP) | 180 días | 60 días | Mensual |
+| `select public.admin_notifications_purge_old('60 days'::interval, false);` | `notifications` (in-app feed) | 60 días Y leídas | 14 días | Semanal |
+
+`admin_notifications_purge_old` por defecto solo borra las **leídas**.
+Para purga agresiva (ej. user con backlog enorme), pasa
+`p_include_unread => true` -- pero suele ser un error: el user
+**aún no ha visto** esas notificaciones.
+
+Todas son `SECURITY DEFINER` con check `is_admin()` interno. Misma
+configuración de cron que las del Audit Center (opciones A/B/C de
+arriba). Si usas el **Opción A (GitHub Actions)**, extiende el
+workflow `.github/workflows/audit-center-maintenance.yml` con un
+job nuevo `db-maintenance`:
+
+```yaml
+  db-maintenance:
+    runs-on: ubuntu-latest
+    # Mismo schedule que purge_old del Audit Center (1x al día).
+    if: github.event.schedule == '0 4 * * *'
+    steps:
+      - name: Purge old audit_logs (> 90d)
+        run: |
+          curl -X POST \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/admin_audit_logs_purge_old" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ADMIN_JWT }}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"p_older_than": "90 days"}'
+
+      - name: Purge old email_log (> 180d)
+        run: |
+          curl -X POST \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/admin_email_log_purge_old" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ADMIN_JWT }}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"p_older_than": "180 days"}'
+
+      - name: Purge old read notifications (> 60d)
+        run: |
+          curl -X POST \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/admin_notifications_purge_old" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ADMIN_JWT }}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"p_older_than": "60 days", "p_include_unread": false}'
+```
+
+**Consideraciones**:
+
+- Si no configuras nada, las tablas crecen indefinidamente. No es
+  bloqueante para producción a corto plazo, pero a los 6-12 meses
+  notarás latencia en `/admin/email-log` y `/admin/users/:id`.
+- Los floors de seguridad evitan accidentes (`p_older_than =>
+  '1 hour'` se convierte al mínimo de la RPC).
+- Las RPCs son idempotentes -- si no hay nada que purgar, devuelven 0.
 
 ---
 
