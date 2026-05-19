@@ -174,6 +174,8 @@
   "homeWelcomeUser": "Benvenuto, {name}",
   "homeSignedInAs": "Accesso effettuato come {email}",
   "homePlaceholder": "Qui sarà la tua area privata. Altre novità in arrivo.",
+  "homeQuickActionsTitle": "Azioni rapide",
+  "homeQuickActionsSubtitle": "Vai direttamente agli strumenti che usi di più.",
 
   "mfaSetupTitle": "Autenticazione a due fattori",
   "mfaSetupSubtitle": "Aggiungi un livello di sicurezza extra al tuo account.",
