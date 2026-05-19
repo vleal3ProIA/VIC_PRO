@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/incidents_providers.dart';
 import '../../domain/incident.dart';
@@ -48,7 +50,7 @@ class AdminIncidentsPage extends ConsumerWidget {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
           child: async.when(
             loading: () => const AppLoadingState(),
             error: (e, _) => AppErrorState(
@@ -66,9 +68,15 @@ class AdminIncidentsPage extends ConsumerWidget {
                 );
               }
               return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  96,
+                ),
                 itemCount: entries.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 4),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: AppSpacing.sm),
                 itemBuilder: (_, i) => _IncidentTile(incident: entries[i]),
               );
             },
@@ -114,167 +122,156 @@ class _IncidentTileState extends ConsumerState<_IncidentTile> {
     final sevV = incidentSeverityVisuals(context, i.severity);
     final statusV = incidentStatusVisuals(context, i.status);
 
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-        child: Row(
-          children: [
-            Icon(sevV.icon, color: sevV.color),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          i.title,
-                          style: context.textTheme.titleSmall,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+    return PremiumCard(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm + 4,
+        AppSpacing.sm,
+        AppSpacing.sm + 4,
+      ),
+      child: Row(
+        children: [
+          Icon(sevV.icon, color: sevV.color),
+          const SizedBox(width: AppSpacing.sm + 4),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        i.title,
+                        style: context.textTheme.titleSmall,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      if (!i.published)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: context.colors.onSurfaceVariant
-                                .withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            l.adminIncidentsStatusDraft,
-                            style: context.textTheme.labelSmall?.copyWith(
-                              color: context.colors.onSurfaceVariant,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 2,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Text(
-                        sevV.label(l),
-                        style: context.textTheme.bodySmall?.copyWith(
-                          color: sevV.color,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Text(
-                        '·',
-                        style: TextStyle(
-                          color: context.colors.onSurfaceVariant,
-                        ),
-                      ),
-                      Text(
-                        statusV.label(l),
-                        style: context.textTheme.bodySmall?.copyWith(
-                          color: statusV.color,
-                        ),
-                      ),
-                      Text(
-                        '·',
-                        style: TextStyle(
-                          color: context.colors.onSurfaceVariant,
-                        ),
-                      ),
-                      Text(
-                        fmt.format(i.startedAt.toLocal()),
-                        style: context.textTheme.bodySmall?.copyWith(
-                          color: context.colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuButton<String>(
-              enabled: !_busy,
-              tooltip: l.adminIncidentsActions,
-              onSelected: (v) async {
-                switch (v) {
-                  case 'edit':
-                    await _onEdit();
-                  case 'togglePublish':
-                    await _onTogglePublish();
-                  case 'resolve':
-                    await _onResolve();
-                  case 'delete':
-                    await _onDelete();
-                }
-              },
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      const Icon(Icons.edit_outlined, size: 18),
-                      const SizedBox(width: 8),
-                      Text(l.adminIncidentsEdit),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'togglePublish',
-                  child: Row(
-                    children: [
-                      Icon(
-                        i.published
-                            ? Icons.unpublished_outlined
-                            : Icons.publish_outlined,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        i.published
-                            ? l.adminIncidentsUnpublish
-                            : l.adminIncidentsPublish,
-                      ),
-                    ],
-                  ),
-                ),
-                if (i.isActive)
-                  PopupMenuItem(
-                    value: 'resolve',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.check_circle_outline, size: 18),
-                        const SizedBox(width: 8),
-                        Text(l.adminIncidentsResolve),
-                      ],
                     ),
-                  ),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.delete_outline,
-                        size: 18,
-                        color: context.colors.error,
+                    if (!i.published)
+                      PremiumBadge(
+                        label: l.adminIncidentsStatusDraft,
+                        variant: PremiumBadgeVariant.neutral,
+                        dense: true,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        l.adminIncidentsDelete,
-                        style: TextStyle(color: context.colors.error),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 2,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      sevV.label(l),
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: sevV.color,
+                        fontWeight: FontWeight.w700,
                       ),
-                    ],
-                  ),
+                    ),
+                    Text(
+                      '·',
+                      style: TextStyle(
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      statusV.label(l),
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: statusV.color,
+                      ),
+                    ),
+                    Text(
+                      '·',
+                      style: TextStyle(
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      fmt.format(i.startedAt.toLocal()),
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          PopupMenuButton<String>(
+            enabled: !_busy,
+            tooltip: l.adminIncidentsActions,
+            onSelected: (v) async {
+              switch (v) {
+                case 'edit':
+                  await _onEdit();
+                case 'togglePublish':
+                  await _onTogglePublish();
+                case 'resolve':
+                  await _onResolve();
+                case 'delete':
+                  await _onDelete();
+              }
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    const Icon(Icons.edit_outlined, size: 18),
+                    const SizedBox(width: 8),
+                    Text(l.adminIncidentsEdit),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'togglePublish',
+                child: Row(
+                  children: [
+                    Icon(
+                      i.published
+                          ? Icons.unpublished_outlined
+                          : Icons.publish_outlined,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      i.published
+                          ? l.adminIncidentsUnpublish
+                          : l.adminIncidentsPublish,
+                    ),
+                  ],
+                ),
+              ),
+              if (i.isActive)
+                PopupMenuItem(
+                  value: 'resolve',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle_outline, size: 18),
+                      const SizedBox(width: 8),
+                      Text(l.adminIncidentsResolve),
+                    ],
+                  ),
+                ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.delete_outline,
+                      size: 18,
+                      color: context.colors.error,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      l.adminIncidentsDelete,
+                      style: TextStyle(color: context.colors.error),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
