@@ -186,6 +186,8 @@
   "homeSignedInAs": "Signed in as {email}",
   "@homeSignedInAs": {"placeholders": {"email": {"type": "String"}}},
   "homePlaceholder": "Your private area will live here. More coming soon.",
+  "homeQuickActionsTitle": "Quick actions",
+  "homeQuickActionsSubtitle": "Jump straight to the tools you use most.",
 
   "mfaSetupTitle": "Two-factor authentication",
   "mfaSetupSubtitle": "Add an extra layer of security to your account.",
