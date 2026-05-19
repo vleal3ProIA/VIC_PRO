@@ -56,6 +56,22 @@ class ChangeEmailNotifier extends Notifier<ChangeEmailState> {
     );
   }
 
+  /// Marca el form como "ya validado" (muestra errores si los hay) y
+  /// devuelve si los campos pasan validacion. Util para que la UI
+  /// pueda decidir si abrir el dialog de re-auth antes de invocar la
+  /// API, sin disparar `submit()` y arriesgarse a actualizar el email
+  /// sin pasar por el gate.
+  bool validateForm() {
+    state = state.copyWith(showErrors: true, clearFailure: true);
+    return state.isValid;
+  }
+
+  /// Invoca la API de Supabase Auth para cambiar el email del user.
+  /// **NO valida** ni abre dialogos -- se asume que el caller ya ha
+  /// llamado a `validateForm()` y `ReauthDialog.show(...)` antes y han
+  /// devuelto true. Si llamas a esta funcion sin pasar por esos dos
+  /// pasos, el cambio se hace sin gate de re-auth (estaria mal por
+  /// seguridad).
   Future<void> submit() async {
     state = state.copyWith(showErrors: true, clearFailure: true);
     if (!state.isValid) return;
