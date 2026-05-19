@@ -8,7 +8,9 @@ import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/providers/locale_provider.dart';
 import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_confirm_dialog.dart';
+import 'package:myapp/core/widgets/premium/premium.dart';
 import 'package:myapp/features/billing/application/admin_plans_providers.dart';
 
 import '../../application/broadcasts_providers.dart';
@@ -114,65 +116,62 @@ class _AdminBroadcastNewPageState
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _Section(l.broadcastsSectionContent),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          TextFormField(
-                            controller: _subjectCtrl,
-                            enabled: !_sending,
-                            maxLength: 200,
-                            decoration: InputDecoration(
-                              labelText: l.broadcastsFieldSubject,
-                              prefixIcon: const Icon(Icons.subject),
-                            ),
-                            validator: (v) {
-                              final s = v?.trim() ?? '';
-                              if (s.isEmpty) return l.broadcastsSubjectRequired;
-                              return null;
-                            },
+                  PremiumCard(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextFormField(
+                          controller: _subjectCtrl,
+                          enabled: !_sending,
+                          maxLength: 200,
+                          decoration: InputDecoration(
+                            labelText: l.broadcastsFieldSubject,
+                            prefixIcon: const Icon(Icons.subject),
                           ),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _bodyCtrl,
-                            enabled: !_sending,
-                            maxLength: 5000,
-                            minLines: 6,
-                            maxLines: 14,
-                            decoration: InputDecoration(
-                              labelText: l.broadcastsFieldBody,
-                              helperText: l.broadcastsFieldBodyHint,
-                              alignLabelWithHint: true,
-                            ),
-                            validator: (v) {
-                              final s = v?.trim() ?? '';
-                              if (s.isEmpty) return l.broadcastsBodyRequired;
-                              return null;
-                            },
+                          validator: (v) {
+                            final s = v?.trim() ?? '';
+                            if (s.isEmpty) return l.broadcastsSubjectRequired;
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        TextFormField(
+                          controller: _bodyCtrl,
+                          enabled: !_sending,
+                          maxLength: 5000,
+                          minLines: 6,
+                          maxLines: 14,
+                          decoration: InputDecoration(
+                            labelText: l.broadcastsFieldBody,
+                            helperText: l.broadcastsFieldBodyHint,
+                            alignLabelWithHint: true,
                           ),
-                        ],
-                      ),
+                          validator: (v) {
+                            final s = v?.trim() ?? '';
+                            if (s.isEmpty) return l.broadcastsBodyRequired;
+                            return null;
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   _Section(l.broadcastsSectionAudience),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
+                  PremiumCard(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                           DropdownButtonFormField<BroadcastTargetType>(
                             initialValue: _targetType,
                             decoration: InputDecoration(
@@ -318,57 +317,41 @@ class _AdminBroadcastNewPageState
                             ),
                           ],
                           const SizedBox(height: 16),
-                          _EstimatePreview(
-                            estimate: _estimate,
-                            loading: _estimating,
-                          ),
-                        ],
-                      ),
+                        _EstimatePreview(
+                          estimate: _estimate,
+                          loading: _estimating,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   _Section(l.broadcastsSectionActions),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: _sending || _sendingTest
-                                ? null
-                                : _onSendTest,
-                            icon: _sendingTest
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.send_outlined),
-                            label: Text(l.broadcastsSendTest),
+                  PremiumCard(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        PremiumButton(
+                          label: l.broadcastsSendTest,
+                          variant: PremiumButtonVariant.secondary,
+                          leadingIcon: Icons.send_outlined,
+                          fullWidth: true,
+                          loading: _sendingTest,
+                          onPressed: _sending || _sendingTest
+                              ? null
+                              : _onSendTest,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        PremiumButton(
+                          label: l.broadcastsSendToAudience(
+                            _estimate?.count ?? 0,
                           ),
-                          const SizedBox(height: 8),
-                          FilledButton.icon(
-                            onPressed: _canSend() ? _onSend : null,
-                            icon: _sending
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.campaign),
-                            label: Text(
-                              l.broadcastsSendToAudience(
-                                _estimate?.count ?? 0,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                          leadingIcon: Icons.campaign,
+                          fullWidth: true,
+                          loading: _sending,
+                          onPressed: _canSend() ? _onSend : null,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -480,10 +463,10 @@ class _EstimatePreview extends StatelessWidget {
     }
     final e = estimate!;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.sm + 4),
       decoration: BoxDecoration(
-        color: context.colors.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(6),
+        color: context.colors.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: AppRadii.brSm,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -491,7 +474,7 @@ class _EstimatePreview extends StatelessWidget {
           Row(
             children: [
               Icon(Icons.people, color: context.colors.primary),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   l.broadcastsEstimateCount(e.count),
@@ -505,23 +488,14 @@ class _EstimatePreview extends StatelessWidget {
           if (e.byLocale.isNotEmpty) ...[
             const SizedBox(height: 6),
             Wrap(
-              spacing: 8,
+              spacing: AppSpacing.sm,
               runSpacing: 4,
               children: [
                 for (final entry in e.byLocale.entries)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: context.colors.surface,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      '${entry.key.toUpperCase()}  ${entry.value}',
-                      style: context.textTheme.labelSmall,
-                    ),
+                  PremiumBadge(
+                    label: '${entry.key.toUpperCase()}  ${entry.value}',
+                    variant: PremiumBadgeVariant.neutral,
+                    dense: true,
                   ),
               ],
             ),
@@ -532,13 +506,15 @@ class _EstimatePreview extends StatelessWidget {
   }
 }
 
+/// Section header pequenyo, todo en mayusculas, color primary. Estilo
+/// "form section" tipico de Stripe Dashboard.
 class _Section extends StatelessWidget {
   const _Section(this.text);
   final String text;
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm, left: 4),
       child: Text(
         text.toUpperCase(),
         style: context.textTheme.labelMedium?.copyWith(
