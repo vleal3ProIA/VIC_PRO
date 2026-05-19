@@ -6,17 +6,23 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/broadcasts_providers.dart';
 import '../../domain/broadcast.dart';
 import '../widgets/broadcast_status_chip.dart';
 
 /// `/admin/broadcasts/<id>` — detalle de un broadcast con stats.
-/// Si está `sending`, hace polling cada 3s para actualizar el progreso
-/// en vivo.
+///
+/// **Rediseno Premium UI Fase 10**: Cards Material -> PremiumCards,
+/// SectionHeader para sub-bloques, PremiumButton destructive para
+/// delete. Mantiene polling cada 3s si esta `sending` (igual que el
+/// codigo anterior) y todos los callbacks (onDelete con confirm
+/// dialog, invalidacion del provider de lista).
 class AdminBroadcastDetailPage extends ConsumerStatefulWidget {
   const AdminBroadcastDetailPage({required this.broadcastId, super.key});
   final String broadcastId;
@@ -77,7 +83,7 @@ class _AdminBroadcastDetailPageState
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
           child: async.when(
             loading: () => const AppLoadingState(),
             error: (e, _) => AppErrorState(
@@ -111,169 +117,162 @@ class _Body extends ConsumerWidget {
     final b = broadcast;
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
-        // Header.
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: SelectableText(
-                        b.subject,
-                        style: context.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+        // ─── Header card ───
+        PremiumCard(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: SelectableText(
+                      b.subject,
+                      style: context.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                    BroadcastStatusChip(status: b.status),
-                  ],
+                  ),
+                  BroadcastStatusChip(status: b.status),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                l.broadcastsCreatedAt(fmt.format(b.createdAt.toLocal())),
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colors.onSurfaceVariant,
                 ),
-                const SizedBox(height: 8),
+              ),
+              if (b.finishedAt != null) ...[
+                const SizedBox(height: 2),
                 Text(
-                  l.broadcastsCreatedAt(fmt.format(b.createdAt.toLocal())),
+                  l.broadcastsFinishedAt(
+                    fmt.format(b.finishedAt!.toLocal()),
+                  ),
                   style: context.textTheme.bodySmall?.copyWith(
                     color: context.colors.onSurfaceVariant,
                   ),
                 ),
-                if (b.finishedAt != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    l.broadcastsFinishedAt(
-                      fmt.format(b.finishedAt!.toLocal()),
-                    ),
-                    style: context.textTheme.bodySmall?.copyWith(
-                      color: context.colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
               ],
-            ),
+            ],
           ),
         ),
-        const SizedBox(height: 16),
-        // Progress card.
+        const SizedBox(height: AppSpacing.md),
+        // ─── Progress card ───
         if (b.recipientsTotal > 0) ...[
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    l.broadcastsProgressLabel,
-                    style: context.textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: b.progressFraction,
-                      minHeight: 8,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _stat(
-                          context,
-                          l.broadcastsStatTotal,
-                          b.recipientsTotal.toString(),
-                        ),
-                      ),
-                      Expanded(
-                        child: _stat(
-                          context,
-                          l.broadcastsStatSent,
-                          b.sentCount.toString(),
-                          color: context.colors.primary,
-                        ),
-                      ),
-                      Expanded(
-                        child: _stat(
-                          context,
-                          l.broadcastsStatFailed,
-                          b.failedCount.toString(),
-                          color: b.failedCount > 0
-                              ? context.colors.error
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-        // Body preview (truncado en card scrollable).
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+          PremiumCard(
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  l.broadcastsBodyPreview,
-                  style: context.textTheme.titleSmall,
+                SectionHeader(
+                  title: l.broadcastsProgressLabel,
+                  compact: true,
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: context.colors.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(6),
+                const SizedBox(height: AppSpacing.sm),
+                ClipRRect(
+                  borderRadius: AppRadii.brSm,
+                  child: LinearProgressIndicator(
+                    value: b.progressFraction,
+                    minHeight: 8,
                   ),
-                  child: SelectableText(
-                    b.bodyHtml,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _stat(
+                        context,
+                        l.broadcastsStatTotal,
+                        b.recipientsTotal.toString(),
+                      ),
                     ),
-                  ),
+                    Expanded(
+                      child: _stat(
+                        context,
+                        l.broadcastsStatSent,
+                        b.sentCount.toString(),
+                        color: context.colors.primary,
+                      ),
+                    ),
+                    Expanded(
+                      child: _stat(
+                        context,
+                        l.broadcastsStatFailed,
+                        b.failedCount.toString(),
+                        color: b.failedCount > 0
+                            ? context.colors.error
+                            : null,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        // ─── Body preview card ───
+        PremiumCard(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionHeader(
+                title: l.broadcastsBodyPreview,
+                compact: true,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.sm + 4),
+                decoration: BoxDecoration(
+                  color: context.colors.surfaceContainerHighest
+                      .withValues(alpha: 0.6),
+                  borderRadius: AppRadii.brSm,
+                ),
+                child: SelectableText(
+                  b.bodyHtml,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         if (b.lastError != null) ...[
-          const SizedBox(height: 16),
-          Card(
-            color: context.colors.errorContainer.withValues(alpha: 0.3),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline, color: context.colors.error),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: SelectableText(
-                      b.lastError!,
-                      style: TextStyle(color: context.colors.error),
-                    ),
+          const SizedBox(height: AppSpacing.md),
+          PremiumCard(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.error_outline, color: context.colors.error),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: SelectableText(
+                    b.lastError!,
+                    style: TextStyle(color: context.colors.error),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
-        const SizedBox(height: 24),
-        // Delete (solo si no está en sending).
+        const SizedBox(height: AppSpacing.lg),
+        // ─── Delete (solo si no está en sending) ───
         if (!b.isInFlight)
           Align(
             alignment: Alignment.centerRight,
-            child: OutlinedButton.icon(
-              icon: Icon(Icons.delete_outline, color: context.colors.error),
-              label: Text(
-                l.broadcastsDelete,
-                style: TextStyle(color: context.colors.error),
-              ),
+            child: PremiumButton(
+              label: l.broadcastsDelete,
+              variant: PremiumButtonVariant.destructive,
+              size: PremiumButtonSize.sm,
+              leadingIcon: Icons.delete_outline,
               onPressed: () => _onDelete(context, ref),
             ),
           ),
@@ -317,12 +316,16 @@ class _Body extends ConsumerWidget {
           label,
           style: context.textTheme.labelSmall?.copyWith(
             color: context.colors.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.4,
           ),
         ),
+        const SizedBox(height: 2),
         Text(
           value,
-          style: context.textTheme.titleLarge?.copyWith(
+          style: context.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
             color: color,
           ),
         ),

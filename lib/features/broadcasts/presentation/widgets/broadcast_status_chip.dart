@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
+import 'package:myapp/core/widgets/premium/premium_badge.dart';
 
 import '../../domain/broadcast.dart';
 
+/// Chip de status para un broadcast. Wrapper de `PremiumBadge` con
+/// mapeo (status -> variant + icon + label localizado). Lo usan la
+/// lista y la detail page.
 class BroadcastStatusChip extends StatelessWidget {
   const BroadcastStatusChip({required this.status, super.key});
   final BroadcastStatus status;
@@ -10,48 +14,33 @@ class BroadcastStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final (icon, color, label) = switch (status) {
+    final (variant, icon, label) = switch (status) {
       BroadcastStatus.draft => (
+          PremiumBadgeVariant.neutral,
           Icons.edit_outlined,
-          context.colors.onSurfaceVariant,
           l.broadcastsStatusDraft,
         ),
       BroadcastStatus.sending => (
+          PremiumBadgeVariant.warning,
           Icons.send_outlined,
-          Colors.amber.shade800,
           l.broadcastsStatusSending,
         ),
       BroadcastStatus.sent => (
+          PremiumBadgeVariant.success,
           Icons.check_circle,
-          context.colors.primary,
           l.broadcastsStatusSent,
         ),
       BroadcastStatus.failed => (
+          PremiumBadgeVariant.error,
           Icons.error,
-          context.colors.error,
           l.broadcastsStatusFailed,
         ),
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: context.textTheme.labelSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
+    return PremiumBadge(
+      label: label,
+      variant: variant,
+      icon: icon,
+      dense: true,
     );
   }
 }
