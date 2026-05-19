@@ -9,6 +9,7 @@ String profileFailureMessage(BuildContext context, ProfileFailure failure) {
     ProfileUsernameTaken() => l.profileErrorUsernameTaken,
     ProfileNotFound() => l.profileErrorNotFound,
     ProfileNetworkError() => l.profileErrorNetwork,
+    ProfileInvalidImage() => l.profileErrorInvalidImage,
     ProfileUnknown() => l.profileErrorUnknown,
   };
 }

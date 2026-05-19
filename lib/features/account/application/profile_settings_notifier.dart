@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:myapp/core/providers/locale_provider.dart';
 import 'package:myapp/core/providers/theme_provider.dart';
+import 'package:myapp/core/security/image_magic_bytes.dart';
 import 'package:myapp/features/account/application/profile_providers.dart';
 import 'package:myapp/features/account/domain/entities/profile.dart';
 import 'package:myapp/features/account/domain/failures/profile_failure.dart';
@@ -94,9 +95,29 @@ class ProfileSettingsNotifier extends Notifier<ProfileSettingsState> {
 
   /// Sube una nueva imagen de avatar (bytes ya leídos por la UI) al Storage
   /// y guarda su URL en el perfil.
+  ///
+  /// **Validacion magic bytes**: antes de tocar Storage, verificamos
+  /// que los primeros bytes coincidan con la firma de uno de los
+  /// formatos permitidos (PNG/JPEG/GIF/WEBP). Esto bloquea uploads
+  /// renombrados (.exe disfrazado de .png) ANTES de subirlos al
+  /// bucket publico `avatars`. Es defensa client-side -- ver
+  /// `lib/core/security/image_magic_bytes.dart` para detalles y
+  /// limitaciones del modelo de amenaza.
   Future<void> uploadAvatar(Uint8List bytes, String contentType) async {
     final current = state.profile;
     if (current == null) return;
+
+    // Gate magic-bytes: si el MIME no es uno permitido O las firmas
+    // no matchean, ni siquiera intentamos subir.
+    if (!kAllowedAvatarMimes.contains(contentType) ||
+        !validateImageMagicBytes(bytes, contentType)) {
+      state = state.copyWith(
+        status: ProfileSettingsStatus.ready,
+        failure: const ProfileInvalidImage(),
+      );
+      return;
+    }
+
     state = state.copyWith(
       status: ProfileSettingsStatus.saving,
       clearFailure: true,
