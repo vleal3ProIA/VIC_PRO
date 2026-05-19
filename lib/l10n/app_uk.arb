@@ -1239,5 +1239,16 @@
   "@adminAuditStaleTitle": {"placeholders": {"days": {"type": "int"}}},
   "adminAuditStaleBody": "Запустіть новий аудит, щоб переконатися, що система й далі здорова. Аудит нічого не змінює — лише перевіряє.",
   "adminAuditStaleFailedTitle": "Ваш останній аудит зазнав збою",
-  "adminAuditStaleFailedBody": "Запустіть новий аудит, щоб підтвердити стан системи. Попередній не завершився і міг залишити неповну картину."
+  "adminAuditStaleFailedBody": "Запустіть новий аудит, щоб підтвердити стан системи. Попередній не завершився і міг залишити неповну картину.",
+
+  "adminSectionSecurity": "Безпека та моніторинг",
+  "adminSectionSecurityHint": "Аудит системи, інциденти, відновлення видалених даних.",
+  "adminSectionAccess": "Доступ і користувачі",
+  "adminSectionAccessHint": "Керування користувачами, ролями та feature flags.",
+  "adminSectionBilling": "Білінг і монетизація",
+  "adminSectionBillingHint": "Тарифи, купони та брендинг рахунків.",
+  "adminSectionCommunications": "Комунікації",
+  "adminSectionCommunicationsHint": "Розсилки, журнал листів і changelog.",
+  "adminSectionContent": "Контент і аналітика",
+  "adminSectionContentHint": "Брендинг застосунку та продуктові метрики."
 }
