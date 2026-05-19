@@ -4,18 +4,23 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/admin_users_providers.dart';
 import '../../domain/admin_user.dart';
 import '../widgets/change_plan_dialog.dart';
 import '../widgets/user_status_chip.dart';
 
-/// `/admin/users/<id>` — detalle de un user. Cabecera con avatar +
-/// estado, métricas en cards, secciones (profile / suscripción /
-/// counters). Las acciones (block/deactivate/send_email/change_plan)
-/// se invocan desde el botón de acciones en el AppBar.
+/// `/admin/users/<id>` — detalle de un user.
+///
+/// **Rediseno Premium UI Fase 12**: cabecera con avatar + UserStatusChip
+/// + PremiumBadges para role/locale/email-verified; 4 _CounterCards en
+/// PremiumCard; secciones (Account / Subscription) con SectionHeader
+/// + key-value lists en PremiumCard. Mantiene toda la logica
+/// (change_plan dialog, providers invalidation, mapping de campos).
 class AdminUserDetailPage extends ConsumerWidget {
   const AdminUserDetailPage({required this.userId, super.key});
   final String userId;
@@ -44,7 +49,7 @@ class AdminUserDetailPage extends ConsumerWidget {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 880),
+          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
           child: async.when(
             loading: () => const AppLoadingState(),
             error: (e, _) => AppErrorState(
@@ -73,92 +78,97 @@ class _Body extends ConsumerWidget {
     final fmt = DateFormat.yMMMd(localeCode).add_Hm();
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         // ─── Header card ───
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 32,
-                  backgroundImage:
-                      (detail.profile.avatarUrl?.isNotEmpty ?? false)
-                          ? NetworkImage(detail.profile.avatarUrl!)
-                          : null,
-                  child: (detail.profile.avatarUrl?.isNotEmpty ?? false)
-                      ? null
-                      : Text(
-                          (detail.email.isNotEmpty ? detail.email[0] : '?')
-                              .toUpperCase(),
-                          style: const TextStyle(fontSize: 24),
-                        ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _bestDisplayName(detail),
-                              style:
-                                  context.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+        PremiumCard(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 32,
+                backgroundImage:
+                    (detail.profile.avatarUrl?.isNotEmpty ?? false)
+                        ? NetworkImage(detail.profile.avatarUrl!)
+                        : null,
+                child: (detail.profile.avatarUrl?.isNotEmpty ?? false)
+                    ? null
+                    : Text(
+                        (detail.email.isNotEmpty ? detail.email[0] : '?')
+                            .toUpperCase(),
+                        style: const TextStyle(fontSize: 24),
+                      ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _bestDisplayName(detail),
+                            style: context.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.3,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          UserStatusChip(status: detail.status),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      SelectableText(
-                        detail.email,
-                        style: context.textTheme.bodyMedium?.copyWith(
-                          color: context.colors.onSurfaceVariant,
                         ),
+                        UserStatusChip(status: detail.status),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    SelectableText(
+                      detail.email,
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        color: context.colors.onSurfaceVariant,
                       ),
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          if (detail.profile.role == 'admin')
-                            _SmallChip(
-                              label: l.adminUsersRoleAdmin,
-                              color: context.colors.tertiary,
-                            ),
-                          _SmallChip(
-                            label: detail.profile.locale.toUpperCase(),
-                            color: context.colors.onSurfaceVariant,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: 4,
+                      children: [
+                        if (detail.profile.role == 'admin')
+                          PremiumBadge(
+                            label: l.adminUsersRoleAdmin,
+                            variant: PremiumBadgeVariant.info,
+                            dense: true,
                           ),
-                          if (detail.emailConfirmedAt != null)
-                            _SmallChip(
-                              label: l.adminUserDetailEmailVerified,
-                              color: context.colors.primary,
-                            )
-                          else
-                            _SmallChip(
-                              label: l.adminUserDetailEmailUnverified,
-                              color: Colors.amber.shade800,
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        PremiumBadge(
+                          label: detail.profile.locale.toUpperCase(),
+                          variant: PremiumBadgeVariant.neutral,
+                          dense: true,
+                        ),
+                        if (detail.emailConfirmedAt != null)
+                          PremiumBadge(
+                            label: l.adminUserDetailEmailVerified,
+                            variant: PremiumBadgeVariant.success,
+                            icon: Icons.check_circle,
+                            dense: true,
+                          )
+                        else
+                          PremiumBadge(
+                            label: l.adminUserDetailEmailUnverified,
+                            variant: PremiumBadgeVariant.warning,
+                            icon: Icons.warning_amber_rounded,
+                            dense: true,
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         // ─── Counters ───
         Wrap(
-          spacing: 12,
-          runSpacing: 12,
+          spacing: AppSpacing.sm + 4,
+          runSpacing: AppSpacing.sm + 4,
           children: [
             _CounterCard(
               icon: Icons.devices_outlined,
@@ -182,10 +192,11 @@ class _Body extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         // ─── Account info ───
         _Section(l.adminUserDetailAccountSection),
-        Card(
+        PremiumCard(
+          padding: EdgeInsets.zero,
           child: Column(
             children: [
               _kv(
@@ -221,13 +232,14 @@ class _Body extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         // ─── Subscription ───
         _Section(l.adminUserDetailSubscriptionSection),
-        Card(
+        PremiumCard(
+          padding: EdgeInsets.zero,
           child: detail.subscription == null
               ? Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   child: Text(
                     l.adminUserDetailNoSubscription,
                     style: context.textTheme.bodyMedium?.copyWith(
@@ -270,15 +282,18 @@ class _Body extends ConsumerWidget {
                   ],
                 ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         Align(
           alignment: Alignment.centerRight,
-          child: OutlinedButton.icon(
-            icon: const Icon(Icons.swap_horiz),
-            label: Text(l.adminUserDetailChangePlan),
+          child: PremiumButton(
+            label: l.adminUserDetailChangePlan,
+            variant: PremiumButtonVariant.secondary,
+            size: PremiumButtonSize.sm,
+            leadingIcon: Icons.swap_horiz,
             onPressed: () => _onChangePlan(context, ref),
           ),
         ),
+        const SizedBox(height: AppSpacing.lg),
       ],
     );
   }
@@ -317,7 +332,10 @@ class _Body extends ConsumerWidget {
     Color? color,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm + 2,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -327,6 +345,7 @@ class _Body extends ConsumerWidget {
               k,
               style: context.textTheme.bodySmall?.copyWith(
                 color: context.colors.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -351,7 +370,7 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
+      padding: const EdgeInsets.fromLTRB(4, 0, 0, AppSpacing.sm),
       child: Text(
         text.toUpperCase(),
         style: context.textTheme.labelMedium?.copyWith(
@@ -377,62 +396,46 @@ class _CounterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 180,
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Icon(icon, color: context.colors.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      label,
-                      style: context.textTheme.labelSmall?.copyWith(
-                        color: context.colors.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      value,
-                      style: context.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
+      width: 200,
+      child: PremiumCard(
+        padding: const EdgeInsets.all(AppSpacing.sm + 4),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: context.colors.primary.withValues(alpha: 0.12),
+                borderRadius: AppRadii.brSm,
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SmallChip extends StatelessWidget {
-  const _SmallChip({required this.label, required this.color});
-  final String label;
-  final Color color;
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style: context.textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w700,
+              child: Icon(icon, color: context.colors.primary),
+            ),
+            const SizedBox(width: AppSpacing.sm + 2),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: context.textTheme.labelSmall?.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    value,
+                    style: context.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
