@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:myapp/core/extensions/context_extensions.dart';
+import 'package:myapp/core/router/nav_helpers.dart';
 import 'package:myapp/core/router/route_names.dart';
 
 import '../../application/billing_info_providers.dart';
@@ -147,7 +147,7 @@ class _BillingInfoPageState extends ConsumerState<BillingInfoPage> {
         leading: IconButton(
           tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.goNamed(RouteNames.accountSettings),
+          onPressed: () => context.popOrGo(RouteNames.accountSettings),
         ),
         title: Text(l.billingInfoTitle),
       ),
