@@ -1233,5 +1233,11 @@
   "adminAuditDurationSeconds": "{seconds}s",
   "@adminAuditDurationSeconds": {"placeholders": {"seconds": {"type": "String"}}},
   "adminAuditTxtFilename": "relatorio-auditoria-{id}.txt",
-  "@adminAuditTxtFilename": {"placeholders": {"id": {"type": "String"}}}
+  "@adminAuditTxtFilename": {"placeholders": {"id": {"type": "String"}}},
+
+  "adminAuditStaleTitle": "A tua última auditoria tem {days} dias",
+  "@adminAuditStaleTitle": {"placeholders": {"days": {"type": "int"}}},
+  "adminAuditStaleBody": "Executa uma nova auditoria para confirmar que o sistema continua saudável. As auditorias não alteram nada — só inspecionam.",
+  "adminAuditStaleFailedTitle": "A tua auditoria mais recente falhou",
+  "adminAuditStaleFailedBody": "Executa uma nova auditoria para confirmar o estado do sistema. A anterior não terminou e pode ter deixado uma fotografia incompleta."
 }

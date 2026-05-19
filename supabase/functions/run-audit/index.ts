@@ -24,7 +24,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
-import { captureError, withSentry } from "../_shared/sentry.ts";
+import { captureError, captureMessage, withSentry } from "../_shared/sentry.ts";
 
 import type { AuditFinding, AuditCheckRunner } from "./_checks/_types.ts";
 
@@ -207,8 +207,9 @@ async function _runChecks(
   }
 
   // ─── Summary agregado ───
+  const bySeverity = _countBySeverity(findings);
   const summary = {
-    by_severity: _countBySeverity(findings),
+    by_severity: bySeverity,
     total_checks_run: CHECKS.length,
     total_findings: findings.length,
     duration_ms: Date.now() - startedAt,
@@ -225,6 +226,12 @@ async function _runChecks(
         finished_at: new Date().toISOString(),
       })
       .eq("id", reportId);
+
+    // Sentry alert si hay criticals/highs. Asi el admin recibe la
+    // notificacion sin tener que pasar por /admin/audit. NO bloquea
+    // -- si Sentry falla (no DSN, network), el update ya esta hecho
+    // y el report es accesible.
+    await _maybeSentryAlert(reportId, findings, bySeverity);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await captureError(
@@ -257,4 +264,55 @@ function _countBySeverity(
     result[f.severity]++;
   }
   return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Sentry alert si hay findings critical/high.
+// ----------------------------------------------------------------------
+// La idea: en un proyecto con Sentry configurado, los admins reciben
+// el "issue" via email/Slack inmediatamente sin tener que pasar por
+// /admin/audit. Para criticals usamos level='error' (top severity en
+// Sentry, dispara notificaciones), para highs 'warning' (visible pero
+// menos ruidoso).
+//
+// **Que enviamos**: ids cortos de findings + titulos. NO mandamos
+// `details` -- esos pueden contener uuids de users / paths internos
+// que no queremos en logs de tercero. El admin verá el detalle en
+// /admin/audit/:id.
+// ─────────────────────────────────────────────────────────────────────
+async function _maybeSentryAlert(
+  reportId: string,
+  findings: AuditFinding[],
+  bySeverity: Record<AuditSeverity, number>,
+): Promise<void> {
+  const critical = bySeverity.critical ?? 0;
+  const high = bySeverity.high ?? 0;
+  if (critical === 0 && high === 0) {
+    return; // nada de que alertar
+  }
+
+  try {
+    const criticalFindings = findings
+      .filter((f) => f.severity === "critical")
+      .map((f) => `${f.check_id}: ${f.title}`);
+    const highFindings = findings
+      .filter((f) => f.severity === "high")
+      .map((f) => `${f.check_id}: ${f.title}`);
+
+    const level: "error" | "warning" = critical > 0 ? "error" : "warning";
+    const summary = critical > 0
+      ? `Audit Center: ${critical} critical finding(s)`
+      : `Audit Center: ${high} high finding(s)`;
+
+    await captureMessage(summary, level, {
+      report_id: reportId,
+      total_critical: critical,
+      total_high: high,
+      critical_findings: criticalFindings,
+      high_findings: highFindings,
+    });
+  } catch (e) {
+    // No queremos que el alerting bloquee la response. Solo log.
+    console.error("[run-audit] sentry alert failed:", e);
+  }
 }
