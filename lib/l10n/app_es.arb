@@ -1239,5 +1239,16 @@
   "@adminAuditStaleTitle": {"placeholders": {"days": {"type": "int"}}},
   "adminAuditStaleBody": "Lanza una auditoría nueva para confirmar que el sistema sigue sano. Las auditorías no cambian nada — solo inspeccionan.",
   "adminAuditStaleFailedTitle": "Tu auditoría más reciente falló",
-  "adminAuditStaleFailedBody": "Lanza una nueva auditoría para confirmar el estado del sistema. La anterior no terminó y puede haber dejado una foto incompleta."
+  "adminAuditStaleFailedBody": "Lanza una nueva auditoría para confirmar el estado del sistema. La anterior no terminó y puede haber dejado una foto incompleta.",
+
+  "adminSectionSecurity": "Seguridad y monitoreo",
+  "adminSectionSecurityHint": "Audita el sistema, gestiona incidentes, recupera datos borrados.",
+  "adminSectionAccess": "Accesos y usuarios",
+  "adminSectionAccessHint": "Gestión de usuarios, roles y feature flags.",
+  "adminSectionBilling": "Facturación y monetización",
+  "adminSectionBillingHint": "Planes, cupones y branding de facturas.",
+  "adminSectionCommunications": "Comunicaciones",
+  "adminSectionCommunicationsHint": "Anuncios, registro de emails y changelog.",
+  "adminSectionContent": "Contenido y analítica",
+  "adminSectionContentHint": "Branding de la app y métricas de producto."
 }

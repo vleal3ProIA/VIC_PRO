@@ -1239,5 +1239,16 @@
   "@adminAuditStaleTitle": {"placeholders": {"days": {"type": "int"}}},
   "adminAuditStaleBody": "Запустите новый аудит, чтобы убедиться, что система по-прежнему здорова. Аудит ничего не меняет — только проверяет.",
   "adminAuditStaleFailedTitle": "Ваш последний аудит завершился сбоем",
-  "adminAuditStaleFailedBody": "Запустите новый аудит, чтобы подтвердить состояние системы. Предыдущий не завершился и мог оставить неполную картину."
+  "adminAuditStaleFailedBody": "Запустите новый аудит, чтобы подтвердить состояние системы. Предыдущий не завершился и мог оставить неполную картину.",
+
+  "adminSectionSecurity": "Безопасность и мониторинг",
+  "adminSectionSecurityHint": "Аудит системы, инциденты, восстановление удалённых данных.",
+  "adminSectionAccess": "Доступ и пользователи",
+  "adminSectionAccessHint": "Управление пользователями, ролями и feature flags.",
+  "adminSectionBilling": "Биллинг и монетизация",
+  "adminSectionBillingHint": "Тарифы, купоны и брендинг счетов.",
+  "adminSectionCommunications": "Коммуникации",
+  "adminSectionCommunicationsHint": "Рассылки, журнал писем и changelog.",
+  "adminSectionContent": "Контент и аналитика",
+  "adminSectionContentHint": "Брендинг приложения и продуктовые метрики."
 }

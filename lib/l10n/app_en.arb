@@ -1360,5 +1360,16 @@
   "@adminAuditStaleTitle": {"placeholders": {"days": {"type": "int"}}},
   "adminAuditStaleBody": "Run a fresh audit to make sure the system is still healthy. Audits don't change anything — they only inspect.",
   "adminAuditStaleFailedTitle": "Your most recent audit failed",
-  "adminAuditStaleFailedBody": "Run a new audit to confirm the system state. The previous one didn't finish and may have left an incomplete picture."
+  "adminAuditStaleFailedBody": "Run a new audit to confirm the system state. The previous one didn't finish and may have left an incomplete picture.",
+
+  "adminSectionSecurity": "Security & monitoring",
+  "adminSectionSecurityHint": "Audit the system, track incidents, recover deleted data.",
+  "adminSectionAccess": "Access & users",
+  "adminSectionAccessHint": "User management, roles and feature flags.",
+  "adminSectionBilling": "Billing & monetization",
+  "adminSectionBillingHint": "Plans, coupons and invoice branding.",
+  "adminSectionCommunications": "Communications",
+  "adminSectionCommunicationsHint": "Broadcasts, email log and changelog.",
+  "adminSectionContent": "Content & analytics",
+  "adminSectionContentHint": "App branding and product metrics."
 }
