@@ -340,13 +340,20 @@ saltándose el modal de password (que era solo client-side).
 - ✅ `create_pat_write` → crear PAT con scope `write`
 
 **Deuda explícita** (PR-F-bis o más adelante):
-- 🔲 `change_email` → hoy el flow va por `auth.updateUser({email})`
-  client-side; reescribir como Edge Function que primero verifique
-  password.
+- 🟡 `change_email` → **cerrado parcialmente (2026-05-19, feat/reauth-change-email)**:
+  el flow `/change-email` ahora exige password reciente client-side
+  (`ReauthDialog` antes de invocar `auth.updateUser`). Limitación
+  documentada: un atacante con JWT robado puede invocar
+  `auth.updateUser` directamente desde fuera del navegador (curl/fetch)
+  saltando el dialog. Defense-in-depth completa requeriría una EF
+  intermediaria `change-email` que llame al user-context endpoint
+  REST tras verificar `consume_recent_verification` server-side.
 - 🔲 `webhook_secret_rotate` → no hay endpoint server-side todavía
   (la rotación se hace via SQL Editor / RLS UPDATE directo).
 - 🔲 `role_change` → no hay UI todavía (la promoción a admin se hace
-  manualmente desde SQL Editor).
+  manualmente desde SQL Editor). Cuando se construya, se añade el
+  gate desde el inicio: la whitelist en `verify-password` ya tiene
+  el TODO comentado.
 
 Cuando se implementen, basta con: (a) añadir el `action_kind` a la
 whitelist en `verify-password/index.ts`; (b) llamar
@@ -601,7 +608,7 @@ y un beneficio bajo a esta escala. Mitigamos con:
 | A01 | Broken Access Control | ✅ RLS + is_admin + tests. E2E route guards ✅ (PR-G, 40 tests). |
 | A02 | Cryptographic Failures | ✅ TLS forzado, passwords bcrypt (Supabase), secrets en env. |
 | A03 | Injection | ✅ PostgREST + RPCs paramétricas. Sin SQL crudo en frontend. |
-| A04 | Insecure Design | 🟡 Re-auth parcial ✅ (PR-F: delete-account + create-pat write; change-email + webhook rotate + role change pendientes). HTML sanitize ✅ (PR-E). |
+| A04 | Insecure Design | 🟡 Re-auth ✅ (PR-F: delete-account + create-pat write; feat/reauth-change-email: change-email client-side; webhook rotate + role change pendientes -- features no construidas todavía). HTML sanitize ✅ (PR-E). Avatar magic bytes ✅ (feat/avatar-magic-bytes, client-side mirror del server-side de PR-A). |
 | A05 | Security Misconfiguration | ✅ `.htaccess` security headers. RLS default-deny. |
 | A06 | Vulnerable Components | 🟡 `flutter pub outdated` + `deno info` manual. CI sin scan. |
 | A07 | Identification/Auth Failures | ✅ MFA, passkeys, rate limit en login, session revoke. |
@@ -700,12 +707,19 @@ application/x-yaml): no hay magic bytes universal. Aplicamos:
 ### 10.3 Acciones que requieren re-auth fresca (TTL 5 min) — tras PR-F
 
 ```
-- delete-account
-- change-email
-- create-pat con scope != 'read'
-- cambiar role de otro user (admin → admin promotion / demotion)
-- regenerar webhook signing_secret
+✅ delete-account                        (PR-F, server-side enforcement)
+✅ create-pat con scope != 'read'        (PR-F, server-side enforcement)
+🟡 change-email                          (feat/reauth-change-email, client-side gate;
+                                          server-side defense requires future EF)
+🔲 cambiar role de otro user             (no UI built yet)
+🔲 regenerar webhook signing_secret      (no endpoint built yet)
 ```
+
+Whitelist actual de `action_kind` en `verify-password/index.ts`:
+`delete_account`, `create_pat_write`, `change_email`. Las dos
+restantes están comentadas como TODO en el array — al construir
+sus features se descomentan junto con el call a
+`consume_recent_verification` en sus EFs.
 
 ### 10.4 Rate limits actuales
 
@@ -732,3 +746,10 @@ application/x-yaml): no hay magic bytes universal. Aplicamos:
 | 2026-05-18 | PR-D audit log uploads + tests Deno: 3 events nuevos (`upload.created`, `upload.deleted`, `upload.virus_detected`), fix de schema en scan-upload INSERT, categoría `upload` en activity feed con i18n 8 idiomas, 55+ tests Deno para `magic_bytes.ts` y `html_sanitize.ts`. Cierra lote de seguridad. | PR-D |
 | 2026-05-19 | Audit Center V1 — PR-Audit-1 (cimientos): migración 0039 con tabla `audit_reports` + RPCs `admin_audit_reports_list` / `admin_audit_report_detail`. Edge Function `run-audit` esqueleto (admin auth + rate limit 1/min + INSERT row 'running' + placeholder check). `config.toml` con `verify_jwt=false`. Sin checks reales todavía (llegan en PR-Audit-2). | PR-Audit-1 |
 | 2026-05-19 | Audit Center V1 — PR-Audit-2 (12 checks reales): migración 0040 con RPCs helper para `pg_tables`/`pg_policies` y agregados de MFA / email failure rate. 12 checks en `_checks/*.ts` (RLS coverage, RLS sin policies, MFA admin coverage, uploads orphan pending/scan errors/suspicious/legacy, broadcasts stuck/empty audience, email failure rate, webhooks failing, PATs unused, tenants huérfanos). Runner ejecuta secuencial con try/catch individual — un check crasheado no aborta el report (se registra como `audit.check_failed`). | PR-Audit-2 |
+| 2026-05-19 | Audit Center V1 — PR-Audit-3 (UI Flutter): módulo `/admin/audit` + `/admin/audit/:id` con domain layer (`AuditReport`/`AuditFinding`/`AuditSeverity`), datasource llamando RPCs + Edge Function, UI con `PageHeader` + lista de reports + detail con findings agrupados por severity + export TXT del informe. Polling cada 4s mientras hay reports `running`. i18n 8 idiomas con ~40 strings. 21 tests nuevos cubriendo el parser de domain + el TXT renderer. | PR-Audit-3 |
+| 2026-05-19 | Audit Center V1 — PR-Audit-4 (polish): migración 0041 (RPCs `admin_audit_recover_stuck` + `admin_audit_purge_old` con floors de seguridad). Sentry alerts automáticos en `run-audit` para findings critical (level=error) / high (level=warning). Banner stale en `/admin/audit` si último audit > 7 días o failed. DEPLOYMENT.md documenta cron externo (más tarde sustituido por workflow auto en PR cron-maintenance-auto). | PR-Audit-4 |
+| 2026-05-19 | Avatar magic bytes (defensa MIME spoofing en avatares): hasta ahora el avatar iba directo a bucket público `avatars` sin validar bytes. Atacante podía subir `.exe` renombrado a `.png` y servirlo en URL pública. Nuevo helper Dart `lib/core/security/image_magic_bytes.dart` mirror del TS de PR-A para 4 MIMEs (PNG/JPEG/GIF/WEBP). `ProfileSettingsNotifier.uploadAvatar()` valida ANTES de tocar Storage; si los bytes no matchean → `ProfileInvalidImage` failure localizada. **Limitación documentada**: validación client-side; atacante con JWT robado puede bypassar con POST directo a Storage REST. Mitigación completa requeriría EF intermediaria (out-of-scope hoy). 23 tests nuevos. | feat/avatar-magic-bytes |
+| 2026-05-19 | Re-auth para change-email (extiende PR-F): el flow `/change-email` ahora exige password reciente antes de invocar `supabase.auth.updateUser({email})`. `change_email` añadido a `VALID_ACTION_KINDS` de `verify-password`. `ChangeEmailNotifier` expone `validateForm()` para que el form abra el `ReauthDialog` solo cuando el email es válido (UX). Bloquea el ataque "robo de cookie + secuestro de cuenta en 2 clicks". **Limitación documentada**: gate client-side; defense-in-depth completa requeriría EF intermediaria `change-email` que valide `consume_recent_verification` server-side (TODO futuro). Tests: 432 → 435. | feat/reauth-change-email |
+| 2026-05-19 | DB maintenance — purgas extendidas: migración 0042 con 3 RPCs `admin_*_purge_old` para `audit_logs` (default 90d, floor 30d), `email_log` (180d, 60d) y `notifications` (60d, 14d; solo leídas por defecto, opcional `p_include_unread`). Todas `SECURITY DEFINER` con check `is_admin()` interno. Sin purgas, `/admin/email-log` se degrada a 2-5s tras 6-12 meses en producción. | chore/cron-purges-extended |
+| 2026-05-19 | GDPR data export v2 (Article 15 completo): migración 0043 con RPC `get_my_data_export()` que devuelve JSONB con 10 secciones (account, profile, tenants, uploads, PATs sin hash, webhooks sin secret, audit_logs 1000 últimos, notifications, emails recibidos 1000 últimos, export_meta). Antes el export era client-side limitado a 3 fuentes (user + profile + MFA factors). Notifier refactorizado para llamar la RPC; `data_export_builder.dart` eliminado (-5 tests obsoletos). UI idéntica visualmente — el JSON descargado pasa de 3 a 10 secciones automáticamente. | feat/gdpr-data-export |
+| 2026-05-19 | Cron mantenimiento automatizado: nueva Edge Function `maintenance-cron` autenticada con `X-Cron-Secret` header (env `CRON_SECRET`) + workflow `.github/workflows/maintenance.yml` con 3 jobs schedulados (recover_stuck cada 30 min; daily_purges + run_audit diario 04:00 UTC) + `workflow_dispatch` manual con `choice` input. La EF ejecuta con service_role internamente (bypassa is_admin) — whitelist de 3 tasks + rate limit 60/h global. Sustituye la doc "configura manualmente un cron externo" de PR-Audit-4 + chore/cron-purges-extended por setup en 3 pasos: generar secret → `supabase secrets set CRON_SECRET=…` → añadir el mismo secret en GitHub repo Settings. `verify_jwt=false` en config.toml (GitHub Actions no manda JWT). | chore/cron-maintenance-auto |
