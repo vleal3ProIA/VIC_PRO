@@ -60,8 +60,13 @@ function json(body: unknown, status: number): Response {
 const VALID_ACTION_KINDS = new Set<string>([
   "delete_account",
   "create_pat_write",
+  // Re-auth necesario antes de iniciar el flow de cambio de email
+  // nativo de Supabase Auth. Justificacion: con la cookie de sesion
+  // robada, un atacante podria mover el email a su propio buzon en
+  // 2 clicks (`updateUser` + click en el confirmation email). Forzar
+  // password reciente le mete una segunda barrera.
+  "change_email",
   // Futuro (anyadir cuando se implementen los endpoints):
-  // 'change_email',
   // 'webhook_secret_rotate',
   // 'role_change',
 ]);

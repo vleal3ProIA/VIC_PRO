@@ -8,6 +8,7 @@ import 'package:myapp/core/validation/email.dart';
 import 'package:myapp/core/validation/validation_messages.dart';
 import 'package:myapp/core/widgets/app_text_field.dart';
 import 'package:myapp/core/widgets/error_text_slot.dart';
+import 'package:myapp/core/widgets/reauth_dialog.dart';
 import 'package:myapp/features/auth/application/change_email_notifier.dart';
 import 'package:myapp/features/auth/presentation/widgets/auth_failure_message.dart';
 
@@ -31,6 +32,40 @@ class _ChangeEmailFormState extends ConsumerState<ChangeEmailForm> {
   void dispose() {
     _email.dispose();
     super.dispose();
+  }
+
+  /// Pide re-auth (password reciente) ANTES de invocar el cambio de
+  /// email. Si el user cancela el dialog o el password es incorrecto,
+  /// el notifier ni siquiera se ejecuta -- la sesion robada no podra
+  /// disparar este flow sin la password real.
+  ///
+  /// Limitacion conocida: la verificacion es client-side. Un atacante
+  /// determinado con JWT robado puede invocar `supabase.auth.updateUser`
+  /// directamente. Bloquear ese path requeriria una Edge Function
+  /// intermediaria `change-email` que consuma una recent_verification
+  /// server-side (TODO en un PR futuro). El dialog corta el ataque
+  /// realista: cookies XSS, sesiones compartidas, dispositivos
+  /// prestados.
+  Future<void> _onSubmit() async {
+    // 1) Validar el form ANTES de abrir el dialog -- no queremos
+    //    enseyar el modal de password si el email esta vacio o mal
+    //    escrito.
+    final notifier = ref.read(changeEmailNotifierProvider.notifier);
+    if (!notifier.validateForm()) return;
+
+    // 2) Re-auth gate. Si el user cancela o el password es incorrecto,
+    //    no se llama a `submit()` y por tanto no se invoca
+    //    `supabase.auth.updateUser`. Esto bloquea el ataque "robo de
+    //    cookie + cambio de email" desde el browser.
+    final ok = await ReauthDialog.show(
+      context,
+      ref: ref,
+      actionKind: 'change_email',
+    );
+    if (ok != true || !mounted) return;
+
+    // 3) Ya validado + re-auth fresca -- disparar el cambio.
+    await notifier.submit();
   }
 
   @override
@@ -71,13 +106,13 @@ class _ChangeEmailFormState extends ConsumerState<ChangeEmailForm> {
           maxLength: Email.maxLength,
           errorText: emailError,
           onChanged: notifier.emailChanged,
-          onSubmitted: (_) => notifier.submit(),
+          onSubmitted: (_) => _onSubmit(),
           enabled: !state.isSubmitting,
         ),
         GeneralErrorSlot(message: generalError),
         const SizedBox(height: 8),
         FilledButton(
-          onPressed: state.isSubmitting ? null : notifier.submit,
+          onPressed: state.isSubmitting ? null : _onSubmit,
           style: FilledButton.styleFrom(
             minimumSize: const Size.fromHeight(48),
           ),
