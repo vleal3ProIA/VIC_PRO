@@ -7,10 +7,12 @@ import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/admin_users_providers.dart';
 import '../../domain/admin_user.dart';
@@ -76,7 +78,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
+          constraints: const BoxConstraints(maxWidth: AppMaxWidths.wide),
           child: Column(
             children: [
               // ─── KPIs cards ───
@@ -197,54 +199,53 @@ class _KpiCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = color ?? context.colors.onSurface;
     return SizedBox(
-      width: 180,
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: c.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: c),
+      width: 200,
+      child: PremiumCard(
+        padding: const EdgeInsets.all(AppSpacing.sm + 4),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: c.withValues(alpha: 0.12),
+                borderRadius: AppRadii.brSm,
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+              child: Icon(icon, color: c),
+            ),
+            const SizedBox(width: AppSpacing.sm + 2),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: context.textTheme.labelSmall?.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    value,
+                    style: context.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  if (subtitle.isNotEmpty)
                     Text(
-                      label,
+                      subtitle,
                       style: context.textTheme.labelSmall?.copyWith(
                         color: context.colors.onSurfaceVariant,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    Text(
-                      value,
-                      style: context.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    if (subtitle.isNotEmpty)
-                      Text(
-                        subtitle,
-                        style: context.textTheme.labelSmall?.copyWith(
-                          color: context.colors.onSurfaceVariant,
-                        ),
-                      ),
-                  ],
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -260,43 +261,42 @@ class _PlansBreakdownCard extends StatelessWidget {
     final l = context.l10n;
     return SizedBox(
       width: 280,
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l.adminUsersKpiByPlan,
-                style: context.textTheme.labelSmall?.copyWith(
-                  color: context.colors.onSurfaceVariant,
+      child: PremiumCard(
+        padding: const EdgeInsets.all(AppSpacing.sm + 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l.adminUsersKpiByPlan,
+              style: context.textTheme.labelSmall?.copyWith(
+                color: context.colors.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 4),
+            for (final p in plans)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        p.name,
+                        style: context.textTheme.bodySmall,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      p.count.toString(),
+                      style: context.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 4),
-              for (final p in plans)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          p.name,
-                          style: context.textTheme.bodySmall,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text(
-                        p.count.toString(),
-                        style: context.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -468,66 +468,57 @@ class _UserRowState extends ConsumerState<_UserRow> {
     final currentUser = ref.watch(currentUserProvider);
     final isSelf = currentUser?.id == u.id;
 
-    return Card(
-      margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: () => context.goNamed(
-          RouteNames.adminUserDetail,
-          pathParameters: {'id': u.id},
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundImage: (u.avatarUrl?.isNotEmpty ?? false)
-                    ? NetworkImage(u.avatarUrl!)
-                    : null,
-                child: (u.avatarUrl?.isNotEmpty ?? false)
-                    ? null
-                    : Text(
-                        (u.email.isNotEmpty ? u.email[0] : '?').toUpperCase(),
-                      ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return PremiumCard(
+      onTap: () => context.goNamed(
+        RouteNames.adminUserDetail,
+        pathParameters: {'id': u.id},
+      ),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.sm + 4,
+        AppSpacing.sm + 2,
+        AppSpacing.sm,
+        AppSpacing.sm + 2,
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundImage: (u.avatarUrl?.isNotEmpty ?? false)
+                ? NetworkImage(u.avatarUrl!)
+                : null,
+            child: (u.avatarUrl?.isNotEmpty ?? false)
+                ? null
+                : Text(
+                    (u.email.isNotEmpty ? u.email[0] : '?').toUpperCase(),
+                  ),
+          ),
+          const SizedBox(width: AppSpacing.sm + 4),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            u.bestDisplayName,
-                            style: context.textTheme.titleSmall,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                    Expanded(
+                      child: Text(
+                        u.bestDisplayName,
+                        style: context.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
-                        UserStatusChip(status: u.status),
-                        if (u.isAdmin) ...[
-                          const SizedBox(width: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 1,
-                            ),
-                            decoration: BoxDecoration(
-                              color: context.colors.tertiary
-                                  .withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              l.adminUsersRoleAdmin,
-                              style: context.textTheme.labelSmall?.copyWith(
-                                color: context.colors.tertiary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
+                    UserStatusChip(status: u.status),
+                    if (u.isAdmin) ...[
+                      const SizedBox(width: 4),
+                      PremiumBadge(
+                        label: l.adminUsersRoleAdmin,
+                        variant: PremiumBadgeVariant.info,
+                        dense: true,
+                      ),
+                    ],
+                  ],
+                ),
                     const SizedBox(height: 2),
                     Text(
                       u.email,
@@ -674,8 +665,6 @@ class _UserRowState extends ConsumerState<_UserRow> {
                 ],
               ),
             ],
-          ),
-        ),
       ),
     );
   }
