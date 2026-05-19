@@ -7,6 +7,8 @@ import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 import 'package:myapp/features/account/application/profile_providers.dart';
+import 'package:myapp/features/admin_acl/application/admin_acl_providers.dart';
+import 'package:myapp/features/admin_acl/domain/admin_capability.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
 /// `/admin` — entry point del area administrativa.
@@ -34,7 +36,36 @@ class AdminPage extends ConsumerWidget {
     final l = context.l10n;
     final role = ref.watch(currentRoleProvider);
 
+    // PR-Super-A2: leemos capabilities + flag super para filtrar las
+    // cards. Mientras carga (set vacio + super=false), NO filtramos --
+    // mostramos todo para evitar flash. Cuando resuelve, ocultamos las
+    // cards que el user no pueda usar. Super ve TODO sin filtrar.
+    final caps =
+        ref.watch(myCapabilitiesProvider).valueOrNull ?? const <String>{};
+    final isSuper =
+        ref.watch(isSuperAdminProvider).valueOrNull ?? false;
+    final stillLoading =
+        ref.watch(myCapabilitiesProvider).valueOrNull == null;
+
     final destinations = _AdminDestinations(l);
+
+    bool isAllowed(_AdminDestination d) {
+      if (isSuper) return true;
+      if (stillLoading) return true; // evita flash
+      final cap = d.capability;
+      if (cap == null) return true; // cards sin cap-gate
+      return caps.contains(cap);
+    }
+
+    List<_AdminDestination> filter(List<_AdminDestination> list) =>
+        list.where(isAllowed).toList(growable: false);
+
+    final security = filter(destinations.security);
+    final access = filter(destinations.access);
+    final billing = filter(destinations.billing);
+    final communications = filter(destinations.communications);
+    final content = filter(destinations.content);
+    final superSection = isSuper ? destinations.superTools : const <_AdminDestination>[];
 
     return Center(
       child: ConstrainedBox(
@@ -49,43 +80,110 @@ class AdminPage extends ConsumerWidget {
                 title: l.adminTitle,
                 subtitle: l.adminSubtitle,
                 actions: [
-                  PremiumBadge(
-                    label: '${l.adminRoleBadge} · ${role.name}',
-                    variant: PremiumBadgeVariant.info,
-                    icon: Icons.verified_user_rounded,
-                  ),
+                  if (isSuper)
+                    PremiumBadge(
+                      label: l.adminAdminsBadgeSuper,
+                      variant: PremiumBadgeVariant.warning,
+                      icon: Icons.workspace_premium_rounded,
+                    )
+                  else
+                    PremiumBadge(
+                      label: '${l.adminRoleBadge} · ${role.name}',
+                      variant: PremiumBadgeVariant.info,
+                      icon: Icons.verified_user_rounded,
+                    ),
                 ],
               ),
               AppSpacing.gapLg,
-              _Section(
-                title: l.adminSectionSecurity,
-                subtitle: l.adminSectionSecurityHint,
-                items: destinations.security,
-              ),
-              AppSpacing.gapLg,
-              _Section(
-                title: l.adminSectionAccess,
-                subtitle: l.adminSectionAccessHint,
-                items: destinations.access,
-              ),
-              AppSpacing.gapLg,
-              _Section(
-                title: l.adminSectionBilling,
-                subtitle: l.adminSectionBillingHint,
-                items: destinations.billing,
-              ),
-              AppSpacing.gapLg,
-              _Section(
-                title: l.adminSectionCommunications,
-                subtitle: l.adminSectionCommunicationsHint,
-                items: destinations.communications,
-              ),
-              AppSpacing.gapLg,
-              _Section(
-                title: l.adminSectionContent,
-                subtitle: l.adminSectionContentHint,
-                items: destinations.content,
-              ),
+              // ─── Seccion super (visible SOLO si is super) ───
+              if (superSection.isNotEmpty) ...[
+                _Section(
+                  title: l.adminSectionSuper,
+                  subtitle: l.adminSectionSuperHint,
+                  items: superSection,
+                ),
+                AppSpacing.gapLg,
+              ],
+              if (security.isNotEmpty) ...[
+                _Section(
+                  title: l.adminSectionSecurity,
+                  subtitle: l.adminSectionSecurityHint,
+                  items: security,
+                ),
+                AppSpacing.gapLg,
+              ],
+              if (access.isNotEmpty) ...[
+                _Section(
+                  title: l.adminSectionAccess,
+                  subtitle: l.adminSectionAccessHint,
+                  items: access,
+                ),
+                AppSpacing.gapLg,
+              ],
+              if (billing.isNotEmpty) ...[
+                _Section(
+                  title: l.adminSectionBilling,
+                  subtitle: l.adminSectionBillingHint,
+                  items: billing,
+                ),
+                AppSpacing.gapLg,
+              ],
+              if (communications.isNotEmpty) ...[
+                _Section(
+                  title: l.adminSectionCommunications,
+                  subtitle: l.adminSectionCommunicationsHint,
+                  items: communications,
+                ),
+                AppSpacing.gapLg,
+              ],
+              if (content.isNotEmpty) ...[
+                _Section(
+                  title: l.adminSectionContent,
+                  subtitle: l.adminSectionContentHint,
+                  items: content,
+                ),
+                AppSpacing.gapLg,
+              ],
+              // ─── Empty state defensivo: admin sin ninguna capability ───
+              if (!isSuper &&
+                  !stillLoading &&
+                  security.isEmpty &&
+                  access.isEmpty &&
+                  billing.isEmpty &&
+                  communications.isEmpty &&
+                  content.isEmpty)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  child: PremiumCard(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.lock_outline_rounded,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant,
+                          size: 22,
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Text(
+                            l.adminNoCapabilities,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                  height: 1.4,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               const SizedBox(height: AppSpacing.xxl),
             ],
           ),
@@ -111,6 +209,7 @@ class _AdminDestinations {
           title: l.adminAuditTitle,
           hint: l.adminAuditHint,
           route: RouteNames.adminAudit,
+          capability: AdminCapability.runAudits,
         ),
         _AdminDestination(
           icon: Icons.health_and_safety_outlined,
@@ -118,6 +217,7 @@ class _AdminDestinations {
           title: l.adminIncidentsTitle,
           hint: l.adminIncidentsHint,
           route: RouteNames.adminIncidents,
+          capability: AdminCapability.manageIncidents,
         ),
         _AdminDestination(
           icon: Icons.delete_outline_rounded,
@@ -125,6 +225,7 @@ class _AdminDestinations {
           title: l.adminTrashTitle,
           hint: l.adminTrashHint,
           route: RouteNames.adminTrash,
+          capability: AdminCapability.manageTrash,
         ),
       ];
 
@@ -135,6 +236,7 @@ class _AdminDestinations {
           title: l.adminUsersTitle,
           hint: l.adminUsersHint,
           route: RouteNames.adminUsers,
+          capability: AdminCapability.manageUsers,
         ),
         _AdminDestination(
           icon: Icons.toggle_on_outlined,
@@ -142,6 +244,7 @@ class _AdminDestinations {
           title: l.adminFlagsTitle,
           hint: l.adminFlagsHint,
           route: RouteNames.adminFlags,
+          capability: AdminCapability.manageFlags,
         ),
       ];
 
@@ -152,6 +255,7 @@ class _AdminDestinations {
           title: l.adminPlansTitle,
           hint: l.adminPlansHint,
           route: RouteNames.adminPlans,
+          capability: AdminCapability.managePlans,
         ),
         _AdminDestination(
           icon: Icons.local_offer_outlined,
@@ -159,6 +263,7 @@ class _AdminDestinations {
           title: l.adminCouponsTitle,
           hint: l.adminCouponsHint,
           route: RouteNames.adminCoupons,
+          capability: AdminCapability.manageCoupons,
         ),
         _AdminDestination(
           icon: Icons.palette_outlined,
@@ -166,6 +271,7 @@ class _AdminDestinations {
           title: l.adminBrandingTitle,
           hint: l.adminBrandingHint,
           route: RouteNames.adminBranding,
+          capability: AdminCapability.manageBranding,
         ),
       ];
 
@@ -176,6 +282,7 @@ class _AdminDestinations {
           title: l.broadcastsTitle,
           hint: l.broadcastsHint,
           route: RouteNames.adminBroadcasts,
+          capability: AdminCapability.manageBroadcasts,
         ),
         _AdminDestination(
           icon: Icons.mark_email_read_outlined,
@@ -183,6 +290,7 @@ class _AdminDestinations {
           title: l.adminEmailLogTitle,
           hint: l.adminEmailLogHint,
           route: RouteNames.adminEmailLog,
+          capability: AdminCapability.viewEmailLog,
         ),
         _AdminDestination(
           icon: Icons.article_outlined,
@@ -190,6 +298,7 @@ class _AdminDestinations {
           title: l.adminChangelogTitle,
           hint: l.adminChangelogHint,
           route: RouteNames.adminChangelog,
+          capability: AdminCapability.manageChangelog,
         ),
       ];
 
@@ -200,6 +309,7 @@ class _AdminDestinations {
           title: l.adminAppBrandingTitle,
           hint: l.adminAppBrandingHint,
           route: RouteNames.adminAppBranding,
+          capability: AdminCapability.manageAppBranding,
         ),
         _AdminDestination(
           icon: Icons.insights_outlined,
@@ -207,6 +317,21 @@ class _AdminDestinations {
           title: l.adminMetricsTitle,
           hint: l.adminMetricsHint,
           route: RouteNames.adminMetrics,
+          capability: AdminCapability.viewMetrics,
+        ),
+      ];
+
+  /// Tools exclusivos del super admin. NO tienen capability gate --
+  /// se filtran por `isSuperAdmin` en el build de AdminPage. Hoy
+  /// solo "Manage admins"; en el futuro pueden venir mas (system
+  /// settings, etc).
+  List<_AdminDestination> get superTools => [
+        _AdminDestination(
+          icon: Icons.admin_panel_settings_outlined,
+          colorSeed: const Color(0xFFFBBF24), // amber-400
+          title: l.adminAdminsTitle,
+          hint: l.adminAdminsHint,
+          route: RouteNames.adminAdmins,
         ),
       ];
 }
@@ -219,6 +344,7 @@ class _AdminDestination {
     required this.title,
     required this.hint,
     required this.route,
+    this.capability,
   });
 
   final IconData icon;
@@ -231,6 +357,12 @@ class _AdminDestination {
   final String title;
   final String hint;
   final String route;
+
+  /// Capability requerida para que la card se muestre. `null` =
+  /// siempre visible para cualquier admin (ej. la card de super tools
+  /// se filtra por `isSuperAdmin` aparte). El super admin ve TODAS
+  /// las cards independientemente de este campo.
+  final String? capability;
 }
 
 /// Una seccion: header + grid responsive de destinos.

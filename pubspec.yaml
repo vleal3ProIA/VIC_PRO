@@ -102,7 +102,11 @@ flutter:
   generate: true
 
   assets:
-    - assets/images/
+    # `assets/images/` y `assets/translations/` se quitaron porque nunca
+    # llegaron a poblarse y `flutter analyze` lanzaba warnings
+    # `asset_directory_does_not_exist` que el CI promueve a fallo.
+    # Si en el futuro necesitas un directorio aqui, crealo (con un
+    # `.gitkeep` minimo para que git lo trackee) ANTES de declararlo,
+    # o el analyzer lo marcara warning y el job fallara.
     - assets/icons/
-    - assets/translations/
     - .env

@@ -9,6 +9,8 @@ import 'package:myapp/features/account/presentation/pages/account_sessions_page.
 import 'package:myapp/features/account/presentation/pages/account_settings_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_trash_page.dart';
+import 'package:myapp/features/admin_acl/application/admin_acl_providers.dart';
+import 'package:myapp/features/admin_acl/presentation/pages/admin_admins_page.dart';
 import 'package:myapp/features/admin_metrics/presentation/pages/admin_metrics_page.dart';
 import 'package:myapp/features/admin_users/presentation/pages/admin_user_detail_page.dart';
 import 'package:myapp/features/admin_users/presentation/pages/admin_users_page.dart';
@@ -426,6 +428,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           reportId: state.pathParameters['id'] ?? '',
         ),
       ),
+      // SOLO super admin. El guard del router (`isSuperAdminRoute` +
+      // `evaluateRouterRedirect`) ya echa a quien no sea super; aqui no
+      // hay segunda capa de UI -- la pagina asume super.
+      GoRoute(
+        path: RoutePaths.adminAdmins,
+        name: RouteNames.adminAdmins,
+        builder: (_, __) => const AdminAdminsPage(),
+      ),
       GoRoute(
         path: RoutePaths.status,
         name: RouteNames.status,
@@ -502,6 +512,17 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 /// la puedan importar sin arrastrar dependencias web-only (webauthn_js,
 /// stripe_js) que `app_router.dart` trae via las pages.
 String? appRouterRedirect(Ref ref, GoRouterState state) {
+  // PR-Super-A2: leemos las capabilities del user (set vacio mientras carga
+  // / sin sesion) y si es super (derivado del propio set, ver provider).
+  // El guard usa estos dos para:
+  //   - bloquear /admin/admins a non-super (`isSuperAdminRoute`).
+  //   - bloquear paginas admin concretas a admins sin la capability
+  //     correspondiente (mapeo en `kRouteToCapability`).
+  // Si capabilities aun esta cargando (set vacio porque la RPC no
+  // resolvio), el guard 2d hace skip para evitar flash.
+  final caps =
+      ref.read(myCapabilitiesProvider).valueOrNull ?? const <String>{};
+  final isSuper = ref.read(isSuperAdminProvider).valueOrNull ?? false;
   return evaluateRouterRedirect(
     matchedLocation: state.matchedLocation,
     isAuthenticated: ref.read(routerIsAuthenticatedProvider),
@@ -509,6 +530,8 @@ String? appRouterRedirect(Ref ref, GoRouterState state) {
     mfaPending: ref.read(mfaChallengePendingProvider),
     isAdmin: ref.read(isAdminProvider),
     onboardingCompleted: ref.read(onboardingCompletedProvider).valueOrNull,
+    isSuperAdmin: isSuper,
+    capabilities: caps,
   );
 }
 
@@ -537,18 +560,29 @@ class _AuthRefreshNotifier extends ChangeNotifier {
       appBrandingProvider,
       (_, __) => notifyListeners(),
     );
+    // PR-Super-A2: capabilities tambien son async (RPC `get_my_capabilities`).
+    // Mientras carga, el guard 2d skipea check para evitar flash; cuando
+    // resuelve, necesitamos re-evaluar el redirect para que un admin sin
+    // capability X que llego a /admin/X (por bookmark / URL directa)
+    // sea echado a /admin en cuanto sepamos su lista real.
+    _capsSub = _ref.listen(
+      myCapabilitiesProvider,
+      (_, __) => notifyListeners(),
+    );
   }
 
   final Ref _ref;
   late final ProviderSubscription<dynamic> _authSub;
   late final ProviderSubscription<dynamic> _roleSub;
   late final ProviderSubscription<dynamic> _brandingSub;
+  late final ProviderSubscription<dynamic> _capsSub;
 
   @override
   void dispose() {
     _authSub.close();
     _roleSub.close();
     _brandingSub.close();
+    _capsSub.close();
     super.dispose();
   }
 }

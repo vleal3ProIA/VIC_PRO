@@ -103,7 +103,49 @@ const adminRoutes = <String>{
   RoutePaths.adminBroadcastsNew,
   RoutePaths.adminIncidents,
   RoutePaths.adminAudit,
+  RoutePaths.adminAdmins,
 };
+
+/// Mapeo route -> capability requerida (post migracion 0044). Si una
+/// ruta esta aqui, el user necesita esa capacidad ademas de ser admin
+/// (basic gate). El super admin tiene todas las capabilities
+/// automaticamente, asi que puede entrar a cualquiera.
+///
+/// `/admin` (menu) NO esta aqui -- cualquier admin puede entrar al
+/// menu, donde vera solo las cards de las capabilities que tiene.
+///
+/// `/admin/admins` requiere ser super -- gestionado en el guard con
+/// el flag `isSuperAdmin` (no via capability, porque no es una de las
+/// 13 -- es una accion exclusiva del super).
+const Map<String, String> kRouteToCapability = {
+  RoutePaths.adminFlags:        'manage_flags',
+  RoutePaths.adminPlans:        'manage_plans',
+  RoutePaths.adminBranding:     'manage_branding',
+  RoutePaths.adminCoupons:      'manage_coupons',
+  RoutePaths.adminTrash:        'manage_trash',
+  RoutePaths.adminChangelog:    'manage_changelog',
+  RoutePaths.adminAppBranding:  'manage_app_branding',
+  RoutePaths.adminEmailLog:     'view_email_log',
+  RoutePaths.adminUsers:        'manage_users',
+  RoutePaths.adminMetrics:      'view_metrics',
+  RoutePaths.adminBroadcasts:   'manage_broadcasts',
+  RoutePaths.adminBroadcastsNew:'manage_broadcasts',
+  RoutePaths.adminIncidents:    'manage_incidents',
+  RoutePaths.adminAudit:        'run_audits',
+};
+
+/// Devuelve la capability requerida por una ruta, o `null` si la ruta
+/// no requiere capability concreta (solo `isAdmin`).
+String? requiredCapability(String loc) {
+  if (kRouteToCapability.containsKey(loc)) {
+    return kRouteToCapability[loc];
+  }
+  // Patrones parametrizados.
+  if (loc.startsWith('/admin/users/'))      return 'manage_users';
+  if (loc.startsWith('/admin/broadcasts/')) return 'manage_broadcasts';
+  if (loc.startsWith('/admin/audit/'))      return 'run_audits';
+  return null;
+}
 
 /// Rutas públicas en las que NO queremos estar si ya hay sesión.
 const publicOnly = <String>{
@@ -153,6 +195,12 @@ bool isAdminRoute(String loc) {
   return false;
 }
 
+/// `true` si la ruta es exclusiva del super admin (solo `/admin/admins`
+/// hoy). Un admin normal no puede entrar -> guard redirige a /admin.
+bool isSuperAdminRoute(String loc) {
+  return loc == RoutePaths.adminAdmins;
+}
+
 // ─────────────────────────── La logica pura ───────────────────────────
 
 /// Logica del guard del router. Recibe estados ya resueltos y devuelve
@@ -176,6 +224,8 @@ String? evaluateRouterRedirect({
   required bool mfaPending,
   required bool isAdmin,
   required bool? onboardingCompleted,
+  bool isSuperAdmin = false,
+  Set<String> capabilities = const <String>{},
 }) {
   final loc = matchedLocation;
   if (excludedFromGuard.contains(loc)) return null;
@@ -237,6 +287,28 @@ String? evaluateRouterRedirect({
   // 2b) Ruta solo-admin y el usuario no tiene ese rol → /home.
   if (isAuthed && isAdminRoute(loc) && !isAdmin) {
     return RoutePaths.home;
+  }
+
+  // 2c) Ruta solo-super (gestion de admins) y el user no es super
+  //     -> /admin (el menu, donde le dejara claro que no tiene
+  //     acceso a esa pieza concreta). Defensa-en-profundidad: el
+  //     server tambien rechazara las RPCs `super_admin_*` con
+  //     PostgrestException si llamadas por non-super.
+  if (isAuthed && isSuperAdminRoute(loc) && !isSuperAdmin) {
+    return RoutePaths.admin;
+  }
+
+  // 2d) Ruta admin con capability requerida + el user es admin pero
+  //     SIN esa capacidad concreta -> /admin (el menu sin esa card).
+  //     Super tiene todas las capabilities, asi que pasa siempre.
+  //     Si `capabilities` es vacio (cargando del backend), NO
+  //     redirigimos para evitar flash -- la pagina destino debe
+  //     manejar su propio loading state.
+  if (isAuthed && isAdmin && !isSuperAdmin && capabilities.isNotEmpty) {
+    final required = requiredCapability(loc);
+    if (required != null && !capabilities.contains(required)) {
+      return RoutePaths.admin;
+    }
   }
 
   // 3) Autenticado (y sin MFA pendiente) en ruta solo para invitados.

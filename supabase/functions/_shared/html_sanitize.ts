@@ -163,16 +163,34 @@ function tokenize(html: string): Token[] {
         : inner;
 
       // Extraer tag name (primera palabra hasta espacio o fin).
-      const nameMatch = tagBody.match(/^\s*([a-zA-Z][a-zA-Z0-9]*)/);
+      //
+      // **No permitimos whitespace entre `<` y el nombre del tag**.
+      // HTML real exige `<p>` (nombre pegado al `<`); los browsers
+      // tratan `< p>` como texto literal, no como tag. Si dejasemos
+      // `\s*` ANTES del nombre, entradas como `"a < b && c > d"` se
+      // tokenizarian como tag `<b>` con basura en los atributos, lo
+      // que es justo lo opuesto de lo que el sanitizer quiere
+      // (el usuario espera escape de `<` `&` `>` como texto plano).
+      const nameMatch = tagBody.match(/^([a-zA-Z][a-zA-Z0-9]*)/);
       if (!nameMatch) {
         // Bracket suelto que no es tag valido (ej. "a < b"): tratar
-        // como texto literal.
+        // como texto literal. El sanitizer principal hara el escape.
+        tokens.push({ kind: "text", value: html.substring(i, end + 1) });
+        i = end + 1;
+        continue;
+      }
+      // Defensa adicional: el cuerpo del tag (despues del nombre) NO
+      // debe contener `&` sin comillas. HTML reserva `&` para entidades
+      // en texto y dentro de valores quoted -- jamas como char suelto
+      // en una zona de atributos. Si aparece, casi siempre es texto
+      // mal interpretado (ej. `<b && c>`); lo emitimos como texto.
+      const attrsRaw = tagBody.substring(nameMatch[0].length);
+      if (containsUnquotedAmpersand(attrsRaw)) {
         tokens.push({ kind: "text", value: html.substring(i, end + 1) });
         i = end + 1;
         continue;
       }
       const tagName = nameMatch[1].toLowerCase();
-      const attrsRaw = tagBody.substring(nameMatch[0].length);
       const attrs = parseAttrs(attrsRaw);
 
       tokens.push({
@@ -197,6 +215,32 @@ function tokenize(html: string): Token[] {
     }
   }
   return tokens;
+}
+
+// `true` si la cadena (cuerpo de atributos de un supuesto tag) contiene
+// algun `&` fuera de comillas. Un `&` desnudo en un tag de HTML es
+// invalido -- HTML reserva `&` para entidades en TEXTO y en valores
+// de atributo *entre comillas*. Si lo vemos crudo aqui, casi seguro
+// que el `<...>` no era un tag real (ej. `< b && c >` que el usuario
+// queria como texto plano). Asi tratamos el bloque como texto.
+//
+// Considera estados de comilla simple/doble por si un atributo
+// legitimo tiene `&` dentro (ej. `<a href="x?a=1&b=2">`).
+function containsUnquotedAmpersand(s: string): boolean {
+  let quote: '"' | "'" | null = null;
+  for (let k = 0; k < s.length; k++) {
+    const ch = s[k];
+    if (quote) {
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      continue;
+    }
+    if (ch === "&") return true;
+  }
+  return false;
 }
 
 // Parsea atributos de un fragmento como `href="..." target="_blank" disabled`.
