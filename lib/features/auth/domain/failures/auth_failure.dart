@@ -17,6 +17,14 @@ class AuthWeakPassword extends AuthFailure {
   const AuthWeakPassword({super.cause});
 }
 
+/// La contraseña elegida aparece en brechas de datos conocidas
+/// (HaveIBeenPwned). Distinta de `AuthWeakPassword` (formato/longitud):
+/// aquí el formato es válido pero la contraseña está comprometida y es
+/// trivial de adivinar en credential stuffing / ataques de diccionario.
+class AuthLeakedPassword extends AuthFailure {
+  const AuthLeakedPassword({super.cause});
+}
+
 class AuthEmailNotConfirmed extends AuthFailure {
   const AuthEmailNotConfirmed({super.cause});
 }

@@ -144,6 +144,8 @@ OTP_CODE_LENGTH=6
       analyticsServiceProvider.overrideWithValue(
         AnalyticsService(backend: const NoopAnalyticsBackend()),
       ),
+      // Check de contraseñas filtradas (HIBP): stub sin red en tests.
+      leakedPasswordCheckerNoopOverride,
       ...extraOverrides,
     ],
     child: MaterialApp.router(

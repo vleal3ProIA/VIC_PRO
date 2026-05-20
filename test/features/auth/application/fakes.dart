@@ -1,5 +1,8 @@
 import 'package:fpdart/fpdart.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:myapp/core/observability/analytics_service.dart';
+import 'package:myapp/core/security/leaked_password_checker.dart';
 import 'package:myapp/features/audit/application/audit_logger.dart';
 import 'package:myapp/features/auth/domain/entities/mfa_enrollment.dart';
 import 'package:myapp/features/auth/domain/entities/sign_up_request.dart';
@@ -22,12 +25,26 @@ final analyticsNoopOverride = analyticsServiceProvider.overrideWithValue(
   ),
 );
 
+/// Override que neutraliza el check de contraseñas filtradas
+/// (HaveIBeenPwned) en tests: usa un `http.Client` mockeado que devuelve
+/// 200 con cuerpo vacío → ningún sufijo matchea → "no filtrada", SIN
+/// tocar la red. Sin esto, los tests de `submit()` con password válida
+/// harían una llamada HTTP real a api.pwnedpasswords.com (lenta y no
+/// determinista).
+final leakedPasswordCheckerNoopOverride =
+    leakedPasswordCheckerProvider.overrideWithValue(
+  LeakedPasswordChecker(
+    MockClient((_) async => http.Response('', 200)),
+  ),
+);
+
 /// Lista convencional de overrides "neutralizadores" que todo test de
 /// notifier que dispare analytics/audit/etc. debe incluir. Reduce el
 /// boilerplate en `setUp` de cada test.
 final commonNotifierOverrides = [
   auditLoggerNoopOverride,
   analyticsNoopOverride,
+  leakedPasswordCheckerNoopOverride,
 ];
 
 /// Fake controlable de `AuthRepository` para tests de notifiers.

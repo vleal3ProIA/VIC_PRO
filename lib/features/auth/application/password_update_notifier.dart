@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:formz/formz.dart';
 
+import 'package:myapp/core/security/leaked_password_checker.dart';
 import 'package:myapp/core/validation/password.dart';
 import 'package:myapp/core/validation/password_confirmation.dart';
 import 'package:myapp/features/auth/application/auth_providers.dart';
@@ -76,6 +77,20 @@ class PasswordUpdateNotifier extends Notifier<PasswordUpdateState> {
     if (!state.isValid) return;
 
     state = state.copyWith(status: PasswordUpdateStatus.submitting);
+
+    // Leaked password protection (HaveIBeenPwned). Fail-open si HIBP
+    // no responde — no bloqueamos el reset por una caída del tercero.
+    final leaked = await ref
+        .read(leakedPasswordCheckerProvider)
+        .isLeaked(state.password.value);
+    if (leaked) {
+      state = state.copyWith(
+        status: PasswordUpdateStatus.failure,
+        failure: const AuthLeakedPassword(),
+      );
+      return;
+    }
+
     final repo = ref.read(authRepositoryProvider);
     final result = await repo.updatePassword(state.password.value);
     result.match(

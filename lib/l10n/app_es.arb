@@ -276,6 +276,7 @@
 
   "authErrorUserExists": "Ya existe una cuenta con este correo.",
   "authErrorWeakPassword": "Esta contraseña es demasiado débil.",
+  "authErrorLeakedPassword": "Esta contraseña ha aparecido en filtraciones de datos conocidas. Elige otra distinta.",
   "authErrorEmailNotConfirmed": "Verifica tu correo antes de iniciar sesión.",
   "authErrorInvalidCredentials": "Correo o contraseña incorrectos.",
   "authErrorOtpInvalid": "El código no es válido, ha caducado o ya se ha usado. Usa el último que te enviamos.",

@@ -276,6 +276,7 @@
 
   "authErrorUserExists": "Ein Konto mit dieser E-Mail existiert bereits.",
   "authErrorWeakPassword": "Dieses Passwort ist zu schwach.",
+  "authErrorLeakedPassword": "Dieses Passwort ist in bekannten Datenlecks aufgetaucht. Bitte wähle ein anderes.",
   "authErrorEmailNotConfirmed": "Bitte bestätige deine E-Mail vor der Anmeldung.",
   "authErrorInvalidCredentials": "Ungültige E-Mail oder Passwort.",
   "authErrorOtpInvalid": "Der Code ist ungültig, abgelaufen oder bereits verwendet. Nutze den zuletzt gesendeten Code.",

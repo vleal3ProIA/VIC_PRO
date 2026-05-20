@@ -291,6 +291,7 @@
 
   "authErrorUserExists": "An account with this email already exists.",
   "authErrorWeakPassword": "This password is too weak.",
+  "authErrorLeakedPassword": "This password has appeared in known data breaches. Please choose a different one.",
   "authErrorEmailNotConfirmed": "Please verify your email before signing in.",
   "authErrorInvalidCredentials": "Invalid email or password.",
   "authErrorOtpInvalid": "The code is invalid, expired, or already used. Use the latest code we sent.",
