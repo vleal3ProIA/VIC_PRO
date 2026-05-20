@@ -6,6 +6,7 @@ import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/seo/meta_tags_sync.dart';
 import 'package:myapp/core/seo/seo_meta.dart';
+import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/features/branding/application/branding_providers.dart';
 import 'package:myapp/features/welcome/presentation/widgets/top_bar.dart';
 
@@ -55,18 +56,11 @@ class WelcomePage extends ConsumerWidget {
                           logoUrl,
                           height: context.isMobile ? 96 : 144,
                           fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => Icon(
-                            Icons.engineering_outlined,
-                            size: context.isMobile ? 96 : 144,
-                            color: context.colors.primary,
-                          ),
+                          errorBuilder: (_, __, ___) =>
+                              _HeroBadge(mobile: context.isMobile),
                         )
                       else
-                        Icon(
-                          Icons.engineering_outlined,
-                          size: context.isMobile ? 96 : 144,
-                          color: context.colors.primary,
-                        ),
+                        _HeroBadge(mobile: context.isMobile),
                       const SizedBox(height: 32),
                       Text(
                         branding.commercialName,
@@ -111,6 +105,38 @@ class WelcomePage extends ConsumerWidget {
           ),
           const SafeArea(top: false, child: _LegalFooter()),
         ],
+      ),
+    );
+  }
+}
+
+/// Hero "app icon" Premium para la welcome cuando no hay logo de
+/// branding (o si la imagen falla). Badge redondeado tintado con el
+/// icono de "en construccion" — mismo lenguaje visual que los badges
+/// de AuthCard y los tiles del panel admin.
+class _HeroBadge extends StatelessWidget {
+  const _HeroBadge({required this.mobile});
+
+  final bool mobile;
+
+  @override
+  Widget build(BuildContext context) {
+    final box = mobile ? 112.0 : 160.0;
+    final iconSize = mobile ? 60.0 : 84.0;
+    final primary = context.colors.primary;
+    return Container(
+      width: box,
+      height: box,
+      decoration: BoxDecoration(
+        color: primary.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(mobile ? 28 : 36),
+        border: Border.all(color: primary.withValues(alpha: 0.16)),
+        boxShadow: AppShadows.card(Theme.of(context).brightness),
+      ),
+      child: Icon(
+        Icons.engineering_outlined,
+        size: iconSize,
+        color: primary,
       ),
     );
   }

@@ -22,11 +22,7 @@ class RegisterPage extends StatelessWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: _reservedHeight,
-          leading: Icon(
-            Icons.person_add_alt_1_outlined,
-            size: 56,
-            color: context.colors.primary,
-          ),
+          icon: Icons.person_add_alt_1_outlined,
           title: context.l10n.registerTitle,
           subtitle: context.l10n.registerSubtitle,
           child: const RegisterForm(),

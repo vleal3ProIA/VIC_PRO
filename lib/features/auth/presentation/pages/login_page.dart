@@ -21,11 +21,7 @@ class LoginPage extends StatelessWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: _reservedHeight,
-          leading: Icon(
-            Icons.lock_open_outlined,
-            size: 56,
-            color: context.colors.primary,
-          ),
+          icon: Icons.lock_open_outlined,
           title: context.l10n.loginTitle,
           subtitle: context.l10n.loginSubtitle,
           child: const LoginForm(),
