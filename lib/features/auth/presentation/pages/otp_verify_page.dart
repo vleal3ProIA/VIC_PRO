@@ -28,11 +28,7 @@ class OtpVerifyPage extends ConsumerWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: _reservedHeight,
-          leading: Icon(
-            Icons.dialpad_outlined,
-            size: 56,
-            color: context.colors.primary,
-          ),
+          icon: Icons.dialpad_outlined,
           title: context.l10n.otpVerifyTitle,
           subtitle: context.l10n.otpVerifySubtitle(codeLength, email),
           child: OtpVerifyForm(email: email),

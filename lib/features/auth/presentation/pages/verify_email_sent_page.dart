@@ -46,11 +46,7 @@ class _VerifyEmailSentPageState extends ConsumerState<VerifyEmailSentPage> {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: 560,
-          leading: Icon(
-            Icons.mark_email_read_outlined,
-            size: 64,
-            color: context.colors.primary,
-          ),
+          icon: Icons.mark_email_read_outlined,
           title: l.verifyEmailSentTitle,
           subtitle: l.verifyEmailSentSubtitle(widget.email),
           child: Column(

@@ -25,11 +25,7 @@ class ChangePasswordPage extends StatelessWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: _reservedHeight,
-          leading: Icon(
-            Icons.password_outlined,
-            size: 56,
-            color: context.colors.primary,
-          ),
+          icon: Icons.password_outlined,
           title: l.changePasswordTitle,
           subtitle: l.changePasswordSubtitle,
           child: const ChangePasswordForm(),

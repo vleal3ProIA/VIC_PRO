@@ -44,11 +44,7 @@ class _MagicLinkSentPageState extends ConsumerState<MagicLinkSentPage> {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: 640,
-          leading: Icon(
-            Icons.mark_email_read_outlined,
-            size: 64,
-            color: context.colors.primary,
-          ),
+          icon: Icons.mark_email_read_outlined,
           title: l.magicLinkSentTitle,
           subtitle: l.magicLinkSentSubtitle(widget.email),
           child: Column(

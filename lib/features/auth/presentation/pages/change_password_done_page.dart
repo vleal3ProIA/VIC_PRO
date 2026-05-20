@@ -19,11 +19,8 @@ class ChangePasswordDonePage extends StatelessWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: 460,
-          leading: Icon(
-            Icons.check_circle_outline,
-            size: 72,
-            color: context.colors.tertiary,
-          ),
+          icon: Icons.check_circle_outline,
+          iconColor: context.colors.tertiary,
           title: l.changePasswordSuccessTitle,
           subtitle: l.changePasswordSuccessSubtitle,
           child: Column(

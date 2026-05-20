@@ -18,11 +18,7 @@ class MagicLinkPage extends StatelessWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: _reservedHeight,
-          leading: Icon(
-            Icons.auto_awesome_outlined,
-            size: 56,
-            color: context.colors.primary,
-          ),
+          icon: Icons.auto_awesome_outlined,
           title: context.l10n.magicLinkTitle,
           subtitle: context.l10n.magicLinkSubtitle,
           child: const MagicLinkForm(),

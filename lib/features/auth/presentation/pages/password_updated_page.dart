@@ -38,11 +38,7 @@ class _PasswordUpdatedPageState extends ConsumerState<PasswordUpdatedPage> {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: 480,
-          leading: Icon(
-            Icons.check_circle_outline,
-            size: 72,
-            color: context.colors.primary,
-          ),
+          icon: Icons.check_circle_outline,
           title: l.passwordUpdatedTitle,
           subtitle: l.passwordUpdatedSubtitle,
           child: Column(

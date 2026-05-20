@@ -27,11 +27,8 @@ class DeleteAccountPage extends StatelessWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: _reservedHeight,
-          leading: Icon(
-            Icons.delete_forever_outlined,
-            size: 56,
-            color: context.colors.error,
-          ),
+          icon: Icons.delete_forever_outlined,
+          iconColor: context.colors.error,
           title: l.deleteAccountTitle,
           subtitle: l.deleteAccountSubtitle,
           child: const DeleteAccountForm(),

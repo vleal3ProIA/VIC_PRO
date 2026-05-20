@@ -18,11 +18,7 @@ class ForgotPasswordPage extends StatelessWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: _reservedHeight,
-          leading: Icon(
-            Icons.lock_reset_outlined,
-            size: 56,
-            color: context.colors.primary,
-          ),
+          icon: Icons.lock_reset_outlined,
           title: context.l10n.forgotPasswordTitle,
           subtitle: context.l10n.forgotPasswordSubtitle,
           child: const ForgotPasswordForm(),

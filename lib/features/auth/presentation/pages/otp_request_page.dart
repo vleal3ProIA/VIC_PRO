@@ -19,11 +19,7 @@ class OtpRequestPage extends StatelessWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: _reservedHeight,
-          leading: Icon(
-            Icons.pin_outlined,
-            size: 56,
-            color: context.colors.primary,
-          ),
+          icon: Icons.pin_outlined,
           title: context.l10n.otpRequestTitle,
           subtitle: context.l10n.otpRequestSubtitle(EnvConfig.otpCodeLength),
           child: const OtpRequestForm(),

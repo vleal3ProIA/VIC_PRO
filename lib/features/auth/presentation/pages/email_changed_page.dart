@@ -18,11 +18,8 @@ class EmailChangedPage extends StatelessWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: 460,
-          leading: Icon(
-            Icons.verified_outlined,
-            size: 72,
-            color: context.colors.tertiary,
-          ),
+          icon: Icons.verified_outlined,
+          iconColor: context.colors.tertiary,
           title: l.emailChangedTitle,
           subtitle: l.emailChangedSubtitle,
           child: Column(
