@@ -12,6 +12,10 @@
 //                      defaults conservadores.
 //   - run_audit:      lanza un audit completo del sistema (proxy a la EF
 //                      `run-audit` con X-Internal-Auth).
+//   - rescan_stuck_uploads: reintenta los uploads con scan VirusTotal
+//                      en 'error' > 24h (reset a 'pending' + reinvoca
+//                      scan-upload). Hace converger a 0 el finding
+//                      `uploads.scan_errors` del Audit Center.
 //
 // **Por que NO usamos las RPCs `admin_*_purge_old`**: esas RPCs validan
 // `is_admin()` con `auth.uid()`, y el cron no tiene user context.
@@ -55,7 +59,13 @@ const VALID_TASKS = new Set<string>([
   "recover_stuck",
   "daily_purges",
   "run_audit",
+  "rescan_stuck_uploads",
 ]);
+
+// Máximo de uploads stuck a reescanear por ejecución. Acota el consumo
+// de la free tier de VirusTotal (4 lookups/min). Si hay backlog mayor,
+// el cron diario lo va vaciando en runs sucesivos.
+const RESCAN_BATCH = 20;
 
 // Defaults coherentes con los floors de las RPCs `admin_*_purge_old`
 // (migraciones 0041 y 0042).
@@ -121,6 +131,8 @@ Deno.serve(withSentry("maintenance-cron", async (req) => {
       return await _dailyPurges(admin);
     case "run_audit":
       return await _runAudit(supabaseUrl, serviceRoleKey);
+    case "rescan_stuck_uploads":
+      return await _rescanStuckUploads(admin, supabaseUrl, serviceRoleKey);
     default:
       return json({ error: "unknown_task" }, 400);
   }
@@ -236,6 +248,109 @@ async function _runAudit(
       500,
     );
   }
+}
+
+// ─────────────────────── rescan_stuck_uploads ───────────────────────
+// Reintenta automaticamente los uploads cuyo scan de VirusTotal quedo
+// en `error` > 24h (mismo criterio que el check `uploads.scan_errors`
+// del Audit Center). Causa tipica: VT estaba caido o la API key vencio
+// cuando se subio el archivo; ahora que esta operativa, los rescaneamos.
+//
+// **Flujo** (scan-upload es idempotente SOLO sobre status='pending'):
+//   1. Buscar uploads confirmados con status='error' y scan > 24h.
+//   2. Por cada uno: reset a 'pending' e invocar `scan-upload`
+//      (fire-and-forget; responde 200 al instante y escanea en bg).
+//   3. Si la reinvocacion falla, revertir a 'error' con el timestamp
+//      ORIGINAL (stale) para que siga visible/flaggeado por el audit
+//      -- no lo escondemos por un fallo de red.
+//
+// Tras esto, los uploads pasan a 'pending' (que NINGUN check flaggea)
+// y scan-upload los resuelve a clean/suspicious/skipped/error-fresco.
+// Asi el finding `uploads.scan_errors` converge a 0 sin accion manual.
+// deno-lint-ignore no-explicit-any
+async function _rescanStuckUploads(
+  admin: any,
+  supabaseUrl: string,
+  serviceRoleKey: string,
+): Promise<Response> {
+  const cutoffIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  // 1) Stuck = error + scan viejo + confirmado (defensa: nunca tocamos
+  //    huerfanos sin confirmar).
+  const { data: rows, error } = await admin
+    .from("uploads")
+    .select("id, virus_scan_at")
+    .eq("virus_scan_status", "error")
+    .lt("virus_scan_at", cutoffIso)
+    .not("confirmed_at", "is", null)
+    .limit(RESCAN_BATCH);
+
+  if (error) {
+    return json({ error: "db_error", detail: error.message }, 500);
+  }
+
+  const stuck = (rows as Array<{ id: string; virus_scan_at: string }>) ?? [];
+  if (stuck.length === 0) {
+    return json({ ok: true, task: "rescan_stuck_uploads", rescanned: 0 }, 200);
+  }
+
+  let triggered = 0;
+  const errors: string[] = [];
+
+  for (const row of stuck) {
+    // 2) Reset a pending (deja virus_scan_at stale; 'pending' no lo
+    //    flaggea ningun check, y scan-upload lo bump-eara al correr).
+    const { error: resetErr } = await admin
+      .from("uploads")
+      .update({ virus_scan_status: "pending" })
+      .eq("id", row.id);
+    if (resetErr) {
+      errors.push(`${row.id}:reset_${resetErr.message}`);
+      continue;
+    }
+
+    // 3) Reinvocar scan-upload (background).
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/scan-upload`, {
+        method: "POST",
+        headers: {
+          "X-Internal-Auth": serviceRoleKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ upload_id: row.id }),
+      });
+      if (res.ok) {
+        triggered++;
+      } else {
+        // Revertir a error con el timestamp original (sigue flaggeado).
+        await admin
+          .from("uploads")
+          .update({
+            virus_scan_status: "error",
+            virus_scan_at: row.virus_scan_at,
+          })
+          .eq("id", row.id);
+        errors.push(`${row.id}:http_${res.status}`);
+      }
+    } catch (e) {
+      await admin
+        .from("uploads")
+        .update({
+          virus_scan_status: "error",
+          virus_scan_at: row.virus_scan_at,
+        })
+        .eq("id", row.id);
+      errors.push(`${row.id}:${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  return json({
+    ok: true,
+    task: "rescan_stuck_uploads",
+    rescanned: triggered,
+    batch: stuck.length,
+    errors,
+  }, 200);
 }
 
 /**
