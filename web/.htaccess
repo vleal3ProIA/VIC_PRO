@@ -89,17 +89,27 @@
   # Web cargue su bootstrap script con `<script src>`. `'unsafe-eval'`
   # lo necesita CanvasKit. Estos relajan CSP pero son práctica habitual
   # en builds de Flutter Web — sin ellos la app NO carga.
+  #
+  # `connect-src` incluye Sentry (`*.ingest.sentry.io` / `*.sentry.io`):
+  # sin esto, si `SENTRY_DSN` está configurado, el navegador BLOQUEA
+  # silenciosamente el POST de los eventos de error client-side y
+  # perderíamos toda la observabilidad de errores del frontend.
+  #
+  # `frame-ancestors 'self'` es el equivalente moderno de
+  # `X-Frame-Options: SAMEORIGIN` (anti-clickjacking) y lo respetan los
+  # navegadores actuales con prioridad sobre la cabecera legacy.
   Header always set Content-Security-Policy "default-src 'self'; \
 script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://unpkg.com https://www.gstatic.com; \
 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
 font-src 'self' data: https://fonts.gstatic.com; \
 img-src 'self' data: blob: https:; \
-connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com; \
+connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.ingest.sentry.io https://*.sentry.io; \
 frame-src 'self' https://js.stripe.com https://hooks.stripe.com; \
 worker-src 'self' blob:; \
 object-src 'none'; \
 base-uri 'self'; \
-form-action 'self'"
+form-action 'self'; \
+frame-ancestors 'self'"
 </IfModule>
 
 # ─────────────────────────── Cache control ───────────────────────────
