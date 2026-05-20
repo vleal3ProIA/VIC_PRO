@@ -29,6 +29,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withSentry } from "../_shared/sentry.ts";
 import { adminClient, sendEmail } from "../_shared/email.ts";
 import { fetchAppName, renderEmail } from "../_shared/email_templates.ts";
+import { checkCapability } from "../_shared/capability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,6 +77,11 @@ Deno.serve(withSentry("admin-users", async (req) => {
   if (profile?.role !== "admin") {
     return json({ error: "forbidden" }, 403);
   }
+  // PR-Super-A3: ademas de admin, exige la capability concreta. El
+  // super admin la tiene siempre. Defensa server-side: aunque la UI
+  // ya oculta la pagina, un admin sin esta cap no puede llamar la EF.
+  const capErr = await checkCapability(userClient, user.id, "manage_users");
+  if (capErr) return json({ error: capErr }, 403);
 
   // ─────────────── Parse body ───────────────
   let body: Record<string, unknown> = {};

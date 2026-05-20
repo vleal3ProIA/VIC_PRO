@@ -25,6 +25,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { captureError, captureMessage, withSentry } from "../_shared/sentry.ts";
+import { checkCapability } from "../_shared/capability.ts";
 
 import type { AuditFinding, AuditCheckRunner } from "./_checks/_types.ts";
 
@@ -117,6 +118,11 @@ Deno.serve(withSentry("run-audit", async (req) => {
     if (profile?.role !== "admin") {
       return json({ error: "forbidden" }, 403);
     }
+    // PR-Super-A3: capability gate (super pasa siempre). Solo en la
+    // rama de user real -- la rama isInternal (cron de mantenimiento)
+    // no pasa por aqui y no requiere capability.
+    const capErr = await checkCapability(userClient, user.id, "run_audits");
+    if (capErr) return json({ error: capErr }, 403);
     triggeredBy = user.id;
   }
 
