@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
+import 'package:myapp/core/router/nav_helpers.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
@@ -28,7 +29,7 @@ class AdminBroadcastsPage extends ConsumerWidget {
         leading: IconButton(
           tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.goNamed(RouteNames.admin),
+          onPressed: () => context.popOrGo(RouteNames.admin),
         ),
         title: Text(l.broadcastsTitle),
         actions: [

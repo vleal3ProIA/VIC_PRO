@@ -7,6 +7,7 @@ import 'package:myapp/core/constants/supported_locales.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/providers/locale_provider.dart';
 import 'package:myapp/core/providers/supabase_providers.dart';
+import 'package:myapp/core/router/nav_helpers.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_confirm_dialog.dart';
@@ -110,7 +111,7 @@ class _AdminBroadcastNewPageState
         leading: IconButton(
           tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.goNamed(RouteNames.adminBroadcasts),
+          onPressed: () => context.popOrGo(RouteNames.adminBroadcasts),
         ),
         title: Text(l.broadcastsNew),
       ),

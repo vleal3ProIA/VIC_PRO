@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
+import 'package:myapp/core/router/nav_helpers.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/features/welcome/presentation/widgets/top_bar.dart';
 
@@ -84,7 +84,7 @@ class LegalScaffold extends StatelessWidget {
                   const SizedBox(height: 4),
                   Align(
                     child: TextButton.icon(
-                      onPressed: () => context.goNamed(RouteNames.welcome),
+                      onPressed: () => context.popOrGo(RouteNames.welcome),
                       icon: const Icon(Icons.arrow_back, size: 18),
                       label: Text(l.actionGoHome),
                     ),
