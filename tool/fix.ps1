@@ -145,12 +145,13 @@ if ($hasGit) {
 
 # Sugerencias NO automatizables (informativo; nunca las aplica el script).
 Section "Sugerencias (NO auto-aplicadas)"
-Add-Content $Report @(
+$suggestions = @(
   "- Strings hardcodeados -> migrar a i18n (.arb) manualmente.",
   "- '!' (null-assertion) excesivos -> refactor manual a null-checks.",
   "- Dead code -> confirmar uso real (Riverpod/generado/tests) antes de borrar.",
   "- Rutas duplicadas -> unificar a mano (puede romper navegacion)."
 ) -join "`n"
+Add-Content -Path $Report -Value $suggestions -Encoding utf8
 Write-Line OK "Sugerencias no-automatizables registradas en el reporte."
 
 # ─────────────────────── Resumen ───────────────────────

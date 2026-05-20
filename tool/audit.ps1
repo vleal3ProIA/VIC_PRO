@@ -97,13 +97,17 @@ foreach ($d in @('lib','test','web','supabase')) {
   if (Test-Path (Join-Path $ProjectRoot $d)) { Write-Line OK "Existe carpeta: $d/" }
   else { Write-Line WARN "Falta carpeta esperada: $d/" }
 }
-# .dart fuera de lib/, test/, tool/ (excepto el bootstrap generado).
+# .dart "sueltos": flaggeamos solo los que NO esten en carpetas de codigo
+# fuente propio (allowed) ni en carpetas generadas / de plataforma / build
+# (ignored). Asi evitamos falsos positivos con plugin registrants, copias
+# en build/ y .dart_tool/, y runners de plataforma.
+$allowedDirs = @('lib','test','tool','integration_test','scripts')
+$ignoredDirs = @('build','.dart_tool','windows','linux','macos','android','ios','.git','.idea')
 $strayDart = Get-ChildItem -Path $ProjectRoot -Recurse -Filter *.dart -File -ErrorAction SilentlyContinue |
   Where-Object {
     $rel = $_.FullName.Substring($ProjectRoot.Length).TrimStart('\','/')
-    ($rel -notmatch '^(lib|test|tool|integration_test)[\\/]') -and
-    ($rel -notmatch '[\\/]\.dart_tool[\\/]') -and
-    ($rel -notmatch '[\\/]build[\\/]')
+    $top = ($rel -split '[\\/]')[0]
+    ($top -notin $allowedDirs) -and ($top -notin $ignoredDirs)
   }
 if ($strayDart) {
   foreach ($f in $strayDart) { Write-Line WARN "Dart fuera de lib/test/tool: $($f.Name)" }
