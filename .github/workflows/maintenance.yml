@@ -7,8 +7,13 @@
 #
 # **Schedules**:
 #   - Cada 30 min:           recover_stuck (audits zombie).
-#   - Diario 04:00 UTC:      daily_purges + run_audit.
+#   - Diario 04:00 UTC:      daily_purges + rescan_stuck_uploads + run_audit.
 #   - workflow_dispatch:     manual trigger desde GitHub UI.
+#
+# **Orden 04:00**: rescan_stuck_uploads corre en paralelo con
+# daily_purges; mueve los uploads con scan en `error` > 24h a `pending`
+# (que ningun check del audit flaggea) y dispara su rescaneo en bg. Asi
+# el finding `uploads.scan_errors` converge a 0 sin accion manual.
 #
 # **Secrets requeridos** (Settings -> Secrets -> Actions):
 #   - SUPABASE_URL           ya configurado para deploy.yml
@@ -35,12 +40,13 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: 'Task to run (recover_stuck | daily_purges | run_audit)'
+        description: 'Task to run'
         required: true
         type: choice
         options:
           - recover_stuck
           - daily_purges
+          - rescan_stuck_uploads
           - run_audit
 
 # Solo permitir una ejecucion a la vez. Si un job esta corriendo
@@ -120,7 +126,43 @@ jobs:
           fi
 
   # ───────────────────────────────────────────────────────────────────────
-  # Job 3: run_audit. Corre diario 04:00 UTC y en workflow_dispatch.
+  # Job 3: rescan_stuck_uploads. Corre diario 04:00 UTC y en
+  # workflow_dispatch. Reintenta los uploads con scan VirusTotal en
+  # `error` > 24h. Independiente de los demas (separation of concerns).
+  # ───────────────────────────────────────────────────────────────────────
+  rescan-stuck-uploads:
+    name: Rescan stuck uploads
+    if: |
+      github.event.schedule == '0 4 * * *' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'rescan_stuck_uploads')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Validate required secrets
+        run: |
+          [ -z "${{ secrets.SUPABASE_URL }}" ]   && echo "::error::SUPABASE_URL missing"   && exit 1
+          [ -z "${{ secrets.CRON_SECRET }}" ]    && echo "::error::CRON_SECRET missing"    && exit 1
+          echo "✓ Secrets present"
+
+      - name: Invoke maintenance-cron · rescan_stuck_uploads
+        run: |
+          response=$(curl -sS -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/maintenance-cron" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"task": "rescan_stuck_uploads"}')
+          body=$(echo "$response" | sed '$d')
+          code=$(echo "$response" | tail -n 1)
+          echo "HTTP $code"
+          echo "$body"
+          if [ "$code" != "200" ]; then
+            echo "::error::rescan_stuck_uploads failed (HTTP $code)"
+            exit 1
+          fi
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Job 4: run_audit. Corre diario 04:00 UTC y en workflow_dispatch.
   # Es independiente de daily_purges para que si una falla la otra
   # no se vea afectada (separation of concerns).
   # ───────────────────────────────────────────────────────────────────────
