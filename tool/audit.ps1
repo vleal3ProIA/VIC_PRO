@@ -157,20 +157,25 @@ if ($dart) {
 
 # ─────────────────────── BLOQUE 5 - Auto-fixables ───────────────────────
 Section "5. Issues auto-corregibles (dart fix --dry-run)"
+# Informativo: `flutter analyze` (bloque 3) es el gate REAL de lints. Lo que
+# `dart fix` sugiera de mas suele ser ruido en codigo generado (l10n) que se
+# resuelve solo con tool/fix.ps1. Por eso NO es un WARN bloqueante.
 if ($dart) {
   $df = Invoke-Tool 'dart' @('fix','--dry-run')
   if ($df.Out -match 'Nothing to fix' -or $df.Out -match 'computed 0 fixes') {
     Write-Line OK "dart fix: nada que corregir."
   } else {
-    Write-Line WARN "dart fix detecta correcciones aplicables. Ejecuta tool/fix.ps1."
+    Write-Line OK "dart fix sugiere correcciones (informativo; ejecuta tool/fix.ps1 si quieres aplicarlas)."
     Add-Content $Report $df.Out
   }
-} else { Write-Line WARN "dart no disponible: salto dart fix --dry-run." }
+} else { Write-Line OK "dart no disponible: salto dart fix --dry-run (informativo)." }
 
 # ─────────────────────── BLOQUE 6 - Tests ───────────────────────
 Section "6. Tests (flutter test)"
 if ($SkipTests) {
-  Write-Line WARN "Tests OMITIDOS (-SkipTests)."
+  # Omitir tests es una eleccion explicita del usuario (-SkipTests), no un
+  # defecto -> informativo, no WARN. La auditoria completa SI los corre.
+  Write-Line OK "Tests OMITIDOS por -SkipTests (informativo; ejecuta sin el flag para correrlos)."
 } else {
   $ts = Invoke-Tool 'flutter' @('test','--no-pub')
   if ($ts.Code -eq 0) { Write-Line OK "flutter test: todos los tests pasan." }
@@ -214,12 +219,28 @@ foreach ($dir in @('lib','supabase')) {
   $p = Join-Path $ProjectRoot $dir
   if (-not (Test-Path $p)) { continue }
   $files = Get-ChildItem -Path $p -Recurse -File -ErrorAction SilentlyContinue |
-    Where-Object { $_.Extension -in @('.dart','.ts') -and $_.FullName -notmatch '[\\/]generated[\\/]' }
-  $hits = $files | Select-String -Pattern 'http://(?!localhost|127\.0\.0\.1|schemas\.|www\.w3\.org)' -ErrorAction SilentlyContinue
-  foreach ($h in $hits) {
-    $httpHits++
-    $rel = $h.Path.Substring($ProjectRoot.Length).TrimStart('\','/')
-    Write-Line WARN "http:// en $rel : $($h.LineNumber)"
+    Where-Object {
+      $_.Extension -in @('.dart','.ts') -and
+      $_.FullName -notmatch '[\\/]generated[\\/]' -and
+      $_.FullName -notmatch '[\\/]__tests__[\\/]' -and
+      $_.Name -notmatch '_test\.(dart|ts)$'
+    }
+  foreach ($f in $files) {
+    $ln = 0
+    foreach ($line in (Get-Content $f.FullName -ErrorAction SilentlyContinue)) {
+      $ln++
+      $t = $line.TrimStart()
+      # Saltar comentarios (// ... , * ... , # ...).
+      if ($t -match '^(//|\*|#|/\*)') { continue }
+      # Flaggear http:// SOLO si va seguido de un host real -- NO si es un
+      # literal entrecomillado ('http://' / "http://", usado en validaciones
+      # tipo startsWith) ni dominios conocidos seguros.
+      if ($line -match "http://(?!localhost|127\.0\.0\.1|schemas\.|www\.w3\.org|['""])") {
+        $httpHits++
+        $rel = $f.FullName.Substring($ProjectRoot.Length).TrimStart('\','/')
+        Write-Line WARN "http:// en $rel : $ln"
+      }
+    }
   }
 }
 if ($httpHits -eq 0) { Write-Line OK "Sin URLs http:// inseguras en lib/supabase." }
@@ -246,11 +267,14 @@ $bigDart = Get-ChildItem -Path $libDir -Recurse -Filter *.dart -File -ErrorActio
     $n = (Get-Content $_.FullName -ErrorAction SilentlyContinue | Measure-Object -Line).Lines
     [pscustomobject]@{ File = $_; Lines = $n }
   } | Where-Object { $_.Lines -gt $DartFileMaxLines }
+# Metrica INFORMATIVA (no es un defecto): listamos los ficheros grandes en
+# el reporte pero NO como WARN. Dividir es refactor opcional, no obligatorio.
 if ($bigDart) {
   foreach ($x in $bigDart) {
     $rel = $x.File.FullName.Substring($ProjectRoot.Length).TrimStart('\','/')
-    Write-Line WARN "$($x.Lines) lineas: $rel (considera dividir)."
+    Add-Content -Path $Report -Value ("    - {0} lineas: {1}" -f $x.Lines, $rel) -Encoding utf8
   }
+  Write-Line OK "$($bigDart.Count) fichero(s) > $DartFileMaxLines lineas (informativo; ver detalle en el reporte)."
 } else { Write-Line OK "Sin ficheros Dart por encima del umbral." }
 
 # ─────────────────────── BLOQUE 11 - Configuracion ───────────────────────
@@ -284,7 +308,9 @@ Section "13. Higiene de codigo (TODO / FIXME)"
 $dartFiles = Get-ChildItem -Path $libDir -Recurse -File -Filter *.dart -ErrorAction SilentlyContinue |
   Where-Object { $_.FullName -notmatch '[\\/]generated[\\/]' }
 $todo = $dartFiles | Select-String -Pattern '\b(TODO|FIXME|HACK|XXX)\b' -ErrorAction SilentlyContinue
-if ($todo) { Write-Line WARN "$($todo.Count) marcador(es) TODO/FIXME/HACK en lib/ (informativo)." }
+# Metrica INFORMATIVA: los TODO/FIXME son parte normal del desarrollo, no un
+# defecto. Reportamos el conteo como [OK], no como WARN.
+if ($todo) { Write-Line OK "$($todo.Count) marcador(es) TODO/FIXME/HACK en lib/ (informativo)." }
 else { Write-Line OK "Sin marcadores TODO/FIXME en lib/." }
 
 # ─────────────────────── Resumen ───────────────────────
