@@ -50,6 +50,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { withSentry } from "../_shared/sentry.ts";
 import { getStripe, stripeNotConfigured } from "../_shared/stripe.ts";
+import { checkCapability } from "../_shared/capability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -103,6 +104,9 @@ Deno.serve(withSentry("admin-plans-prices", async (req) => {
   if (!adminCheck || (adminCheck.role as string) !== "admin") {
     return json({ error: "not_admin" }, 403);
   }
+  // PR-Super-A3: capability gate (super pasa siempre).
+  const capErr = await checkCapability(admin, user.id, "manage_plans");
+  if (capErr) return json({ error: capErr }, 403);
 
   const rateOk = await checkRateLimit(admin, {
     bucketKey: `admin:plans-prices:user:${user.id}`,

@@ -33,6 +33,7 @@ import { withSentry, captureError } from "../_shared/sentry.ts";
 import { adminClient, sendEmail } from "../_shared/email.ts";
 import { fetchAppName, renderEmail } from "../_shared/email_templates.ts";
 import { cleanBroadcastHtml } from "../_shared/html_sanitize.ts";
+import { checkCapability } from "../_shared/capability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -95,6 +96,11 @@ Deno.serve(withSentry("broadcast-dispatch", async (req) => {
       .eq("id", user.id)
       .maybeSingle();
     if (profile?.role !== "admin") return json({ error: "forbidden" }, 403);
+    // PR-Super-A3: capability gate (super pasa siempre). Solo aplica en
+    // la rama de user real -- la rama isInternal (cron / dispatch del
+    // sistema) NO pasa por aqui y no requiere capability.
+    const capErr = await checkCapability(userClient, user.id, "manage_broadcasts");
+    if (capErr) return json({ error: capErr }, 403);
     adminUserId = user.id;
   }
 
