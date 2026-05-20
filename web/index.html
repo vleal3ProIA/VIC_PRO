@@ -95,8 +95,21 @@
     detalles tediosos de la "ceremonia" WebAuthn. Lo expone como
     `window.SimpleWebAuthnBrowser` (UMD). Lo invocamos desde Dart vía
     `dart:js_interop` (ver `lib/features/auth/data/webauthn/webauthn_js.dart`).
+
+    SEGURIDAD (supply chain · OWASP A08): cargamos desde CDN de terceros
+    (unpkg) PINEADO a una versión exacta (@10.0.0, inmutable en npm) +
+    Subresource Integrity (SRI). Si unpkg fuera comprometido y sirviera
+    bytes distintos, el navegador RECHAZA el script (hash mismatch) en
+    vez de ejecutar código malicioso en el contexto de auth.
+    `crossorigin="anonymous"` es obligatorio para que el navegador
+    valide el SRI de un recurso cross-origin.
+    Para regenerar el hash si subes de versión:
+      curl -sSL <url> | openssl dgst -sha384 -binary | openssl base64 -A
   -->
-  <script src="https://unpkg.com/@simplewebauthn/browser@10.0.0/dist/bundle/index.umd.min.js"></script>
+  <script
+    src="https://unpkg.com/@simplewebauthn/browser@10.0.0/dist/bundle/index.umd.min.js"
+    integrity="sha384-SijkeUvZZs1bto8G/GPfjLDAg4FRZB5yGFAdMT5T7n3bMnkfFMEhE/h11ClJPNFR"
+    crossorigin="anonymous"></script>
 
   <!--
     Stripe.js v3 — necesario para Embedded Checkout. Lo expone como
@@ -104,6 +117,12 @@
     `dart:js_interop` (ver `lib/features/billing/data/stripe_js.dart`).
     Carga async para no bloquear; la página de checkout espera a que esté
     disponible antes de mount.
+
+    SEGURIDAD: Stripe.js NO se sirve con SRI A PROPÓSITO. Stripe lo
+    actualiza continuamente (PCI / antifraude) y su guía oficial prohíbe
+    fijarlo con SRI o self-hosting — debe cargarse siempre desde
+    js.stripe.com. Lo acotamos por CSP (`script-src https://js.stripe.com`)
+    + `frame-src` para los iframes de pago.
   -->
   <script src="https://js.stripe.com/v3/" async></script>
 

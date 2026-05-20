@@ -44,6 +44,7 @@ import { runCheck as unusedPats } from "./_checks/unused_pats.ts";
 import { runCheck as broadcastsEmptyAudience } from "./_checks/broadcasts_empty_audience.ts";
 import { runCheck as legacyPendingUploads } from "./_checks/legacy_pending_uploads.ts";
 import { runCheck as orphanTenants } from "./_checks/orphan_tenants.ts";
+import { runCheck as orphanAdmins } from "./_checks/orphan_admins.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -79,6 +80,7 @@ const CHECKS: Array<{ id: string; run: AuditCheckRunner }> = [
   { id: "webhooks.failing_endpoints", run: failingWebhooks },
   { id: "tokens.unused_long_lived", run: unusedPats },
   { id: "tenants.orphan", run: orphanTenants },
+  { id: "access.orphan_admins", run: orphanAdmins },
 ];
 
 Deno.serve(withSentry("run-audit", async (req) => {
