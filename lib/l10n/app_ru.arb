@@ -276,6 +276,7 @@
 
   "authErrorUserExists": "Аккаунт с этим email уже существует.",
   "authErrorWeakPassword": "Этот пароль слишком слабый.",
+  "authErrorLeakedPassword": "Этот пароль встречается в известных утечках данных. Выберите другой.",
   "authErrorEmailNotConfirmed": "Подтвердите email перед входом.",
   "authErrorInvalidCredentials": "Неверный email или пароль.",
   "authErrorOtpInvalid": "Код неверный, истёк или уже использован. Используйте последний отправленный код.",

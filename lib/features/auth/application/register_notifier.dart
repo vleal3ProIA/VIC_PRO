@@ -5,6 +5,7 @@ import 'package:myapp/core/observability/analytics_event.dart';
 import 'package:myapp/core/observability/analytics_service.dart';
 import 'package:myapp/core/providers/locale_provider.dart';
 import 'package:myapp/core/providers/theme_provider.dart';
+import 'package:myapp/core/security/leaked_password_checker.dart';
 import 'package:myapp/core/utils/log_context.dart';
 import 'package:myapp/core/validation/email.dart';
 import 'package:myapp/core/validation/password.dart';
@@ -131,6 +132,24 @@ class RegisterNotifier extends Notifier<RegisterState> {
         analytics.trackSync(AnalyticsEvents.signupStarted);
 
         state = state.copyWith(status: RegisterStatus.submitting);
+
+        // Leaked password protection (HaveIBeenPwned). Rechazamos
+        // contraseñas comprometidas ANTES de crear la cuenta. Fail-open:
+        // si HIBP no responde, `isLeaked` devuelve false y seguimos.
+        final leaked = await ref
+            .read(leakedPasswordCheckerProvider)
+            .isLeaked(state.password.value);
+        if (leaked) {
+          state = state.copyWith(
+            status: RegisterStatus.failure,
+            failure: const AuthLeakedPassword(),
+          );
+          analytics.trackSync(
+            AnalyticsEvents.signupFailed,
+            properties: const {'reason': 'leaked_password'},
+          );
+          return;
+        }
 
         // Idioma y tema que el usuario está viendo ahora mismo: viajan en el
         // signUp para que su perfil se cree con estas preferencias y el

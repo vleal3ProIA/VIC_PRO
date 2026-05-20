@@ -276,6 +276,7 @@
 
   "authErrorUserExists": "Já existe uma conta com este e-mail.",
   "authErrorWeakPassword": "Esta palavra-passe é demasiado fraca.",
+  "authErrorLeakedPassword": "Esta palavra-passe apareceu em fugas de dados conhecidas. Escolhe outra diferente.",
   "authErrorEmailNotConfirmed": "Verifica o teu e-mail antes de iniciar sessão.",
   "authErrorInvalidCredentials": "E-mail ou palavra-passe inválidos.",
   "authErrorOtpInvalid": "O código é inválido, expirou ou já foi usado. Usa o último código que te enviámos.",

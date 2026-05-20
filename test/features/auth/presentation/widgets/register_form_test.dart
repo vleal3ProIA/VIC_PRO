@@ -20,7 +20,10 @@ void main() {
     await pumpForTest(
       tester,
       child: const RegisterForm(),
-      overrides: [authRepositoryProvider.overrideWithValue(repo)],
+      overrides: [
+        authRepositoryProvider.overrideWithValue(repo),
+        leakedPasswordCheckerNoopOverride,
+      ],
     );
   }
 

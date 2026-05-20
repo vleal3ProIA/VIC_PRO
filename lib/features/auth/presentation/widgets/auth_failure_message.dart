@@ -10,6 +10,7 @@ String authFailureMessage(BuildContext context, AuthFailure failure) {
   return switch (failure) {
     AuthUserAlreadyExists() => l.authErrorUserExists,
     AuthWeakPassword() => l.authErrorWeakPassword,
+    AuthLeakedPassword() => l.authErrorLeakedPassword,
     AuthEmailNotConfirmed() => l.authErrorEmailNotConfirmed,
     AuthInvalidCredentials() => l.authErrorInvalidCredentials,
     AuthOtpInvalid() => l.authErrorOtpInvalid,

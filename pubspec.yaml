@@ -70,6 +70,11 @@ dependencies:
   # futuro Supabase migra a otro cliente HTTP.
   http: ^1.2.0
 
+  # SHA-1 para el check de contraseñas filtradas (HaveIBeenPwned k-anonimato,
+  # `lib/core/security/leaked_password_checker.dart`). Transitive de
+  # supabase_flutter; la declaramos directa porque la importamos nosotros.
+  crypto: ^3.0.0
+
   # Environment config
   flutter_dotenv: ^5.2.1
   sentry_flutter: ^8.14.2
