@@ -18,11 +18,7 @@ class SetNewPasswordPage extends StatelessWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: _reservedHeight,
-          leading: Icon(
-            Icons.key_outlined,
-            size: 56,
-            color: context.colors.primary,
-          ),
+          icon: Icons.key_outlined,
           title: context.l10n.setNewPasswordTitle,
           subtitle: context.l10n.setNewPasswordSubtitle,
           child: const SetNewPasswordForm(),

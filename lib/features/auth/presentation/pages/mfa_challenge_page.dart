@@ -64,11 +64,7 @@ class MfaChallengePage extends ConsumerWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: _reservedHeight,
-          leading: Icon(
-            Icons.shield_outlined,
-            size: 56,
-            color: context.colors.primary,
-          ),
+          icon: Icons.shield_outlined,
           title: l.mfaChallengeTitle,
           subtitle: l.mfaChallengeSubtitle,
           child: switch (state.status) {

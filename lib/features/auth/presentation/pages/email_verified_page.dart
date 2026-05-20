@@ -18,11 +18,7 @@ class EmailVerifiedPage extends StatelessWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: 480,
-          leading: Icon(
-            Icons.verified_outlined,
-            size: 72,
-            color: context.colors.primary,
-          ),
+          icon: Icons.verified_outlined,
           title: l.verifyEmailVerifiedTitle,
           subtitle: l.verifyEmailVerifiedSubtitle,
           child: Column(

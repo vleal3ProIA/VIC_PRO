@@ -20,11 +20,7 @@ class PasswordResetSentPage extends StatelessWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: 520,
-          leading: Icon(
-            Icons.mark_email_read_outlined,
-            size: 64,
-            color: context.colors.primary,
-          ),
+          icon: Icons.mark_email_read_outlined,
           title: l.forgotPasswordSentTitle,
           subtitle: l.forgotPasswordSentSubtitle(email),
           child: Column(

@@ -22,11 +22,7 @@ class ChangeEmailSentPage extends StatelessWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: 540,
-          leading: Icon(
-            Icons.mark_email_read_outlined,
-            size: 64,
-            color: context.colors.primary,
-          ),
+          icon: Icons.mark_email_read_outlined,
           title: l.changeEmailSentTitle,
           subtitle: l.changeEmailSentSubtitle(email),
           child: Column(

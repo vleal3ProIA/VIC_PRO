@@ -25,11 +25,7 @@ class ChangeEmailPage extends StatelessWidget {
       body: SafeArea(
         child: AuthCard(
           reservedHeight: _reservedHeight,
-          leading: Icon(
-            Icons.mail_outline,
-            size: 56,
-            color: context.colors.primary,
-          ),
+          icon: Icons.mail_outline,
           title: l.changeEmailTitle,
           subtitle: l.changeEmailSubtitle,
           child: const ChangeEmailForm(),
