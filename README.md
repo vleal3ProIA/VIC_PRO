@@ -125,6 +125,15 @@ dart run build_runner watch --delete-conflicting-outputs
 ## Scripts útiles
 
 ```powershell
+# Auditoría read-only del proyecto (envuelve analyze/format/test/outdated +
+# checks de secretos, assets, http://, CI). Deja audit_report.txt. Exit 0/1.
+pwsh tool/audit.ps1            # completa
+pwsh tool/audit.ps1 -SkipTests # rápida (sin flutter test)
+
+# Correcciones automáticas SEGURAS (solo dart fix --apply + dart format,
+# transformaciones oficiales por AST; nunca regex). Deja audit_fix_report.txt.
+pwsh tool/fix.ps1
+
 # Análisis estático
 flutter analyze
 

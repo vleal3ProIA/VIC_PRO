@@ -19,6 +19,11 @@ migrate_working_dir/
 .idea/
 *.iml.bak
 
+# Reportes locales de tool/audit.ps1 y tool/fix.ps1 (artefactos, no versionar)
+audit_report.txt
+audit_fix_report.txt
+*.bak
+
 # VS Code
 .vscode/*
 !.vscode/launch.json
