@@ -33,7 +33,7 @@ class NotificationBell extends ConsumerWidget {
             // El IconButton lleva su propio tooltip vacío para que el
             // Tooltip exterior gane (puede mostrar count dinámico).
             icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => context.goNamed(RouteNames.notifications),
+            onPressed: () => context.pushNamed(RouteNames.notifications),
           ),
           if (count > 0)
             Positioned(

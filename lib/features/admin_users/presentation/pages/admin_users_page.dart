@@ -470,7 +470,7 @@ class _UserRowState extends ConsumerState<_UserRow> {
     final isSelf = currentUser?.id == u.id;
 
     return PremiumCard(
-      onTap: () => context.goNamed(
+      onTap: () => context.pushNamed(
         RouteNames.adminUserDetail,
         pathParameters: {'id': u.id},
       ),
@@ -573,7 +573,7 @@ class _UserRowState extends ConsumerState<_UserRow> {
                 onSelected: (v) async {
                   switch (v) {
                     case 'open':
-                      context.goNamed(
+                      await context.pushNamed(
                         RouteNames.adminUserDetail,
                         pathParameters: {'id': u.id},
                       );

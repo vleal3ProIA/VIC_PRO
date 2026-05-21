@@ -155,7 +155,7 @@ class _EndpointTileState extends ConsumerState<_EndpointTile> {
     return Card(
       margin: EdgeInsets.zero,
       child: InkWell(
-        onTap: () => context.goNamed(
+        onTap: () => context.pushNamed(
           RouteNames.webhookDetail,
           pathParameters: {'id': e.id},
         ),

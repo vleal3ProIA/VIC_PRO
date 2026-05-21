@@ -106,7 +106,7 @@ class _AdminAuditPageState extends ConsumerState<AdminAuditPage> {
         ),
       );
       if (mounted) {
-        context.goNamed(
+        await context.pushNamed(
           RouteNames.adminAuditDetail,
           pathParameters: {'id': id},
         );
@@ -286,7 +286,7 @@ class _AuditReportRow extends StatelessWidget {
         : l.adminAuditSevereFindingsCount(severeCount);
 
     return PremiumCard(
-      onTap: () => context.goNamed(
+      onTap: () => context.pushNamed(
         RouteNames.adminAuditDetail,
         pathParameters: {'id': row.id},
       ),

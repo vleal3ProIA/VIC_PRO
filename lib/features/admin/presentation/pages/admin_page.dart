@@ -434,7 +434,7 @@ class _DestinationCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return PremiumCard(
-      onTap: () => context.goNamed(destination.route),
+      onTap: () => context.pushNamed(destination.route),
       padding: const EdgeInsets.all(AppSpacing.md),
       semanticLabel: destination.title,
       child: Row(

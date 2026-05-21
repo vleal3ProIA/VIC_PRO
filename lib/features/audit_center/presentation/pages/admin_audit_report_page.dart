@@ -21,7 +21,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/nav_helpers.dart';
@@ -189,7 +188,7 @@ class _Body extends StatelessWidget {
             breadcrumb: [
               BreadcrumbItem(
                 label: l.adminAuditDetailBackToList,
-                onTap: () => context.goNamed(RouteNames.adminAudit),
+                onTap: () => context.popOrGo(RouteNames.adminAudit),
               ),
               BreadcrumbItem(
                 label: report.id.length >= 8

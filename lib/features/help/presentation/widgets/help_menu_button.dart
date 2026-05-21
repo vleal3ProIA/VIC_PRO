@@ -37,14 +37,14 @@ class HelpMenuButton extends ConsumerWidget {
           onSelected: (action) async {
             switch (action) {
               case _HelpAction.changelog:
-                context.goNamed(RouteNames.changelog);
+                await context.pushNamed(RouteNames.changelog);
               case _HelpAction.shortcuts:
                 await showDialog<void>(
                   context: context,
                   builder: (_) => const KeyboardShortcutsDialog(),
                 );
               case _HelpAction.status:
-                context.goNamed(RouteNames.status);
+                await context.pushNamed(RouteNames.status);
               case _HelpAction.docs:
                 if (docsUrl != null && docsUrl.isNotEmpty) {
                   final ok = await launchUrl(
