@@ -140,9 +140,15 @@ jobs:
             --description="${{ secrets.SEO_DESCRIPTION || 'A modern Flutter Web SaaS' }}"
 
       # ─── Build con dart-defines de produccion ───
+      # --no-web-resources-cdn: empaqueta y usa CanvasKit LOCAL (carpeta
+      # canvaskit/) en vez de bajarlo de gstatic.com. Sin esto el bootstrap
+      # hace fetch() del wasm de CanvasKit desde el CDN, lo que cae bajo
+      # `connect-src` de la CSP -> el navegador lo BLOQUEA (gstatic no estaba
+      # permitido) y la app se queda en la pantalla de carga (fondo, sin UI).
+      # Servirlo same-origin ademas elimina la dependencia de un tercero.
       - name: Build web
         run: |
-          flutter build web --release \
+          flutter build web --release --no-web-resources-cdn \
             --dart-define=APP_VERSION=${{ github.sha }} \
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL_PROD }} \
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY_PROD }} \
