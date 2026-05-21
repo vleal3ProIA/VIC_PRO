@@ -105,12 +105,19 @@
   # produccion usa `--no-web-resources-cdn` (CanvasKit local same-origin),
   # asi que en la practica no se contacta gstatic; esto evita una pantalla
   # de carga infinita si esa config cambiara.
+  #
+  # `connect-src ... https://fonts.gstatic.com`: OBLIGATORIO. google_fonts
+  # (tema Inter) y las fuentes de fallback de CanvasKit (Noto) se DESCARGAN
+  # por HTTP -> caen bajo connect-src, NO bajo font-src. Sin esto, CanvasKit
+  # se queda esperando una fuente y NO pinta el primer frame -> pantalla en
+  # blanco (la app monta pero no renderiza). Verificado reproduciendo la CSP
+  # en local: sin este origen flutter-view no se adjunta; con el, si.
   Header always set Content-Security-Policy "default-src 'self'; \
 script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://unpkg.com https://www.gstatic.com; \
 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
 font-src 'self' data: https://fonts.gstatic.com; \
 img-src 'self' data: blob: https:; \
-connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.ingest.sentry.io https://*.sentry.io https://api.pwnedpasswords.com https://www.gstatic.com; \
+connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.ingest.sentry.io https://*.sentry.io https://api.pwnedpasswords.com https://www.gstatic.com https://fonts.gstatic.com; \
 frame-src 'self' https://js.stripe.com https://hooks.stripe.com; \
 worker-src 'self' blob:; \
 object-src 'none'; \
