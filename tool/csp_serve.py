@@ -51,6 +51,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
+        # Replica el bloqueo de dotfiles de Apache (`<FilesMatch "^\.">`):
+        # cualquier fichero cuyo BASENAME empiece por '.' -> 403. Esto
+        # reproduce fielmente produccion (incluido el 403 de assets/.env que
+        # nos rompia el arranque). Con DENY_DOTFILES=0 se desactiva.
+        if os.environ.get("DENY_DOTFILES", "1") == "1":
+            base = os.path.basename(self.path.split("?")[0])
+            if base.startswith("."):
+                self.send_error(403, "Forbidden (dotfile)")
+                return
         # SPA fallback: si la ruta no es un archivo real, servir index.html.
         path = self.translate_path(self.path)
         if not os.path.isfile(path) and not os.path.isdir(path):

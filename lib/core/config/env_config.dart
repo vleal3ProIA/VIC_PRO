@@ -121,6 +121,11 @@ class EnvConfig {
     String? fallback,
   }) {
     if (dartDefine.isNotEmpty) return dartDefine;
+    // `dotenv.get` lanza NotInitializedError si `.env` no se cargo (en
+    // produccion el asset puede estar ausente o bloqueado por el servidor).
+    // En ese caso devolvemos el fallback en vez de petar el arranque: los
+    // valores que importan (SUPABASE_*) ya llegan por --dart-define.
+    if (!dotenv.isInitialized) return fallback ?? '';
     return dotenv.get(key, fallback: fallback ?? '');
   }
 
