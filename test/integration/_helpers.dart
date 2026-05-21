@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:myapp/core/constants/supported_locales.dart';
 import 'package:myapp/core/observability/analytics_service.dart';
 import 'package:myapp/core/providers/preferences_provider.dart';
+import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/features/audit/application/audit_logger.dart';
 import 'package:myapp/features/auth/application/auth_providers.dart';
 import 'package:myapp/features/auth/presentation/pages/forgot_password_page.dart';
@@ -146,6 +147,10 @@ OTP_CODE_LENGTH=6
       ),
       // Check de contraseñas filtradas (HIBP): stub sin red en tests.
       leakedPasswordCheckerNoopOverride,
+      // Sin Supabase real: la barra superior pública lee isAuthenticated;
+      // por defecto "no logueado" (cada test que necesite logueado lo
+      // sobre-escribe via extraOverrides).
+      isAuthenticatedProvider.overrideWithValue(false),
       ...extraOverrides,
     ],
     child: MaterialApp.router(

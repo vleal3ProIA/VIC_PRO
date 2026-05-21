@@ -196,11 +196,14 @@ jobs:
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             open -u \"$FTP_USERNAME\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            echo '--- estado de la carpeta icons (diagnostico) ---';
+            cls -la ${DIR}icons ;
             rm -rf /public_html ;
             rm -f ${DIR}.ftp-deploy-sync-state.json ;
+            rm -rf ${DIR}icons ;
             bye
           "
-          echo "✓ /public_html borrado y sync-state eliminado (fuerza first-publish)"
+          echo "✓ /public_html + sync-state + icons borrados (fuerza first-publish limpio)"
 
       # ─── FTPS upload a Dondominio ───
       # Usamos SamKirkland/FTP-Deploy-Action: estable, soporta FTPS, y
