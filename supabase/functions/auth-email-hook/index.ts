@@ -117,11 +117,19 @@ Deno.serve(withSentry("auth-email-hook", async (req) => {
 
   let payload: SupabaseEmailHookPayload;
   try {
-    // Supabase usa Standard Webhooks (https://www.standardwebhooks.com/)
-    // con un secret prefijado por `v1,...`. La libreria lo gestiona.
-    const wh = new Webhook(secret);
+    // Supabase usa Standard Webhooks (https://www.standardwebhooks.com/).
+    // El secret que genera el dashboard viene como `v1,whsec_<base64>`, pero
+    // standardwebhooks@1.0.0 SOLO reconoce el prefijo `whsec_` (no `v1,`):
+    // si le pasas el `v1,` lo mete en el base64 -> clave erronea -> la firma
+    // nunca valida -> 401 -> Supabase hace fallar el signup con 500. Por eso
+    // quitamos el `v1,` antes de pasarlo.
+    const wh = new Webhook(secret.replace(/^v1,/, ""));
     payload = wh.verify(rawBody, headers) as SupabaseEmailHookPayload;
   } catch (e) {
+    await captureError(
+      e instanceof Error ? e : new Error(String(e)),
+      { fn: "auth-email-hook", step: "verify" },
+    );
     return json({ error: "invalid_signature" }, 401);
   }
 
