@@ -149,6 +149,7 @@ jobs:
       - name: Build web
         run: |
           flutter build web --release --no-web-resources-cdn \
+            --dart-define=ENV=prod \
             --dart-define=APP_VERSION=${{ github.sha }} \
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL_PROD }} \
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY_PROD }} \
