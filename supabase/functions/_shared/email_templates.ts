@@ -983,7 +983,7 @@ function wrapHtml(params: {
     <meta name="supported-color-schemes" content="${mode === "system" ? "light dark" : mode}" />
     <title>${escapeHtml(appName)}</title>
     <style>
-      /* En modo `system` el email se adapta al cliente de correo via
+      /* En modo system el email se adapta al cliente de correo via
          prefers-color-scheme. En light/dark el color ya va forzado inline. */${darkMediaBlock}
     </style>
   </head>
