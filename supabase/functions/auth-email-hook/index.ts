@@ -80,7 +80,7 @@ interface SupabaseEmailHookPayload {
     id: string;
     email: string;
     new_email?: string;
-    user_metadata?: { locale?: string };
+    user_metadata?: { locale?: string; theme_mode?: string };
   };
   email_data: {
     token: string;
@@ -140,10 +140,16 @@ Deno.serve(withSentry("auth-email-hook", async (req) => {
   const admin = adminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("locale")
+    .select("locale, theme_mode")
     .eq("id", payload.user.id)
     .maybeSingle();
   const locale = profile?.locale ?? payload.user.user_metadata?.locale ?? "en";
+  // Modo claro/oscuro: preferencia GUARDADA del user (profiles.theme_mode);
+  // si es nuevo, el theme_mode que paso el signUp en metadata; si no, 'system'
+  // (el email se adapta al cliente de correo).
+  const themeMode = profile?.theme_mode ??
+    payload.user.user_metadata?.theme_mode ??
+    "system";
 
   // App name desde el branding singleton.
   const appName = await fetchAppName(admin);
@@ -173,7 +179,7 @@ Deno.serve(withSentry("auth-email-hook", async (req) => {
   // desde la Edge Function de tenant-invitations (que sabe el tenant).
 
   // ─────────────── Render + send ───────────────
-  const rendered = renderEmail({ type, locale, appName, data });
+  const rendered = renderEmail({ type, locale, appName, data, mode: themeMode });
   const result = await sendEmail(admin, {
     type,
     to: payload.user.email,
