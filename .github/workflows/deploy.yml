@@ -19,7 +19,8 @@
 #   - FTP_HOST           ftp.tudominio.com (lo da Dondominio)
 #   - FTP_USERNAME       usuario FTP del cPanel
 #   - FTP_PASSWORD       password FTP
-#   - FTP_DIR            /public_html/ (o subcarpeta si está en subdomain)
+#   - FTP_DIR            /public/  (docroot REAL de testexamen.es en Dondominio;
+#                        OJO: NO es /public_html/ — esa carpeta no se sirve)
 #   - SITE_URL           https://tudominio.com (sin slash final)
 #   - APP_NAME_PROD      nombre comercial (usado para meta tags)
 #   - SEO_DESCRIPTION    descripción para meta tags
@@ -158,6 +159,40 @@ jobs:
           test -f build/web/sitemap.xml
           echo "✓ Build artifacts present"
 
+      # ─── Limpieza de directorios (SOLO ejecucion manual) ───
+      # Dondominio sirve testexamen.es desde /public. Un deploy anterior creo
+      # por error la carpeta /public_html con el bundle (no se sirve). Este
+      # paso, SOLO cuando se lanza a mano ("Run workflow" / workflow_dispatch):
+      #   1. borra la carpeta stray /public_html
+      #   2. vacia /public (incluye dotfiles) para no dejar archivos viejos
+      # En los push automaticos NO corre -> el deploy normal es incremental
+      # (rapido y no borra ficheros que no esten en el build). La password
+      # nunca se imprime: GitHub enmascara el secret en los logs.
+      - name: Clean target dirs (manual dispatch only)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          lftp -c "
+            set cmd:fail-exit no;
+            set ssl:verify-certificate no;
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            open -u \"$FTP_USERNAME\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            echo '--- raiz FTP antes de limpiar ---';
+            cls -la / ;
+            rm -rf /public_html ;
+            mkdir -p /public ;
+            glob -a rm -rf /public/* ;
+            echo '--- /public despues de limpiar (deberia estar vacio) ---';
+            cls -la /public ;
+            bye
+          "
+          echo "✓ /public_html borrado y /public limpio"
+
       # ─── FTPS upload a Dondominio ───
       # Usamos SamKirkland/FTP-Deploy-Action: estable, soporta FTPS, y
       # solo sube los archivos que cambiaron (compara timestamps).
@@ -168,7 +203,10 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./build/web/
-          server-dir: ${{ secrets.FTP_DIR || '/public_html/' }}
+          # Docroot real del dominio. En este hosting Dondominio es /public/
+          # (NO /public_html/, que no se sirve). El valor real viene del secret
+          # FTP_DIR; el fallback queda en /public/ por seguridad.
+          server-dir: ${{ secrets.FTP_DIR || '/public/' }}
           # FTPS implicito por defecto en Dondominio (puerto 990) o
           # explicito (puerto 21 con STARTTLS). Si el host no soporta
           # FTPS, baja a `ftp` (no recomendado — credenciales en claro).
