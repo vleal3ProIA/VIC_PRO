@@ -123,8 +123,12 @@ jobs:
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
+      # Excluimos los golden tests: se generan en Windows (maquina del dev)
+      # y el rendering de Linux NO es bit-exact, asi que fallan por diffs de
+      # pixeles en el runner. Mismo patron que ci.yml. Los goldens se validan
+      # en local con `flutter test --tags golden`.
       - name: Test
-        run: flutter test --no-pub
+        run: flutter test --no-pub --exclude-tags golden
 
       # ─── Inyectar SEO meta tags ───
       - name: Generate SEO assets
