@@ -814,14 +814,26 @@ export interface RenderedEmail {
  *             Todos los tipos heredan automaticamente { app_name }
  *             del branding.
  */
+/// Modo visual del email. `system` -> el email se adapta al cliente de
+/// correo via `@media (prefers-color-scheme)`. `light`/`dark` -> se fuerza
+/// ese modo (ignora la preferencia del cliente), segun la preferencia
+/// guardada del usuario (`profiles.theme_mode`).
+export type EmailMode = "system" | "light" | "dark";
+
+function normalizeMode(raw: string | undefined | null): EmailMode {
+  return raw === "light" || raw === "dark" ? raw : "system";
+}
+
 export function renderEmail(params: {
   type: EmailType;
   locale: string;
   appName: string;
   data: Record<string, string>;
+  mode?: string;
 }): RenderedEmail {
   const { type, appName } = params;
   const loc = normalizeLocale(params.locale);
+  const mode = normalizeMode(params.mode);
   const allStrings = STR[type];
   const strings = allStrings[loc] ?? allStrings.en;
 
@@ -864,6 +876,7 @@ export function renderEmail(params: {
       ctaLabel,
       ctaUrl,
       footerNote,
+      mode,
     }),
     textBody,
   };
@@ -879,6 +892,7 @@ function wrapHtml(params: {
   ctaLabel: string;
   ctaUrl: string | null;
   footerNote: string;
+  mode: EmailMode;
 }): string {
   const {
     appName,
@@ -888,7 +902,51 @@ function wrapHtml(params: {
     ctaLabel,
     ctaUrl,
     footerNote,
+    mode,
   } = params;
+
+  // Paleta segun el modo PREFERIDO del usuario (profiles.theme_mode):
+  //   - dark  -> colores oscuros inline (siempre oscuro, ignora el cliente).
+  //   - light -> colores claros inline (siempre claro, ignora el cliente).
+  //   - system-> colores claros + bloque @media que invierte si el cliente
+  //              de correo esta en dark (comportamiento adaptativo).
+  const dark = mode === "dark";
+  const c = dark
+    ? {
+      bg: "#0F172A",
+      card: "#1E293B",
+      heading: "#F1F5F9",
+      body: "#E5E7EB",
+      muted: "#94A3B8",
+      divider: "#334155",
+      brand: "#60A5FA",
+      footer: "#94A3B8",
+    }
+    : {
+      bg: "#F3F4F6",
+      card: "#FFFFFF",
+      heading: "#111827",
+      body: "#374151",
+      muted: "#6B7280",
+      divider: "#E5E7EB",
+      brand: "#2563EB",
+      footer: "#9CA3AF",
+    };
+
+  // El @media solo en `system`: en light/dark el color ya esta forzado
+  // inline y no queremos que el cliente lo cambie.
+  const darkMediaBlock = mode === "system"
+    ? `
+      @media (prefers-color-scheme: dark) {
+        body, .email-bg { background-color: #0F172A !important; }
+        .card { background-color: #1E293B !important; color: #E5E7EB !important; }
+        .text-muted { color: #94A3B8 !important; }
+        .text-body { color: #E5E7EB !important; }
+        .text-heading { color: #F1F5F9 !important; }
+        .text-brand { color: #60A5FA !important; }
+        .divider { border-top-color: #334155 !important; }
+      }`
+    : "";
 
   // Boton CTA: tabla por compat con Outlook. bg azul corporativo +
   // texto blanco. En dark mode mantenemos buen contraste invirtiendo
@@ -921,25 +979,15 @@ function wrapHtml(params: {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="supported-color-schemes" content="light dark" />
+    <meta name="color-scheme" content="${mode === "system" ? "light dark" : mode}" />
+    <meta name="supported-color-schemes" content="${mode === "system" ? "light dark" : mode}" />
     <title>${escapeHtml(appName)}</title>
     <style>
-      /* Dark mode: clientes modernos (Apple Mail, Gmail Android, Outlook
-         mobile) respetan prefers-color-scheme. Invertimos fondo/texto.
-         No tocamos el boton (mantiene su brand color). */
-      @media (prefers-color-scheme: dark) {
-        body, .email-bg { background-color: #0F172A !important; }
-        .card { background-color: #1E293B !important; color: #E5E7EB !important; }
-        .text-muted { color: #94A3B8 !important; }
-        .text-body { color: #E5E7EB !important; }
-        .divider { border-top-color: #334155 !important; }
-      }
-      /* Outlook ignora @media — usa los colores light por defecto, que
-         siguen funcionando bien. */
+      /* En modo `system` el email se adapta al cliente de correo via
+         prefers-color-scheme. En light/dark el color ya va forzado inline. */${darkMediaBlock}
     </style>
   </head>
-  <body class="email-bg" style="margin: 0; padding: 0; background-color: #F3F4F6;
+  <body class="email-bg" style="margin: 0; padding: 0; background-color: ${c.bg};
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
     <!-- Preheader oculto que muchos clientes muestran como preview. -->
     <div style="display: none; max-height: 0; overflow: hidden;">
@@ -947,26 +995,26 @@ function wrapHtml(params: {
     </div>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0"
            width="100%" class="email-bg"
-           style="background-color: #F3F4F6;">
+           style="background-color: ${c.bg};">
       <tr><td align="center" style="padding: 32px 16px;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0"
                width="600" class="card"
-               style="background-color: #FFFFFF; border-radius: 12px;
+               style="background-color: ${c.card}; border-radius: 12px;
                       max-width: 600px; width: 100%;
                       box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
           <tr><td style="padding: 24px 32px;">
             <!-- Header con nombre comercial. -->
-            <div style="font-size: 18px; font-weight: 800; color: #2563EB;
+            <div style="font-size: 18px; font-weight: 800; color: ${c.brand};
                         margin-bottom: 24px;"
-                 class="text-body">
+                 class="text-brand">
               ${escapeHtml(appName)}
             </div>
-            ${greeting ? `<h1 style="font-size: 22px; font-weight: 800; color: #111827;
+            ${greeting ? `<h1 style="font-size: 22px; font-weight: 800; color: ${c.heading};
                          margin: 0 0 16px 0; line-height: 1.3;"
-                  class="text-body">
+                  class="text-heading">
               ${escapeHtml(greeting)}
             </h1>` : ""}
-            <div style="font-size: 15px; color: #374151; line-height: 1.6;"
+            <div style="font-size: 15px; color: ${c.body}; line-height: 1.6;"
                  class="text-body">
               ${bodyHtml}
             </div>
@@ -975,15 +1023,15 @@ function wrapHtml(params: {
               ${ctaBlock}
             </table>
             ${footerNote ? `<hr class="divider"
-                style="border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;" />
-            <div style="font-size: 13px; color: #6B7280; line-height: 1.5;"
+                style="border: none; border-top: 1px solid ${c.divider}; margin: 24px 0;" />
+            <div style="font-size: 13px; color: ${c.muted}; line-height: 1.5;"
                  class="text-muted">
               ${escapeHtml(footerNote)}
             </div>` : ""}
           </td></tr>
         </table>
         <!-- Footer outside the card -->
-        <div style="font-size: 12px; color: #9CA3AF; margin-top: 16px;
+        <div style="font-size: 12px; color: ${c.footer}; margin-top: 16px;
                     text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;"
              class="text-muted">
           &copy; ${new Date().getFullYear()} ${escapeHtml(appName)}
