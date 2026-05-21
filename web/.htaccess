@@ -75,7 +75,11 @@
 
   # Permissions Policy: deshabilitar APIs que la app NO usa. Si añades
   # geolocation o camera, quítalo de la lista.
-  Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(self 'https://js.stripe.com')"
+  # NOTA sintaxis: los origenes en Permissions-Policy van entre comillas
+  # DOBLES (`self` es keyword sin comillas). Con comillas simples el parser
+  # del navegador falla ("Parse of permissions policy failed"). Escapamos las
+  # dobles porque el valor del Header ya va entre comillas dobles.
+  Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(self \"https://js.stripe.com\")"
 
   # Cross-Origin: permitir cross-origin resources (Stripe.js,
   # webauthn lib via unpkg).
@@ -210,10 +214,15 @@ frame-ancestors 'self'"
 # ErrorDocument 404 /404.html
 
 # ─────────────────────────── Hidden files ───────────────────────────
-# Bloquear acceso a .env, .git, etc. Por defecto Apache no los sirve
-# pero por si acaso.
-
-<FilesMatch "^\.">
+# Bloquear acceso a dotfiles SENSIBLES (.git, .htaccess, .htpasswd, etc.).
+#
+# OJO: NO bloqueamos `.env`. Flutter empaqueta el `.env` como asset
+# (`assets/.env`) y `flutter_dotenv` lo descarga al arrancar; un bloqueo
+# global `^\.` devolvia 403 -> dotenv no inicializaba -> NotInitializedError
+# -> la app no montaba (pantalla en blanco/spinner). El `.env` empaquetado
+# en produccion es un PLACEHOLDER dummy (los secretos reales van por
+# --dart-define / Supabase Dashboard), asi que servirlo no expone nada.
+<FilesMatch "^\.(git|svn|hg|htaccess|htpasswd|DS_Store|bash_history|bashrc|npmrc)">
   Order Allow,Deny
   Deny from all
 </FilesMatch>
