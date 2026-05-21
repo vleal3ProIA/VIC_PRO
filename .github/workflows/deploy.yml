@@ -173,7 +173,14 @@ jobs:
           # explicito (puerto 21 con STARTTLS). Si el host no soporta
           # FTPS, baja a `ftp` (no recomendado — credenciales en claro).
           protocol: ftps
-          security: strict
+          # `loose`: cifra el canal con TLS (FTPS) pero NO valida el hostname
+          # del certificado. Dondominio presenta un cert wildcard para
+          # `*.dondominio.com` / `dondominio.com`, que NUNCA coincidira con el
+          # FTP_HOST de tu dominio propio -> con `strict` el deploy fallaba con
+          # ERR_TLS_CERT_ALTNAME_INVALID. La alternativa (`protocol: ftp`) seria
+          # texto plano, mucho peor. Con `loose` los datos siguen viajando
+          # cifrados; solo se omite la verificacion del nombre del cert.
+          security: loose
           # Borra archivos en el servidor que ya no estan en el build
           # (clean deploy). Excluye archivos que el usuario subio
           # manualmente al hosting (avatares, uploads, etc).
