@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:myapp/core/constants/supported_locales.dart';
 import 'package:myapp/core/observability/analytics_service.dart';
 import 'package:myapp/core/providers/preferences_provider.dart';
+import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/features/audit/application/audit_logger.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -79,6 +80,10 @@ Future<void> pumpForTest(
         analyticsServiceProvider.overrideWithValue(
           AnalyticsService(backend: const NoopAnalyticsBackend()),
         ),
+        // Sin Supabase real: la barra superior pública lee isAuthenticated.
+        // Por defecto "no logueado"; los tests que necesiten logueado lo
+        // sobre-escriben via `overrides`.
+        isAuthenticatedProvider.overrideWithValue(false),
         ...overrides,
       ],
       child: MaterialApp.router(
