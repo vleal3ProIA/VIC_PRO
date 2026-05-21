@@ -165,39 +165,41 @@ jobs:
           test -f build/web/sitemap.xml
           echo "✓ Build artifacts present"
 
-      # ─── Limpieza de directorios (SOLO ejecucion manual) ───
-      # Dondominio sirve testexamen.es desde /public. Un deploy anterior creo
-      # por error la carpeta /public_html con el bundle (no se sirve). Este
-      # paso, SOLO cuando se lanza a mano ("Run workflow" / workflow_dispatch):
-      #   1. borra la carpeta stray /public_html
-      #   2. vacia /public (incluye dotfiles) para no dejar archivos viejos
-      # En los push automaticos NO corre -> el deploy normal es incremental
-      # (rapido y no borra ficheros que no esten en el build). La password
-      # nunca se imprime: GitHub enmascara el secret en los logs.
-      - name: Clean target dirs (manual dispatch only)
+      # ─── Forzar re-subida completa (SOLO ejecucion manual) ───
+      # SOLO cuando se lanza a mano ("Run workflow" / workflow_dispatch):
+      #   1. borra la carpeta stray /public_html (de un deploy antiguo).
+      #   2. BORRA el sync-state de FTP-Deploy-Action
+      #      (`.ftp-deploy-sync-state.json`). Sin ese fichero, el step de
+      #      subida hace un "first publish" y re-sube TODO el bundle.
+      #
+      # IMPORTANTE — por que NO borramos /public/* a mano: lftp 4.9.2 no
+      # incluye dotfiles en `glob -a *`, asi que borraba los archivos pero
+      # dejaba el sync-state. Entonces FTP-Deploy-Action veia ese sync-state
+      # "al dia", se SALTABA re-subir index.html/canvaskit/... y /public
+      # quedaba sin index.html -> 403. Borrando solo el sync-state evitamos
+      # el borrado destructivo y forzamos una subida integra y segura.
+      # La password nunca se imprime: GitHub enmascara el secret en los logs.
+      - name: Force full re-upload (manual dispatch only)
         if: github.event_name == 'workflow_dispatch'
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_DIR: ${{ secrets.FTP_DIR }}
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          DIR="${FTP_DIR:-/public/}"
           lftp -c "
             set cmd:fail-exit no;
             set ssl:verify-certificate no;
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             open -u \"$FTP_USERNAME\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
-            echo '--- raiz FTP antes de limpiar ---';
-            cls -la / ;
             rm -rf /public_html ;
-            mkdir -p /public ;
-            glob -a rm -rf /public/* ;
-            echo '--- /public despues de limpiar (deberia estar vacio) ---';
-            cls -la /public ;
+            rm -f ${DIR}.ftp-deploy-sync-state.json ;
             bye
           "
-          echo "✓ /public_html borrado y /public limpio"
+          echo "✓ /public_html borrado y sync-state eliminado (fuerza first-publish)"
 
       # ─── FTPS upload a Dondominio ───
       # Usamos SamKirkland/FTP-Deploy-Action: estable, soporta FTPS, y
