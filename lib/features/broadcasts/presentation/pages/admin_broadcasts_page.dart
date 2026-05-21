@@ -43,7 +43,7 @@ class AdminBroadcastsPage extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
         label: Text(l.broadcastsNew),
-        onPressed: () => context.goNamed(RouteNames.adminBroadcastsNew),
+        onPressed: () => context.pushNamed(RouteNames.adminBroadcastsNew),
       ),
       body: Center(
         child: ConstrainedBox(
@@ -96,7 +96,7 @@ class _BroadcastRow extends ConsumerWidget {
     final b = broadcast;
 
     return PremiumCard(
-      onTap: () => context.goNamed(
+      onTap: () => context.pushNamed(
         RouteNames.adminBroadcastDetail,
         pathParameters: {'id': b.id},
       ),

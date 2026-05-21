@@ -110,7 +110,7 @@ class HomePage extends ConsumerWidget {
                                 : l.dashboardMfaOff,
                             label: l.dashboardStatMfa,
                             onTap: () =>
-                                context.goNamed(RouteNames.mfaSetup),
+                                context.pushNamed(RouteNames.mfaSetup),
                           ),
                         ),
                         SizedBox(
@@ -169,7 +169,7 @@ class HomePage extends ConsumerWidget {
                             icon: Icons.cloud_outlined,
                             title: l.filesTitle,
                             subtitle: l.filesHint,
-                            onTap: () => context.goNamed(RouteNames.files),
+                            onTap: () => context.pushNamed(RouteNames.files),
                           ),
                         ),
                         SizedBox(
@@ -178,7 +178,7 @@ class HomePage extends ConsumerWidget {
                             icon: Icons.vpn_key_outlined,
                             title: l.tokensTitle,
                             subtitle: l.tokensHint,
-                            onTap: () => context.goNamed(RouteNames.tokens),
+                            onTap: () => context.pushNamed(RouteNames.tokens),
                           ),
                         ),
                         SizedBox(
@@ -187,7 +187,7 @@ class HomePage extends ConsumerWidget {
                             icon: Icons.webhook_outlined,
                             title: l.webhooksTitle,
                             subtitle: l.webhooksHint,
-                            onTap: () => context.goNamed(RouteNames.webhooks),
+                            onTap: () => context.pushNamed(RouteNames.webhooks),
                           ),
                         ),
                         SizedBox(
@@ -196,7 +196,7 @@ class HomePage extends ConsumerWidget {
                             icon: Icons.timeline,
                             title: l.activityTitle,
                             subtitle: l.activityHint,
-                            onTap: () => context.goNamed(RouteNames.activity),
+                            onTap: () => context.pushNamed(RouteNames.activity),
                           ),
                         ),
                       ],
@@ -238,7 +238,7 @@ class HomePage extends ConsumerWidget {
                       const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                   child: PremiumCard(
                     elevated: true,
-                    onTap: () => context.goNamed(RouteNames.mfaSetup),
+                    onTap: () => context.pushNamed(RouteNames.mfaSetup),
                     child: Row(
                       children: [
                         Container(
