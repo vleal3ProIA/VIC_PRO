@@ -105,6 +105,44 @@ class AppTheme {
         thickness: 1,
         color: base.dividerTheme.color?.withValues(alpha: isDark ? 0.18 : 0.12),
       ),
+      // ─── Botones Premium ───
+      // Subimos peso tipográfico (w600 + letter-spacing negativo, look
+      // Stripe/Linear) y altura mínima cómoda en TODOS los botones de la app
+      // sin tocar cada call-site. Derivamos del style que ya genera
+      // FlexColorScheme (mantiene colores de la paleta + fuente Inter) y solo
+      // sobre-escribimos textStyle / minimumSize / padding.
+      filledButtonTheme: FilledButtonThemeData(
+        style: (base.filledButtonTheme.style ?? const ButtonStyle()).copyWith(
+          textStyle: WidgetStatePropertyAll(_btnTextStyle(base)),
+          minimumSize: const WidgetStatePropertyAll(Size(64, 50)),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style:
+            (base.outlinedButtonTheme.style ?? const ButtonStyle()).copyWith(
+          textStyle: WidgetStatePropertyAll(_btnTextStyle(base)),
+          minimumSize: const WidgetStatePropertyAll(Size(64, 48)),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: (base.textButtonTheme.style ?? const ButtonStyle()).copyWith(
+          textStyle: WidgetStatePropertyAll(_btnTextStyle(base)),
+        ),
+      ),
     );
   }
+
+  /// TextStyle compartido para botones: deriva de `labelLarge` (Inter) para
+  /// no perder la familia tipográfica y solo ajusta peso + tracking.
+  static TextStyle _btnTextStyle(ThemeData base) =>
+      (base.textTheme.labelLarge ?? const TextStyle()).copyWith(
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.1,
+      );
 }
