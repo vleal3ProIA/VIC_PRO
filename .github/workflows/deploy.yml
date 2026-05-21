@@ -99,6 +99,23 @@ jobs:
       - name: pub get
         run: flutter pub get
 
+      # `.env` esta declarado como asset en pubspec.yaml; sin el, `flutter
+      # analyze` lanza `asset_does_not_exist` (warning -> falla con
+      # --no-fatal-infos) y el build no empaqueta el asset. Las credenciales
+      # REALES entran por --dart-define en el step "Build web"; este .env es
+      # solo un placeholder para que el asset exista (mismo patron que ci.yml).
+      - name: Create dummy .env for build assets
+        run: |
+          cat > .env <<'EOF'
+          APP_NAME=myapp
+          APP_ENV=production
+          SUPABASE_URL=https://placeholder.supabase.co
+          SUPABASE_ANON_KEY=placeholder-anon-key
+          OTP_CODE_LENGTH=6
+          ENABLE_LOGGING=false
+          ENABLE_ANALYTICS=false
+          EOF
+
       - name: gen-l10n
         run: flutter gen-l10n
 
