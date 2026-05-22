@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -542,14 +544,14 @@ class _AuthRefreshNotifier extends ChangeNotifier {
   _AuthRefreshNotifier(this._ref) {
     _authSub = _ref.listen(
       authStateChangesProvider,
-      (_, __) => notifyListeners(),
+      (_, __) => _scheduleNotify(),
     );
     // El rol llega de forma asíncrona (al cargar el perfil). Re-evaluamos
     // el redirect cuando cambia, para que el guard de rutas solo-admin no
     // se quede con un rol "stale".
     _roleSub = _ref.listen(
       currentRoleProvider,
-      (_, __) => notifyListeners(),
+      (_, __) => _scheduleNotify(),
     );
     // El branding (app_branding row) tambien es async: en el primer frame
     // `valueOrNull` es null y Gate 0 NO redirige (para evitar un flash a
@@ -558,7 +560,7 @@ class _AuthRefreshNotifier extends ChangeNotifier {
     // o para echar a alguien que esta en /setup si ya esta completado.
     _brandingSub = _ref.listen(
       appBrandingProvider,
-      (_, __) => notifyListeners(),
+      (_, __) => _scheduleNotify(),
     );
     // PR-Super-A2: capabilities tambien son async (RPC `get_my_capabilities`).
     // Mientras carga, el guard 2d skipea check para evitar flash; cuando
@@ -567,7 +569,7 @@ class _AuthRefreshNotifier extends ChangeNotifier {
     // sea echado a /admin en cuanto sepamos su lista real.
     _capsSub = _ref.listen(
       myCapabilitiesProvider,
-      (_, __) => notifyListeners(),
+      (_, __) => _scheduleNotify(),
     );
   }
 
@@ -577,8 +579,35 @@ class _AuthRefreshNotifier extends ChangeNotifier {
   late final ProviderSubscription<dynamic> _brandingSub;
   late final ProviderSubscription<dynamic> _capsSub;
 
+  bool _disposed = false;
+  bool _notifyScheduled = false;
+
+  /// Coalesce + difiere la notificación al router.
+  ///
+  /// Los 4 providers (auth, role, branding, capabilities) suelen cambiar
+  /// casi a la vez (p. ej. al hacer login, o al cargar el perfil). Notificar
+  /// de forma SÍNCRONA dentro del callback de `ref.listen` hace que go_router
+  /// re-evalúe el redirect y navegue MIENTRAS Riverpod aún está despachando
+  /// la notificación del provider; al montar/desmontar pantallas que observan
+  /// esos mismos providers se muta la lista de observers que Riverpod está
+  /// iterando → "Concurrent modification during iteration".
+  ///
+  /// Posponer la notificación a un microtask la saca de ese ciclo y, de paso,
+  /// fusiona varias notificaciones simultáneas en una sola re-evaluación del
+  /// router (menos trabajo, mismo resultado).
+  void _scheduleNotify() {
+    if (_notifyScheduled || _disposed) return;
+    _notifyScheduled = true;
+    scheduleMicrotask(() {
+      _notifyScheduled = false;
+      if (_disposed) return;
+      notifyListeners();
+    });
+  }
+
   @override
   void dispose() {
+    _disposed = true;
     _authSub.close();
     _roleSub.close();
     _brandingSub.close();
