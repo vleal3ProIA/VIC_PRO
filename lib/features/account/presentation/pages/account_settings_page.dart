@@ -12,7 +12,11 @@ import 'package:myapp/core/widgets/premium/premium.dart';
 import 'package:myapp/features/account/application/data_export_notifier.dart';
 import 'package:myapp/features/account/application/profile_settings_notifier.dart';
 import 'package:myapp/features/account/presentation/widgets/profile_failure_message.dart';
+import 'package:myapp/features/account/presentation/widgets/settings_master_detail.dart';
 import 'package:myapp/features/account/presentation/widgets/user_avatar.dart';
+import 'package:myapp/features/auth/presentation/widgets/change_email_form.dart';
+import 'package:myapp/features/auth/presentation/widgets/change_password_form.dart';
+import 'package:myapp/features/auth/presentation/widgets/delete_account_form.dart';
 import 'package:myapp/features/flags/application/feature_flags_providers.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
@@ -234,7 +238,11 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
                     ),
                   1 => const _WorkspaceTab(),
                   2 => const _BillingTab(),
-                  _ => const _SecurityTab(),
+                  // Seguridad: en ancho usamos master-detail (menú + contenido
+                  // limpio); en móvil mantenemos la lista de enlaces.
+                  _ => context.isMobile
+                      ? const _SecurityTab()
+                      : const _SecurityMasterDetail(),
                 },
               ),
             ),
@@ -640,6 +648,76 @@ class _SecurityTab extends StatelessWidget {
             ),
             onTap: () => context.pushNamed(RouteNames.deleteAccount),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Tab 4 (ancho): Security master-detail
+// Card menú izq + card contenido der. Los formularios (cambiar contraseña/
+// email, eliminar cuenta) se embeben limpios reutilizando sus widgets de
+// formulario. MFA/Passkeys/Sesiones abren a pantalla completa por ahora
+// (se embeberán limpios en una sub-fase siguiente).
+// ═══════════════════════════════════════════════════════════════════
+
+class _SecurityMasterDetail extends StatelessWidget {
+  const _SecurityMasterDetail();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return SettingsMasterDetail(
+      items: [
+        SettingsDetailItem(
+          icon: Icons.password_outlined,
+          label: l.settingsChangePassword,
+          builder: (_) => const ChangePasswordForm(),
+        ),
+        SettingsDetailItem(
+          icon: Icons.alternate_email,
+          label: l.settingsChangeEmail,
+          builder: (_) => const ChangeEmailForm(),
+        ),
+        SettingsDetailItem(
+          icon: Icons.shield_outlined,
+          label: l.actionEnableMfa,
+          builder: (_) => SettingsOpenFullScreen(
+            icon: Icons.shield_outlined,
+            title: l.actionEnableMfa,
+            description: l.settingsSecurityHint,
+            buttonLabel: l.filesOpen,
+            routeName: RouteNames.mfaSetup,
+          ),
+        ),
+        SettingsDetailItem(
+          icon: Icons.fingerprint,
+          label: l.settingsPasskeys,
+          builder: (_) => SettingsOpenFullScreen(
+            icon: Icons.fingerprint,
+            title: l.settingsPasskeys,
+            description: l.settingsPasskeysHint,
+            buttonLabel: l.filesOpen,
+            routeName: RouteNames.passkeys,
+          ),
+        ),
+        SettingsDetailItem(
+          icon: Icons.devices_outlined,
+          label: l.settingsSessions,
+          builder: (_) => SettingsOpenFullScreen(
+            icon: Icons.devices_outlined,
+            title: l.settingsSessions,
+            description: l.settingsSessionsHint,
+            buttonLabel: l.filesOpen,
+            routeName: RouteNames.sessions,
+          ),
+        ),
+        SettingsDetailItem(
+          icon: Icons.delete_forever_outlined,
+          label: l.settingsDeleteAccount,
+          destructive: true,
+          builder: (_) => const DeleteAccountForm(),
         ),
       ],
     );
