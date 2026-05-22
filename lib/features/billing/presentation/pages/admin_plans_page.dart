@@ -26,8 +26,6 @@ class AdminPlansPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final plansAsync = ref.watch(allPlansAdminProvider);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -36,38 +34,73 @@ class AdminPlansPage extends ConsumerWidget {
           onPressed: () => context.popOrGo(RouteNames.admin),
         ),
         title: Text(l.adminPlansTitle),
-        actions: [
-          IconButton(
-            tooltip: l.actionRetry,
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(allPlansAdminProvider),
-          ),
-        ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
-          child: plansAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Text(
-                l.adminPlansLoadError,
-                style: TextStyle(color: context.colors.error),
+      body: const AdminPlansView(),
+    );
+  }
+}
+
+/// Cuerpo del catálogo de planes admin (sin Scaffold). Reutilizable como
+/// página completa o embebido en el master-detail de Administración.
+class AdminPlansView extends ConsumerWidget {
+  const AdminPlansView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Admin).
+  final bool embedded;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final plansAsync = ref.watch(allPlansAdminProvider);
+
+    final body = plansAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(
+        child: Text(
+          l.adminPlansLoadError,
+          style: TextStyle(color: context.colors.error),
+        ),
+      ),
+      data: (plans) {
+        if (plans.isEmpty) {
+          return Center(child: Text(l.adminPlansEmpty));
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          shrinkWrap: embedded,
+          physics: embedded ? const NeverScrollableScrollPhysics() : null,
+          itemCount: plans.length,
+          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+          itemBuilder: (_, i) => _PlanRow(plan: plans[i]),
+        );
+      },
+    );
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
+        child: Column(
+          mainAxisSize: embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            // Acción refresh (antes en el AppBar).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                0,
+              ),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  tooltip: l.actionRetry,
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () => ref.invalidate(allPlansAdminProvider),
+                ),
               ),
             ),
-            data: (plans) {
-              if (plans.isEmpty) {
-                return Center(child: Text(l.adminPlansEmpty));
-              }
-              return ListView.separated(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                itemCount: plans.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSpacing.sm),
-                itemBuilder: (_, i) => _PlanRow(plan: plans[i]),
-              );
-            },
-          ),
+            if (embedded) body else Expanded(child: body),
+          ],
         ),
       ),
     );
@@ -98,12 +131,10 @@ class _PlanRow extends ConsumerWidget {
                       plan.name,
                       style: context.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
-                        decoration: inactive
-                            ? TextDecoration.lineThrough
-                            : null,
-                        color: inactive
-                            ? context.colors.onSurfaceVariant
-                            : null,
+                        decoration:
+                            inactive ? TextDecoration.lineThrough : null,
+                        color:
+                            inactive ? context.colors.onSurfaceVariant : null,
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),

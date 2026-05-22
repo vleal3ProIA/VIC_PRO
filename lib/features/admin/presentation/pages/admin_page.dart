@@ -17,6 +17,12 @@ import 'package:myapp/features/admin_users/presentation/pages/admin_users_page.d
     show AdminUsersView;
 import 'package:myapp/features/audit_center/presentation/pages/admin_audit_page.dart'
     show AdminAuditView;
+import 'package:myapp/features/billing/presentation/pages/admin_branding_page.dart'
+    show AdminBrandingView;
+import 'package:myapp/features/billing/presentation/pages/admin_coupons_page.dart'
+    show AdminCouponsView;
+import 'package:myapp/features/billing/presentation/pages/admin_plans_page.dart'
+    show AdminPlansView;
 import 'package:myapp/features/flags/presentation/pages/admin_flags_page.dart'
     show AdminFlagsView;
 import 'package:myapp/features/status/presentation/pages/admin_incidents_page.dart'
@@ -455,6 +461,7 @@ class _AdminDestinations {
           hint: l.adminPlansHint,
           route: RouteNames.adminPlans,
           capability: AdminCapability.managePlans,
+          embeddedBuilder: (_) => const AdminPlansView(embedded: true),
         ),
         _AdminDestination(
           icon: Icons.local_offer_outlined,
@@ -463,6 +470,7 @@ class _AdminDestinations {
           hint: l.adminCouponsHint,
           route: RouteNames.adminCoupons,
           capability: AdminCapability.manageCoupons,
+          embeddedBuilder: (_) => const AdminCouponsView(embedded: true),
         ),
         _AdminDestination(
           icon: Icons.palette_outlined,
@@ -471,6 +479,7 @@ class _AdminDestinations {
           hint: l.adminBrandingHint,
           route: RouteNames.adminBranding,
           capability: AdminCapability.manageBranding,
+          embeddedBuilder: (_) => const AdminBrandingView(embedded: true),
         ),
       ];
 
