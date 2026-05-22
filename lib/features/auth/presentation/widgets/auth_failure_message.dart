@@ -21,3 +21,11 @@ String authFailureMessage(BuildContext context, AuthFailure failure) {
     AuthUnknown() => l.authErrorUnknown,
   };
 }
+
+/// Detalle técnico crudo (code + mensaje de GoTrue) cuando el fallo es opaco
+/// (`AuthUnknown`). Se muestra como texto secundario en pantallas como el
+/// setup de MFA para diagnosticar "Algo salió mal" sin tener que mirar logs:
+/// revela, por ejemplo, si TOTP está deshabilitado en el proyecto o si se
+/// alcanzó el límite de factores. `null` cuando no aporta nada.
+String? authFailureTechnicalDetail(AuthFailure failure) =>
+    failure is AuthUnknown ? failure.message : null;
