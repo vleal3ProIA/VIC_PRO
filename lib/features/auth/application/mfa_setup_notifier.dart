@@ -94,17 +94,27 @@ class MfaSetupNotifier extends Notifier<MfaSetupState> {
   Future<void> _init() async {
     final repo = ref.read(authRepositoryProvider);
     final result = await repo.listMfaFactors();
-    final verified = result.fold(
+    final factors = result.fold(
       (_) => <MfaFactor>[],
-      (factors) =>
-          factors.where((f) => f.isVerified && f.type == 'totp').toList(),
+      (f) => f,
     );
+    final verified =
+        factors.where((f) => f.isVerified && f.type == 'totp').toList();
     if (verified.isNotEmpty) {
       state = state.copyWith(
         step: MfaSetupStep.alreadyEnabled,
         existingFactorId: verified.first.id,
       );
     } else {
+      // Limpia los factores TOTP SIN VERIFICAR acumulados: cada visita previa
+      // a esta pantalla crea uno nuevo via enroll(), y Supabase limita el
+      // numero de factores -> al pasarse, enroll() falla con "Algo salio mal".
+      // Borrarlos garantiza que enroll() siempre tenga sitio.
+      final stale =
+          factors.where((f) => !f.isVerified && f.type == 'totp').toList();
+      for (final f in stale) {
+        await repo.unenrollMfa(f.id);
+      }
       await _startEnrollment();
     }
   }
