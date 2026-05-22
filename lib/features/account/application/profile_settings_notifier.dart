@@ -75,9 +75,18 @@ class ProfileSettingsNotifier extends Notifier<ProfileSettingsState> {
     await _load();
   }
 
-  /// Guarda el display name en BD.
+  /// Guarda el nombre del usuario en BD.
+  ///
+  /// Por decisión de producto, el "nombre visible" (display_name) y el
+  /// "nombre de usuario" (username) deben ser SIEMPRE iguales: el campo que
+  /// el usuario edita es el mismo que se muestra. Por eso escribimos el mismo
+  /// valor en ambas columnas. `username` tiene constraint UNIQUE -> si el
+  /// nombre ya lo usa otra cuenta, el repositorio devuelve `ProfileUsernameTaken`
+  /// y NO se modifica ninguna de las dos columnas (la UPDATE es atómica).
   Future<void> saveDisplayName(String displayName) async {
-    await _update(displayName: displayName.trim());
+    final trimmed = displayName.trim();
+    if (trimmed.isEmpty) return;
+    await _update(displayName: trimmed, username: trimmed);
   }
 
   /// Cambia el idioma: aplica inmediato en la UI (LocaleNotifier) y lo
@@ -144,6 +153,7 @@ class ProfileSettingsNotifier extends Notifier<ProfileSettingsState> {
 
   Future<void> _update({
     String? displayName,
+    String? username,
     String? locale,
     String? themeMode,
   }) async {
@@ -155,6 +165,7 @@ class ProfileSettingsNotifier extends Notifier<ProfileSettingsState> {
     );
     final result = await ref.read(profileRepositoryProvider).updateMyProfile(
           displayName: displayName,
+          username: username,
           locale: locale,
           themeMode: themeMode,
         );

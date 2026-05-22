@@ -12,6 +12,7 @@ abstract class ProfileRepository {
   /// Actualiza campos del perfil. Solo se envían los no-nulos.
   Future<Either<ProfileFailure, Profile>> updateMyProfile({
     String? displayName,
+    String? username,
     String? locale,
     String? themeMode,
     String? avatarUrl,
