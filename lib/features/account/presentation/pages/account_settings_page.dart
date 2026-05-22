@@ -16,6 +16,8 @@ import 'package:myapp/features/account/presentation/pages/account_sessions_page.
 import 'package:myapp/features/account/presentation/widgets/profile_failure_message.dart';
 import 'package:myapp/features/account/presentation/widgets/settings_master_detail.dart';
 import 'package:myapp/features/account/presentation/widgets/user_avatar.dart';
+import 'package:myapp/features/auth/presentation/pages/passkeys_page.dart'
+    show PasskeysView;
 import 'package:myapp/features/auth/presentation/widgets/change_email_form.dart';
 import 'package:myapp/features/auth/presentation/widgets/change_password_form.dart';
 import 'package:myapp/features/auth/presentation/widgets/delete_account_form.dart';
@@ -698,13 +700,7 @@ class _SecurityMasterDetail extends StatelessWidget {
         SettingsDetailItem(
           icon: Icons.fingerprint,
           label: l.settingsPasskeys,
-          builder: (_) => SettingsOpenFullScreen(
-            icon: Icons.fingerprint,
-            title: l.settingsPasskeys,
-            description: l.settingsPasskeysHint,
-            buttonLabel: l.filesOpen,
-            routeName: RouteNames.passkeys,
-          ),
+          builder: (_) => const PasskeysView(embedded: true),
         ),
         SettingsDetailItem(
           icon: Icons.devices_outlined,
