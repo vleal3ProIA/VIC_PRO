@@ -156,6 +156,14 @@ spoofing, malware sin escaneo, descarga inline de HTML.
   rompiera).
 - Helper `is_admin()` SECURITY DEFINER estable.
 - Helper `user_tenants(uid)` para checks de membresía.
+- **Tablas solo-servidor (RLS on, sin policies)**: `webhook_secrets`,
+  `webauthn_challenges` y `edge_rate_limits` tienen RLS activado y SIN
+  policies a propósito — solo las toca el `service_role` desde Edge
+  Functions; un cliente (anon/authenticated) no debe acceder nunca
+  (añadirles una policy de cliente sería un agujero, sobre todo en
+  `webhook_secrets`). El check de auditoría `rls.no_policies` las tiene
+  en su allowlist (`run-audit/_checks/rls_no_policies.ts`) para no
+  marcarlas como falso positivo.
 
 ### 5.3 Rate limiting
 - Tabla `public.rate_limits` + helper `check_rate_limit()` en

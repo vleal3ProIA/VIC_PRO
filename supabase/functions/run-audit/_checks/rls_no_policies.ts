@@ -3,8 +3,21 @@
 // Resultado: tabla bloqueada total para roles `authenticated` y
 // `anon`. Puede ser intencional (ej. audit log append-only que solo
 // se toca via service_role), pero suele indicar policies olvidadas.
-
+//
 import type { AuditFinding, AuditCheckRunner } from "./_types.ts";
+
+// Allowlist intencional: estas tablas son SOLO-servidor a proposito --
+// las gestiona el `service_role` desde Edge Functions y un cliente nunca
+// debe tocarlas. Tener RLS activado y SIN policies es el comportamiento
+// correcto y seguro (anyadirles una policy de cliente seria un agujero,
+// sobre todo en `webhook_secrets`). Por eso las excluimos del finding
+// para no generar ruido (falso positivo conocido). Si aparece CUALQUIER
+// otra tabla con RLS y sin policies, si se reporta.
+const INTENTIONAL_SERVICE_ROLE_ONLY = new Set<string>([
+  "webhook_secrets", // secretos de firma de webhooks -- jamas al cliente
+  "webauthn_challenges", // retos efimeros de passkeys, server-side
+  "edge_rate_limits", // contadores de rate-limit, server-side
+]);
 
 export const runCheck: AuditCheckRunner = async (admin) => {
   const { data, error } = await admin.rpc(
@@ -23,7 +36,11 @@ export const runCheck: AuditCheckRunner = async (admin) => {
     }];
   }
 
-  const tables = (data as Array<{ table_name: string }>) ?? [];
+  const allTables = (data as Array<{ table_name: string }>) ?? [];
+  // Excluimos las tablas solo-servidor intencionales (allowlist arriba).
+  const tables = allTables.filter(
+    (t) => !INTENTIONAL_SERVICE_ROLE_ONLY.has(t.table_name),
+  );
   if (tables.length === 0) return [];
 
   return [{
