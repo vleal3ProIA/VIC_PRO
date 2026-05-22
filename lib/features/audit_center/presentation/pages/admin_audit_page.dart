@@ -38,14 +38,39 @@ import '../../domain/audit_report.dart';
 import '../../domain/audit_staleness.dart';
 import '../widgets/audit_severity_chip.dart';
 
-class AdminAuditPage extends ConsumerStatefulWidget {
+class AdminAuditPage extends ConsumerWidget {
   const AdminAuditPage({super.key});
 
   @override
-  ConsumerState<AdminAuditPage> createState() => _AdminAuditPageState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.popOrGo(RouteNames.admin),
+        ),
+        title: Text(l.adminAuditTitle),
+      ),
+      body: const AdminAuditView(),
+    );
+  }
 }
 
-class _AdminAuditPageState extends ConsumerState<AdminAuditPage> {
+/// Cuerpo del Audit Center (sin Scaffold). Reutilizable como página completa
+/// o embebido en el master-detail de Administración.
+class AdminAuditView extends ConsumerStatefulWidget {
+  const AdminAuditView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Admin).
+  final bool embedded;
+
+  @override
+  ConsumerState<AdminAuditView> createState() => _AdminAuditViewState();
+}
+
+class _AdminAuditViewState extends ConsumerState<AdminAuditView> {
   /// Polling activo mientras haya algun report con status='running'.
   /// Mismo patron que `files_page.dart` para virus_scan_status=pending.
   Timer? _pollTimer;
@@ -68,8 +93,7 @@ class _AdminAuditPageState extends ConsumerState<AdminAuditPage> {
   /// Si hay un report 'running' arranca / mantiene polling, sino lo
   /// cancela. Llamado cada vez que la lista cambia.
   void _maybePollRunning(List<AuditReportSummaryRow> rows) {
-    final hasRunning =
-        rows.any((r) => r.status == AuditReportStatus.running);
+    final hasRunning = rows.any((r) => r.status == AuditReportStatus.running);
     if (hasRunning) {
       if (_pollTimer == null || !_pollTimer!.isActive) {
         _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
@@ -101,8 +125,7 @@ class _AdminAuditPageState extends ConsumerState<AdminAuditPage> {
     final forbiddenErr = l.adminAuditRunErrorForbidden;
     final authErr = l.adminAuditRunErrorAuth;
     try {
-      final id =
-          await ref.read(auditCenterDataSourceProvider).startAudit();
+      final id = await ref.read(auditCenterDataSourceProvider).startAudit();
       // Refrescamos lista para que la nueva row 'running' aparezca, y
       // navegamos al detail (que arranca su propio polling).
       ref.invalidate(auditReportsListProvider);
@@ -178,107 +201,124 @@ class _AdminAuditPageState extends ConsumerState<AdminAuditPage> {
     // Mantenemos polling sincronizado con el ultimo `data` que vimos.
     async.whenData(_maybePollRunning);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.popOrGo(RouteNames.admin),
-        ),
-        title: Text(l.adminAuditTitle),
-        actions: [
-          IconButton(
-            tooltip: l.actionRetry,
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(auditReportsListProvider),
-          ),
-        ],
+    // Botón "Run audit" (estaba en el PageHeader de la página completa).
+    final runButton = PremiumButton(
+      label: _starting ? l.adminAuditRunning : l.adminAuditRunButton,
+      onPressed: _starting ? null : _runAudit,
+      loading: _starting,
+      leadingIcon: Icons.shield_outlined,
+    );
+
+    final content = async.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 48),
+        child: AppLoadingState(),
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+      error: (e, _) => AppErrorState(
+        message: l.adminAuditListLoadError,
+        detail: e.toString(),
+        onRetry: () => ref.invalidate(auditReportsListProvider),
+        retryLabel: l.actionRetry,
+      ),
+      data: (rows) {
+        if (rows.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 48),
+            child: AppEmptyState(
+              icon: Icons.shield_outlined,
+              title: l.adminAuditEmptyTitle,
+              message: l.adminAuditEmptyBody,
+            ),
+          );
+        }
+        // El banner de staleness y el polling evalúan sobre la lista
+        // completa; solo paginamos la visualización.
+        final staleness = evaluateAuditStaleness(rows);
+        final totalPages = (rows.length / _pageSize).ceil();
+        final page = _page.clamp(0, totalPages - 1);
+        final start = page * _pageSize;
+        final end =
+            (start + _pageSize) > rows.length ? rows.length : start + _pageSize;
+        final pageRows = rows.sublist(start, end);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (staleness.isStale) ...[
+              _StaleBanner(staleness: staleness),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            for (final r in pageRows) ...[
+              _AuditReportRow(row: r),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+            AppPaginationBar(
+              currentPage: page,
+              totalPages: totalPages,
+              onPrevious: () => setState(() => _page = page - 1),
+              onNext: () => setState(() => _page = page + 1),
+            ),
+          ],
+        );
+      },
+    );
+
+    // Embebido: cabecera de acción (run + refresh) + contenido, sin scroll
+    // propio (lo provee el master-detail de Admin).
+    if (widget.embedded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              0,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                PageHeader(
-                  title: l.adminAuditTitle,
-                  subtitle: l.adminAuditSubtitle,
-                  actions: [
-                    PremiumButton(
-                      label: _starting
-                          ? l.adminAuditRunning
-                          : l.adminAuditRunButton,
-                      onPressed: _starting ? null : _runAudit,
-                      loading: _starting,
-                      leadingIcon: Icons.shield_outlined,
-                    ),
-                  ],
+                IconButton(
+                  tooltip: l.actionRetry,
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () => ref.invalidate(auditReportsListProvider),
                 ),
-                AppSpacing.gapMd,
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                  ),
-                  child: async.when(
-                    loading: () => const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 48),
-                      child: AppLoadingState(),
-                    ),
-                    error: (e, _) => AppErrorState(
-                      message: l.adminAuditListLoadError,
-                      detail: e.toString(),
-                      onRetry: () =>
-                          ref.invalidate(auditReportsListProvider),
-                      retryLabel: l.actionRetry,
-                    ),
-                    data: (rows) {
-                      if (rows.isEmpty) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 48),
-                          child: AppEmptyState(
-                            icon: Icons.shield_outlined,
-                            title: l.adminAuditEmptyTitle,
-                            message: l.adminAuditEmptyBody,
-                          ),
-                        );
-                      }
-                      // El banner de staleness y el polling evalúan SObre la
-                      // lista completa; solo paginamos la visualización.
-                      final staleness = evaluateAuditStaleness(rows);
-                      final totalPages = (rows.length / _pageSize).ceil();
-                      final page = _page.clamp(0, totalPages - 1);
-                      final start = page * _pageSize;
-                      final end = (start + _pageSize) > rows.length
-                          ? rows.length
-                          : start + _pageSize;
-                      final pageRows = rows.sublist(start, end);
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (staleness.isStale) ...[
-                            _StaleBanner(staleness: staleness),
-                            const SizedBox(height: AppSpacing.md),
-                          ],
-                          for (final r in pageRows) ...[
-                            _AuditReportRow(row: r),
-                            const SizedBox(height: AppSpacing.sm),
-                          ],
-                          AppPaginationBar(
-                            currentPage: page,
-                            totalPages: totalPages,
-                            onPrevious: () => setState(() => _page = page - 1),
-                            onNext: () => setState(() => _page = page + 1),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xl),
+                const SizedBox(width: AppSpacing.sm),
+                runButton,
               ],
             ),
+          ),
+          AppSpacing.gapMd,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            child: content,
+          ),
+        ],
+      );
+    }
+
+    // Página completa.
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              PageHeader(
+                title: l.adminAuditTitle,
+                subtitle: l.adminAuditSubtitle,
+                actions: [runButton],
+              ),
+              AppSpacing.gapMd,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                child: content,
+              ),
+              const SizedBox(height: AppSpacing.xl),
+            ],
           ),
         ),
       ),
@@ -478,9 +518,7 @@ class _StaleBanner extends StatelessWidget {
     final title = isFailed
         ? l.adminAuditStaleFailedTitle
         : l.adminAuditStaleTitle(staleness.daysSinceLast ?? 0);
-    final body = isFailed
-        ? l.adminAuditStaleFailedBody
-        : l.adminAuditStaleBody;
+    final body = isFailed ? l.adminAuditStaleFailedBody : l.adminAuditStaleBody;
     final color = isFailed
         ? scheme.error
         : const Color(0xFFF59E0B); // amber-500 -- warning suave
