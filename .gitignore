@@ -62,6 +62,11 @@ coverage/
 **/coverage/
 *.lcov
 
+# Golden tests: artefactos de diagnóstico que golden_toolkit genera en cada
+# fallo (master/test/diff). NO versionar; los baselines reales viven en
+# test/goldens/goldens/.
+test/goldens/failures/
+
 # Web specific
 /web/main.dart.js
 /web/main.dart.js.map
