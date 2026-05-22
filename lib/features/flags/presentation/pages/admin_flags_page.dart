@@ -26,8 +26,6 @@ class AdminFlagsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final defsAsync = ref.watch(featureFlagDefinitionsProvider);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -36,41 +34,77 @@ class AdminFlagsPage extends ConsumerWidget {
           onPressed: () => context.popOrGo(RouteNames.admin),
         ),
         title: Text(l.adminFlagsTitle),
-        actions: [
-          IconButton(
-            tooltip: l.actionRetry,
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(featureFlagDefinitionsProvider),
-          ),
-        ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
-          child: defsAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Text(
-                  l.adminFlagsError,
-                  style: TextStyle(color: context.colors.error),
+      body: const AdminFlagsView(),
+    );
+  }
+}
+
+/// Cuerpo de la gestión de feature flags (sin Scaffold). Reutilizable como
+/// página completa o embebido en el master-detail de Administración.
+class AdminFlagsView extends ConsumerWidget {
+  const AdminFlagsView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Admin).
+  final bool embedded;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final defsAsync = ref.watch(featureFlagDefinitionsProvider);
+
+    final body = defsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Text(
+            l.adminFlagsError,
+            style: TextStyle(color: context.colors.error),
+          ),
+        ),
+      ),
+      data: (defs) {
+        if (defs.isEmpty) {
+          return Center(child: Text(l.adminFlagsEmpty));
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          shrinkWrap: embedded,
+          physics: embedded ? const NeverScrollableScrollPhysics() : null,
+          itemCount: defs.length,
+          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+          itemBuilder: (_, i) => _FlagCard(definition: defs[i]),
+        );
+      },
+    );
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
+        child: Column(
+          mainAxisSize: embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            // Acción refresh (antes en el AppBar).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                0,
+              ),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  tooltip: l.actionRetry,
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () =>
+                      ref.invalidate(featureFlagDefinitionsProvider),
                 ),
               ),
             ),
-            data: (defs) {
-              if (defs.isEmpty) {
-                return Center(child: Text(l.adminFlagsEmpty));
-              }
-              return ListView.separated(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                itemCount: defs.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSpacing.sm),
-                itemBuilder: (_, i) => _FlagCard(definition: defs[i]),
-              );
-            },
-          ),
+            if (embedded) body else Expanded(child: body),
+          ],
         ),
       ),
     );
@@ -186,8 +220,7 @@ class _FlagCardState extends ConsumerState<_FlagCard> {
                   max: 100,
                   divisions: 20,
                   label: '${_rollout.toInt()}%',
-                  onChanged:
-                      _busy ? null : (v) => setState(() => _rollout = v),
+                  onChanged: _busy ? null : (v) => setState(() => _rollout = v),
                   onChangeEnd: (v) => _save(rollout: v.toInt()),
                 ),
               ),

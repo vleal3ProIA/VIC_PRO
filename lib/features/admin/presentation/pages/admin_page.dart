@@ -13,8 +13,12 @@ import 'package:myapp/features/admin/presentation/pages/admin_trash_page.dart'
     show AdminTrashView;
 import 'package:myapp/features/admin_acl/application/admin_acl_providers.dart';
 import 'package:myapp/features/admin_acl/domain/admin_capability.dart';
+import 'package:myapp/features/admin_users/presentation/pages/admin_users_page.dart'
+    show AdminUsersView;
 import 'package:myapp/features/audit_center/presentation/pages/admin_audit_page.dart'
     show AdminAuditView;
+import 'package:myapp/features/flags/presentation/pages/admin_flags_page.dart'
+    show AdminFlagsView;
 import 'package:myapp/features/status/presentation/pages/admin_incidents_page.dart'
     show AdminIncidentsView;
 import 'package:myapp/generated/l10n/app_localizations.dart';
@@ -430,6 +434,7 @@ class _AdminDestinations {
           hint: l.adminUsersHint,
           route: RouteNames.adminUsers,
           capability: AdminCapability.manageUsers,
+          embeddedBuilder: (_) => const AdminUsersView(embedded: true),
         ),
         _AdminDestination(
           icon: Icons.toggle_on_outlined,
@@ -438,6 +443,7 @@ class _AdminDestinations {
           hint: l.adminFlagsHint,
           route: RouteNames.adminFlags,
           capability: AdminCapability.manageFlags,
+          embeddedBuilder: (_) => const AdminFlagsView(embedded: true),
         ),
       ];
 
