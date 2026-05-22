@@ -7,6 +7,7 @@ import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
 import '../../application/webhooks_providers.dart';
@@ -87,7 +88,7 @@ class WebhookDetailPage extends ConsumerWidget {
   }
 }
 
-class _DetailBody extends StatelessWidget {
+class _DetailBody extends StatefulWidget {
   const _DetailBody({
     required this.endpoint,
     required this.deliveriesAsync,
@@ -97,8 +98,18 @@ class _DetailBody extends StatelessWidget {
   final AsyncValue<List<WebhookDelivery>> deliveriesAsync;
 
   @override
+  State<_DetailBody> createState() => _DetailBodyState();
+}
+
+class _DetailBodyState extends State<_DetailBody> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final endpoint = widget.endpoint;
+    final deliveriesAsync = widget.deliveriesAsync;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       children: [
@@ -178,9 +189,22 @@ class _DetailBody extends StatelessWidget {
                 message: l.webhooksDeliveriesEmptyBody,
               );
             }
+            final totalPages = (deliveries.length / _pageSize).ceil();
+            final page = _page.clamp(0, totalPages - 1);
+            final start = page * _pageSize;
+            final end = (start + _pageSize) > deliveries.length
+                ? deliveries.length
+                : start + _pageSize;
+            final pageDeliveries = deliveries.sublist(start, end);
             return Column(
               children: [
-                for (final d in deliveries) _DeliveryTile(delivery: d),
+                for (final d in pageDeliveries) _DeliveryTile(delivery: d),
+                AppPaginationBar(
+                  currentPage: page,
+                  totalPages: totalPages,
+                  onPrevious: () => setState(() => _page = page - 1),
+                  onNext: () => setState(() => _page = page + 1),
+                ),
               ],
             );
           },

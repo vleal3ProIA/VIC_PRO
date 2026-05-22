@@ -7,6 +7,7 @@ import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -23,11 +24,19 @@ import '../../domain/invoice.dart';
 /// **Dashboard → Settings → Branding** (logo, colores, datos fiscales
 /// del emisor). Los datos del cliente vienen del Stripe Customer (que
 /// nosotros sincronizamos desde `profiles` via la PR 1.F.4).
-class InvoicesPage extends ConsumerWidget {
+class InvoicesPage extends ConsumerStatefulWidget {
   const InvoicesPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<InvoicesPage> createState() => _InvoicesPageState();
+}
+
+class _InvoicesPageState extends ConsumerState<InvoicesPage> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l10n;
     final invoicesAsync = ref.watch(myInvoicesProvider);
 
@@ -65,11 +74,31 @@ class InvoicesPage extends ConsumerWidget {
                   message: l.invoicesEmpty,
                 );
               }
-              return ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: invoices.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (_, i) => _InvoiceRow(invoice: invoices[i]),
+              final totalPages = (invoices.length / _pageSize).ceil();
+              final page = _page.clamp(0, totalPages - 1);
+              final start = page * _pageSize;
+              final end = (start + _pageSize) > invoices.length
+                  ? invoices.length
+                  : start + _pageSize;
+              final pageInvoices = invoices.sublist(start, end);
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: pageInvoices.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (_, i) =>
+                          _InvoiceRow(invoice: pageInvoices[i]),
+                    ),
+                  ),
+                  AppPaginationBar(
+                    currentPage: page,
+                    totalPages: totalPages,
+                    onPrevious: () => setState(() => _page = page - 1),
+                    onNext: () => setState(() => _page = page + 1),
+                  ),
+                ],
               );
             },
           ),

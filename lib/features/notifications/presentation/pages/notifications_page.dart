@@ -8,6 +8,7 @@ import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 
 import '../../application/notifications_providers.dart';
 import '../../domain/app_notification.dart';
@@ -20,11 +21,19 @@ import '../../domain/app_notification.dart';
 ///
 /// AppBar action "Marcar todas como leídas" cuando hay alguna sin
 /// leer.
-class NotificationsPage extends ConsumerWidget {
+class NotificationsPage extends ConsumerStatefulWidget {
   const NotificationsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsPage> createState() => _NotificationsPageState();
+}
+
+class _NotificationsPageState extends ConsumerState<NotificationsPage> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l10n;
     final async = ref.watch(notificationsListProvider);
     final unreadCount =
@@ -43,7 +52,7 @@ class NotificationsPage extends ConsumerWidget {
             TextButton.icon(
               icon: const Icon(Icons.done_all, size: 18),
               label: Text(l.notificationsMarkAllRead),
-              onPressed: () => _onMarkAllRead(context, ref),
+              onPressed: _onMarkAllRead,
             ),
           IconButton(
             tooltip: l.actionRetry,
@@ -75,11 +84,31 @@ class NotificationsPage extends ConsumerWidget {
                   message: l.notificationsEmptyBody,
                 );
               }
-              return ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (_, i) => _NotificationCard(item: items[i]),
+              final totalPages = (items.length / _pageSize).ceil();
+              final page = _page.clamp(0, totalPages - 1);
+              final start = page * _pageSize;
+              final end = (start + _pageSize) > items.length
+                  ? items.length
+                  : start + _pageSize;
+              final pageItems = items.sublist(start, end);
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: pageItems.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (_, i) =>
+                          _NotificationCard(item: pageItems[i]),
+                    ),
+                  ),
+                  AppPaginationBar(
+                    currentPage: page,
+                    totalPages: totalPages,
+                    onPrevious: () => setState(() => _page = page - 1),
+                    onNext: () => setState(() => _page = page + 1),
+                  ),
+                ],
               );
             },
           ),
@@ -88,19 +117,19 @@ class NotificationsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _onMarkAllRead(BuildContext context, WidgetRef ref) async {
+  Future<void> _onMarkAllRead() async {
     final l = context.l10n;
     try {
       final n = await ref
           .read(notificationsDataSourceProvider)
           .markAllAsRead();
-      if (!context.mounted) return;
+      if (!mounted) return;
       ref
         ..invalidate(notificationsListProvider)
         ..invalidate(unreadNotificationsCountProvider);
       context.showSnack(l.notificationsMarkedAllRead(n));
     } catch (_) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       context.showSnack(l.notificationsActionError, isError: true);
     }
   }

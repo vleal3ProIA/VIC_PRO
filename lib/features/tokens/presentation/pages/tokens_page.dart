@@ -8,6 +8,7 @@ import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
 import '../../application/tokens_providers.dart';
@@ -19,11 +20,19 @@ import '../widgets/token_secret_dialog.dart';
 /// crearlos/revocarlos. Diseño calcado de GitHub: cada item muestra
 /// solo el prefix (`pat_xxxxxxxx`) + nombre + scopes + caducidad +
 /// último uso. El secret completo SOLO se ve una vez al crear.
-class TokensPage extends ConsumerWidget {
+class TokensPage extends ConsumerStatefulWidget {
   const TokensPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TokensPage> createState() => _TokensPageState();
+}
+
+class _TokensPageState extends ConsumerState<TokensPage> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l10n;
     final async = ref.watch(userTokensProvider);
 
@@ -46,7 +55,7 @@ class TokensPage extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
         label: Text(l.tokensCreate),
-        onPressed: () => _onCreate(context, ref),
+        onPressed: _onCreate,
       ),
       body: Center(
         child: ConstrainedBox(
@@ -67,14 +76,34 @@ class TokensPage extends ConsumerWidget {
                   message: l.tokensEmptyBody,
                 );
               }
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                itemCount: tokens.length + 1,
-                separatorBuilder: (_, __) => const SizedBox(height: 4),
-                itemBuilder: (_, i) {
-                  if (i == 0) return _IntroCard(l: l);
-                  return _TokenTile(token: tokens[i - 1]);
-                },
+              final totalPages = (tokens.length / _pageSize).ceil();
+              final page = _page.clamp(0, totalPages - 1);
+              final start = page * _pageSize;
+              final end = (start + _pageSize) > tokens.length
+                  ? tokens.length
+                  : start + _pageSize;
+              final pageTokens = tokens.sublist(start, end);
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                      // +1 por el _IntroCard fijo en la posición 0.
+                      itemCount: pageTokens.length + 1,
+                      separatorBuilder: (_, __) => const SizedBox(height: 4),
+                      itemBuilder: (_, i) {
+                        if (i == 0) return _IntroCard(l: l);
+                        return _TokenTile(token: pageTokens[i - 1]);
+                      },
+                    ),
+                  ),
+                  AppPaginationBar(
+                    currentPage: page,
+                    totalPages: totalPages,
+                    onPrevious: () => setState(() => _page = page - 1),
+                    onNext: () => setState(() => _page = page + 1),
+                  ),
+                ],
               );
             },
           ),
@@ -83,14 +112,14 @@ class TokensPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _onCreate(BuildContext context, WidgetRef ref) async {
+  Future<void> _onCreate() async {
     final l = context.l10n;
     final result = await showDialog<PersonalAccessToken>(
       context: context,
       barrierDismissible: false,
       builder: (_) => const CreateTokenDialog(),
     );
-    if (result == null || !context.mounted) return;
+    if (result == null || !mounted) return;
     ref.invalidate(userTokensProvider);
     // Inmediatamente mostramos el secret en otro dialog -- una sola vez.
     await showDialog<void>(
@@ -98,7 +127,7 @@ class TokensPage extends ConsumerWidget {
       barrierDismissible: false,
       builder: (_) => TokenSecretDialog(token: result),
     );
-    if (!context.mounted) return;
+    if (!mounted) return;
     context.showSnack(l.tokensCreated(result.name));
   }
 }
