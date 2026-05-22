@@ -13,6 +13,7 @@ import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/admin_users_providers.dart';
@@ -395,7 +396,6 @@ class _UsersTable extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l = context.l10n;
     return Column(
       children: [
         Expanded(
@@ -406,43 +406,20 @@ class _UsersTable extends ConsumerWidget {
             itemBuilder: (_, i) => _UserRow(user: page.rows[i]),
           ),
         ),
-        // Paginación.
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                tooltip: l.adminUsersPreviousPage,
-                icon: const Icon(Icons.chevron_left),
-                onPressed: query.offset > 0
-                    ? () => ref.read(adminUsersQueryProvider.notifier).update(
-                          (q) => q.copyWith(
-                            offset: (q.offset - q.limit).clamp(0, 1 << 30),
-                          ),
-                        )
-                    : null,
-              ),
-              Text(
-                l.adminUsersPageOf(
-                  (query.offset ~/ query.limit) + 1,
-                  ((page.totalCount + query.limit - 1) ~/ query.limit)
-                      .clamp(1, 1 << 30),
-                  page.totalCount,
+        // Paginación server-side (offset/limit) expuesta con el mismo
+        // AppPaginationBar que el resto de pantallas, para una UI consistente.
+        AppPaginationBar(
+          currentPage: query.offset ~/ query.limit,
+          totalPages: ((page.totalCount + query.limit - 1) ~/ query.limit)
+              .clamp(1, 1 << 30),
+          onPrevious: () => ref.read(adminUsersQueryProvider.notifier).update(
+                (q) => q.copyWith(
+                  offset: (q.offset - q.limit).clamp(0, 1 << 30),
                 ),
-                style: context.textTheme.bodySmall,
               ),
-              IconButton(
-                tooltip: l.adminUsersNextPage,
-                icon: const Icon(Icons.chevron_right),
-                onPressed: (query.offset + query.limit) < page.totalCount
-                    ? () => ref.read(adminUsersQueryProvider.notifier).update(
-                          (q) => q.copyWith(offset: q.offset + q.limit),
-                        )
-                    : null,
+          onNext: () => ref.read(adminUsersQueryProvider.notifier).update(
+                (q) => q.copyWith(offset: q.offset + q.limit),
               ),
-            ],
-          ),
         ),
       ],
     );
