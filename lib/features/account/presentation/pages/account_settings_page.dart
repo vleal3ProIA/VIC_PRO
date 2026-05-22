@@ -182,7 +182,9 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
   ) {
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
+        // Web: aprovechamos el ancho disponible (antes 880, ahora 1200) para
+        // que el master-detail de las secciones tenga sitio de sobra.
+        constraints: const BoxConstraints(maxWidth: AppMaxWidths.wide),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
