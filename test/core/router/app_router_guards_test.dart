@@ -290,45 +290,35 @@ void main() {
     });
   });
 
-  group('evaluateRouterRedirect — Gate onboarding', () {
-    test('autenticado SIN onboarding completado en /home -> /onboarding', () {
+  group('evaluateRouterRedirect — Gate onboarding (DESACTIVADO)', () {
+    // El wizard de onboarding ya NO se fuerza: tras login el usuario va
+    // directo a /home aunque `onboarding_completed_at` siga null. El gate
+    // quedó desactivado (código inactivo, reversible).
+
+    test('autenticado SIN onboarding completado en /home -> null (pasa)', () {
       final result = _redirect(
         loc: RoutePaths.home,
         isAuthenticated: true,
         onboardingCompleted: false,
-      );
-      expect(result, RoutePaths.onboarding);
-    });
-
-    test(
-      'autenticado SIN onboarding en ruta NO gated (passkeys) -> null (pasa)',
-      () {
-        // Solo se redirige a /onboarding en rutas explicitamente
-        // gated (home, admin, account-settings, plans, etc.). Las
-        // pantallas auxiliares como passkeys deben funcionar.
-        final result = _redirect(
-          loc: RoutePaths.passkeys,
-          isAuthenticated: true,
-          onboardingCompleted: false,
-        );
-        expect(result, isNull);
-      },
-    );
-
-    test('autenticado con onboarding loading (null) -> null (sin flash)', () {
-      final result = _redirect(
-        loc: RoutePaths.home,
-        isAuthenticated: true,
-        onboardingCompleted: null,
       );
       expect(result, isNull);
     });
 
-    test('autenticado en /onboarding (ya esta alli) -> null', () {
+    test('autenticado SIN onboarding en /admin -> null (pasa)', () {
       final result = _redirect(
-        loc: RoutePaths.onboarding,
+        loc: RoutePaths.admin,
         isAuthenticated: true,
+        isAdmin: true,
         onboardingCompleted: false,
+      );
+      expect(result, isNull);
+    });
+
+    test('autenticado con onboarding loading (null) -> null (pasa)', () {
+      final result = _redirect(
+        loc: RoutePaths.home,
+        isAuthenticated: true,
+        onboardingCompleted: null,
       );
       expect(result, isNull);
     });
