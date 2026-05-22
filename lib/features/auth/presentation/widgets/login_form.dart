@@ -13,6 +13,7 @@ import 'package:myapp/features/auth/application/oauth_notifier.dart';
 import 'package:myapp/features/auth/application/passkey_notifier.dart';
 import 'package:myapp/features/auth/presentation/widgets/auth_failure_message.dart';
 import 'package:myapp/features/auth/presentation/widgets/social_sign_in_button.dart';
+import 'package:myapp/features/branding/application/branding_providers.dart';
 
 class LoginForm extends ConsumerStatefulWidget {
   const LoginForm({super.key});
@@ -70,6 +71,15 @@ class _LoginFormState extends ConsumerState<LoginForm> {
     final passkeyState = ref.watch(passkeyNotifierProvider);
     final passkeyNotifier = ref.read(passkeyNotifierProvider.notifier);
     final l = context.l10n;
+
+    // Métodos de login alternativos activos (el admin los gestiona desde
+    // /admin/app-branding). Email+contraseña es base y siempre está.
+    final branding = ref.watch(brandingOrFallbackProvider);
+    final hasAltMethods = branding.authGoogleEnabled ||
+        branding.authAppleEnabled ||
+        branding.authMagicLinkEnabled ||
+        branding.authOtpEnabled ||
+        branding.authPasskeyEnabled;
 
     // Cualquier acción en curso (login con password, OAuth, passkey) bloquea
     // el resto de botones para evitar disparos simultáneos.
@@ -180,69 +190,78 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                 )
               : Text(l.actionSignIn),
         ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            const Expanded(child: Divider()),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                l.loginOrDivider,
-                style: context.textTheme.labelSmall?.copyWith(
-                  color: context.colors.onSurfaceVariant,
+        if (hasAltMethods) ...[
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Expanded(child: Divider()),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  l.loginOrDivider,
+                  style: context.textTheme.labelSmall?.copyWith(
+                    color: context.colors.onSurfaceVariant,
+                  ),
                 ),
               ),
-            ),
-            const Expanded(child: Divider()),
-          ],
-        ),
-        const SizedBox(height: 12),
-        // Métodos alternativos compactos: una fila de iconos (con tooltip)
-        // en vez de 5 botones a ancho completo. Ocupa mucho menos.
-        Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _AltAuthButton(
-              icon: Icons.fingerprint,
-              tooltip: l.loginWithPasskey,
-              busy: passkeyState.isBusy,
-              onPressed: busy ? null : passkeyNotifier.login,
-            ),
-            SocialSignInButton(
-              label: l.continueWithGoogle,
-              iconAsset: 'assets/icons/google.svg',
-              iconOnly: true,
-              busy: oauthState.isBusyWith(SocialProvider.google),
-              onPressed: busy
-                  ? null
-                  : () => oauthNotifier.signIn(SocialProvider.google),
-            ),
-            SocialSignInButton(
-              label: l.continueWithApple,
-              iconAsset: 'assets/icons/apple.svg',
-              iconColor: context.colors.onSurface,
-              iconOnly: true,
-              busy: oauthState.isBusyWith(SocialProvider.apple),
-              onPressed: busy
-                  ? null
-                  : () => oauthNotifier.signIn(SocialProvider.apple),
-            ),
-            _AltAuthButton(
-              icon: Icons.auto_awesome_outlined,
-              tooltip: l.loginWithMagicLink,
-              onPressed:
-                  busy ? null : () => context.goNamed(RouteNames.magicLink),
-            ),
-            _AltAuthButton(
-              icon: Icons.pin_outlined,
-              tooltip: l.loginWithOtp,
-              onPressed:
-                  busy ? null : () => context.goNamed(RouteNames.otpRequest),
-            ),
-          ],
-        ),
+              const Expanded(child: Divider()),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Métodos alternativos compactos: una fila de iconos (con tooltip)
+          // en vez de 5 botones a ancho completo. Cada método se muestra solo
+          // si está activado por el admin en /admin/app-branding.
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (branding.authPasskeyEnabled)
+                _AltAuthButton(
+                  icon: Icons.fingerprint,
+                  tooltip: l.loginWithPasskey,
+                  busy: passkeyState.isBusy,
+                  onPressed: busy ? null : passkeyNotifier.login,
+                ),
+              if (branding.authGoogleEnabled)
+                SocialSignInButton(
+                  label: l.continueWithGoogle,
+                  iconAsset: 'assets/icons/google.svg',
+                  iconOnly: true,
+                  busy: oauthState.isBusyWith(SocialProvider.google),
+                  onPressed: busy
+                      ? null
+                      : () => oauthNotifier.signIn(SocialProvider.google),
+                ),
+              if (branding.authAppleEnabled)
+                SocialSignInButton(
+                  label: l.continueWithApple,
+                  iconAsset: 'assets/icons/apple.svg',
+                  iconColor: context.colors.onSurface,
+                  iconOnly: true,
+                  busy: oauthState.isBusyWith(SocialProvider.apple),
+                  onPressed: busy
+                      ? null
+                      : () => oauthNotifier.signIn(SocialProvider.apple),
+                ),
+              if (branding.authMagicLinkEnabled)
+                _AltAuthButton(
+                  icon: Icons.auto_awesome_outlined,
+                  tooltip: l.loginWithMagicLink,
+                  onPressed:
+                      busy ? null : () => context.goNamed(RouteNames.magicLink),
+                ),
+              if (branding.authOtpEnabled)
+                _AltAuthButton(
+                  icon: Icons.pin_outlined,
+                  tooltip: l.loginWithOtp,
+                  onPressed: busy
+                      ? null
+                      : () => context.goNamed(RouteNames.otpRequest),
+                ),
+            ],
+          ),
+        ],
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
