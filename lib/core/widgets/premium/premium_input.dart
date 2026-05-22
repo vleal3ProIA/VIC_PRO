@@ -128,6 +128,7 @@ class _PremiumInputState extends State<PremiumInput> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final hasError = widget.errorText != null && widget.errorText!.isNotEmpty;
 
     // Colores del border segun estado:
@@ -171,10 +172,16 @@ class _PremiumInputState extends State<PremiumInput> {
           duration: AppDurations.fast,
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
-            color: widget.enabled
-                ? scheme.surface
-                : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-            borderRadius: AppRadii.brSm,
+            // Campo "filled" suave en reposo (look moderno 2026); al enfocar
+            // sube a `surface` limpio con el anillo de foco. Disabled queda
+            // más apagado.
+            color: !widget.enabled
+                ? scheme.surfaceContainerHighest.withValues(alpha: 0.5)
+                : _focused
+                    ? scheme.surface
+                    : scheme.surfaceContainerHighest
+                        .withValues(alpha: isDark ? 0.45 : 0.7),
+            borderRadius: AppRadii.brMd,
             border: Border.all(color: borderColor, width: 1),
             boxShadow: _focused && !hasError
                 ? [
@@ -210,7 +217,8 @@ class _PremiumInputState extends State<PremiumInput> {
               prefixIcon: widget.prefixIcon != null
                   ? Padding(
                       padding: const EdgeInsets.only(left: 12, right: 4),
-                      child: Icon(widget.prefixIcon, size: 18, color: iconColor),
+                      child:
+                          Icon(widget.prefixIcon, size: 18, color: iconColor),
                     )
                   : null,
               prefixIconConstraints: const BoxConstraints(
