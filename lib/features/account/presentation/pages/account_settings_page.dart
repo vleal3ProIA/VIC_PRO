@@ -11,6 +11,8 @@ import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 import 'package:myapp/features/account/application/data_export_notifier.dart';
 import 'package:myapp/features/account/application/profile_settings_notifier.dart';
+import 'package:myapp/features/account/presentation/pages/account_sessions_page.dart'
+    show SessionsView;
 import 'package:myapp/features/account/presentation/widgets/profile_failure_message.dart';
 import 'package:myapp/features/account/presentation/widgets/settings_master_detail.dart';
 import 'package:myapp/features/account/presentation/widgets/user_avatar.dart';
@@ -707,13 +709,7 @@ class _SecurityMasterDetail extends StatelessWidget {
         SettingsDetailItem(
           icon: Icons.devices_outlined,
           label: l.settingsSessions,
-          builder: (_) => SettingsOpenFullScreen(
-            icon: Icons.devices_outlined,
-            title: l.settingsSessions,
-            description: l.settingsSessionsHint,
-            buttonLabel: l.filesOpen,
-            routeName: RouteNames.sessions,
-          ),
+          builder: (_) => const SessionsView(embedded: true),
         ),
         SettingsDetailItem(
           icon: Icons.delete_forever_outlined,
