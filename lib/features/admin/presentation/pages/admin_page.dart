@@ -23,8 +23,14 @@ import 'package:myapp/features/billing/presentation/pages/admin_coupons_page.dar
     show AdminCouponsView;
 import 'package:myapp/features/billing/presentation/pages/admin_plans_page.dart'
     show AdminPlansView;
+import 'package:myapp/features/broadcasts/presentation/pages/admin_broadcasts_page.dart'
+    show AdminBroadcastsView;
+import 'package:myapp/features/emails/presentation/pages/admin_email_log_page.dart'
+    show AdminEmailLogView;
 import 'package:myapp/features/flags/presentation/pages/admin_flags_page.dart'
     show AdminFlagsView;
+import 'package:myapp/features/help/presentation/pages/admin_changelog_page.dart'
+    show AdminChangelogView;
 import 'package:myapp/features/status/presentation/pages/admin_incidents_page.dart'
     show AdminIncidentsView;
 import 'package:myapp/generated/l10n/app_localizations.dart';
@@ -491,6 +497,7 @@ class _AdminDestinations {
           hint: l.broadcastsHint,
           route: RouteNames.adminBroadcasts,
           capability: AdminCapability.manageBroadcasts,
+          embeddedBuilder: (_) => const AdminBroadcastsView(embedded: true),
         ),
         _AdminDestination(
           icon: Icons.mark_email_read_outlined,
@@ -499,6 +506,7 @@ class _AdminDestinations {
           hint: l.adminEmailLogHint,
           route: RouteNames.adminEmailLog,
           capability: AdminCapability.viewEmailLog,
+          embeddedBuilder: (_) => const AdminEmailLogView(embedded: true),
         ),
         _AdminDestination(
           icon: Icons.article_outlined,
@@ -507,6 +515,7 @@ class _AdminDestinations {
           hint: l.adminChangelogHint,
           route: RouteNames.adminChangelog,
           capability: AdminCapability.manageChangelog,
+          embeddedBuilder: (_) => const AdminChangelogView(embedded: true),
         ),
       ];
 
