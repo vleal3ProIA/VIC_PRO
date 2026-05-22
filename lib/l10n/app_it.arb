@@ -699,6 +699,10 @@
   "activityDayYesterday": "Ieri",
   "activityDayDaysAgo": "{n} giorni fa",
 
+  "paginationPrevious": "Precedente",
+  "paginationNext": "Successivo",
+  "paginationPageOf": "Pagina {current} di {total}",
+
   "filesTitle": "File",
   "filesHint": "Gestisci i file caricati e l'uso dello storage.",
   "filesUpload": "Carica",
