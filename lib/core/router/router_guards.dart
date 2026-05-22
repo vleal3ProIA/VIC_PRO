@@ -321,17 +321,11 @@ String? evaluateRouterRedirect({
     return RoutePaths.home;
   }
 
-  // 5) Onboarding wizard: usuario autenticado sin onboarding completado
-  //    se redirige a /onboarding -- excepto si ya está allí o en rutas
-  //    transversales que NO queremos bloquear (logout, legal, callback).
-  //    Si el flag aún está cargando (null), NO redirigimos -- evita
-  //    el flash de /onboarding antes de saber el estado real.
-  if (isAuthed &&
-      loc != RoutePaths.onboarding &&
-      onboardingGatedRoutes.contains(loc) &&
-      onboardingCompleted == false) {
-    return RoutePaths.onboarding;
-  }
+  // 5) Onboarding wizard: DESACTIVADO. Antes redirigíamos a /onboarding a
+  //    los usuarios nuevos (onboarding_completed_at == null). Ahora, tras
+  //    login, van directos a /home. El wizard y su ruta siguen existiendo
+  //    pero ya no se fuerzan (código inactivo, reversible). Se conservan
+  //    `onboardingCompleted` y `onboardingGatedRoutes` por si se reactiva.
 
   return null;
 }
