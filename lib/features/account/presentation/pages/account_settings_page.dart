@@ -16,6 +16,8 @@ import 'package:myapp/features/account/presentation/pages/account_sessions_page.
 import 'package:myapp/features/account/presentation/widgets/profile_failure_message.dart';
 import 'package:myapp/features/account/presentation/widgets/settings_master_detail.dart';
 import 'package:myapp/features/account/presentation/widgets/user_avatar.dart';
+import 'package:myapp/features/audit/presentation/pages/audit_log_page.dart'
+    show AuditLogView;
 import 'package:myapp/features/auth/presentation/pages/passkeys_page.dart'
     show PasskeysView;
 import 'package:myapp/features/auth/presentation/widgets/change_email_form.dart';
@@ -242,7 +244,9 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
                       email: email,
                       onPickAvatar: () => _pickAvatar(notifier),
                     ),
-                  1 => const _WorkspaceTab(),
+                  1 => context.isMobile
+                      ? const _WorkspaceTab()
+                      : const _WorkspaceMasterDetail(),
                   2 => const _BillingTab(),
                   // Seguridad: en ancho usamos master-detail (menú + contenido
                   // limpio); en móvil mantenemos la lista de enlaces.
@@ -713,6 +717,88 @@ class _SecurityMasterDetail extends StatelessWidget {
           destructive: true,
           builder: (_) => const DeleteAccountForm(),
         ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Tab 2 (ancho): Workspace master-detail
+// Audit log embebido limpio; el resto (Files/Tokens/Webhooks/Team/Activity)
+// abre a pantalla completa por ahora (las de "crear" se embeberán luego).
+// ═══════════════════════════════════════════════════════════════════
+
+class _WorkspaceMasterDetail extends ConsumerWidget {
+  const _WorkspaceMasterDetail();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final auditVisible = ref.watch(flagEnabledProvider('audit_log_visible'));
+    return SettingsMasterDetail(
+      items: [
+        SettingsDetailItem(
+          icon: Icons.cloud_outlined,
+          label: l.filesTitle,
+          builder: (_) => SettingsOpenFullScreen(
+            icon: Icons.cloud_outlined,
+            title: l.filesTitle,
+            description: l.filesHint,
+            buttonLabel: l.filesOpen,
+            routeName: RouteNames.files,
+          ),
+        ),
+        SettingsDetailItem(
+          icon: Icons.vpn_key_outlined,
+          label: l.tokensTitle,
+          builder: (_) => SettingsOpenFullScreen(
+            icon: Icons.vpn_key_outlined,
+            title: l.tokensTitle,
+            description: l.tokensHint,
+            buttonLabel: l.filesOpen,
+            routeName: RouteNames.tokens,
+          ),
+        ),
+        SettingsDetailItem(
+          icon: Icons.webhook_outlined,
+          label: l.webhooksTitle,
+          builder: (_) => SettingsOpenFullScreen(
+            icon: Icons.webhook_outlined,
+            title: l.webhooksTitle,
+            description: l.webhooksHint,
+            buttonLabel: l.filesOpen,
+            routeName: RouteNames.webhooks,
+          ),
+        ),
+        SettingsDetailItem(
+          icon: Icons.groups_outlined,
+          label: l.settingsTeam,
+          builder: (_) => SettingsOpenFullScreen(
+            icon: Icons.groups_outlined,
+            title: l.settingsTeam,
+            description: l.settingsTeamHint,
+            buttonLabel: l.filesOpen,
+            routeName: RouteNames.team,
+          ),
+        ),
+        if (auditVisible) ...[
+          SettingsDetailItem(
+            icon: Icons.timeline,
+            label: l.activityTitle,
+            builder: (_) => SettingsOpenFullScreen(
+              icon: Icons.timeline,
+              title: l.activityTitle,
+              description: l.activityHint,
+              buttonLabel: l.filesOpen,
+              routeName: RouteNames.activity,
+            ),
+          ),
+          SettingsDetailItem(
+            icon: Icons.history,
+            label: l.settingsAuditLog,
+            builder: (_) => const AuditLogView(embedded: true),
+          ),
+        ],
       ],
     );
   }
