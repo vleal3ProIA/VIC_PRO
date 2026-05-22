@@ -127,6 +127,11 @@ class _LoginFormState extends ConsumerState<LoginForm> {
           label: l.fieldPassword,
           prefixIcon: Icons.lock_outline,
           isPassword: true,
+          // Marcamos el campo como `new-password` (autocomplete="new-password"
+          // en web): es el señuelo estándar para que Chrome/Safari NO
+          // autocompleten una contraseña guardada (a veces de otra cuenta) al
+          // escribir el email. El usuario escribe su contraseña a mano.
+          autofillHints: const [AutofillHints.newPassword],
           textInputAction: TextInputAction.done,
           errorText: passwordError,
           onChanged: notifier.passwordChanged,
