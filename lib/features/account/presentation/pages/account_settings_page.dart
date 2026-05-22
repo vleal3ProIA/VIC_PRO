@@ -26,6 +26,8 @@ import 'package:myapp/features/auth/presentation/widgets/change_email_form.dart'
 import 'package:myapp/features/auth/presentation/widgets/change_password_form.dart';
 import 'package:myapp/features/auth/presentation/widgets/delete_account_form.dart';
 import 'package:myapp/features/flags/application/feature_flags_providers.dart';
+import 'package:myapp/features/uploads/presentation/pages/files_page.dart'
+    show FilesView;
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
 /// `/account-settings` -- pagina de configuracion del user.
@@ -742,13 +744,7 @@ class _WorkspaceMasterDetail extends ConsumerWidget {
         SettingsDetailItem(
           icon: Icons.cloud_outlined,
           label: l.filesTitle,
-          builder: (_) => SettingsOpenFullScreen(
-            icon: Icons.cloud_outlined,
-            title: l.filesTitle,
-            description: l.filesHint,
-            buttonLabel: l.filesOpen,
-            routeName: RouteNames.files,
-          ),
+          builder: (_) => const FilesView(embedded: true),
         ),
         SettingsDetailItem(
           icon: Icons.vpn_key_outlined,
