@@ -20,22 +20,12 @@ import '../../domain/email_log_entry.dart';
 /// Sirve para debug ("¿le llegó el email a user@x.com?"), compliance
 /// (registro GDPR) y soporte. Incluye un botón "Enviar test" para
 /// validar la configuración SMTP sin esperar a un evento real.
-class AdminEmailLogPage extends ConsumerStatefulWidget {
+class AdminEmailLogPage extends ConsumerWidget {
   const AdminEmailLogPage({super.key});
 
   @override
-  ConsumerState<AdminEmailLogPage> createState() => _AdminEmailLogPageState();
-}
-
-class _AdminEmailLogPageState extends ConsumerState<AdminEmailLogPage> {
-  int _page = 0;
-  static const int _pageSize = 20;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final async = ref.watch(emailLogProvider);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -44,71 +34,120 @@ class _AdminEmailLogPageState extends ConsumerState<AdminEmailLogPage> {
           onPressed: () => context.popOrGo(RouteNames.admin),
         ),
         title: Text(l.adminEmailLogTitle),
-        actions: [
-          IconButton(
-            tooltip: l.actionRetry,
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(emailLogProvider),
+      ),
+      body: const AdminEmailLogView(),
+    );
+  }
+}
+
+/// Cuerpo del log de emails (sin Scaffold). Reutilizable como página completa
+/// o embebido en el master-detail de Administración.
+///
+/// El botón "Enviar test" (antes un FAB) se reposiciona dentro del panel.
+class AdminEmailLogView extends ConsumerStatefulWidget {
+  const AdminEmailLogView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Admin).
+  final bool embedded;
+
+  @override
+  ConsumerState<AdminEmailLogView> createState() => _AdminEmailLogViewState();
+}
+
+class _AdminEmailLogViewState extends ConsumerState<AdminEmailLogView> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final async = ref.watch(emailLogProvider);
+
+    final content = async.when(
+      loading: () => const AppLoadingState(),
+      error: (e, _) => AppErrorState(
+        message: l.adminEmailLogLoadError,
+        detail: e.toString(),
+        onRetry: () => ref.invalidate(emailLogProvider),
+        retryLabel: l.actionRetry,
+      ),
+      data: (entries) {
+        if (entries.isEmpty) {
+          return AppEmptyState(
+            icon: Icons.mark_email_read_outlined,
+            title: l.adminEmailLogEmptyTitle,
+            message: l.adminEmailLogEmptyBody,
+          );
+        }
+        final totalPages = (entries.length / _pageSize).ceil();
+        final page = _page.clamp(0, totalPages - 1);
+        final start = page * _pageSize;
+        final end = (start + _pageSize) > entries.length
+            ? entries.length
+            : start + _pageSize;
+        final pageEntries = entries.sublist(start, end);
+        final list = ListView.separated(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.md,
+            widget.embedded ? AppSpacing.md : 96,
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: const Icon(Icons.send_outlined),
-        label: Text(l.adminEmailLogSendTest),
-        onPressed: _onSendTest,
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
-          child: async.when(
-            loading: () => const AppLoadingState(),
-            error: (e, _) => AppErrorState(
-              message: l.adminEmailLogLoadError,
-              detail: e.toString(),
-              onRetry: () => ref.invalidate(emailLogProvider),
-              retryLabel: l.actionRetry,
+          shrinkWrap: widget.embedded,
+          physics:
+              widget.embedded ? const NeverScrollableScrollPhysics() : null,
+          itemCount: pageEntries.length,
+          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
+          itemBuilder: (_, i) => _EntryTile(entry: pageEntries[i]),
+        );
+        return Column(
+          mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            if (widget.embedded) list else Expanded(child: list),
+            AppPaginationBar(
+              currentPage: page,
+              totalPages: totalPages,
+              onPrevious: () => setState(() => _page = page - 1),
+              onNext: () => setState(() => _page = page + 1),
             ),
-            data: (entries) {
-              if (entries.isEmpty) {
-                return AppEmptyState(
-                  icon: Icons.mark_email_read_outlined,
-                  title: l.adminEmailLogEmptyTitle,
-                  message: l.adminEmailLogEmptyBody,
-                );
-              }
-              final totalPages = (entries.length / _pageSize).ceil();
-              final page = _page.clamp(0, totalPages - 1);
-              final start = page * _pageSize;
-              final end = (start + _pageSize) > entries.length
-                  ? entries.length
-                  : start + _pageSize;
-              final pageEntries = entries.sublist(start, end);
-              return Column(
+          ],
+        );
+      },
+    );
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
+        child: Column(
+          mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            // Acciones del panel (antes refresh en AppBar + FAB "Enviar test").
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.md,
-                        AppSpacing.md,
-                        AppSpacing.md,
-                        96,
-                      ),
-                      itemCount: pageEntries.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: AppSpacing.xs),
-                      itemBuilder: (_, i) => _EntryTile(entry: pageEntries[i]),
-                    ),
+                  IconButton(
+                    tooltip: l.actionRetry,
+                    icon: const Icon(Icons.refresh),
+                    onPressed: () => ref.invalidate(emailLogProvider),
                   ),
-                  AppPaginationBar(
-                    currentPage: page,
-                    totalPages: totalPages,
-                    onPrevious: () => setState(() => _page = page - 1),
-                    onNext: () => setState(() => _page = page + 1),
+                  const SizedBox(width: AppSpacing.sm),
+                  FilledButton.icon(
+                    onPressed: _onSendTest,
+                    icon: const Icon(Icons.send_outlined),
+                    label: Text(l.adminEmailLogSendTest),
                   ),
                 ],
-              );
-            },
-          ),
+              ),
+            ),
+            if (widget.embedded) content else Expanded(child: content),
+          ],
         ),
       ),
     );

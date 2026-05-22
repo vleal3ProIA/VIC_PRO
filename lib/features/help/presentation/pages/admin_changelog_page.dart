@@ -25,8 +25,6 @@ class AdminChangelogPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final async = ref.watch(changelogEntriesProvider);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -35,52 +33,92 @@ class AdminChangelogPage extends ConsumerWidget {
           onPressed: () => context.popOrGo(RouteNames.admin),
         ),
         title: Text(l.adminChangelogTitle),
-        actions: [
-          IconButton(
-            tooltip: l.actionRetry,
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(changelogEntriesProvider),
+      ),
+      body: const AdminChangelogView(),
+    );
+  }
+}
+
+/// Cuerpo del CRUD de changelog (sin Scaffold). Reutilizable como página
+/// completa o embebido en el master-detail de Administración.
+///
+/// El botón de crear (antes un FAB) se reposiciona dentro del panel.
+class AdminChangelogView extends ConsumerWidget {
+  const AdminChangelogView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Admin).
+  final bool embedded;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final async = ref.watch(changelogEntriesProvider);
+
+    final body = async.when(
+      loading: () => const AppLoadingState(),
+      error: (e, _) => AppErrorState(
+        message: l.adminChangelogLoadError,
+        detail: e.toString(),
+        onRetry: () => ref.invalidate(changelogEntriesProvider),
+        retryLabel: l.actionRetry,
+      ),
+      data: (entries) {
+        if (entries.isEmpty) {
+          return AppEmptyState(
+            icon: Icons.campaign_outlined,
+            title: l.adminChangelogEmptyTitle,
+            message: l.adminChangelogEmptyBody,
+          );
+        }
+        return ListView.separated(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.md,
+            embedded ? AppSpacing.md : 96,
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: const Icon(Icons.add),
-        label: Text(l.adminChangelogCreate),
-        onPressed: () => _onCreate(context, ref),
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
-          child: async.when(
-            loading: () => const AppLoadingState(),
-            error: (e, _) => AppErrorState(
-              message: l.adminChangelogLoadError,
-              detail: e.toString(),
-              onRetry: () => ref.invalidate(changelogEntriesProvider),
-              retryLabel: l.actionRetry,
+          shrinkWrap: embedded,
+          physics: embedded ? const NeverScrollableScrollPhysics() : null,
+          itemCount: entries.length,
+          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+          itemBuilder: (_, i) => _EntryTile(entry: entries[i]),
+        );
+      },
+    );
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
+        child: Column(
+          mainAxisSize: embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            // Acciones del panel (antes refresh en AppBar + FAB de crear).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    tooltip: l.actionRetry,
+                    icon: const Icon(Icons.refresh),
+                    onPressed: () => ref.invalidate(changelogEntriesProvider),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  FilledButton.icon(
+                    onPressed: () => _onCreate(context, ref),
+                    icon: const Icon(Icons.add),
+                    label: Text(l.adminChangelogCreate),
+                  ),
+                ],
+              ),
             ),
-            data: (entries) {
-              if (entries.isEmpty) {
-                return AppEmptyState(
-                  icon: Icons.campaign_outlined,
-                  title: l.adminChangelogEmptyTitle,
-                  message: l.adminChangelogEmptyBody,
-                );
-              }
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  96,
-                ),
-                itemCount: entries.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSpacing.sm),
-                itemBuilder: (_, i) => _EntryTile(entry: entries[i]),
-              );
-            },
-          ),
+            if (embedded) body else Expanded(child: body),
+          ],
         ),
       ),
     );
@@ -156,111 +194,111 @@ class _EntryTileState extends ConsumerState<_EntryTile> {
                       ),
                   ],
                 ),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 2,
-                    children: [
-                      if (e.version != null)
-                        Text(
-                          e.version!,
-                          style: context.textTheme.bodySmall?.copyWith(
-                            fontFamily: 'monospace',
-                            color: context.colors.onSurfaceVariant,
-                          ),
-                        ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 2,
+                  children: [
+                    if (e.version != null)
                       Text(
-                        visuals.label(l),
+                        e.version!,
                         style: context.textTheme.bodySmall?.copyWith(
-                          color: visuals.color,
+                          fontFamily: 'monospace',
+                          color: context.colors.onSurfaceVariant,
                         ),
                       ),
-                      if (e.publishedAt != null)
-                        Text(
-                          l.adminChangelogPublishedAt(
-                            fmt.format(e.publishedAt!.toLocal()),
-                          ),
-                          style: context.textTheme.bodySmall?.copyWith(
-                            color: context.colors.onSurfaceVariant,
-                          ),
-                        )
-                      else
-                        Text(
-                          l.adminChangelogDraftSince(
-                            fmt.format(e.createdAt.toLocal()),
-                          ),
-                          style: context.textTheme.bodySmall?.copyWith(
-                            color: context.colors.onSurfaceVariant,
-                          ),
+                    Text(
+                      visuals.label(l),
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: visuals.color,
+                      ),
+                    ),
+                    if (e.publishedAt != null)
+                      Text(
+                        l.adminChangelogPublishedAt(
+                          fmt.format(e.publishedAt!.toLocal()),
                         ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuButton<String>(
-              enabled: !_busy,
-              tooltip: l.adminChangelogActions,
-              onSelected: (v) async {
-                switch (v) {
-                  case 'edit':
-                    await _onEdit();
-                  case 'toggle':
-                    await _onTogglePublish();
-                  case 'delete':
-                    await _onDelete();
-                }
-              },
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      const Icon(Icons.edit_outlined, size: 18),
-                      const SizedBox(width: 8),
-                      Text(l.adminChangelogEdit),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'toggle',
-                  child: Row(
-                    children: [
-                      Icon(
-                        e.isDraft
-                            ? Icons.publish_outlined
-                            : Icons.unpublished_outlined,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
+                        style: context.textTheme.bodySmall?.copyWith(
+                          color: context.colors.onSurfaceVariant,
+                        ),
+                      )
+                    else
                       Text(
-                        e.isDraft
-                            ? l.adminChangelogPublish
-                            : l.adminChangelogUnpublish,
+                        l.adminChangelogDraftSince(
+                          fmt.format(e.createdAt.toLocal()),
+                        ),
+                        style: context.textTheme.bodySmall?.copyWith(
+                          color: context.colors.onSurfaceVariant,
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.delete_outline,
-                        size: 18,
-                        color: context.colors.error,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        l.adminChangelogDelete,
-                        style: TextStyle(color: context.colors.error),
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
+          PopupMenuButton<String>(
+            enabled: !_busy,
+            tooltip: l.adminChangelogActions,
+            onSelected: (v) async {
+              switch (v) {
+                case 'edit':
+                  await _onEdit();
+                case 'toggle':
+                  await _onTogglePublish();
+                case 'delete':
+                  await _onDelete();
+              }
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    const Icon(Icons.edit_outlined, size: 18),
+                    const SizedBox(width: 8),
+                    Text(l.adminChangelogEdit),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'toggle',
+                child: Row(
+                  children: [
+                    Icon(
+                      e.isDraft
+                          ? Icons.publish_outlined
+                          : Icons.unpublished_outlined,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      e.isDraft
+                          ? l.adminChangelogPublish
+                          : l.adminChangelogUnpublish,
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.delete_outline,
+                      size: 18,
+                      color: context.colors.error,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      l.adminChangelogDelete,
+                      style: TextStyle(color: context.colors.error),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
