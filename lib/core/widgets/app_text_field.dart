@@ -151,7 +151,7 @@ class _AppTextFieldState extends State<AppTextField> {
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
             color: fillColor,
-            borderRadius: AppRadii.brMd,
+            borderRadius: AppRadii.brControl,
             border: Border.all(
               color: borderColor,
               width: _focused || hasError ? 1.5 : 1,
