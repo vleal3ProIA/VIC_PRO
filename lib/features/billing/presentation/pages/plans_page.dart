@@ -19,14 +19,44 @@ import '../widgets/promotion_code_field.dart';
 /// Pantalla `/billing/plans` — catálogo de planes + indicador del actual.
 /// El botón "Upgrade" muestra un placeholder por ahora; la integración con
 /// Stripe llegará en la PR siguiente (1.E).
-class PlansPage extends ConsumerStatefulWidget {
+class PlansPage extends ConsumerWidget {
   const PlansPage({super.key});
 
   @override
-  ConsumerState<PlansPage> createState() => _PlansPageState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.popOrGo(RouteNames.accountSettings),
+        ),
+        title: Text(l.plansTitle),
+      ),
+      body: const PlansView(),
+    );
+  }
 }
 
-class _PlansPageState extends ConsumerState<PlansPage> {
+/// Cuerpo del catálogo de planes (sin Scaffold). Reutilizable como página
+/// completa o embebido en el master-detail de Ajustes → Facturación.
+///
+/// Toda la lógica de Stripe (checkout/cambio/cancelación/portal) queda
+/// intacta: solo se reubica el envoltorio. Las acciones que vivían en el
+/// AppBar (gestionar facturación + selector mensual/anual) pasan a una fila
+/// dentro del propio cuerpo.
+class PlansView extends ConsumerStatefulWidget {
+  const PlansView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Ajustes).
+  final bool embedded;
+
+  @override
+  ConsumerState<PlansView> createState() => _PlansViewState();
+}
+
+class _PlansViewState extends ConsumerState<PlansView> {
   bool _yearly = false;
 
   @override
@@ -36,15 +66,13 @@ class _PlansPageState extends ConsumerState<PlansPage> {
     final currentPlan = ref.watch(currentPlanProvider).valueOrNull;
     final currentSub = ref.watch(currentSubscriptionProvider).valueOrNull;
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.popOrGo(RouteNames.accountSettings),
-        ),
-        title: Text(l.plansTitle),
-        actions: [
+    // Fila de acciones (antes en el AppBar): gestionar facturación (solo si
+    // hay un Stripe customer real) + selector mensual/anual.
+    final actions = Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
           // Solo mostramos "Manage billing" si HAY un Stripe customer real
           // que gestionar. Esto excluye:
           //   - usuarios en plan Free (no han pasado por checkout nunca)
@@ -59,95 +87,106 @@ class _PlansPageState extends ConsumerState<PlansPage> {
                 onPressed: () => _onManageBilling(context),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: SegmentedButton<bool>(
-              segments: [
-                ButtonSegment(value: false, label: Text(l.plansBillingMonthly)),
-                ButtonSegment(value: true, label: Text(l.plansBillingYearly)),
-              ],
-              selected: {_yearly},
-              showSelectedIcon: false,
-              onSelectionChanged: (s) => setState(() => _yearly = s.first),
-            ),
+          SegmentedButton<bool>(
+            segments: [
+              ButtonSegment(value: false, label: Text(l.plansBillingMonthly)),
+              ButtonSegment(value: true, label: Text(l.plansBillingYearly)),
+            ],
+            selected: {_yearly},
+            showSelectedIcon: false,
+            onSelectionChanged: (s) => setState(() => _yearly = s.first),
           ),
         ],
       ),
-      body: plansAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => Center(
-          child: Text(
-            l.plansLoadError,
-            style: TextStyle(color: context.colors.error),
-          ),
-        ),
-        data: (plans) => Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: double.infinity),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: LayoutBuilder(
-                builder: (ctx, c) {
-                  // Banner solo cuando hay una sub con cancelación
-                  // programada — todavía activa pero termina pronto.
-                  final showCancelBanner = currentSub != null &&
-                      currentSub.cancelAtPeriodEnd &&
-                      currentSub.currentPeriodEnd != null;
+    );
 
-                  // 4 cols en desktop, 2 en tablet, 1 en mobile.
-                  final cols = c.maxWidth >= 1100
-                      ? 4
-                      : c.maxWidth >= 700
-                          ? 2
-                          : 1;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (showCancelBanner)
-                        _CancelPendingBanner(
-                          endsAt: currentSub.currentPeriodEnd!,
-                          subscriptionId:
-                              currentSub.stripeSubscriptionId ?? '',
-                        ),
-                      if (showCancelBanner) const SizedBox(height: 16),
-                      const PromotionCodeField(),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 16,
-                        runSpacing: 16,
-                        children: [
-                          for (final p in plans)
-                            SizedBox(
-                              width: (c.maxWidth - (cols - 1) * 16) / cols,
-                              child: _PlanCard(
-                                plan: p,
-                                yearly: _yearly,
-                                isCurrent: currentPlan?.id == p.id,
-                                // Un plan es "downgrade" si su `position`
-                                // está por debajo del plan actual. Por
-                                // convención de seed: free=10, pro=20,
-                                // business=30, enterprise=40.
-                                isDowngrade: currentPlan != null &&
-                                    p.position < currentPlan.position,
-                                // Si hay sub Stripe viva, los botones usan
-                                // change_plan; si no (Free), embedded
-                                // checkout.
-                                stripeSubscriptionId:
-                                    currentSub?.stripeSubscriptionId,
-                                cancelPending:
-                                    currentSub?.cancelAtPeriodEnd ?? false,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
+    final body = plansAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, __) => Center(
+        child: Text(
+          l.plansLoadError,
+          style: TextStyle(color: context.colors.error),
         ),
       ),
+      data: (plans) {
+        final grid = Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: double.infinity),
+            child: LayoutBuilder(
+              builder: (ctx, c) {
+                // Banner solo cuando hay una sub con cancelación
+                // programada — todavía activa pero termina pronto.
+                final showCancelBanner = currentSub != null &&
+                    currentSub.cancelAtPeriodEnd &&
+                    currentSub.currentPeriodEnd != null;
+
+                // 4 cols en desktop, 2 en tablet, 1 en mobile.
+                final cols = c.maxWidth >= 1100
+                    ? 4
+                    : c.maxWidth >= 700
+                        ? 2
+                        : 1;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (showCancelBanner)
+                      _CancelPendingBanner(
+                        endsAt: currentSub.currentPeriodEnd!,
+                        subscriptionId: currentSub.stripeSubscriptionId ?? '',
+                      ),
+                    if (showCancelBanner) const SizedBox(height: 16),
+                    const PromotionCodeField(),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        for (final p in plans)
+                          SizedBox(
+                            width: (c.maxWidth - (cols - 1) * 16) / cols,
+                            child: _PlanCard(
+                              plan: p,
+                              yearly: _yearly,
+                              isCurrent: currentPlan?.id == p.id,
+                              // Un plan es "downgrade" si su `position`
+                              // está por debajo del plan actual. Por
+                              // convención de seed: free=10, pro=20,
+                              // business=30, enterprise=40.
+                              isDowngrade: currentPlan != null &&
+                                  p.position < currentPlan.position,
+                              // Si hay sub Stripe viva, los botones usan
+                              // change_plan; si no (Free), embedded checkout.
+                              stripeSubscriptionId:
+                                  currentSub?.stripeSubscriptionId,
+                              cancelPending:
+                                  currentSub?.cancelAtPeriodEnd ?? false,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+        // Embebido: sin scroll propio (lo provee el master-detail). Pantalla
+        // completa: SingleChildScrollView con su padding.
+        return widget.embedded
+            ? Padding(padding: const EdgeInsets.all(24), child: grid)
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: grid,
+              );
+      },
+    );
+
+    return Column(
+      mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+      children: [
+        actions,
+        if (widget.embedded) body else Expanded(child: body),
+      ],
     );
   }
 
@@ -191,10 +230,12 @@ class _PlanCard extends ConsumerWidget {
   final bool yearly;
   final bool isCurrent;
   final bool isDowngrade;
+
   /// ID de la suscripción Stripe viva del tenant. Si no es null, los
   /// cambios de plan van por `change_plan` API (sin checkout). Si es
   /// null, el upgrade va por embedded checkout (primera compra).
   final String? stripeSubscriptionId;
+
   /// True si la sub viva está marcada para cancelarse al final del periodo.
   final bool cancelPending;
 
@@ -209,9 +250,8 @@ class _PlanCard extends ConsumerWidget {
         _appliesToPlan(applied, plan.slug) &&
         !plan.isFree &&
         !plan.isCustomPriced;
-    final basePriceCents = yearly
-        ? plan.priceYearlyCents
-        : plan.priceMonthlyCents;
+    final basePriceCents =
+        yearly ? plan.priceYearlyCents : plan.priceMonthlyCents;
     final discountedPriceText =
         discountApplies && basePriceCents != null && basePriceCents > 0
             ? _formatCents(
@@ -223,7 +263,9 @@ class _PlanCard extends ConsumerWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: isCurrent ? context.colors.primary : context.colors.outlineVariant,
+          color: isCurrent
+              ? context.colors.primary
+              : context.colors.outlineVariant,
           width: isCurrent ? 2 : 1,
         ),
       ),
@@ -362,23 +404,29 @@ class _PlanCard extends ConsumerWidget {
 
     final maxMembers = intVal('max_members');
     if (maxMembers != null) {
-      out.add(maxMembers < 0
-          ? l.planFeatureUnlimitedMembers
-          : l.planFeatureMembers(maxMembers.toString()),);
+      out.add(
+        maxMembers < 0
+            ? l.planFeatureUnlimitedMembers
+            : l.planFeatureMembers(maxMembers.toString()),
+      );
     }
 
     final maxStorage = intVal('max_storage_gb');
     if (maxStorage != null) {
-      out.add(maxStorage < 0
-          ? l.planFeatureUnlimitedStorage
-          : l.planFeatureStorageGb(maxStorage.toString()),);
+      out.add(
+        maxStorage < 0
+            ? l.planFeatureUnlimitedStorage
+            : l.planFeatureStorageGb(maxStorage.toString()),
+      );
     }
 
     final aiCredits = intVal('ai_credits');
     if (aiCredits != null && aiCredits > 0) {
-      out.add(aiCredits < 0
-          ? l.planFeatureUnlimitedAiCredits
-          : l.planFeatureAiCredits(aiCredits.toString()),);
+      out.add(
+        aiCredits < 0
+            ? l.planFeatureUnlimitedAiCredits
+            : l.planFeatureAiCredits(aiCredits.toString()),
+      );
     }
 
     final support = features['support'] as String?;
@@ -477,7 +525,8 @@ class _CancelPendingBannerState extends ConsumerState<_CancelPendingBanner> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final localeCode = Localizations.localeOf(context).languageCode;
-    final formatted = DateFormat.yMMMMd(localeCode).format(widget.endsAt.toLocal());
+    final formatted =
+        DateFormat.yMMMMd(localeCode).format(widget.endsAt.toLocal());
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

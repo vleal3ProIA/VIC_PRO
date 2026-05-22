@@ -24,22 +24,12 @@ import '../../domain/invoice.dart';
 /// **Dashboard → Settings → Branding** (logo, colores, datos fiscales
 /// del emisor). Los datos del cliente vienen del Stripe Customer (que
 /// nosotros sincronizamos desde `profiles` via la PR 1.F.4).
-class InvoicesPage extends ConsumerStatefulWidget {
+class InvoicesPage extends ConsumerWidget {
   const InvoicesPage({super.key});
 
   @override
-  ConsumerState<InvoicesPage> createState() => _InvoicesPageState();
-}
-
-class _InvoicesPageState extends ConsumerState<InvoicesPage> {
-  int _page = 0;
-  static const int _pageSize = 20;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final invoicesAsync = ref.watch(myInvoicesProvider);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -48,60 +38,100 @@ class _InvoicesPageState extends ConsumerState<InvoicesPage> {
           onPressed: () => context.popOrGo(RouteNames.accountSettings),
         ),
         title: Text(l.invoicesTitle),
-        actions: [
-          IconButton(
-            tooltip: l.actionRetry,
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(myInvoicesProvider),
-          ),
-        ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: double.infinity),
-          child: invoicesAsync.when(
-            loading: () => const AppLoadingState(),
-            error: (e, _) => AppErrorState(
-              message: l.invoicesLoadError,
-              detail: e.toString(),
-              onRetry: () => ref.invalidate(myInvoicesProvider),
-              retryLabel: l.actionRetry,
+      body: const InvoicesView(),
+    );
+  }
+}
+
+/// Cuerpo del histórico de facturas (sin Scaffold). Reutilizable como página
+/// completa o embebido en el master-detail de Ajustes → Facturación.
+class InvoicesView extends ConsumerStatefulWidget {
+  const InvoicesView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Ajustes):
+  /// usa `shrinkWrap` para no requerir altura/scroll propios.
+  final bool embedded;
+
+  @override
+  ConsumerState<InvoicesView> createState() => _InvoicesViewState();
+}
+
+class _InvoicesViewState extends ConsumerState<InvoicesView> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final invoicesAsync = ref.watch(myInvoicesProvider);
+
+    final content = invoicesAsync.when(
+      loading: () => const AppLoadingState(),
+      error: (e, _) => AppErrorState(
+        message: l.invoicesLoadError,
+        detail: e.toString(),
+        onRetry: () => ref.invalidate(myInvoicesProvider),
+        retryLabel: l.actionRetry,
+      ),
+      data: (invoices) {
+        if (invoices.isEmpty) {
+          return AppEmptyState(
+            icon: Icons.receipt_long_outlined,
+            message: l.invoicesEmpty,
+          );
+        }
+        final totalPages = (invoices.length / _pageSize).ceil();
+        final page = _page.clamp(0, totalPages - 1);
+        final start = page * _pageSize;
+        final end = (start + _pageSize) > invoices.length
+            ? invoices.length
+            : start + _pageSize;
+        final pageInvoices = invoices.sublist(start, end);
+        final list = ListView.separated(
+          padding: const EdgeInsets.all(16),
+          shrinkWrap: widget.embedded,
+          physics:
+              widget.embedded ? const NeverScrollableScrollPhysics() : null,
+          itemCount: pageInvoices.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (_, i) => _InvoiceRow(invoice: pageInvoices[i]),
+        );
+        return Column(
+          mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            if (widget.embedded) list else Expanded(child: list),
+            AppPaginationBar(
+              currentPage: page,
+              totalPages: totalPages,
+              onPrevious: () => setState(() => _page = page - 1),
+              onNext: () => setState(() => _page = page + 1),
             ),
-            data: (invoices) {
-              if (invoices.isEmpty) {
-                return AppEmptyState(
-                  icon: Icons.receipt_long_outlined,
-                  message: l.invoicesEmpty,
-                );
-              }
-              final totalPages = (invoices.length / _pageSize).ceil();
-              final page = _page.clamp(0, totalPages - 1);
-              final start = page * _pageSize;
-              final end = (start + _pageSize) > invoices.length
-                  ? invoices.length
-                  : start + _pageSize;
-              final pageInvoices = invoices.sublist(start, end);
-              return Column(
-                children: [
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: pageInvoices.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (_, i) =>
-                          _InvoiceRow(invoice: pageInvoices[i]),
-                    ),
-                  ),
-                  AppPaginationBar(
-                    currentPage: page,
-                    totalPages: totalPages,
-                    onPrevious: () => setState(() => _page = page - 1),
-                    onNext: () => setState(() => _page = page + 1),
-                  ),
-                ],
-              );
-            },
-          ),
+          ],
+        );
+      },
+    );
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: double.infinity),
+        child: Column(
+          mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            // Acción refresh (antes en el AppBar).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  tooltip: l.actionRetry,
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () => ref.invalidate(myInvoicesProvider),
+                ),
+              ),
+            ),
+            if (widget.embedded) content else Expanded(child: content),
+          ],
         ),
       ),
     );
