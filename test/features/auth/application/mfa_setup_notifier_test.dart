@@ -73,6 +73,41 @@ void main() {
       expect(state().failure, isA<AuthUnknown>());
     });
 
+    test('enroll usa un friendlyName ÚNICO (no el fijo "myapp")', () async {
+      await settle();
+      expect(repo.lastEnrollTotpName, startsWith('myapp-'));
+      expect(repo.lastEnrollTotpName, isNot('myapp'));
+    });
+
+    test('enroll falla la 1ª vez → limpia y reintenta → qrCode', () async {
+      repo.enrollTotpQueue.addAll([
+        const Left(AuthUnknown(message: '[over_enrolled_factors] too many')),
+        const Right(
+          MfaTotpEnrollment(
+            factorId: 'retry-factor',
+            secret: 'JBSWY3DPEHPK3PXP',
+            qrCodeSvg: '<svg/>',
+            uri: 'otpauth://totp/x?secret=JBSWY3DPEHPK3PXP',
+          ),
+        ),
+      ]);
+      await settle();
+      expect(repo.enrollTotpCalls, 2); // reintentó tras el fallo
+      expect(state().step, MfaSetupStep.qrCode);
+      expect(state().enrollment!.factorId, 'retry-factor');
+    });
+
+    test('enroll falla las DOS veces → step failure con el detalle', () async {
+      repo.enrollTotpQueue.addAll([
+        const Left(AuthUnknown(message: '[mfa_disabled] not enabled')),
+        const Left(AuthUnknown(message: '[mfa_disabled] not enabled')),
+      ]);
+      await settle();
+      expect(repo.enrollTotpCalls, 2);
+      expect(state().step, MfaSetupStep.failure);
+      expect(state().failure, isA<AuthUnknown>());
+    });
+
     test('verify con <6 dígitos es no-op', () async {
       await settle();
       notifier().codeChanged('123');

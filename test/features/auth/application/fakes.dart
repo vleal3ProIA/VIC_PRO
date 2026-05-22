@@ -165,6 +165,12 @@ class FakeAuthRepository implements AuthRepository {
   int generateRecoveryCodesCalls = 0;
   String? lastRecoveryCodeVerified;
 
+  /// Cola opcional de resultados para `enrollTotp`: si tiene elementos, cada
+  /// llamada consume el primero; si se vacía (o nunca se llenó) cae a
+  /// `enrollTotpResult`. Permite testear el reintento (falla → OK).
+  final List<Either<AuthFailure, MfaTotpEnrollment>> enrollTotpQueue = [];
+  int enrollTotpCalls = 0;
+
   String? lastEnrollTotpName;
   String? lastVerifyMfaFactorId;
   String? lastVerifyMfaCode;
@@ -176,6 +182,8 @@ class FakeAuthRepository implements AuthRepository {
     String? friendlyName,
   }) async {
     lastEnrollTotpName = friendlyName;
+    enrollTotpCalls++;
+    if (enrollTotpQueue.isNotEmpty) return enrollTotpQueue.removeAt(0);
     return enrollTotpResult;
   }
 

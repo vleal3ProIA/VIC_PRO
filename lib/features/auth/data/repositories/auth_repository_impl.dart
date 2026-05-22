@@ -319,7 +319,19 @@ class AuthRepositoryImpl implements AuthRepository {
       );
     } on AuthException catch (e, st) {
       AppLogger.w('enrollTotp ${e.code} ${e.message}');
-      return Left(_mapAuthException(e, st));
+      final failure = _mapAuthException(e, st);
+      // Caso opaco ("Algo salió mal"): lo elevamos a error para que llegue a
+      // Sentry y a la consola con el code REAL de GoTrue. Así diagnosticamos
+      // causas como TOTP deshabilitado en el proyecto o límite de factores,
+      // que de otro modo quedan ocultas tras el mensaje genérico.
+      if (failure is AuthUnknown) {
+        AppLogger.e(
+          'enrollTotp failed code=${e.code}',
+          error: e,
+          stackTrace: st,
+        );
+      }
+      return Left(failure);
     } catch (e, st) {
       AppLogger.e('enrollTotp unknown', error: e, stackTrace: st);
       return Left(AuthUnknown(cause: e, message: e.toString()));
@@ -498,6 +510,11 @@ class AuthRepositoryImpl implements AuthRepository {
         msg.contains('invalid login credentials')) {
       return AuthInvalidCredentials(cause: e);
     }
-    return AuthUnknown(cause: e, message: e.message);
+    // Caso no mapeado: arrastramos el code de GoTrue dentro del message para
+    // que el detalle técnico (visible en la pantalla de error) revele la
+    // causa real (p. ej. `mfa_factor_name_conflict`, `over_enrolled_factors`,
+    // o un TOTP enroll deshabilitado en el proyecto).
+    final detail = code.isNotEmpty ? '[$code] ${e.message}' : e.message;
+    return AuthUnknown(cause: e, message: detail);
   }
 }

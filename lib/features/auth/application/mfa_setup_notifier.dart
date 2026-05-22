@@ -105,24 +105,47 @@ class MfaSetupNotifier extends Notifier<MfaSetupState> {
         step: MfaSetupStep.alreadyEnabled,
         existingFactorId: verified.first.id,
       );
-    } else {
-      // Limpia los factores TOTP SIN VERIFICAR acumulados: cada visita previa
-      // a esta pantalla crea uno nuevo via enroll(), y Supabase limita el
-      // numero de factores -> al pasarse, enroll() falla con "Algo salio mal".
-      // Borrarlos garantiza que enroll() siempre tenga sitio.
-      final stale =
-          factors.where((f) => !f.isVerified && f.type == 'totp').toList();
-      for (final f in stale) {
-        await repo.unenrollMfa(f.id);
-      }
-      await _startEnrollment();
+      return;
+    }
+    // Limpia los factores TOTP SIN VERIFICAR acumulados: cada visita previa
+    // a esta pantalla crea uno nuevo via enroll(), y Supabase limita el
+    // numero de factores -> al pasarse, enroll() falla con "Algo salio mal".
+    // Borrarlos garantiza que enroll() siempre tenga sitio.
+    await _cleanupUnverifiedTotp(factors);
+    await _startEnrollment();
+  }
+
+  /// Borra los factores TOTP SIN VERIFICAR de la lista dada. Cada uno es un
+  /// enroll previo que el usuario nunca confirmo; acumulados, agotan el limite
+  /// de factores de Supabase y colisionan de friendlyName.
+  Future<void> _cleanupUnverifiedTotp(List<MfaFactor> factors) async {
+    final repo = ref.read(authRepositoryProvider);
+    final stale =
+        factors.where((f) => !f.isVerified && f.type == 'totp').toList();
+    for (final f in stale) {
+      await repo.unenrollMfa(f.id);
     }
   }
+
+  /// Nombre UNICO para el factor TOTP. Supabase rechaza el enroll si ya existe
+  /// un factor (aunque sea sin verificar) con el mismo friendlyName, devolviendo
+  /// un error generico ("Algo salio mal"). Un nombre distinto cada vez elimina
+  /// esa colision de raiz.
+  String _factorName() => 'myapp-${DateTime.now().millisecondsSinceEpoch}';
 
   Future<void> _startEnrollment() async {
     state = state.copyWith(step: MfaSetupStep.loading, clearFailure: true);
     final repo = ref.read(authRepositoryProvider);
-    final result = await repo.enrollTotp(friendlyName: 'myapp');
+    var result = await repo.enrollTotp(friendlyName: _factorName());
+    // Reintento defensivo: si el primer enroll falla, puede haber quedado algun
+    // factor sin verificar ocupando sitio / colisionando. Re-listamos, limpiamos
+    // los no verificados y reintentamos UNA sola vez con un nombre nuevo.
+    if (result.isLeft()) {
+      final listResult = await repo.listMfaFactors();
+      final factors = listResult.fold((_) => <MfaFactor>[], (f) => f);
+      await _cleanupUnverifiedTotp(factors);
+      result = await repo.enrollTotp(friendlyName: _factorName());
+    }
     result.match(
       (failure) => state = state.copyWith(
         step: MfaSetupStep.failure,

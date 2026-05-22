@@ -332,6 +332,18 @@ class MfaSetupPage extends ConsumerWidget {
                     ? authFailureMessage(context, state.failure!)
                     : l.authErrorUnknown,
               ),
+              if (state.failure != null &&
+                  authFailureTechnicalDetail(state.failure!) != null) ...[
+                const SizedBox(height: 4),
+                SelectableText(
+                  authFailureTechnicalDetail(state.failure!)!,
+                  textAlign: TextAlign.center,
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
               FilledButton.tonal(
                 onPressed: notifier.retryEnrollment,
                 child: Text(l.actionRetry),
