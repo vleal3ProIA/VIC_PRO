@@ -22,22 +22,12 @@ import '../../domain/deleted_tenant.dart';
 /// miembros vuelven a la vida en bloque (la RPC hace el cascade).
 ///
 /// Solo accesible bajo guard admin del router.
-class AdminTrashPage extends ConsumerStatefulWidget {
+class AdminTrashPage extends ConsumerWidget {
   const AdminTrashPage({super.key});
 
   @override
-  ConsumerState<AdminTrashPage> createState() => _AdminTrashPageState();
-}
-
-class _AdminTrashPageState extends ConsumerState<AdminTrashPage> {
-  int _page = 0;
-  static const int _pageSize = 20;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final async = ref.watch(deletedTenantsProvider);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -46,61 +36,104 @@ class _AdminTrashPageState extends ConsumerState<AdminTrashPage> {
           onPressed: () => context.popOrGo(RouteNames.admin),
         ),
         title: Text(l.adminTrashTitle),
-        actions: [
-          IconButton(
-            tooltip: l.actionRetry,
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(deletedTenantsProvider),
-          ),
-        ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
-          child: async.when(
-            loading: () => const AppLoadingState(),
-            error: (e, _) => AppErrorState(
-              message: l.adminTrashLoadError,
-              detail: e.toString(),
-              onRetry: () => ref.invalidate(deletedTenantsProvider),
-              retryLabel: l.actionRetry,
+      body: const AdminTrashView(),
+    );
+  }
+}
+
+/// Cuerpo de la papelera (sin Scaffold). Reutilizable como página completa o
+/// embebido en el master-detail de Administración.
+class AdminTrashView extends ConsumerStatefulWidget {
+  const AdminTrashView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Admin):
+  /// usa `shrinkWrap` para no requerir altura/scroll propios.
+  final bool embedded;
+
+  @override
+  ConsumerState<AdminTrashView> createState() => _AdminTrashViewState();
+}
+
+class _AdminTrashViewState extends ConsumerState<AdminTrashView> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final async = ref.watch(deletedTenantsProvider);
+
+    final content = async.when(
+      loading: () => const AppLoadingState(),
+      error: (e, _) => AppErrorState(
+        message: l.adminTrashLoadError,
+        detail: e.toString(),
+        onRetry: () => ref.invalidate(deletedTenantsProvider),
+        retryLabel: l.actionRetry,
+      ),
+      data: (rows) {
+        if (rows.isEmpty) {
+          return AppEmptyState(
+            icon: Icons.delete_outline,
+            message: l.adminTrashEmpty,
+          );
+        }
+        final totalPages = (rows.length / _pageSize).ceil();
+        final page = _page.clamp(0, totalPages - 1);
+        final start = page * _pageSize;
+        final end =
+            (start + _pageSize) > rows.length ? rows.length : start + _pageSize;
+        final pageRows = rows.sublist(start, end);
+        final list = ListView.separated(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          shrinkWrap: widget.embedded,
+          physics:
+              widget.embedded ? const NeverScrollableScrollPhysics() : null,
+          itemCount: pageRows.length,
+          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+          itemBuilder: (_, i) => _DeletedTenantCard(tenant: pageRows[i]),
+        );
+        return Column(
+          mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            if (widget.embedded) list else Expanded(child: list),
+            AppPaginationBar(
+              currentPage: page,
+              totalPages: totalPages,
+              onPrevious: () => setState(() => _page = page - 1),
+              onNext: () => setState(() => _page = page + 1),
             ),
-            data: (rows) {
-              if (rows.isEmpty) {
-                return AppEmptyState(
-                  icon: Icons.delete_outline,
-                  message: l.adminTrashEmpty,
-                );
-              }
-              final totalPages = (rows.length / _pageSize).ceil();
-              final page = _page.clamp(0, totalPages - 1);
-              final start = page * _pageSize;
-              final end = (start + _pageSize) > rows.length
-                  ? rows.length
-                  : start + _pageSize;
-              final pageRows = rows.sublist(start, end);
-              return Column(
-                children: [
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      itemCount: pageRows.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: AppSpacing.sm),
-                      itemBuilder: (_, i) =>
-                          _DeletedTenantCard(tenant: pageRows[i]),
-                    ),
-                  ),
-                  AppPaginationBar(
-                    currentPage: page,
-                    totalPages: totalPages,
-                    onPrevious: () => setState(() => _page = page - 1),
-                    onNext: () => setState(() => _page = page + 1),
-                  ),
-                ],
-              );
-            },
-          ),
+          ],
+        );
+      },
+    );
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
+        child: Column(
+          mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            // Acción refresh (antes en el AppBar).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                0,
+              ),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  tooltip: l.actionRetry,
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () => ref.invalidate(deletedTenantsProvider),
+                ),
+              ),
+            ),
+            if (widget.embedded) content else Expanded(child: content),
+          ],
         ),
       ),
     );

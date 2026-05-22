@@ -20,23 +20,12 @@ import '../widgets/incident_editor_dialog.dart';
 /// `/admin/incidents` — CRUD de incidentes. Admin-only via router
 /// guard + RLS. Borradores y publicados; permite editar, publicar,
 /// cambiar status y borrar.
-class AdminIncidentsPage extends ConsumerStatefulWidget {
+class AdminIncidentsPage extends ConsumerWidget {
   const AdminIncidentsPage({super.key});
 
   @override
-  ConsumerState<AdminIncidentsPage> createState() =>
-      _AdminIncidentsPageState();
-}
-
-class _AdminIncidentsPageState extends ConsumerState<AdminIncidentsPage> {
-  int _page = 0;
-  static const int _pageSize = 20;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final async = ref.watch(adminIncidentsProvider);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -45,72 +34,121 @@ class _AdminIncidentsPageState extends ConsumerState<AdminIncidentsPage> {
           onPressed: () => context.popOrGo(RouteNames.admin),
         ),
         title: Text(l.adminIncidentsTitle),
-        actions: [
-          IconButton(
-            tooltip: l.actionRetry,
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(adminIncidentsProvider),
+      ),
+      body: const AdminIncidentsView(),
+    );
+  }
+}
+
+/// Cuerpo del CRUD de incidentes (sin Scaffold). Reutilizable como página
+/// completa o embebido en el master-detail de Administración.
+///
+/// El botón de crear (antes un FAB del Scaffold) se reposiciona dentro del
+/// panel para que funcione igual embebido y a pantalla completa.
+class AdminIncidentsView extends ConsumerStatefulWidget {
+  const AdminIncidentsView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Admin).
+  final bool embedded;
+
+  @override
+  ConsumerState<AdminIncidentsView> createState() => _AdminIncidentsViewState();
+}
+
+class _AdminIncidentsViewState extends ConsumerState<AdminIncidentsView> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final async = ref.watch(adminIncidentsProvider);
+
+    final content = async.when(
+      loading: () => const AppLoadingState(),
+      error: (e, _) => AppErrorState(
+        message: l.adminIncidentsLoadError,
+        detail: e.toString(),
+        onRetry: () => ref.invalidate(adminIncidentsProvider),
+        retryLabel: l.actionRetry,
+      ),
+      data: (entries) {
+        if (entries.isEmpty) {
+          return AppEmptyState(
+            icon: Icons.health_and_safety_outlined,
+            title: l.adminIncidentsEmptyTitle,
+            message: l.adminIncidentsEmptyBody,
+          );
+        }
+        final totalPages = (entries.length / _pageSize).ceil();
+        final page = _page.clamp(0, totalPages - 1);
+        final start = page * _pageSize;
+        final end = (start + _pageSize) > entries.length
+            ? entries.length
+            : start + _pageSize;
+        final pageEntries = entries.sublist(start, end);
+        final list = ListView.separated(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.md,
+            widget.embedded ? AppSpacing.md : 96,
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: const Icon(Icons.add),
-        label: Text(l.adminIncidentsCreate),
-        onPressed: _onCreate,
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
-          child: async.when(
-            loading: () => const AppLoadingState(),
-            error: (e, _) => AppErrorState(
-              message: l.adminIncidentsLoadError,
-              detail: e.toString(),
-              onRetry: () => ref.invalidate(adminIncidentsProvider),
-              retryLabel: l.actionRetry,
+          shrinkWrap: widget.embedded,
+          physics:
+              widget.embedded ? const NeverScrollableScrollPhysics() : null,
+          itemCount: pageEntries.length,
+          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+          itemBuilder: (_, i) => _IncidentTile(incident: pageEntries[i]),
+        );
+        return Column(
+          mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            if (widget.embedded) list else Expanded(child: list),
+            AppPaginationBar(
+              currentPage: page,
+              totalPages: totalPages,
+              onPrevious: () => setState(() => _page = page - 1),
+              onNext: () => setState(() => _page = page + 1),
             ),
-            data: (entries) {
-              if (entries.isEmpty) {
-                return AppEmptyState(
-                  icon: Icons.health_and_safety_outlined,
-                  title: l.adminIncidentsEmptyTitle,
-                  message: l.adminIncidentsEmptyBody,
-                );
-              }
-              final totalPages = (entries.length / _pageSize).ceil();
-              final page = _page.clamp(0, totalPages - 1);
-              final start = page * _pageSize;
-              final end = (start + _pageSize) > entries.length
-                  ? entries.length
-                  : start + _pageSize;
-              final pageEntries = entries.sublist(start, end);
-              return Column(
+          ],
+        );
+      },
+    );
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
+        child: Column(
+          mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            // Acciones del panel (antes refresh en AppBar + FAB de crear).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.md,
-                        AppSpacing.md,
-                        AppSpacing.md,
-                        96,
-                      ),
-                      itemCount: pageEntries.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: AppSpacing.sm),
-                      itemBuilder: (_, i) =>
-                          _IncidentTile(incident: pageEntries[i]),
-                    ),
+                  IconButton(
+                    tooltip: l.actionRetry,
+                    icon: const Icon(Icons.refresh),
+                    onPressed: () => ref.invalidate(adminIncidentsProvider),
                   ),
-                  AppPaginationBar(
-                    currentPage: page,
-                    totalPages: totalPages,
-                    onPrevious: () => setState(() => _page = page - 1),
-                    onNext: () => setState(() => _page = page + 1),
+                  const SizedBox(width: AppSpacing.sm),
+                  FilledButton.icon(
+                    onPressed: _onCreate,
+                    icon: const Icon(Icons.add),
+                    label: Text(l.adminIncidentsCreate),
                   ),
                 ],
-              );
-            },
-          ),
+              ),
+            ),
+            if (widget.embedded) content else Expanded(child: content),
+          ],
         ),
       ),
     );
@@ -336,9 +374,7 @@ class _IncidentTileState extends ConsumerState<_IncidentTile> {
       if (!mounted) return;
       _invalidateAll();
       context.showSnack(
-        i.published
-            ? l.adminIncidentsUnpublished
-            : l.adminIncidentsPublished,
+        i.published ? l.adminIncidentsUnpublished : l.adminIncidentsPublished,
       );
     } catch (_) {
       if (!mounted) return;

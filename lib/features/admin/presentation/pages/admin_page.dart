@@ -7,8 +7,16 @@ import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 import 'package:myapp/features/account/application/profile_providers.dart';
+import 'package:myapp/features/account/presentation/widgets/settings_master_detail.dart'
+    show SettingsOpenFullScreen;
+import 'package:myapp/features/admin/presentation/pages/admin_trash_page.dart'
+    show AdminTrashView;
 import 'package:myapp/features/admin_acl/application/admin_acl_providers.dart';
 import 'package:myapp/features/admin_acl/domain/admin_capability.dart';
+import 'package:myapp/features/audit_center/presentation/pages/admin_audit_page.dart'
+    show AdminAuditView;
+import 'package:myapp/features/status/presentation/pages/admin_incidents_page.dart'
+    show AdminIncidentsView;
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
 /// `/admin` — entry point del area administrativa.
@@ -42,10 +50,8 @@ class AdminPage extends ConsumerWidget {
     // cards que el user no pueda usar. Super ve TODO sin filtrar.
     final caps =
         ref.watch(myCapabilitiesProvider).valueOrNull ?? const <String>{};
-    final isSuper =
-        ref.watch(isSuperAdminProvider).valueOrNull ?? false;
-    final stillLoading =
-        ref.watch(myCapabilitiesProvider).valueOrNull == null;
+    final isSuper = ref.watch(isSuperAdminProvider).valueOrNull ?? false;
+    final stillLoading = ref.watch(myCapabilitiesProvider).valueOrNull == null;
 
     final destinations = _AdminDestinations(l);
 
@@ -65,7 +71,159 @@ class AdminPage extends ConsumerWidget {
     final billing = filter(destinations.billing);
     final communications = filter(destinations.communications);
     final content = filter(destinations.content);
-    final superSection = isSuper ? destinations.superTools : const <_AdminDestination>[];
+    final superSection =
+        isSuper ? destinations.superTools : const <_AdminDestination>[];
+
+    // Secciones no vacías, en orden. Usadas tanto por el dashboard (móvil)
+    // como por el master-detail (ancho).
+    final sections = <_AdminSection>[
+      if (superSection.isNotEmpty)
+        _AdminSection(
+          l.adminSectionSuper,
+          l.adminSectionSuperHint,
+          superSection,
+        ),
+      if (security.isNotEmpty)
+        _AdminSection(
+          l.adminSectionSecurity,
+          l.adminSectionSecurityHint,
+          security,
+        ),
+      if (access.isNotEmpty)
+        _AdminSection(
+          l.adminSectionAccess,
+          l.adminSectionAccessHint,
+          access,
+        ),
+      if (billing.isNotEmpty)
+        _AdminSection(
+          l.adminSectionBilling,
+          l.adminSectionBillingHint,
+          billing,
+        ),
+      if (communications.isNotEmpty)
+        _AdminSection(
+          l.adminSectionCommunications,
+          l.adminSectionCommunicationsHint,
+          communications,
+        ),
+      if (content.isNotEmpty)
+        _AdminSection(
+          l.adminSectionContent,
+          l.adminSectionContentHint,
+          content,
+        ),
+    ];
+
+    final showEmpty = !isSuper && !stillLoading && sections.isEmpty;
+
+    final headerBadge = isSuper
+        ? PremiumBadge(
+            label: l.adminAdminsBadgeSuper,
+            variant: PremiumBadgeVariant.warning,
+            icon: Icons.workspace_premium_rounded,
+          )
+        : PremiumBadge(
+            label: '${l.adminRoleBadge} · ${role.name}',
+            variant: PremiumBadgeVariant.info,
+            icon: Icons.verified_user_rounded,
+          );
+
+    // Móvil: dashboard de cards (como hasta ahora). Ancho: master-detail.
+    return context.isMobile
+        ? _AdminDashboard(
+            sections: sections,
+            headerBadge: headerBadge,
+            showEmpty: showEmpty,
+          )
+        : _AdminMasterDetail(
+            sections: sections,
+            headerBadge: headerBadge,
+            showEmpty: showEmpty,
+          );
+  }
+}
+
+/// Una sección del área de admin: título + subtítulo + sus destinos.
+@immutable
+class _AdminSection {
+  const _AdminSection(this.title, this.subtitle, this.items);
+  final String title;
+  final String subtitle;
+  final List<_AdminDestination> items;
+}
+
+/// Dashboard de cards agrupadas por sección (móvil + fallback). Es el layout
+/// "histórico" de `/admin`.
+class _AdminDashboard extends StatelessWidget {
+  const _AdminDashboard({
+    required this.sections,
+    required this.headerBadge,
+    required this.showEmpty,
+  });
+
+  final List<_AdminSection> sections;
+  final Widget headerBadge;
+  final bool showEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppMaxWidths.wide),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              PageHeader(
+                title: l.adminTitle,
+                subtitle: l.adminSubtitle,
+                actions: [headerBadge],
+              ),
+              AppSpacing.gapLg,
+              for (final s in sections) ...[
+                _Section(title: s.title, subtitle: s.subtitle, items: s.items),
+                AppSpacing.gapLg,
+              ],
+              if (showEmpty) const _NoCapabilitiesCard(),
+              const SizedBox(height: AppSpacing.xxl),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Master-detail del área de admin (pantalla ancha): menú de secciones a la
+/// izquierda + panel del destino seleccionado a la derecha. Los destinos ya
+/// embebidos muestran su `*View(embedded: true)`; el resto abre a pantalla
+/// completa (se irán embebiendo por lotes).
+class _AdminMasterDetail extends StatefulWidget {
+  const _AdminMasterDetail({
+    required this.sections,
+    required this.headerBadge,
+    required this.showEmpty,
+  });
+
+  final List<_AdminSection> sections;
+  final Widget headerBadge;
+  final bool showEmpty;
+
+  @override
+  State<_AdminMasterDetail> createState() => _AdminMasterDetailState();
+}
+
+class _AdminMasterDetailState extends State<_AdminMasterDetail> {
+  /// Ruta del destino seleccionado (key estable entre rebuilds).
+  String? _selectedRoute;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final allItems = [for (final s in widget.sections) ...s.items];
 
     return Center(
       child: ConstrainedBox(
@@ -75,118 +233,150 @@ class AdminPage extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ─── Header con rol como trailing ───
               PageHeader(
                 title: l.adminTitle,
                 subtitle: l.adminSubtitle,
-                actions: [
-                  if (isSuper)
-                    PremiumBadge(
-                      label: l.adminAdminsBadgeSuper,
-                      variant: PremiumBadgeVariant.warning,
-                      icon: Icons.workspace_premium_rounded,
-                    )
-                  else
-                    PremiumBadge(
-                      label: '${l.adminRoleBadge} · ${role.name}',
-                      variant: PremiumBadgeVariant.info,
-                      icon: Icons.verified_user_rounded,
-                    ),
-                ],
+                actions: [widget.headerBadge],
               ),
               AppSpacing.gapLg,
-              // ─── Seccion super (visible SOLO si is super) ───
-              if (superSection.isNotEmpty) ...[
-                _Section(
-                  title: l.adminSectionSuper,
-                  subtitle: l.adminSectionSuperHint,
-                  items: superSection,
-                ),
-                AppSpacing.gapLg,
-              ],
-              if (security.isNotEmpty) ...[
-                _Section(
-                  title: l.adminSectionSecurity,
-                  subtitle: l.adminSectionSecurityHint,
-                  items: security,
-                ),
-                AppSpacing.gapLg,
-              ],
-              if (access.isNotEmpty) ...[
-                _Section(
-                  title: l.adminSectionAccess,
-                  subtitle: l.adminSectionAccessHint,
-                  items: access,
-                ),
-                AppSpacing.gapLg,
-              ],
-              if (billing.isNotEmpty) ...[
-                _Section(
-                  title: l.adminSectionBilling,
-                  subtitle: l.adminSectionBillingHint,
-                  items: billing,
-                ),
-                AppSpacing.gapLg,
-              ],
-              if (communications.isNotEmpty) ...[
-                _Section(
-                  title: l.adminSectionCommunications,
-                  subtitle: l.adminSectionCommunicationsHint,
-                  items: communications,
-                ),
-                AppSpacing.gapLg,
-              ],
-              if (content.isNotEmpty) ...[
-                _Section(
-                  title: l.adminSectionContent,
-                  subtitle: l.adminSectionContentHint,
-                  items: content,
-                ),
-                AppSpacing.gapLg,
-              ],
-              // ─── Empty state defensivo: admin sin ninguna capability ───
-              if (!isSuper &&
-                  !stillLoading &&
-                  security.isEmpty &&
-                  access.isEmpty &&
-                  billing.isEmpty &&
-                  communications.isEmpty &&
-                  content.isEmpty)
+              if (allItems.isEmpty)
+                if (widget.showEmpty)
+                  const _NoCapabilitiesCard()
+                else
+                  const SizedBox.shrink()
+              else
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                  child: PremiumCard(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.lock_outline_rounded,
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant,
-                          size: 22,
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Text(
-                            l.adminNoCapabilities,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                  height: 1.4,
-                                ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  child: _buildMasterDetail(context, l, allItems),
                 ),
               const SizedBox(height: AppSpacing.xxl),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMasterDetail(
+    BuildContext context,
+    AppLocalizations l,
+    List<_AdminDestination> allItems,
+  ) {
+    final scheme = context.colors;
+    final selected = allItems.firstWhere(
+      (d) => d.route == _selectedRoute,
+      orElse: () => allItems.first,
+    );
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ─── Menú de secciones ───
+        SizedBox(
+          width: 260,
+          child: PremiumCard(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final section in widget.sections) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      AppSpacing.sm,
+                      AppSpacing.md,
+                      AppSpacing.xs,
+                    ),
+                    child: Text(
+                      section.title,
+                      style: context.textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ),
+                  for (final d in section.items)
+                    ListTile(
+                      dense: true,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      leading: Icon(d.icon, size: 20, color: d.colorSeed),
+                      title: Text(
+                        d.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.textTheme.bodyMedium?.copyWith(
+                          fontWeight: d.route == selected.route
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
+                      ),
+                      selected: d.route == selected.route,
+                      selectedTileColor: scheme.primary.withValues(alpha: 0.10),
+                      selectedColor: scheme.primary,
+                      onTap: () => setState(() => _selectedRoute = d.route),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.lg),
+        // ─── Panel del destino seleccionado ───
+        Expanded(
+          child: PremiumCard(
+            child: KeyedSubtree(
+              key: ValueKey(selected.route),
+              child: selected.embeddedBuilder != null
+                  ? selected.embeddedBuilder!(context)
+                  : SettingsOpenFullScreen(
+                      icon: selected.icon,
+                      title: selected.title,
+                      description: selected.hint,
+                      buttonLabel: l.filesOpen,
+                      routeName: selected.route,
+                    ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Card de "no tienes capabilities" (admin sin permisos asignados).
+class _NoCapabilitiesCard extends StatelessWidget {
+  const _NoCapabilitiesCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      child: PremiumCard(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Row(
+          children: [
+            Icon(
+              Icons.lock_outline_rounded,
+              color: scheme.onSurfaceVariant,
+              size: 22,
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                l.adminNoCapabilities,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -210,6 +400,7 @@ class _AdminDestinations {
           hint: l.adminAuditHint,
           route: RouteNames.adminAudit,
           capability: AdminCapability.runAudits,
+          embeddedBuilder: (_) => const AdminAuditView(embedded: true),
         ),
         _AdminDestination(
           icon: Icons.health_and_safety_outlined,
@@ -218,6 +409,7 @@ class _AdminDestinations {
           hint: l.adminIncidentsHint,
           route: RouteNames.adminIncidents,
           capability: AdminCapability.manageIncidents,
+          embeddedBuilder: (_) => const AdminIncidentsView(embedded: true),
         ),
         _AdminDestination(
           icon: Icons.delete_outline_rounded,
@@ -226,6 +418,7 @@ class _AdminDestinations {
           hint: l.adminTrashHint,
           route: RouteNames.adminTrash,
           capability: AdminCapability.manageTrash,
+          embeddedBuilder: (_) => const AdminTrashView(embedded: true),
         ),
       ];
 
@@ -345,6 +538,7 @@ class _AdminDestination {
     required this.hint,
     required this.route,
     this.capability,
+    this.embeddedBuilder,
   });
 
   final IconData icon;
@@ -363,6 +557,10 @@ class _AdminDestination {
   /// se filtra por `isSuperAdmin` aparte). El super admin ve TODAS
   /// las cards independientemente de este campo.
   final String? capability;
+
+  /// Builder del contenido embebido en el panel del master-detail. Si es
+  /// null, el panel muestra un botón que abre la ruta a pantalla completa.
+  final WidgetBuilder? embeddedBuilder;
 }
 
 /// Una seccion: header + grid responsive de destinos.
