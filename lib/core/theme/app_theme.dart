@@ -80,8 +80,7 @@ class AppTheme {
     required bool isDark,
     required TextTheme baseTextTheme,
   }) {
-    final flexFactory =
-        isDark ? FlexThemeData.dark : FlexThemeData.light;
+    final flexFactory = isDark ? FlexThemeData.dark : FlexThemeData.light;
     final base = flexFactory(
       colors: scheme,
       surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
@@ -143,6 +142,17 @@ class AppTheme {
         thickness: 1,
         color: base.dividerTheme.color?.withValues(alpha: isDark ? 0.18 : 0.12),
       ),
+      // ─── Inputs ───
+      // Anillo de foco claro (2px en color primario) para un feedback de
+      // foco moderno y accesible, manteniendo el borde outline existente.
+      // Solo redefine el `focusedBorder`; el resto (radius, tipo outline,
+      // colores) lo sigue gestionando FlexColorScheme.
+      inputDecorationTheme: base.inputDecorationTheme.copyWith(
+        focusedBorder: OutlineInputBorder(
+          borderRadius: AppRadii.brMd,
+          borderSide: BorderSide(color: base.colorScheme.primary, width: 2),
+        ),
+      ),
       // ─── Botones Premium ───
       // Subimos peso tipográfico (w600 + letter-spacing negativo, look
       // Stripe/Linear) y altura mínima cómoda en TODOS los botones de la app
@@ -159,8 +169,7 @@ class AppTheme {
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
-        style:
-            (base.outlinedButtonTheme.style ?? const ButtonStyle()).copyWith(
+        style: (base.outlinedButtonTheme.style ?? const ButtonStyle()).copyWith(
           textStyle: WidgetStatePropertyAll(_btnTextStyle(base)),
           minimumSize: const WidgetStatePropertyAll(Size(64, 48)),
           padding: const WidgetStatePropertyAll(
