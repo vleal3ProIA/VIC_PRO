@@ -126,12 +126,18 @@ Deno.serve(withSentry("auth-email-hook", async (req) => {
     const wh = new Webhook(secret.replace(/^v1,/, ""));
     payload = wh.verify(rawBody, headers) as SupabaseEmailHookPayload;
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[auth-email-hook] verify FAILED:", msg);
     await captureError(
       e instanceof Error ? e : new Error(String(e)),
       { fn: "auth-email-hook", step: "verify" },
     );
     return json({ error: "invalid_signature" }, 401);
   }
+  console.log(
+    "[auth-email-hook] verify OK, action=",
+    payload.email_data.email_action_type,
+  );
 
   // ─────────────── Decide qué email enviar ───────────────
   const type = mapActionType(payload.email_data.email_action_type);
@@ -191,7 +197,11 @@ Deno.serve(withSentry("auth-email-hook", async (req) => {
   const result = await sendEmail(admin, {
     type,
     to: payload.user.email,
-    toUserId: payload.user.id,
+    // NO referenciamos al user por FK en email_log: en signup el row de
+    // auth.users AUN no esta commiteado cuando corre este hook (es sincrono,
+    // dentro de la transaccion del signup) -> insertar to_user_id violaria
+    // la FK email_log_to_user_id_fkey. Guardamos el id en meta para trazar.
+    toUserId: null,
     locale,
     subject: rendered.subject,
     htmlBody: rendered.htmlBody,
@@ -199,13 +209,16 @@ Deno.serve(withSentry("auth-email-hook", async (req) => {
     meta: {
       via: "auth-hook",
       action: payload.email_data.email_action_type,
+      user_id: payload.user.id,
     },
   });
 
   // Si fallo el envio, devolvemos error -> Supabase usa su default.
   if (!result.ok) {
+    console.error("[auth-email-hook] send FAILED:", result.error);
     return json({ error: result.error ?? "send_failed" }, 500);
   }
+  console.log("[auth-email-hook] sent OK to", payload.user.email, "locale=", locale, "mode=", themeMode);
 
   return json({}, 200);
 }));
