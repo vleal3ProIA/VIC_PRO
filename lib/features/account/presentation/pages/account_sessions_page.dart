@@ -19,26 +19,12 @@ import '../../domain/auth_session.dart';
 /// La sesión actual aparece marcada y sin botón de revocar individual:
 /// para cerrar la actual, el usuario debe ir al menú de logout normal.
 /// El botón global "Cerrar todas las demás" sí está disponible siempre.
-class AccountSessionsPage extends ConsumerStatefulWidget {
+class AccountSessionsPage extends ConsumerWidget {
   const AccountSessionsPage({super.key});
 
   @override
-  ConsumerState<AccountSessionsPage> createState() =>
-      _AccountSessionsPageState();
-}
-
-class _AccountSessionsPageState extends ConsumerState<AccountSessionsPage> {
-  /// Página actual (0-indexed) de la paginación client-side.
-  int _page = 0;
-
-  /// Sesiones por página.
-  static const int _pageSize = 8;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final async = ref.watch(authSessionsProvider);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -55,60 +41,88 @@ class _AccountSessionsPageState extends ConsumerState<AccountSessionsPage> {
           ),
         ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: double.infinity),
-          child: async.when(
-            loading: () => const AppLoadingState(),
-            error: (e, _) => AppErrorState(
-              message: l.sessionsLoadError,
-              detail: e.toString(),
-              onRetry: () => ref.invalidate(authSessionsProvider),
-              retryLabel: l.actionRetry,
-            ),
-            data: (sessions) {
-              if (sessions.isEmpty) {
-                return AppEmptyState(
-                  icon: Icons.devices_outlined,
-                  message: l.sessionsEmpty,
-                );
-              }
-              // Paginación client-side. El _Header muestra el total real
-              // (todas las sesiones), pero la lista pagina de [_pageSize].
-              final totalPages = (sessions.length / _pageSize).ceil();
-              final page = _page.clamp(0, totalPages - 1);
-              final start = page * _pageSize;
-              final end = (start + _pageSize) > sessions.length
-                  ? sessions.length
-                  : start + _pageSize;
-              final pageSessions = sessions.sublist(start, end);
-              return Column(
-                children: [
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        _Header(
-                          sessions: sessions,
-                        ),
-                        const SizedBox(height: 16),
-                        for (final s in pageSessions) ...[
-                          _SessionCard(session: s),
-                          const SizedBox(height: 8),
-                        ],
-                      ],
-                    ),
-                  ),
-                  AppPaginationBar(
-                    currentPage: page,
-                    totalPages: totalPages,
-                    onPrevious: () => setState(() => _page = page - 1),
-                    onNext: () => setState(() => _page = page + 1),
-                  ),
-                ],
-              );
-            },
+      body: const SessionsView(),
+    );
+  }
+}
+
+/// Cuerpo de la lista de sesiones (sin Scaffold). Reutilizable como página
+/// completa o embebido en el master-detail de Ajustes → Seguridad.
+class SessionsView extends ConsumerStatefulWidget {
+  const SessionsView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Ajustes):
+  /// usa `shrinkWrap` en lugar de `Expanded` para no requerir altura acotada.
+  final bool embedded;
+
+  @override
+  ConsumerState<SessionsView> createState() => _SessionsViewState();
+}
+
+class _SessionsViewState extends ConsumerState<SessionsView> {
+  int _page = 0;
+  static const int _pageSize = 8;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final async = ref.watch(authSessionsProvider);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: double.infinity),
+        child: async.when(
+          loading: () => const AppLoadingState(),
+          error: (e, _) => AppErrorState(
+            message: l.sessionsLoadError,
+            detail: e.toString(),
+            onRetry: () => ref.invalidate(authSessionsProvider),
+            retryLabel: l.actionRetry,
           ),
+          data: (sessions) {
+            if (sessions.isEmpty) {
+              return AppEmptyState(
+                icon: Icons.devices_outlined,
+                message: l.sessionsEmpty,
+              );
+            }
+            // Paginación client-side. El _Header muestra el total real
+            // (todas las sesiones), pero la lista pagina de [_pageSize].
+            final totalPages = (sessions.length / _pageSize).ceil();
+            final page = _page.clamp(0, totalPages - 1);
+            final start = page * _pageSize;
+            final end = (start + _pageSize) > sessions.length
+                ? sessions.length
+                : start + _pageSize;
+            final pageSessions = sessions.sublist(start, end);
+            final list = ListView(
+              padding: const EdgeInsets.all(16),
+              shrinkWrap: widget.embedded,
+              physics: widget.embedded
+                  ? const NeverScrollableScrollPhysics()
+                  : null,
+              children: [
+                _Header(sessions: sessions),
+                const SizedBox(height: 16),
+                for (final s in pageSessions) ...[
+                  _SessionCard(session: s),
+                  const SizedBox(height: 8),
+                ],
+              ],
+            );
+            return Column(
+              mainAxisSize:
+                  widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+              children: [
+                if (widget.embedded) list else Expanded(child: list),
+                AppPaginationBar(
+                  currentPage: page,
+                  totalPages: totalPages,
+                  onPrevious: () => setState(() => _page = page - 1),
+                  onNext: () => setState(() => _page = page + 1),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
