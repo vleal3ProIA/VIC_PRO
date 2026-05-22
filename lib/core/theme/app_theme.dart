@@ -84,7 +84,9 @@ class AppTheme {
     final base = flexFactory(
       colors: scheme,
       surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
-      blendLevel: isDark ? 13 : 7,
+      // Un punto más de tinte de marca en las superficies (más cohesión de
+      // color sin cambiar el tono). Moderado para no "embarrar" los fondos.
+      blendLevel: isDark ? 18 : 12,
       subThemesData: FlexSubThemesData(
         blendOnLevel: isDark ? 20 : 10,
         useM2StyleDividerInM3: true,
