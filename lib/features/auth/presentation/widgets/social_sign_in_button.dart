@@ -14,6 +14,7 @@ class SocialSignInButton extends StatelessWidget {
     super.key,
     this.busy = false,
     this.iconColor,
+    this.iconOnly = false,
   });
 
   /// Texto del botón (p. ej. "Continuar con Google").
@@ -33,28 +34,49 @@ class SocialSignInButton extends StatelessWidget {
   /// dibuja con sus colores originales (p. ej. la "G" multicolor de Google).
   final Color? iconColor;
 
+  /// `true` → botón cuadrado solo con el icono (sin texto), con el label
+  /// como tooltip. Útil para mostrar varios métodos sociales en una fila
+  /// compacta en el login.
+  final bool iconOnly;
+
   @override
   Widget build(BuildContext context) {
+    final icon = busy
+        ? const SizedBox(
+            height: 18,
+            width: 18,
+            child: CircularProgressIndicator(strokeWidth: 2.4),
+          )
+        : SvgPicture.asset(
+            iconAsset,
+            height: 18,
+            width: 18,
+            semanticsLabel: label,
+            colorFilter: iconColor == null
+                ? null
+                : ColorFilter.mode(iconColor!, BlendMode.srcIn),
+          );
+
+    if (iconOnly) {
+      return Tooltip(
+        message: label,
+        child: OutlinedButton(
+          onPressed: busy ? null : onPressed,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(56, 48),
+            padding: EdgeInsets.zero,
+          ),
+          child: icon,
+        ),
+      );
+    }
+
     return OutlinedButton.icon(
       onPressed: busy ? null : onPressed,
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(48),
       ),
-      icon: busy
-          ? const SizedBox(
-              height: 18,
-              width: 18,
-              child: CircularProgressIndicator(strokeWidth: 2.4),
-            )
-          : SvgPicture.asset(
-              iconAsset,
-              height: 18,
-              width: 18,
-              semanticsLabel: label,
-              colorFilter: iconColor == null
-                  ? null
-                  : ColorFilter.mode(iconColor!, BlendMode.srcIn),
-            ),
+      icon: icon,
       label: Text(label),
     );
   }
