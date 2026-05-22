@@ -24,14 +24,39 @@ import '../widgets/user_status_chip.dart';
 /// `/admin/users` — gestión de usuarios. KPIs cards arriba, tabla
 /// paginada con filtros y acciones por fila. Las acciones invocan la
 /// Edge Function `admin-users`.
-class AdminUsersPage extends ConsumerStatefulWidget {
+class AdminUsersPage extends ConsumerWidget {
   const AdminUsersPage({super.key});
 
   @override
-  ConsumerState<AdminUsersPage> createState() => _AdminUsersPageState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.popOrGo(RouteNames.admin),
+        ),
+        title: Text(l.adminUsersTitle),
+      ),
+      body: const AdminUsersView(),
+    );
+  }
 }
 
-class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
+/// Cuerpo de la gestión de usuarios (sin Scaffold). Reutilizable como página
+/// completa o embebido en el master-detail de Administración.
+class AdminUsersView extends ConsumerStatefulWidget {
+  const AdminUsersView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Admin).
+  final bool embedded;
+
+  @override
+  ConsumerState<AdminUsersView> createState() => _AdminUsersViewState();
+}
+
+class _AdminUsersViewState extends ConsumerState<AdminUsersView> {
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
 
@@ -58,78 +83,78 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
     final kpisAsync = ref.watch(adminUsersKpisProvider);
     final pageAsync = ref.watch(adminUsersPageProvider(query));
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.popOrGo(RouteNames.admin),
-        ),
-        title: Text(l.adminUsersTitle),
-        actions: [
-          IconButton(
-            tooltip: l.actionRetry,
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref
-                ..invalidate(adminUsersKpisProvider)
-                ..invalidate(adminUsersPageProvider);
-            },
-          ),
-        ],
+    final table = pageAsync.when(
+      loading: () => const AppLoadingState(),
+      error: (e, _) => AppErrorState(
+        message: l.adminUsersLoadError,
+        detail: e.toString(),
+        onRetry: () => ref.invalidate(adminUsersPageProvider),
+        retryLabel: l.actionRetry,
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppMaxWidths.wide),
-          child: Column(
-            children: [
-              // ─── KPIs cards ───
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: kpisAsync.when(
-                  loading: () => const SizedBox(
-                    height: 100,
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  error: (_, __) => const SizedBox.shrink(),
-                  data: (k) => _KpisRow(kpis: k),
-                ),
-              ),
-              // ─── Filtros ───
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _FiltersRow(
-                  searchCtrl: _searchCtrl,
-                  onSearchChanged: _onSearchChanged,
-                  query: query,
-                  kpis: kpisAsync.valueOrNull,
-                ),
-              ),
-              const SizedBox(height: 8),
-              // ─── Tabla ───
-              Expanded(
-                child: pageAsync.when(
-                  loading: () => const AppLoadingState(),
-                  error: (e, _) => AppErrorState(
-                    message: l.adminUsersLoadError,
-                    detail: e.toString(),
-                    onRetry: () => ref.invalidate(adminUsersPageProvider),
-                    retryLabel: l.actionRetry,
-                  ),
-                  data: (page) {
-                    if (page.rows.isEmpty) {
-                      return AppEmptyState(
-                        icon: Icons.people_outline,
-                        title: l.adminUsersEmptyTitle,
-                        message: l.adminUsersEmptyBody,
-                      );
-                    }
-                    return _UsersTable(page: page, query: query);
+      data: (page) {
+        if (page.rows.isEmpty) {
+          return AppEmptyState(
+            icon: Icons.people_outline,
+            title: l.adminUsersEmptyTitle,
+            message: l.adminUsersEmptyBody,
+          );
+        }
+        return _UsersTable(
+          page: page,
+          query: query,
+          embedded: widget.embedded,
+        );
+      },
+    );
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppMaxWidths.wide),
+        child: Column(
+          mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            // Acción refresh (antes en el AppBar).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  tooltip: l.actionRetry,
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () {
+                    ref
+                      ..invalidate(adminUsersKpisProvider)
+                      ..invalidate(adminUsersPageProvider);
                   },
                 ),
               ),
-            ],
-          ),
+            ),
+            // ─── KPIs cards ───
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: kpisAsync.when(
+                loading: () => const SizedBox(
+                  height: 100,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (k) => _KpisRow(kpis: k),
+              ),
+            ),
+            // ─── Filtros ───
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _FiltersRow(
+                searchCtrl: _searchCtrl,
+                onSearchChanged: _onSearchChanged,
+                query: query,
+                kpis: kpisAsync.valueOrNull,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // ─── Tabla ───
+            if (widget.embedded) table else Expanded(child: table),
+          ],
         ),
       ),
     );
@@ -176,8 +201,7 @@ class _KpisRow extends StatelessWidget {
           subtitle: '',
           color: Theme.of(context).colorScheme.error,
         ),
-        if (kpis.byPlan.isNotEmpty)
-          _PlansBreakdownCard(plans: kpis.byPlan),
+        if (kpis.byPlan.isNotEmpty) _PlansBreakdownCard(plans: kpis.byPlan),
       ],
     );
   }
@@ -390,22 +414,29 @@ class _FiltersRow extends ConsumerWidget {
 // ─────────────────────── Tabla ───────────────────────
 
 class _UsersTable extends ConsumerWidget {
-  const _UsersTable({required this.page, required this.query});
+  const _UsersTable({
+    required this.page,
+    required this.query,
+    this.embedded = false,
+  });
   final AdminUsersListResult page;
   final AdminUsersQuery query;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final list = ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      shrinkWrap: embedded,
+      physics: embedded ? const NeverScrollableScrollPhysics() : null,
+      itemCount: page.rows.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 4),
+      itemBuilder: (_, i) => _UserRow(user: page.rows[i]),
+    );
     return Column(
+      mainAxisSize: embedded ? MainAxisSize.min : MainAxisSize.max,
       children: [
-        Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            itemCount: page.rows.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 4),
-            itemBuilder: (_, i) => _UserRow(user: page.rows[i]),
-          ),
-        ),
+        if (embedded) list else Expanded(child: list),
         // Paginación server-side (offset/limit) expuesta con el mismo
         // AppPaginationBar que el resto de pantallas, para una UI consistente.
         AppPaginationBar(
@@ -497,152 +528,152 @@ class _UserRowState extends ConsumerState<_UserRow> {
                     ],
                   ],
                 ),
-                    const SizedBox(height: 2),
+                const SizedBox(height: 2),
+                Text(
+                  u.email,
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 2,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
                     Text(
-                      u.email,
+                      u.currentPlanName,
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '·',
+                      style: TextStyle(color: context.colors.onSurfaceVariant),
+                    ),
+                    Text(
+                      u.locale.toUpperCase(),
+                      style: context.textTheme.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      '·',
+                      style: TextStyle(color: context.colors.onSurfaceVariant),
+                    ),
+                    Text(
+                      l.adminUsersSignedUp(fmt.format(u.signedUpAt.toLocal())),
                       style: context.textTheme.bodySmall?.copyWith(
                         color: context.colors.onSurfaceVariant,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 2,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          u.currentPlanName,
-                          style: context.textTheme.bodySmall?.copyWith(
-                            color: context.colors.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          '·',
-                          style: TextStyle(color: context.colors.onSurfaceVariant),
-                        ),
-                        Text(
-                          u.locale.toUpperCase(),
-                          style: context.textTheme.bodySmall?.copyWith(
-                            fontFamily: 'monospace',
-                            color: context.colors.onSurfaceVariant,
-                          ),
-                        ),
-                        Text(
-                          '·',
-                          style: TextStyle(color: context.colors.onSurfaceVariant),
-                        ),
-                        Text(
-                          l.adminUsersSignedUp(fmt.format(u.signedUpAt.toLocal())),
-                          style: context.textTheme.bodySmall?.copyWith(
-                            color: context.colors.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
-              ),
-              PopupMenuButton<String>(
-                enabled: !_busy,
-                tooltip: l.adminUsersActions,
-                onSelected: (v) async {
-                  switch (v) {
-                    case 'open':
-                      await context.pushNamed(
-                        RouteNames.adminUserDetail,
-                        pathParameters: {'id': u.id},
-                      );
-                    case 'send_email':
-                      await _onSendEmail();
-                    case 'block':
-                      await _onBlock();
-                    case 'unblock':
-                      await _onUnblock();
-                    case 'deactivate':
-                      await _onDeactivate();
-                    case 'reactivate':
-                      await _onReactivate();
-                  }
-                },
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'open',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.open_in_new, size: 18),
-                        const SizedBox(width: 8),
-                        Text(l.adminUsersOpenDetail),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'send_email',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.mail_outline, size: 18),
-                        const SizedBox(width: 8),
-                        Text(l.adminUsersSendEmail),
-                      ],
-                    ),
-                  ),
-                  if (!isSelf) ...[
-                    if (u.status == UserStatus.active)
-                      PopupMenuItem(
-                        value: 'block',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.timer_outlined, size: 18),
-                            const SizedBox(width: 8),
-                            Text(l.adminUsersBlockTemporary),
-                          ],
-                        ),
-                      )
-                    else if (u.status == UserStatus.blocked)
-                      PopupMenuItem(
-                        value: 'unblock',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.lock_open, size: 18),
-                            const SizedBox(width: 8),
-                            Text(l.adminUsersUnblock),
-                          ],
-                        ),
-                      ),
-                    if (u.status != UserStatus.deactivated)
-                      PopupMenuItem(
-                        value: 'deactivate',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.block,
-                              size: 18,
-                              color: context.colors.error,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              l.adminUsersDeactivate,
-                              style: TextStyle(color: context.colors.error),
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      PopupMenuItem(
-                        value: 'reactivate',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.restart_alt, size: 18),
-                            const SizedBox(width: 8),
-                            Text(l.adminUsersReactivate),
-                          ],
-                        ),
-                      ),
+              ],
+            ),
+          ),
+          PopupMenuButton<String>(
+            enabled: !_busy,
+            tooltip: l.adminUsersActions,
+            onSelected: (v) async {
+              switch (v) {
+                case 'open':
+                  await context.pushNamed(
+                    RouteNames.adminUserDetail,
+                    pathParameters: {'id': u.id},
+                  );
+                case 'send_email':
+                  await _onSendEmail();
+                case 'block':
+                  await _onBlock();
+                case 'unblock':
+                  await _onUnblock();
+                case 'deactivate':
+                  await _onDeactivate();
+                case 'reactivate':
+                  await _onReactivate();
+              }
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'open',
+                child: Row(
+                  children: [
+                    const Icon(Icons.open_in_new, size: 18),
+                    const SizedBox(width: 8),
+                    Text(l.adminUsersOpenDetail),
                   ],
-                ],
+                ),
               ),
+              PopupMenuItem(
+                value: 'send_email',
+                child: Row(
+                  children: [
+                    const Icon(Icons.mail_outline, size: 18),
+                    const SizedBox(width: 8),
+                    Text(l.adminUsersSendEmail),
+                  ],
+                ),
+              ),
+              if (!isSelf) ...[
+                if (u.status == UserStatus.active)
+                  PopupMenuItem(
+                    value: 'block',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.timer_outlined, size: 18),
+                        const SizedBox(width: 8),
+                        Text(l.adminUsersBlockTemporary),
+                      ],
+                    ),
+                  )
+                else if (u.status == UserStatus.blocked)
+                  PopupMenuItem(
+                    value: 'unblock',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.lock_open, size: 18),
+                        const SizedBox(width: 8),
+                        Text(l.adminUsersUnblock),
+                      ],
+                    ),
+                  ),
+                if (u.status != UserStatus.deactivated)
+                  PopupMenuItem(
+                    value: 'deactivate',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.block,
+                          size: 18,
+                          color: context.colors.error,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          l.adminUsersDeactivate,
+                          style: TextStyle(color: context.colors.error),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  PopupMenuItem(
+                    value: 'reactivate',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.restart_alt, size: 18),
+                        const SizedBox(width: 8),
+                        Text(l.adminUsersReactivate),
+                      ],
+                    ),
+                  ),
+              ],
             ],
+          ),
+        ],
       ),
     );
   }
@@ -698,9 +729,8 @@ class _UserRowState extends ConsumerState<_UserRow> {
   Future<void> _onUnblock() async {
     final l = context.l10n;
     await _withBusy(() async {
-      final result = await ref
-          .read(adminUsersDataSourceProvider)
-          .unblock(widget.user.id);
+      final result =
+          await ref.read(adminUsersDataSourceProvider).unblock(widget.user.id);
       if (!mounted) return;
       if (result.ok) {
         _invalidateAll();
@@ -773,32 +803,27 @@ class _UserRowState extends ConsumerState<_UserRow> {
             ListTile(
               leading: const Icon(Icons.timer_outlined),
               title: Text(l.adminUsersBlock1h),
-              onTap: () =>
-                  Navigator.of(context).pop(const Duration(hours: 1)),
+              onTap: () => Navigator.of(context).pop(const Duration(hours: 1)),
             ),
             ListTile(
               leading: const Icon(Icons.timer_outlined),
               title: Text(l.adminUsersBlock24h),
-              onTap: () =>
-                  Navigator.of(context).pop(const Duration(hours: 24)),
+              onTap: () => Navigator.of(context).pop(const Duration(hours: 24)),
             ),
             ListTile(
               leading: const Icon(Icons.timer_outlined),
               title: Text(l.adminUsersBlock7d),
-              onTap: () =>
-                  Navigator.of(context).pop(const Duration(days: 7)),
+              onTap: () => Navigator.of(context).pop(const Duration(days: 7)),
             ),
             ListTile(
               leading: const Icon(Icons.timer_outlined),
               title: Text(l.adminUsersBlock30d),
-              onTap: () =>
-                  Navigator.of(context).pop(const Duration(days: 30)),
+              onTap: () => Navigator.of(context).pop(const Duration(days: 30)),
             ),
             ListTile(
               leading: const Icon(Icons.timer_outlined),
               title: Text(l.adminUsersBlock90d),
-              onTap: () =>
-                  Navigator.of(context).pop(const Duration(days: 90)),
+              onTap: () => Navigator.of(context).pop(const Duration(days: 90)),
             ),
           ],
         ),
