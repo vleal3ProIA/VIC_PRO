@@ -10,6 +10,7 @@ import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 import 'package:myapp/core/widgets/premium/premium_badge.dart';
 
 import '../../application/email_log_providers.dart';
@@ -19,11 +20,19 @@ import '../../domain/email_log_entry.dart';
 /// Sirve para debug ("¿le llegó el email a user@x.com?"), compliance
 /// (registro GDPR) y soporte. Incluye un botón "Enviar test" para
 /// validar la configuración SMTP sin esperar a un evento real.
-class AdminEmailLogPage extends ConsumerWidget {
+class AdminEmailLogPage extends ConsumerStatefulWidget {
   const AdminEmailLogPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminEmailLogPage> createState() => _AdminEmailLogPageState();
+}
+
+class _AdminEmailLogPageState extends ConsumerState<AdminEmailLogPage> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l10n;
     final async = ref.watch(emailLogProvider);
 
@@ -46,7 +55,7 @@ class AdminEmailLogPage extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.send_outlined),
         label: Text(l.adminEmailLogSendTest),
-        onPressed: () => _onSendTest(context, ref),
+        onPressed: _onSendTest,
       ),
       body: Center(
         child: ConstrainedBox(
@@ -67,17 +76,36 @@ class AdminEmailLogPage extends ConsumerWidget {
                   message: l.adminEmailLogEmptyBody,
                 );
               }
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  96,
-                ),
-                itemCount: entries.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSpacing.xs),
-                itemBuilder: (_, i) => _EntryTile(entry: entries[i]),
+              final totalPages = (entries.length / _pageSize).ceil();
+              final page = _page.clamp(0, totalPages - 1);
+              final start = page * _pageSize;
+              final end = (start + _pageSize) > entries.length
+                  ? entries.length
+                  : start + _pageSize;
+              final pageEntries = entries.sublist(start, end);
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        AppSpacing.md,
+                        AppSpacing.md,
+                        96,
+                      ),
+                      itemCount: pageEntries.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: AppSpacing.xs),
+                      itemBuilder: (_, i) => _EntryTile(entry: pageEntries[i]),
+                    ),
+                  ),
+                  AppPaginationBar(
+                    currentPage: page,
+                    totalPages: totalPages,
+                    onPrevious: () => setState(() => _page = page - 1),
+                    onNext: () => setState(() => _page = page + 1),
+                  ),
+                ],
               );
             },
           ),
@@ -86,7 +114,7 @@ class AdminEmailLogPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _onSendTest(BuildContext context, WidgetRef ref) async {
+  Future<void> _onSendTest() async {
     final l = context.l10n;
     final email = ref.read(currentUserProvider)?.email;
     if (email == null) {
@@ -97,7 +125,7 @@ class AdminEmailLogPage extends ConsumerWidget {
     final result = await ref
         .read(emailLogDataSourceProvider)
         .sendTest(to: email, locale: locale);
-    if (!context.mounted) return;
+    if (!mounted) return;
     ref.invalidate(emailLogProvider);
     if (result.ok) {
       context.showSnack(l.adminEmailLogTestSent(email));

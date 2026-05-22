@@ -29,6 +29,7 @@ import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/audit_center_providers.dart';
@@ -51,6 +52,12 @@ class _AdminAuditPageState extends ConsumerState<AdminAuditPage> {
 
   /// Spinner del boton mientras esta corriendo la Edge Function.
   bool _starting = false;
+
+  /// Página actual (0-indexed) de la paginación client-side.
+  int _page = 0;
+
+  /// Reports por página.
+  static const int _pageSize = 10;
 
   @override
   void dispose() {
@@ -237,7 +244,16 @@ class _AdminAuditPageState extends ConsumerState<AdminAuditPage> {
                           ),
                         );
                       }
+                      // El banner de staleness y el polling evalúan SObre la
+                      // lista completa; solo paginamos la visualización.
                       final staleness = evaluateAuditStaleness(rows);
+                      final totalPages = (rows.length / _pageSize).ceil();
+                      final page = _page.clamp(0, totalPages - 1);
+                      final start = page * _pageSize;
+                      final end = (start + _pageSize) > rows.length
+                          ? rows.length
+                          : start + _pageSize;
+                      final pageRows = rows.sublist(start, end);
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -245,10 +261,16 @@ class _AdminAuditPageState extends ConsumerState<AdminAuditPage> {
                             _StaleBanner(staleness: staleness),
                             const SizedBox(height: AppSpacing.md),
                           ],
-                          for (final r in rows) ...[
+                          for (final r in pageRows) ...[
                             _AuditReportRow(row: r),
                             const SizedBox(height: AppSpacing.sm),
                           ],
+                          AppPaginationBar(
+                            currentPage: page,
+                            totalPages: totalPages,
+                            onPrevious: () => setState(() => _page = page - 1),
+                            onNext: () => setState(() => _page = page + 1),
+                          ),
                         ],
                       );
                     },
