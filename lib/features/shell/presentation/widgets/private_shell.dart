@@ -13,8 +13,6 @@ import 'package:myapp/features/search/presentation/widgets/search_button.dart';
 import 'package:myapp/features/shell/presentation/widgets/skip_to_content_link.dart';
 import 'package:myapp/features/shell/presentation/widgets/user_avatar_menu.dart';
 import 'package:myapp/features/status/presentation/widgets/maintenance_banner.dart';
-import 'package:myapp/features/welcome/presentation/widgets/language_picker.dart';
-import 'package:myapp/features/welcome/presentation/widgets/theme_toggle.dart';
 
 /// Destino de navegación de la zona privada.
 class _Destination {
@@ -33,12 +31,15 @@ class _Destination {
   final String label;
 }
 
+/// Ancho del sidebar lateral expandido (zona privada, pantallas anchas).
+const double _kSidebarWidth = 256;
+
 /// Shell de la zona privada (área autenticada).
 ///
-/// Aporta el cromo común a todas las páginas privadas: cabecera con
-/// idioma/tema/avatar y navegación lateral. Responsive:
-/// - móvil  → `Drawer` con hamburguesa.
-/// - ancho  → `NavigationRail` fijo a la izquierda.
+/// Aporta el cromo común a todas las páginas privadas:
+/// - **Header**: logo + botón para plegar/desplegar el sidebar a la izquierda;
+///   búsqueda, notificaciones, ayuda y avatar a la derecha.
+/// - **Sidebar lateral** ancho y plegable (ancho) o `Drawer` (móvil).
 ///
 /// Se monta vía `ShellRoute`, así que persiste al navegar entre destinos.
 class PrivateShell extends ConsumerStatefulWidget {
@@ -57,11 +58,15 @@ class PrivateShell extends ConsumerStatefulWidget {
 }
 
 class _PrivateShellState extends ConsumerState<PrivateShell> {
-  /// Destino del skip-to-content link. Lo coloco en el `body` del
-  /// Scaffold para que la activación del skip-link mueva el foco
-  /// directamente al primer elemento del contenido principal,
-  /// saltándose el AppBar (LanguagePicker/ThemeToggle/Avatar) y el
-  /// NavigationRail/Drawer.
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  /// Sidebar visible en pantallas anchas. El botón ☰ del header lo togglea.
+  bool _sidebarExpanded = true;
+
+  /// Destino del skip-to-content link. Lo coloco en el `body` del Scaffold
+  /// para que la activación del skip-link mueva el foco directamente al
+  /// primer elemento del contenido principal, saltándose el AppBar y el
+  /// sidebar.
   late final FocusNode _mainContentFocus =
       FocusNode(debugLabel: 'private-shell-main-content', skipTraversal: true);
 
@@ -75,6 +80,8 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final isAdmin = ref.watch(isAdminProvider);
+    final commercialName = ref.watch(brandingOrFallbackProvider).commercialName;
+
     final destinations = <_Destination>[
       _Destination(
         path: RoutePaths.home,
@@ -112,15 +119,21 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
 
     final isWide = !context.isMobile;
 
+    // Botón ☰: en ancho pliega/despliega el sidebar; en móvil abre el Drawer.
+    void onToggleSidebar() {
+      if (isWide) {
+        setState(() => _sidebarExpanded = !_sidebarExpanded);
+      } else {
+        _scaffoldKey.currentState?.openDrawer();
+      }
+    }
+
     // El body se envuelve en Focus + FocusTraversalGroup para que el
     // skip-link (debajo del Stack) pueda mover el foco aquí saltándose
     // el AppBar y la navegación.
     Widget wrapBody(Widget body) => FocusTraversalGroup(
           child: Focus(
             focusNode: _mainContentFocus,
-            // skipTraversal=true ya está en el FocusNode -> el propio
-            // Focus widget no se "ve" en el orden de Tab, solo sirve
-            // como destino programático para requestFocus().
             child: body,
           ),
         );
@@ -129,76 +142,94 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
       child: Stack(
         children: [
           Scaffold(
-          appBar: AppBar(
-            scrolledUnderElevation: 0,
-            title: Text(
-              ref.watch(brandingOrFallbackProvider).commercialName,
-              style: context.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            actions: const [
-              SearchButton(),
-              NotificationBell(),
-              HelpMenuButton(),
-              LanguagePicker(),
-              ThemeToggle(),
-              SizedBox(width: 4),
-              UserAvatarMenu(),
-              SizedBox(width: 8),
-            ],
-          ),
-          drawer: isWide
-              ? null
-              : Drawer(
-                  child: SafeArea(
-                    child: _NavList(
-                      destinations: destinations,
-                      selectedIndex: selectedIndex,
-                      commercialName: ref
-                          .watch(brandingOrFallbackProvider)
-                          .commercialName,
-                      onSelected: (i) {
-                        Navigator.of(context).pop(); // cierra el drawer
-                        goTo(i);
-                      },
+            key: _scaffoldKey,
+            appBar: AppBar(
+              scrolledUnderElevation: 0,
+              automaticallyImplyLeading: false,
+              titleSpacing: 12,
+              // ─── Izquierda: logo + botón de sidebar ───
+              title: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      commercialName,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
                     ),
                   ),
-                ),
-          body: Column(
-            children: [
-              // Banner de incidente activo de severidad >= major (auto-
-              // ocultado si no aplica). Va ARRIBA del nav rail para que
-              // sea visible aunque el rail oculte parte del contenido.
-              const MaintenanceBanner(),
-              Expanded(
-                child: isWide
-                    ? Row(
-                        children: [
-                          NavigationRail(
-                            selectedIndex: selectedIndex,
-                            onDestinationSelected: goTo,
-                            labelType: NavigationRailLabelType.all,
-                            destinations: [
-                              for (final d in destinations)
-                                NavigationRailDestination(
-                                  icon: Icon(d.icon),
-                                  selectedIcon: Icon(d.selectedIcon),
-                                  label: Text(d.label),
-                                ),
-                            ],
-                          ),
-                          const VerticalDivider(width: 1),
-                          Expanded(child: wrapBody(widget.child)),
-                        ],
-                      )
-                    : wrapBody(widget.child),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    tooltip:
+                        MaterialLocalizations.of(context).openAppDrawerTooltip,
+                    icon: Icon(
+                      isWide && !_sidebarExpanded
+                          ? Icons.menu
+                          : Icons.menu_open,
+                    ),
+                    onPressed: onToggleSidebar,
+                  ),
+                ],
               ),
-            ],
+              // ─── Derecha: búsqueda · campana · ayuda · avatar ───
+              actions: const [
+                SearchButton(),
+                NotificationBell(),
+                HelpMenuButton(),
+                SizedBox(width: 4),
+                UserAvatarMenu(),
+                SizedBox(width: 8),
+              ],
+            ),
+            drawer: isWide
+                ? null
+                : Drawer(
+                    child: SafeArea(
+                      child: _SidebarNav(
+                        destinations: destinations,
+                        selectedIndex: selectedIndex,
+                        commercialName: commercialName,
+                        showHeader: true,
+                        onSelected: (i) {
+                          Navigator.of(context).pop(); // cierra el drawer
+                          goTo(i);
+                        },
+                      ),
+                    ),
+                  ),
+            body: Column(
+              children: [
+                // Banner de incidente activo (auto-oculto si no aplica).
+                const MaintenanceBanner(),
+                Expanded(
+                  child: isWide
+                      ? Row(
+                          children: [
+                            if (_sidebarExpanded) ...[
+                              SizedBox(
+                                width: _kSidebarWidth,
+                                child: _SidebarNav(
+                                  destinations: destinations,
+                                  selectedIndex: selectedIndex,
+                                  commercialName: commercialName,
+                                  showHeader: false,
+                                  onSelected: goTo,
+                                ),
+                              ),
+                              const VerticalDivider(width: 1),
+                            ],
+                            Expanded(child: wrapBody(widget.child)),
+                          ],
+                        )
+                      : wrapBody(widget.child),
+                ),
+              ],
+            ),
           ),
-        ),
-        // Skip-to-content link: invisible salvo cuando recibe foco.
-        // Por estar sobre el Stack, queda por encima del AppBar.
+          // Skip-to-content link: invisible salvo cuando recibe foco.
           SkipToContentLink(targetFocusNode: _mainContentFocus),
         ],
       ),
@@ -206,44 +237,66 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
   }
 }
 
-/// Lista de navegación usada dentro del `Drawer` en móvil.
-class _NavList extends StatelessWidget {
-  const _NavList({
+/// Lista de navegación lateral. Se usa tanto en el `Drawer` (móvil) como en
+/// el sidebar fijo (ancho). [showHeader] muestra el nombre comercial arriba
+/// (solo en el drawer; en ancho el nombre ya está en el AppBar).
+class _SidebarNav extends StatelessWidget {
+  const _SidebarNav({
     required this.destinations,
     required this.selectedIndex,
     required this.commercialName,
+    required this.showHeader,
     required this.onSelected,
   });
 
   final List<_Destination> destinations;
   final int selectedIndex;
   final String commercialName;
+  final bool showHeader;
   final ValueChanged<int> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    final scheme = context.colors;
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-          child: Text(
-            commercialName,
-            style: context.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
+        if (showHeader)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Text(
+              commercialName,
+              style: context.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
-        ),
         for (var i = 0; i < destinations.length; i++)
-          ListTile(
-            leading: Icon(
-              i == selectedIndex
-                  ? destinations[i].selectedIcon
-                  : destinations[i].icon,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              dense: true,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              leading: Icon(
+                i == selectedIndex
+                    ? destinations[i].selectedIcon
+                    : destinations[i].icon,
+                size: 20,
+              ),
+              title: Text(
+                destinations[i].label,
+                style: context.textTheme.bodyMedium?.copyWith(
+                  fontWeight:
+                      i == selectedIndex ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+              selected: i == selectedIndex,
+              selectedTileColor: scheme.primary.withValues(alpha: 0.10),
+              selectedColor: scheme.primary,
+              onTap: () => onSelected(i),
             ),
-            title: Text(destinations[i].label),
-            selected: i == selectedIndex,
-            onTap: () => onSelected(i),
           ),
       ],
     );

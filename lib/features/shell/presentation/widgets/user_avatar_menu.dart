@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/providers/supabase_providers.dart';
-import 'package:myapp/core/providers/theme_provider.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/features/account/application/profile_providers.dart';
@@ -14,8 +13,6 @@ import 'package:myapp/features/auth/application/auth_providers.dart';
 enum _AvatarAction {
   notifications,
   files,
-  activity,
-  themeToggle,
   settings,
   signOut,
 }
@@ -53,12 +50,6 @@ class UserAvatarMenu extends ConsumerWidget {
     final avatarUrl = ref.watch(myProfileProvider).valueOrNull?.avatarUrl;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final themeMode = ref.watch(themeNotifierProvider);
-    // Determinar si el theme actual se renderiza oscuro (incluyendo
-    // 'system' resuelto a oscuro por preferencia del OS).
-    final isDark = themeMode == ThemeMode.dark ||
-        (themeMode == ThemeMode.system &&
-            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
 
     return PopupMenuButton<_AvatarAction>(
       tooltip: name,
@@ -77,14 +68,6 @@ class UserAvatarMenu extends ConsumerWidget {
             context.goNamed(RouteNames.notifications);
           case _AvatarAction.files:
             context.goNamed(RouteNames.files);
-          case _AvatarAction.activity:
-            context.goNamed(RouteNames.activity);
-          case _AvatarAction.themeToggle:
-            // Toggle binario light <-> dark. Para volver a 'system'
-            // el user usa el ThemeToggle del AppBar (ciclico).
-            await ref.read(themeNotifierProvider.notifier).setMode(
-                  isDark ? ThemeMode.light : ThemeMode.dark,
-                );
           case _AvatarAction.settings:
             context.goNamed(RouteNames.accountSettings);
           case _AvatarAction.signOut:
@@ -117,22 +100,7 @@ class UserAvatarMenu extends ConsumerWidget {
           label: l.filesTitle,
           scheme: scheme,
         ),
-        _premiumMenuItem(
-          value: _AvatarAction.activity,
-          icon: Icons.timeline_outlined,
-          label: l.activityTitle,
-          scheme: scheme,
-        ),
         const PopupMenuDivider(height: 1),
-        // ─── Theme toggle inline ───
-        _premiumMenuItem(
-          value: _AvatarAction.themeToggle,
-          icon: isDark
-              ? Icons.light_mode_outlined
-              : Icons.dark_mode_outlined,
-          label: isDark ? l.themeLight : l.themeDark,
-          scheme: scheme,
-        ),
         _premiumMenuItem(
           value: _AvatarAction.settings,
           icon: Icons.settings_outlined,
