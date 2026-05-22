@@ -9,6 +9,7 @@ import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
 import '../../application/webhooks_providers.dart';
@@ -19,11 +20,19 @@ import '../widgets/webhook_secret_dialog.dart';
 /// `/account-settings/webhooks` — gestiona los endpoints salientes
 /// del usuario. Cada item tiene su detalle propio en
 /// `/account-settings/webhooks/<id>` con histórico de deliveries.
-class WebhooksPage extends ConsumerWidget {
+class WebhooksPage extends ConsumerStatefulWidget {
   const WebhooksPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WebhooksPage> createState() => _WebhooksPageState();
+}
+
+class _WebhooksPageState extends ConsumerState<WebhooksPage> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l10n;
     final async = ref.watch(webhookEndpointsProvider);
 
@@ -46,7 +55,7 @@ class WebhooksPage extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
         label: Text(l.webhooksCreate),
-        onPressed: () => _onCreate(context, ref),
+        onPressed: _onCreate,
       ),
       body: Center(
         child: ConstrainedBox(
@@ -67,14 +76,34 @@ class WebhooksPage extends ConsumerWidget {
                   message: l.webhooksEmptyBody,
                 );
               }
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                itemCount: endpoints.length + 1,
-                separatorBuilder: (_, __) => const SizedBox(height: 4),
-                itemBuilder: (_, i) {
-                  if (i == 0) return _IntroCard(l: l);
-                  return _EndpointTile(endpoint: endpoints[i - 1]);
-                },
+              final totalPages = (endpoints.length / _pageSize).ceil();
+              final page = _page.clamp(0, totalPages - 1);
+              final start = page * _pageSize;
+              final end = (start + _pageSize) > endpoints.length
+                  ? endpoints.length
+                  : start + _pageSize;
+              final pageEndpoints = endpoints.sublist(start, end);
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                      // +1 por el _IntroCard fijo en la posición 0.
+                      itemCount: pageEndpoints.length + 1,
+                      separatorBuilder: (_, __) => const SizedBox(height: 4),
+                      itemBuilder: (_, i) {
+                        if (i == 0) return _IntroCard(l: l);
+                        return _EndpointTile(endpoint: pageEndpoints[i - 1]);
+                      },
+                    ),
+                  ),
+                  AppPaginationBar(
+                    currentPage: page,
+                    totalPages: totalPages,
+                    onPrevious: () => setState(() => _page = page - 1),
+                    onNext: () => setState(() => _page = page + 1),
+                  ),
+                ],
               );
             },
           ),
@@ -83,21 +112,21 @@ class WebhooksPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _onCreate(BuildContext context, WidgetRef ref) async {
+  Future<void> _onCreate() async {
     final l = context.l10n;
     final result = await showDialog<WebhookEndpoint>(
       context: context,
       barrierDismissible: false,
       builder: (_) => const CreateWebhookDialog(),
     );
-    if (result == null || !context.mounted) return;
+    if (result == null || !mounted) return;
     ref.invalidate(webhookEndpointsProvider);
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (_) => WebhookSecretDialog(endpoint: result),
     );
-    if (!context.mounted) return;
+    if (!mounted) return;
     context.showSnack(l.webhooksCreated);
   }
 }

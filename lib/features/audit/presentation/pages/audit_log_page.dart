@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/nav_helpers.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 import 'package:myapp/features/audit/application/audit_logger.dart';
 import 'package:myapp/features/audit/domain/audit_log_entry.dart';
 import 'package:myapp/features/audit/presentation/audit_event_visuals.dart';
@@ -11,11 +12,19 @@ import 'package:myapp/features/audit/presentation/audit_event_visuals.dart';
 /// Página `/audit-log` — lista los últimos eventos del usuario (login,
 /// cambios de cuenta, MFA, passkey…). Append-only por RLS: el usuario
 /// no puede modificar ni borrar.
-class AuditLogPage extends ConsumerWidget {
+class AuditLogPage extends ConsumerStatefulWidget {
   const AuditLogPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AuditLogPage> createState() => _AuditLogPageState();
+}
+
+class _AuditLogPageState extends ConsumerState<AuditLogPage> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l10n;
     final entriesAsync = ref.watch(myAuditLogProvider);
 
@@ -66,14 +75,33 @@ class AuditLogPage extends ConsumerWidget {
                   ),
                 );
               }
-              return ListView.separated(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-                itemCount: entries.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (_, i) => _AuditTile(entry: entries[i]),
+              final totalPages = (entries.length / _pageSize).ceil();
+              final page = _page.clamp(0, totalPages - 1);
+              final start = page * _pageSize;
+              final end = (start + _pageSize) > entries.length
+                  ? entries.length
+                  : start + _pageSize;
+              final pageEntries = entries.sublist(start, end);
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      itemCount: pageEntries.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (_, i) => _AuditTile(entry: pageEntries[i]),
+                    ),
+                  ),
+                  AppPaginationBar(
+                    currentPage: page,
+                    totalPages: totalPages,
+                    onPrevious: () => setState(() => _page = page - 1),
+                    onNext: () => setState(() => _page = page + 1),
+                  ),
+                ],
               );
             },
           ),

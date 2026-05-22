@@ -8,6 +8,7 @@ import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
@@ -23,11 +24,19 @@ import '../widgets/admin_promotion_code_create_dialog.dart';
 /// `/admin/coupons` — catálogo de cupones + códigos promocionales.
 /// Cualquier mutación pasa por la Edge Function `admin-coupons` (sync
 /// con Stripe Coupons/PromotionCodes API).
-class AdminCouponsPage extends ConsumerWidget {
+class AdminCouponsPage extends ConsumerStatefulWidget {
   const AdminCouponsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminCouponsPage> createState() => _AdminCouponsPageState();
+}
+
+class _AdminCouponsPageState extends ConsumerState<AdminCouponsPage> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l10n;
     final listAsync = ref.watch(adminCouponsListProvider);
     final plansAsync = ref.watch(plansProvider);
@@ -51,7 +60,7 @@ class AdminCouponsPage extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
         label: Text(l.adminCouponsCreate),
-        onPressed: () => _onCreateCoupon(context, ref, plansAsync.valueOrNull),
+        onPressed: () => _onCreateCoupon(plansAsync.valueOrNull),
       ),
       body: Center(
         child: ConstrainedBox(
@@ -76,23 +85,43 @@ class AdminCouponsPage extends ConsumerWidget {
               for (final pc in data.promotionCodes) {
                 byCoupon.putIfAbsent(pc.couponId, () => []).add(pc);
               }
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  96,
-                ),
-                itemCount: data.coupons.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSpacing.sm),
-                itemBuilder: (_, i) {
-                  final c = data.coupons[i];
-                  return _CouponCard(
-                    coupon: c,
-                    codes: byCoupon[c.id] ?? const [],
-                  );
-                },
+              final coupons = data.coupons;
+              final totalPages = (coupons.length / _pageSize).ceil();
+              final page = _page.clamp(0, totalPages - 1);
+              final start = page * _pageSize;
+              final end = (start + _pageSize) > coupons.length
+                  ? coupons.length
+                  : start + _pageSize;
+              final pageCoupons = coupons.sublist(start, end);
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        AppSpacing.md,
+                        AppSpacing.md,
+                        96,
+                      ),
+                      itemCount: pageCoupons.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: AppSpacing.sm),
+                      itemBuilder: (_, i) {
+                        final c = pageCoupons[i];
+                        return _CouponCard(
+                          coupon: c,
+                          codes: byCoupon[c.id] ?? const [],
+                        );
+                      },
+                    ),
+                  ),
+                  AppPaginationBar(
+                    currentPage: page,
+                    totalPages: totalPages,
+                    onPrevious: () => setState(() => _page = page - 1),
+                    onNext: () => setState(() => _page = page + 1),
+                  ),
+                ],
               );
             },
           ),
@@ -101,17 +130,13 @@ class AdminCouponsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _onCreateCoupon(
-    BuildContext context,
-    WidgetRef ref,
-    List<Plan>? plans,
-  ) async {
+  Future<void> _onCreateCoupon(List<Plan>? plans) async {
     final created = await showDialog<bool>(
       context: context,
       builder: (_) =>
           AdminCouponCreateDialog(availablePlans: plans ?? const []),
     );
-    if ((created ?? false) && context.mounted) {
+    if ((created ?? false) && mounted) {
       ref.invalidate(adminCouponsListProvider);
     }
   }

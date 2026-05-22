@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/nav_helpers.dart';
 import 'package:myapp/core/router/route_names.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 import 'package:myapp/features/auth/application/passkey_notifier.dart';
 import 'package:myapp/features/auth/application/webauthn_providers.dart';
 import 'package:myapp/features/auth/domain/entities/passkey_credential.dart';
@@ -11,11 +12,19 @@ import 'package:myapp/generated/l10n/app_localizations.dart';
 
 /// Página `/passkeys` — gestiona los passkeys del usuario:
 /// listar los registrados, añadir uno nuevo, borrar.
-class PasskeysPage extends ConsumerWidget {
+class PasskeysPage extends ConsumerStatefulWidget {
   const PasskeysPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PasskeysPage> createState() => _PasskeysPageState();
+}
+
+class _PasskeysPageState extends ConsumerState<PasskeysPage> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l10n;
     final passkeysAsync = ref.watch(myPasskeysProvider);
     final action = ref.watch(passkeyNotifierProvider);
@@ -128,23 +137,41 @@ class PasskeysPage extends ConsumerWidget {
                       ),
                     );
                   }
-                  return Card(
-                    child: Column(
-                      children: [
-                        for (var i = 0; i < items.length; i++) ...[
-                          _PasskeyTile(
-                            passkey: items[i],
-                            busy: action.isBusy,
-                            onDelete: () => _confirmDelete(
-                              context,
-                              l,
-                              () => notifier.delete(items[i].id),
-                            ),
-                          ),
-                          if (i < items.length - 1) const Divider(height: 1),
-                        ],
-                      ],
-                    ),
+                  final totalPages = (items.length / _pageSize).ceil();
+                  final page = _page.clamp(0, totalPages - 1);
+                  final start = page * _pageSize;
+                  final end = (start + _pageSize) > items.length
+                      ? items.length
+                      : start + _pageSize;
+                  final pageItems = items.sublist(start, end);
+                  return Column(
+                    children: [
+                      Card(
+                        child: Column(
+                          children: [
+                            for (var i = 0; i < pageItems.length; i++) ...[
+                              _PasskeyTile(
+                                passkey: pageItems[i],
+                                busy: action.isBusy,
+                                onDelete: () => _confirmDelete(
+                                  context,
+                                  l,
+                                  () => notifier.delete(pageItems[i].id),
+                                ),
+                              ),
+                              if (i < pageItems.length - 1)
+                                const Divider(height: 1),
+                            ],
+                          ],
+                        ),
+                      ),
+                      AppPaginationBar(
+                        currentPage: page,
+                        totalPages: totalPages,
+                        onPrevious: () => setState(() => _page = page - 1),
+                        onNext: () => setState(() => _page = page + 1),
+                      ),
+                    ],
                   );
                 },
               ),

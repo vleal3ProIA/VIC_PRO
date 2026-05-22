@@ -9,6 +9,7 @@ import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/broadcasts_providers.dart';
@@ -16,11 +17,20 @@ import '../../domain/broadcast.dart';
 import '../widgets/broadcast_status_chip.dart';
 
 /// `/admin/broadcasts` — lista de broadcasts (drafts + sent + failed).
-class AdminBroadcastsPage extends ConsumerWidget {
+class AdminBroadcastsPage extends ConsumerStatefulWidget {
   const AdminBroadcastsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminBroadcastsPage> createState() =>
+      _AdminBroadcastsPageState();
+}
+
+class _AdminBroadcastsPageState extends ConsumerState<AdminBroadcastsPage> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l10n;
     final async = ref.watch(broadcastsListProvider);
 
@@ -64,17 +74,37 @@ class AdminBroadcastsPage extends ConsumerWidget {
                   message: l.broadcastsEmptyBody,
                 );
               }
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  96,
-                ),
-                itemCount: entries.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSpacing.sm),
-                itemBuilder: (_, i) => _BroadcastRow(broadcast: entries[i]),
+              final totalPages = (entries.length / _pageSize).ceil();
+              final page = _page.clamp(0, totalPages - 1);
+              final start = page * _pageSize;
+              final end = (start + _pageSize) > entries.length
+                  ? entries.length
+                  : start + _pageSize;
+              final pageEntries = entries.sublist(start, end);
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        AppSpacing.md,
+                        AppSpacing.md,
+                        96,
+                      ),
+                      itemCount: pageEntries.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: AppSpacing.sm),
+                      itemBuilder: (_, i) =>
+                          _BroadcastRow(broadcast: pageEntries[i]),
+                    ),
+                  ),
+                  AppPaginationBar(
+                    currentPage: page,
+                    totalPages: totalPages,
+                    onPrevious: () => setState(() => _page = page - 1),
+                    onNext: () => setState(() => _page = page + 1),
+                  ),
+                ],
               );
             },
           ),
