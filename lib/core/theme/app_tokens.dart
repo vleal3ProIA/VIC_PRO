@@ -53,6 +53,8 @@ class AppRadii {
   AppRadii._();
   static const double sm = 6;
   static const double md = 12;
+  /// Radio para cards (estética "soft 2026"): entre `md` y `lg`.
+  static const double card = 16;
   static const double lg = 20;
   // "Pill"-shaped: usamos uno grande, no `double.infinity` (Flutter no lo
   // acepta en BorderRadius).
@@ -60,6 +62,7 @@ class AppRadii {
 
   static const BorderRadius brSm = BorderRadius.all(Radius.circular(sm));
   static const BorderRadius brMd = BorderRadius.all(Radius.circular(md));
+  static const BorderRadius brCard = BorderRadius.all(Radius.circular(card));
   static const BorderRadius brLg = BorderRadius.all(Radius.circular(lg));
   static const BorderRadius brPill = BorderRadius.all(Radius.circular(pill));
 }
