@@ -6,7 +6,10 @@ import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:myapp/core/constants/supported_locales.dart';
 import 'package:myapp/core/observability/analytics_service.dart';
 import 'package:myapp/core/providers/preferences_provider.dart';
+import 'package:myapp/core/providers/supabase_providers.dart';
 import 'package:myapp/features/audit/application/audit_logger.dart';
+import 'package:myapp/features/branding/application/branding_providers.dart';
+import 'package:myapp/features/branding/domain/app_branding.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -88,5 +91,15 @@ Future<List<Override>> defaultGoldenOverrides() async {
     analyticsServiceProvider.overrideWithValue(
       AnalyticsService(backend: const NoopAnalyticsBackend()),
     ),
+    // Stub de la cadena de Supabase. Las páginas públicas (welcome / login /
+    // register / cookies) montan `PublicTopBar` —que lee
+    // `isAuthenticatedProvider`— y pintan el branding vía `appBrandingProvider`.
+    // Ambos cuelgan de `supabaseClientProvider` → `Supabase.instance`, que NO
+    // está inicializado en el entorno de test. Sin estos overrides el golden
+    // lanzaba una assertion de Supabase y capturaba un render con error. Aquí
+    // simulamos el caso anónimo (sin sesión) con branding de fallback, que es
+    // exactamente lo que ve un visitante no logueado en producción.
+    isAuthenticatedProvider.overrideWithValue(false),
+    appBrandingProvider.overrideWith((ref) => AppBranding.fallback),
   ];
 }
