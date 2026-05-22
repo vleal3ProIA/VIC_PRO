@@ -28,6 +28,35 @@ class TeamPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.popOrGo(RouteNames.accountSettings),
+        ),
+        title: Text(l.teamTitle),
+      ),
+      body: const TeamView(),
+    );
+  }
+}
+
+/// Cuerpo de la gestión del workspace (sin Scaffold). Reutilizable como página
+/// completa o embebido en el master-detail de Ajustes → Workspace.
+///
+/// El botón de invitar (antes en el AppBar) se reposiciona dentro del panel
+/// para que funcione igual embebido y a pantalla completa.
+class TeamView extends ConsumerWidget {
+  const TeamView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Ajustes):
+  /// usa `shrinkWrap` para no requerir altura/scroll propios.
+  final bool embedded;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     final tenant = ref.watch(currentTenantProvider).valueOrNull;
     final membersAsync = ref.watch(currentTenantMembersProvider);
     final invitationsAsync = ref.watch(currentTenantInvitationsProvider);
@@ -43,92 +72,86 @@ class TeamPage extends ConsumerWidget {
         ) ??
         false;
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.popOrGo(RouteNames.accountSettings),
-        ),
-        title: Text(l.teamTitle),
-        actions: [
-          if (tenant != null && _canInvite(ref))
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Tooltip(
-                message: atLimit ? l.teamInviteLimitReached : '',
-                child: FilledButton.icon(
-                  onPressed: atLimit
-                      ? null
-                      : () => _onInvite(context, ref, tenant),
-                  icon: const Icon(Icons.person_add_outlined, size: 18),
-                  label: Text(l.teamInviteAction),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: double.infinity),
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          shrinkWrap: embedded,
+          physics: embedded ? const NeverScrollableScrollPhysics() : null,
+          children: [
+            // ── Acción invitar (antes en el AppBar) — solo admin ──
+            if (tenant != null && _canInvite(ref))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Tooltip(
+                    message: atLimit ? l.teamInviteLimitReached : '',
+                    child: FilledButton.icon(
+                      onPressed: atLimit
+                          ? null
+                          : () => _onInvite(context, ref, tenant),
+                      icon: const Icon(Icons.person_add_outlined, size: 18),
+                      label: Text(l.teamInviteAction),
+                    ),
+                  ),
                 ),
               ),
+            // ── Miembros ──────────────────────────────────────────
+            _SectionHeader(label: l.teamMembersSection),
+            membersAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (_, __) => _ErrorBox(message: l.teamErrorGeneric),
+              data: (members) {
+                if (members.isEmpty) {
+                  return _EmptyBox(message: l.teamEmptyMembers);
+                }
+                return Card(
+                  child: Column(
+                    children: [
+                      for (final m in members)
+                        _MemberTile(
+                          member: m,
+                          canManage: _canManage(ref, m),
+                          isSelf: m.userId == _currentUserId(ref),
+                        ),
+                    ],
+                  ),
+                );
+              },
             ),
-        ],
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: double.infinity),
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-            children: [
-              // ── Miembros ──────────────────────────────────────────
-              _SectionHeader(label: l.teamMembersSection),
-              membersAsync.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (_, __) => _ErrorBox(message: l.teamErrorGeneric),
-                data: (members) {
-                  if (members.isEmpty) {
-                    return _EmptyBox(message: l.teamEmptyMembers);
-                  }
-                  return Card(
-                    child: Column(
-                      children: [
-                        for (final m in members)
-                          _MemberTile(
-                            member: m,
-                            canManage: _canManage(ref, m),
-                            isSelf: m.userId == _currentUserId(ref),
-                          ),
-                      ],
-                    ),
+            const SizedBox(height: 32),
+
+            // ── Invitaciones pendientes (solo admin) ──────────────
+            if (_canInvite(ref))
+              invitationsAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (invitations) {
+                  final pending =
+                      invitations.where((inv) => inv.isPending).toList();
+                  if (pending.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SectionHeader(label: l.teamInvitationsSection),
+                      Card(
+                        child: Column(
+                          children: [
+                            for (final inv in pending)
+                              _InvitationTile(invitation: inv),
+                          ],
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
-              const SizedBox(height: 32),
-
-              // ── Invitaciones pendientes (solo admin) ──────────────
-              if (_canInvite(ref))
-                invitationsAsync.when(
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, __) => const SizedBox.shrink(),
-                  data: (invitations) {
-                    final pending =
-                        invitations.where((inv) => inv.isPending).toList();
-                    if (pending.isEmpty) return const SizedBox.shrink();
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _SectionHeader(label: l.teamInvitationsSection),
-                        Card(
-                          child: Column(
-                            children: [
-                              for (final inv in pending)
-                                _InvitationTile(invitation: inv),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-            ],
-          ),
+          ],
         ),
       ),
     );
