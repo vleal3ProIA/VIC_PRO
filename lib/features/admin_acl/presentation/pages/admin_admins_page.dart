@@ -51,8 +51,6 @@ class AdminAdminsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final adminsAsync = ref.watch(adminsListProvider);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -69,19 +67,78 @@ class AdminAdminsPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: Center(
+      body: const AdminAdminsView(),
+    );
+  }
+}
+
+/// Cuerpo de gestión de admins (super-only, sin Scaffold). Reutilizable como
+/// página completa o embebido en el master-detail de Administración.
+class AdminAdminsView extends ConsumerWidget {
+  const AdminAdminsView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Admin).
+  final bool embedded;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final adminsAsync = ref.watch(adminsListProvider);
+
+    final content = adminsAsync.when(
+      loading: () => const AppLoadingState(),
+      error: (e, _) => AppErrorState(
+        message: l.adminAdminsLoadError,
+        detail: e.toString(),
+        onRetry: () => ref.invalidate(adminsListProvider),
+        retryLabel: l.actionRetry,
+      ),
+      data: (admins) => _LoadedView(admins: admins, embedded: embedded),
+    );
+
+    if (!embedded) {
+      return Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: AppMaxWidths.wide),
-          child: adminsAsync.when(
-            loading: () => const AppLoadingState(),
-            error: (e, _) => AppErrorState(
-              message: l.adminAdminsLoadError,
-              detail: e.toString(),
-              onRetry: () => ref.invalidate(adminsListProvider),
-              retryLabel: l.actionRetry,
+          child: content,
+        ),
+      );
+    }
+
+    // Embebido: cabecera (refresh + promover) + contenido sin scroll propio.
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppMaxWidths.wide),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    tooltip: l.actionRetry,
+                    icon: const Icon(Icons.refresh),
+                    onPressed: () => ref.invalidate(adminsListProvider),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  PremiumButton(
+                    label: l.adminAdminsPromoteCta,
+                    leadingIcon: Icons.person_add_alt_1_rounded,
+                    onPressed: () => _showPromoteDialog(context, ref),
+                  ),
+                ],
+              ),
             ),
-            data: (admins) => _LoadedView(admins: admins),
-          ),
+            content,
+          ],
         ),
       ),
     );
@@ -89,17 +146,18 @@ class AdminAdminsPage extends ConsumerWidget {
 }
 
 class _LoadedView extends ConsumerWidget {
-  const _LoadedView({required this.admins});
+  const _LoadedView({required this.admins, this.embedded = false});
   final List<AdminRow> admins;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    final column = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: embedded ? MainAxisSize.min : MainAxisSize.max,
+      children: [
+        if (!embedded) ...[
           PageHeader(
             title: l.adminAdminsTitle,
             subtitle: l.adminAdminsSubtitle,
@@ -112,58 +170,59 @@ class _LoadedView extends ConsumerWidget {
             ],
           ),
           AppSpacing.gapLg,
-          Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: PremiumCard(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.shield_outlined,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 22,
+        ],
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          child: PremiumCard(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.shield_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 22,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    l.adminAdminsInfoBanner,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      l.adminAdminsInfoBanner,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                            height: 1.4,
-                          ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          AppSpacing.gapLg,
-          if (admins.isEmpty)
+        ),
+        AppSpacing.gapLg,
+        if (admins.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            child: AppEmptyState(
+              icon: Icons.admin_panel_settings_outlined,
+              title: l.adminAdminsEmptyTitle,
+              message: l.adminAdminsEmptyBody,
+            ),
+          )
+        else
+          for (final a in admins) ...[
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: AppEmptyState(
-                icon: Icons.admin_panel_settings_outlined,
-                title: l.adminAdminsEmptyTitle,
-                message: l.adminAdminsEmptyBody,
-              ),
-            )
-          else
-            for (final a in admins) ...[
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                child: _AdminCard(admin: a),
-              ),
-              AppSpacing.gapMd,
-            ],
-          const SizedBox(height: AppSpacing.xxl),
-        ],
-      ),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: _AdminCard(admin: a),
+            ),
+            AppSpacing.gapMd,
+          ],
+        const SizedBox(height: AppSpacing.xxl),
+      ],
     );
+    return embedded
+        ? column
+        : SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: column,
+          );
   }
 }
 
@@ -223,8 +282,7 @@ Future<void> _showPromoteDialog(BuildContext context, WidgetRef ref) async {
                         final email = emailCtrl.text.trim();
                         if (email.isEmpty) {
                           setLocal(
-                            () => errorText =
-                                l.adminAdminsPromoteEmailRequired,
+                            () => errorText = l.adminAdminsPromoteEmailRequired,
                           );
                           return;
                         }
@@ -307,8 +365,7 @@ class _AdminCard extends ConsumerWidget {
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundColor:
-                    scheme.primary.withValues(alpha: 0.12),
+                backgroundColor: scheme.primary.withValues(alpha: 0.12),
                 child: Icon(
                   admin.isSuperAdmin
                       ? Icons.workspace_premium_rounded
@@ -356,10 +413,9 @@ class _AdminCard extends ConsumerWidget {
                       const SizedBox(height: 2),
                       Text(
                         admin.email,
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),

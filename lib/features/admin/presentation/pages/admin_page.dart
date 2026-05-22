@@ -13,6 +13,10 @@ import 'package:myapp/features/admin/presentation/pages/admin_trash_page.dart'
     show AdminTrashView;
 import 'package:myapp/features/admin_acl/application/admin_acl_providers.dart';
 import 'package:myapp/features/admin_acl/domain/admin_capability.dart';
+import 'package:myapp/features/admin_acl/presentation/pages/admin_admins_page.dart'
+    show AdminAdminsView;
+import 'package:myapp/features/admin_metrics/presentation/pages/admin_metrics_page.dart'
+    show AdminMetricsView;
 import 'package:myapp/features/admin_users/presentation/pages/admin_users_page.dart'
     show AdminUsersView;
 import 'package:myapp/features/audit_center/presentation/pages/admin_audit_page.dart'
@@ -23,6 +27,8 @@ import 'package:myapp/features/billing/presentation/pages/admin_coupons_page.dar
     show AdminCouponsView;
 import 'package:myapp/features/billing/presentation/pages/admin_plans_page.dart'
     show AdminPlansView;
+import 'package:myapp/features/branding/presentation/pages/admin_app_branding_page.dart'
+    show AdminAppBrandingView;
 import 'package:myapp/features/broadcasts/presentation/pages/admin_broadcasts_page.dart'
     show AdminBroadcastsView;
 import 'package:myapp/features/emails/presentation/pages/admin_email_log_page.dart'
@@ -527,6 +533,7 @@ class _AdminDestinations {
           hint: l.adminAppBrandingHint,
           route: RouteNames.adminAppBranding,
           capability: AdminCapability.manageAppBranding,
+          embeddedBuilder: (_) => const AdminAppBrandingView(embedded: true),
         ),
         _AdminDestination(
           icon: Icons.insights_outlined,
@@ -535,6 +542,7 @@ class _AdminDestinations {
           hint: l.adminMetricsHint,
           route: RouteNames.adminMetrics,
           capability: AdminCapability.viewMetrics,
+          embeddedBuilder: (_) => const AdminMetricsView(embedded: true),
         ),
       ];
 
@@ -549,6 +557,7 @@ class _AdminDestinations {
           title: l.adminAdminsTitle,
           hint: l.adminAdminsHint,
           route: RouteNames.adminAdmins,
+          embeddedBuilder: (_) => const AdminAdminsView(embedded: true),
         ),
       ];
 }

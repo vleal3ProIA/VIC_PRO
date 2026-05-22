@@ -20,16 +20,40 @@ import '../widgets/palette_picker.dart';
 /// Cualquier cambio se aplica en caliente: al guardar invalidamos el
 /// provider y el `MaterialApp` rebuildea con la nueva paleta + título +
 /// favicon.
-class AdminAppBrandingPage extends ConsumerStatefulWidget {
+class AdminAppBrandingPage extends ConsumerWidget {
   const AdminAppBrandingPage({super.key});
 
   @override
-  ConsumerState<AdminAppBrandingPage> createState() =>
-      _AdminAppBrandingPageState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.popOrGo(RouteNames.admin),
+        ),
+        title: Text(l.adminAppBrandingTitle),
+      ),
+      body: const AdminAppBrandingView(),
+    );
+  }
 }
 
-class _AdminAppBrandingPageState
-    extends ConsumerState<AdminAppBrandingPage> {
+/// Cuerpo del editor de branding de la app (sin Scaffold). Reutilizable como
+/// página completa o embebido en el master-detail de Administración.
+class AdminAppBrandingView extends ConsumerStatefulWidget {
+  const AdminAppBrandingView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Admin).
+  final bool embedded;
+
+  @override
+  ConsumerState<AdminAppBrandingView> createState() =>
+      _AdminAppBrandingViewState();
+}
+
+class _AdminAppBrandingViewState extends ConsumerState<AdminAppBrandingView> {
   final _formKey = GlobalKey<FormState>();
   final _commercialName = TextEditingController();
   final _tagline = TextEditingController();
@@ -77,208 +101,197 @@ class _AdminAppBrandingPageState
     final l = context.l10n;
     final async = ref.watch(appBrandingProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.popOrGo(RouteNames.admin),
-        ),
-        title: Text(l.adminAppBrandingTitle),
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
-          child: async.when(
-            loading: () => const AppLoadingState(),
-            error: (e, _) => AppErrorState(
-              message: l.adminAppBrandingLoadError,
-              detail: e.toString(),
-              onRetry: () => ref.invalidate(appBrandingProvider),
-              retryLabel: l.actionRetry,
-            ),
-            data: (branding) {
-              _hydrate(branding);
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _Section(l.adminAppBrandingSectionCommercial),
-                      PremiumCard(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            TextFormField(
-                              controller: _commercialName,
-                                enabled: !_saving,
-                                maxLength: 80,
-                                decoration: InputDecoration(
-                                  labelText: l.setupFieldCommercialName,
-                                  prefixIcon:
-                                      const Icon(Icons.storefront_outlined),
-                                ),
-                                validator: (v) {
-                                  final s = v?.trim() ?? '';
-                                  if (s.isEmpty) {
-                                    return l.setupCommercialNameRequired;
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: _tagline,
-                                enabled: !_saving,
-                                maxLength: 160,
-                                decoration: InputDecoration(
-                                  labelText: l.setupFieldTagline,
-                                  prefixIcon: const Icon(Icons.short_text),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: _supportEmail,
-                                enabled: !_saving,
-                                keyboardType: TextInputType.emailAddress,
-                                decoration: InputDecoration(
-                                  labelText: l.setupFieldSupportEmail,
-                                  prefixIcon:
-                                      const Icon(Icons.support_agent),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: _websiteUrl,
-                                enabled: !_saving,
-                                keyboardType: TextInputType.url,
-                                decoration: InputDecoration(
-                                  labelText: l.setupFieldWebsiteUrl,
-                                  prefixIcon: const Icon(Icons.public),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      const SizedBox(height: AppSpacing.md),
-                      _Section(l.adminAppBrandingSectionVisuals),
-                      PremiumCard(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              l.setupFieldPalette,
-                              style: context.textTheme.labelLarge,
-                            ),
-                              const SizedBox(height: 8),
-                              PalettePicker(
-                                selected: _paletteSlug,
-                                enabled: !_saving,
-                                onSelected: (slug) =>
-                                    setState(() => _paletteSlug = slug),
-                              ),
-                              const SizedBox(height: 16),
-                              TextFormField(
-                                controller: _logoUrl,
-                                enabled: !_saving,
-                                keyboardType: TextInputType.url,
-                                decoration: InputDecoration(
-                                  labelText: l.setupFieldLogoUrl,
-                                  helperText: l.setupFieldLogoUrlHint,
-                                  prefixIcon:
-                                      const Icon(Icons.image_outlined),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: _logoDarkUrl,
-                                enabled: !_saving,
-                                keyboardType: TextInputType.url,
-                                decoration: InputDecoration(
-                                  labelText: l.adminAppBrandingLogoDarkUrl,
-                                  helperText:
-                                      l.adminAppBrandingLogoDarkUrlHint,
-                                  prefixIcon: const Icon(
-                                    Icons.dark_mode_outlined,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: _faviconUrl,
-                                enabled: !_saving,
-                                keyboardType: TextInputType.url,
-                                decoration: InputDecoration(
-                                  labelText: l.setupFieldFaviconUrl,
-                                  helperText: l.setupFieldFaviconUrlHint,
-                                  prefixIcon:
-                                      const Icon(Icons.bookmark_outline),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: _ogImageUrl,
-                                enabled: !_saving,
-                                keyboardType: TextInputType.url,
-                                decoration: InputDecoration(
-                                  labelText: l.adminAppBrandingOgImageUrl,
-                                  helperText:
-                                      l.adminAppBrandingOgImageUrlHint,
-                                  prefixIcon:
-                                      const Icon(Icons.share_outlined),
-                                ),
-                              ),
-                            ],
-                          ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      _Section(l.adminAppBrandingSectionAccess),
-                      PremiumCard(
-                        padding: EdgeInsets.zero,
-                        child: Column(
-                          children: [
-                            SwitchListTile(
-                              value: _registrationEnabled,
-                              onChanged: _saving
-                                  ? null
-                                  : (v) => setState(
-                                        () => _registrationEnabled = v,
-                                      ),
-                              title: Text(
-                                l.adminAppBrandingRegistrationEnabled,
-                              ),
-                              subtitle: Text(
-                                l.adminAppBrandingRegistrationEnabledHint,
-                              ),
-                              secondary: Icon(
-                                _registrationEnabled
-                                    ? Icons.lock_open
-                                    : Icons.lock_outline,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: PremiumButton(
-                          label: l.actionSave,
-                          leadingIcon: Icons.save_outlined,
-                          loading: _saving,
-                          onPressed: _saving ? null : _onSave,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
+        child: async.when(
+          loading: () => const AppLoadingState(),
+          error: (e, _) => AppErrorState(
+            message: l.adminAppBrandingLoadError,
+            detail: e.toString(),
+            onRetry: () => ref.invalidate(appBrandingProvider),
+            retryLabel: l.actionRetry,
           ),
+          data: (branding) {
+            _hydrate(branding);
+            final form = Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _Section(l.adminAppBrandingSectionCommercial),
+                  PremiumCard(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextFormField(
+                          controller: _commercialName,
+                          enabled: !_saving,
+                          maxLength: 80,
+                          decoration: InputDecoration(
+                            labelText: l.setupFieldCommercialName,
+                            prefixIcon: const Icon(Icons.storefront_outlined),
+                          ),
+                          validator: (v) {
+                            final s = v?.trim() ?? '';
+                            if (s.isEmpty) {
+                              return l.setupCommercialNameRequired;
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _tagline,
+                          enabled: !_saving,
+                          maxLength: 160,
+                          decoration: InputDecoration(
+                            labelText: l.setupFieldTagline,
+                            prefixIcon: const Icon(Icons.short_text),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _supportEmail,
+                          enabled: !_saving,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            labelText: l.setupFieldSupportEmail,
+                            prefixIcon: const Icon(Icons.support_agent),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _websiteUrl,
+                          enabled: !_saving,
+                          keyboardType: TextInputType.url,
+                          decoration: InputDecoration(
+                            labelText: l.setupFieldWebsiteUrl,
+                            prefixIcon: const Icon(Icons.public),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _Section(l.adminAppBrandingSectionVisuals),
+                  PremiumCard(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          l.setupFieldPalette,
+                          style: context.textTheme.labelLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        PalettePicker(
+                          selected: _paletteSlug,
+                          enabled: !_saving,
+                          onSelected: (slug) =>
+                              setState(() => _paletteSlug = slug),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _logoUrl,
+                          enabled: !_saving,
+                          keyboardType: TextInputType.url,
+                          decoration: InputDecoration(
+                            labelText: l.setupFieldLogoUrl,
+                            helperText: l.setupFieldLogoUrlHint,
+                            prefixIcon: const Icon(Icons.image_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _logoDarkUrl,
+                          enabled: !_saving,
+                          keyboardType: TextInputType.url,
+                          decoration: InputDecoration(
+                            labelText: l.adminAppBrandingLogoDarkUrl,
+                            helperText: l.adminAppBrandingLogoDarkUrlHint,
+                            prefixIcon: const Icon(
+                              Icons.dark_mode_outlined,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _faviconUrl,
+                          enabled: !_saving,
+                          keyboardType: TextInputType.url,
+                          decoration: InputDecoration(
+                            labelText: l.setupFieldFaviconUrl,
+                            helperText: l.setupFieldFaviconUrlHint,
+                            prefixIcon: const Icon(Icons.bookmark_outline),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _ogImageUrl,
+                          enabled: !_saving,
+                          keyboardType: TextInputType.url,
+                          decoration: InputDecoration(
+                            labelText: l.adminAppBrandingOgImageUrl,
+                            helperText: l.adminAppBrandingOgImageUrlHint,
+                            prefixIcon: const Icon(Icons.share_outlined),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _Section(l.adminAppBrandingSectionAccess),
+                  PremiumCard(
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        SwitchListTile(
+                          value: _registrationEnabled,
+                          onChanged: _saving
+                              ? null
+                              : (v) => setState(
+                                    () => _registrationEnabled = v,
+                                  ),
+                          title: Text(
+                            l.adminAppBrandingRegistrationEnabled,
+                          ),
+                          subtitle: Text(
+                            l.adminAppBrandingRegistrationEnabledHint,
+                          ),
+                          secondary: Icon(
+                            _registrationEnabled
+                                ? Icons.lock_open
+                                : Icons.lock_outline,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: PremiumButton(
+                      label: l.actionSave,
+                      leadingIcon: Icons.save_outlined,
+                      loading: _saving,
+                      onPressed: _saving ? null : _onSave,
+                    ),
+                  ),
+                ],
+              ),
+            );
+            return widget.embedded
+                ? Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: form,
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: form,
+                  );
+          },
         ),
       ),
     );
@@ -291,8 +304,7 @@ class _AdminAppBrandingPageState
     try {
       // Helper: pasamos null si está vacío, así limpiamos el campo en
       // BD (en vez de guardar el string vacío que falla los checks).
-      String? blankToNull(String s) =>
-          s.trim().isEmpty ? null : s.trim();
+      String? blankToNull(String s) => s.trim().isEmpty ? null : s.trim();
 
       await ref.read(brandingDataSourceProvider).update({
         'commercial_name': _commercialName.text.trim(),
