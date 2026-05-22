@@ -65,6 +65,12 @@ class _AdminAppBrandingViewState extends ConsumerState<AdminAppBrandingView> {
   final _ogImageUrl = TextEditingController();
   String _paletteSlug = 'blue';
   bool _registrationEnabled = false;
+  // Toggles de métodos de login alternativos.
+  bool _authGoogle = true;
+  bool _authApple = true;
+  bool _authMagicLink = true;
+  bool _authOtp = true;
+  bool _authPasskey = true;
   bool _saving = false;
   bool _hydrated = false;
 
@@ -94,6 +100,11 @@ class _AdminAppBrandingViewState extends ConsumerState<AdminAppBrandingView> {
     _ogImageUrl.text = b.ogImageUrl ?? '';
     _paletteSlug = b.colorPalette;
     _registrationEnabled = b.registrationEnabled;
+    _authGoogle = b.authGoogleEnabled;
+    _authApple = b.authAppleEnabled;
+    _authMagicLink = b.authMagicLinkEnabled;
+    _authOtp = b.authOtpEnabled;
+    _authPasskey = b.authPasskeyEnabled;
   }
 
   @override
@@ -266,6 +277,50 @@ class _AdminAppBrandingViewState extends ConsumerState<AdminAppBrandingView> {
                                 : Icons.lock_outline,
                           ),
                         ),
+                        const Divider(height: 1),
+                        // Métodos de login alternativos: el admin puede
+                        // ocultar cada uno (email+contraseña es base, siempre
+                        // visible).
+                        SwitchListTile(
+                          value: _authGoogle,
+                          onChanged: _saving
+                              ? null
+                              : (v) => setState(() => _authGoogle = v),
+                          title: Text(l.continueWithGoogle),
+                          secondary: const Icon(Icons.g_mobiledata_outlined),
+                        ),
+                        SwitchListTile(
+                          value: _authApple,
+                          onChanged: _saving
+                              ? null
+                              : (v) => setState(() => _authApple = v),
+                          title: Text(l.continueWithApple),
+                          secondary: const Icon(Icons.apple),
+                        ),
+                        SwitchListTile(
+                          value: _authPasskey,
+                          onChanged: _saving
+                              ? null
+                              : (v) => setState(() => _authPasskey = v),
+                          title: Text(l.loginWithPasskey),
+                          secondary: const Icon(Icons.fingerprint),
+                        ),
+                        SwitchListTile(
+                          value: _authMagicLink,
+                          onChanged: _saving
+                              ? null
+                              : (v) => setState(() => _authMagicLink = v),
+                          title: Text(l.loginWithMagicLink),
+                          secondary: const Icon(Icons.auto_awesome_outlined),
+                        ),
+                        SwitchListTile(
+                          value: _authOtp,
+                          onChanged: _saving
+                              ? null
+                              : (v) => setState(() => _authOtp = v),
+                          title: Text(l.loginWithOtp),
+                          secondary: const Icon(Icons.pin_outlined),
+                        ),
                       ],
                     ),
                   ),
@@ -317,6 +372,11 @@ class _AdminAppBrandingViewState extends ConsumerState<AdminAppBrandingView> {
         'og_image_url': blankToNull(_ogImageUrl.text),
         'color_palette': _paletteSlug,
         'registration_enabled': _registrationEnabled,
+        'auth_google_enabled': _authGoogle,
+        'auth_apple_enabled': _authApple,
+        'auth_magic_link_enabled': _authMagicLink,
+        'auth_otp_enabled': _authOtp,
+        'auth_passkey_enabled': _authPasskey,
       });
       if (!mounted) return;
       ref.invalidate(appBrandingProvider);

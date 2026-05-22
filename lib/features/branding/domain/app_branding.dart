@@ -26,6 +26,11 @@ class AppBranding {
     this.logoDarkUrl,
     this.faviconUrl,
     this.ogImageUrl,
+    this.authGoogleEnabled = true,
+    this.authAppleEnabled = true,
+    this.authMagicLinkEnabled = true,
+    this.authOtpEnabled = true,
+    this.authPasskeyEnabled = true,
   });
 
   factory AppBranding.fromMap(Map<String, dynamic> m) {
@@ -42,6 +47,13 @@ class AppBranding {
       colorPalette: (m['color_palette'] as String?) ?? 'blue',
       setupCompleted: m['setup_completed'] as bool? ?? false,
       registrationEnabled: m['registration_enabled'] as bool? ?? false,
+      // Métodos de login alternativos: default true (visible) si la columna
+      // aún no existe (deploy previo a la migración 0049).
+      authGoogleEnabled: m['auth_google_enabled'] as bool? ?? true,
+      authAppleEnabled: m['auth_apple_enabled'] as bool? ?? true,
+      authMagicLinkEnabled: m['auth_magic_link_enabled'] as bool? ?? true,
+      authOtpEnabled: m['auth_otp_enabled'] as bool? ?? true,
+      authPasskeyEnabled: m['auth_passkey_enabled'] as bool? ?? true,
       updatedAt: m['updated_at'] != null
           ? DateTime.parse(m['updated_at'] as String)
           : DateTime.now(),
@@ -70,6 +82,16 @@ class AppBranding {
   final String colorPalette;
   final bool setupCompleted;
   final bool registrationEnabled;
+
+  /// Flags de métodos de login alternativos (gestionados por el admin desde
+  /// `/admin/app-branding`). Email + contraseña es el método base y siempre
+  /// está activo (no tiene flag).
+  final bool authGoogleEnabled;
+  final bool authAppleEnabled;
+  final bool authMagicLinkEnabled;
+  final bool authOtpEnabled;
+  final bool authPasskeyEnabled;
+
   final DateTime? updatedAt;
 
   /// `true` si tiene logo configurado para el tema dado.
