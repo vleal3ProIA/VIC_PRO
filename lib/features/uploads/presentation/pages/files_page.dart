@@ -26,14 +26,43 @@ import '../widgets/storage_quota_bar.dart';
 ///   - "papelera" donde ves todo lo subido
 ///   - chequeo de cuánto storage te queda
 ///   - punto para limpiar archivos viejos
-class FilesPage extends ConsumerStatefulWidget {
+class FilesPage extends ConsumerWidget {
   const FilesPage({super.key});
 
   @override
-  ConsumerState<FilesPage> createState() => _FilesPageState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.popOrGo(RouteNames.accountSettings),
+        ),
+        title: Text(l.filesTitle),
+      ),
+      body: const FilesView(),
+    );
+  }
 }
 
-class _FilesPageState extends ConsumerState<FilesPage> {
+/// Cuerpo de la gestión de archivos (sin Scaffold). Reutilizable como página
+/// completa o embebido en el master-detail de Ajustes → Workspace.
+///
+/// El botón de subir (antes un FAB del Scaffold) se reposiciona dentro del
+/// panel para que funcione igual embebido y a pantalla completa.
+class FilesView extends ConsumerStatefulWidget {
+  const FilesView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Ajustes):
+  /// usa `shrinkWrap` para no requerir altura/scroll propios.
+  final bool embedded;
+
+  @override
+  ConsumerState<FilesView> createState() => _FilesViewState();
+}
+
+class _FilesViewState extends ConsumerState<FilesView> {
   bool _uploading = false;
   Timer? _scanPollTimer;
 
@@ -47,6 +76,12 @@ class _FilesPageState extends ConsumerState<FilesPage> {
   void dispose() {
     _scanPollTimer?.cancel();
     super.dispose();
+  }
+
+  void _refresh() {
+    ref
+      ..invalidate(tenantUploadsProvider)
+      ..invalidate(tenantStorageQuotaProvider);
   }
 
   /// PR-C UX: cuando hay uploads con `virus_scan_status='pending'`, el
@@ -88,100 +123,95 @@ class _FilesPageState extends ConsumerState<FilesPage> {
       });
     });
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.popOrGo(RouteNames.accountSettings),
-        ),
-        title: Text(l.filesTitle),
-        actions: [
-          IconButton(
-            tooltip: l.actionRetry,
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref
-                ..invalidate(tenantUploadsProvider)
-                ..invalidate(tenantStorageQuotaProvider);
-            },
-          ),
-        ],
+    final content = async.when(
+      loading: () => const AppLoadingState(),
+      error: (e, _) => AppErrorState(
+        message: l.filesLoadError,
+        detail: e.toString(),
+        onRetry: () => ref.invalidate(tenantUploadsProvider),
+        retryLabel: l.actionRetry,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: _uploading
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.upload_file),
-        label: Text(l.filesUpload),
-        onPressed: _uploading ? null : _onUpload,
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: double.infinity),
-          child: Column(
-            children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: StorageQuotaBar(),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: async.when(
-                  loading: () => const AppLoadingState(),
-                  error: (e, _) => AppErrorState(
-                    message: l.filesLoadError,
-                    detail: e.toString(),
-                    onRetry: () => ref.invalidate(tenantUploadsProvider),
-                    retryLabel: l.actionRetry,
+      data: (files) {
+        if (files.isEmpty) {
+          return AppEmptyState(
+            icon: Icons.folder_outlined,
+            title: l.filesEmptyTitle,
+            message: l.filesEmptyBody,
+          );
+        }
+        // Paginación client-side: la lista llega completa y la cortamos en
+        // páginas de [_pageSize]. `page` se clampa por si un borrado/refresh
+        // redujo el total bajo `_page`.
+        final totalPages = (files.length / _pageSize).ceil();
+        final page = _page.clamp(0, totalPages - 1);
+        final start = page * _pageSize;
+        final end = (start + _pageSize) > files.length
+            ? files.length
+            : start + _pageSize;
+        final pageFiles = files.sublist(start, end);
+        final list = ListView.separated(
+          padding: EdgeInsets.fromLTRB(16, 8, 16, widget.embedded ? 8 : 96),
+          shrinkWrap: widget.embedded,
+          physics:
+              widget.embedded ? const NeverScrollableScrollPhysics() : null,
+          itemCount: pageFiles.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 4),
+          itemBuilder: (_, i) => _FileTile(file: pageFiles[i]),
+        );
+        return Column(
+          mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            if (widget.embedded) list else Expanded(child: list),
+            AppPaginationBar(
+              currentPage: page,
+              totalPages: totalPages,
+              onPrevious: () => setState(() => _page = page - 1),
+              onNext: () => setState(() => _page = page + 1),
+            ),
+          ],
+        );
+      },
+    );
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: double.infinity),
+        child: Column(
+          mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: StorageQuotaBar(),
+            ),
+            // Acciones del panel (antes refresh en AppBar + FAB de subir).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    tooltip: l.actionRetry,
+                    icon: const Icon(Icons.refresh),
+                    onPressed: _refresh,
                   ),
-                  data: (files) {
-                    if (files.isEmpty) {
-                      return AppEmptyState(
-                        icon: Icons.folder_outlined,
-                        title: l.filesEmptyTitle,
-                        message: l.filesEmptyBody,
-                      );
-                    }
-                    // Paginación client-side: la lista llega completa y la
-                    // cortamos en páginas de [_pageSize]. `page` se clampa por
-                    // si un borrado/refresh redujo el total bajo `_page`.
-                    final totalPages = (files.length / _pageSize).ceil();
-                    final page = _page.clamp(0, totalPages - 1);
-                    final start = page * _pageSize;
-                    final end = (start + _pageSize) > files.length
-                        ? files.length
-                        : start + _pageSize;
-                    final pageFiles = files.sublist(start, end);
-                    return Column(
-                      children: [
-                        Expanded(
-                          child: ListView.separated(
-                            padding:
-                                const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                            itemCount: pageFiles.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 4),
-                            itemBuilder: (_, i) =>
-                                _FileTile(file: pageFiles[i]),
-                          ),
-                        ),
-                        AppPaginationBar(
-                          currentPage: page,
-                          totalPages: totalPages,
-                          onPrevious: () => setState(() => _page = page - 1),
-                          onNext: () => setState(() => _page = page + 1),
-                        ),
-                      ],
-                    );
-                  },
-                ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: _uploading ? null : _onUpload,
+                    icon: _uploading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.upload_file),
+                    label: Text(l.filesUpload),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            const Divider(height: 1),
+            if (widget.embedded) content else Expanded(child: content),
+          ],
         ),
       ),
     );
