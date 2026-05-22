@@ -163,7 +163,7 @@ class _BillingInfoPageState extends ConsumerState<BillingInfoPage> {
           _hydrate(info);
           return Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
+              constraints: const BoxConstraints(maxWidth: double.infinity),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
                 child: Form(

@@ -65,7 +65,7 @@ class _ActivityFeedPageState extends ConsumerState<ActivityFeedPage> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: double.infinity),
           child: entriesAsync.when(
             loading: () => const AppLoadingState(),
             error: (e, _) => AppErrorState(

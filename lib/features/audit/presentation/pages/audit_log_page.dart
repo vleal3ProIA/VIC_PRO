@@ -46,7 +46,7 @@ class _AuditLogPageState extends ConsumerState<AuditLogPage> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: double.infinity),
           child: entriesAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, __) => Center(

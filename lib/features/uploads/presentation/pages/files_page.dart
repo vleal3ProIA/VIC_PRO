@@ -121,7 +121,7 @@ class _FilesPageState extends ConsumerState<FilesPage> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: double.infinity),
           child: Column(
             children: [
               const Padding(

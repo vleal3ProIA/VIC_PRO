@@ -67,7 +67,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: double.infinity),
           child: async.when(
             loading: () => const AppLoadingState(),
             error: (e, _) => AppErrorState(

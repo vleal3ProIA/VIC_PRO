@@ -58,7 +58,7 @@ class _InvoicesPageState extends ConsumerState<InvoicesPage> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 880),
+          constraints: const BoxConstraints(maxWidth: double.infinity),
           child: invoicesAsync.when(
             loading: () => const AppLoadingState(),
             error: (e, _) => AppErrorState(

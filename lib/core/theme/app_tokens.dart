@@ -84,12 +84,13 @@ class AppDurations {
 /// excesivamente largas en pantallas grandes (mejor legibilidad).
 class AppMaxWidths {
   AppMaxWidths._();
-  /// Para forms y dialogs anchos.
+  /// Para forms y dialogs anchos (se mantiene acotado: auth/diálogos).
   static const double form = 480;
-  /// Para listas de cards (catálogo de planes, admin tables, etc.).
-  static const double content = 880;
-  /// Para layouts wide tipo dashboard con paneles laterales.
-  static const double wide = 1200;
+  /// Listas de cards / tablas admin. En web aprovechamos el ANCHO COMPLETO
+  /// del área de contenido (antes 880).
+  static const double content = double.infinity;
+  /// Layouts wide tipo dashboard. Ancho completo en web (antes 1200).
+  static const double wide = double.infinity;
 }
 
 /// Breakpoints responsive. Mobile-first: usar `>= sm` para "tablet+",
