@@ -83,7 +83,7 @@ class _PlansPageState extends ConsumerState<PlansPage> {
         ),
         data: (plans) => Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1200),
+            constraints: const BoxConstraints(maxWidth: double.infinity),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: LayoutBuilder(

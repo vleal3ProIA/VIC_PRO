@@ -52,7 +52,7 @@ class WebhookDetailPage extends ConsumerWidget {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: double.infinity),
           child: endpointsAsync.when(
             loading: () => const AppLoadingState(),
             error: (e, _) => AppErrorState(
