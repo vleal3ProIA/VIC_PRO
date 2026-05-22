@@ -755,6 +755,11 @@
   "activityDayDaysAgo": "{n} days ago",
   "@activityDayDaysAgo": {"placeholders": {"n": {"type": "int"}}},
 
+  "paginationPrevious": "Previous",
+  "paginationNext": "Next",
+  "paginationPageOf": "Page {current} of {total}",
+  "@paginationPageOf": {"placeholders": {"current": {"type": "int"}, "total": {"type": "int"}}},
+
   "filesTitle": "Files",
   "filesHint": "Manage uploaded files and storage usage.",
   "filesUpload": "Upload",

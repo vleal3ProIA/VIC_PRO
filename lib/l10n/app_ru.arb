@@ -699,6 +699,10 @@
   "activityDayYesterday": "Вчера",
   "activityDayDaysAgo": "{n} дн. назад",
 
+  "paginationPrevious": "Назад",
+  "paginationNext": "Вперёд",
+  "paginationPageOf": "Страница {current} из {total}",
+
   "filesTitle": "Файлы",
   "filesHint": "Управляй загруженными файлами и использованием хранилища.",
   "filesUpload": "Загрузить",

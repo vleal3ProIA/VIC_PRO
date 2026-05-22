@@ -8,6 +8,7 @@ import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 import 'package:myapp/features/audit/application/audit_logger.dart';
 import 'package:myapp/features/audit/domain/audit_log_entry.dart';
 import 'package:myapp/features/audit/presentation/activity_day_grouper.dart';
@@ -33,6 +34,13 @@ class ActivityFeedPage extends ConsumerStatefulWidget {
 class _ActivityFeedPageState extends ConsumerState<ActivityFeedPage> {
   /// Categoría seleccionada en el filtro. `null` = todas.
   AuditEventCategory? _filter;
+
+  /// Página actual (0-indexed) de la paginación client-side.
+  int _page = 0;
+
+  /// Eventos por página. La lista llega ya capada a 100 desde el provider,
+  /// así que paginamos en cliente sin más fetches.
+  static const int _pageSize = 20;
 
   @override
   Widget build(BuildContext context) {
@@ -76,11 +84,27 @@ class _ActivityFeedPageState extends ConsumerState<ActivityFeedPage> {
                       .where((e) => categoryFor(e.event) == _filter)
                       .toList(growable: false);
 
+              // Paginación client-side: cortamos la lista filtrada en
+              // páginas de [_pageSize]. `page` se clampa por si el filtro
+              // o un refresh redujeron el total por debajo de `_page`.
+              final totalPages =
+                  filtered.isEmpty ? 1 : (filtered.length / _pageSize).ceil();
+              final page = _page.clamp(0, totalPages - 1);
+              final start = page * _pageSize;
+              final end = (start + _pageSize) > filtered.length
+                  ? filtered.length
+                  : start + _pageSize;
+              final pageEntries =
+                  filtered.isEmpty ? filtered : filtered.sublist(start, end);
+
               return Column(
                 children: [
                   _Filters(
                     selected: _filter,
-                    onChanged: (c) => setState(() => _filter = c),
+                    onChanged: (c) => setState(() {
+                      _filter = c;
+                      _page = 0; // al cambiar el filtro, volvemos a la 1.ª.
+                    }),
                   ),
                   Expanded(
                     child: filtered.isEmpty
@@ -93,7 +117,13 @@ class _ActivityFeedPageState extends ConsumerState<ActivityFeedPage> {
                                 ? l.activityEmptyBody
                                 : l.activityFilteredEmptyBody,
                           )
-                        : _Timeline(entries: filtered),
+                        : _Timeline(entries: pageEntries),
+                  ),
+                  AppPaginationBar(
+                    currentPage: page,
+                    totalPages: totalPages,
+                    onPrevious: () => setState(() => _page = page - 1),
+                    onNext: () => setState(() => _page = page + 1),
                   ),
                 ],
               );

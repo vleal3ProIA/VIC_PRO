@@ -11,6 +11,7 @@ import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 import 'package:myapp/features/tenants/application/tenant_providers.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -35,6 +36,12 @@ class FilesPage extends ConsumerStatefulWidget {
 class _FilesPageState extends ConsumerState<FilesPage> {
   bool _uploading = false;
   Timer? _scanPollTimer;
+
+  /// Página actual (0-indexed) de la paginación client-side.
+  int _page = 0;
+
+  /// Archivos por página.
+  static const int _pageSize = 20;
 
   @override
   void dispose() {
@@ -139,11 +146,36 @@ class _FilesPageState extends ConsumerState<FilesPage> {
                         message: l.filesEmptyBody,
                       );
                     }
-                    return ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                      itemCount: files.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 4),
-                      itemBuilder: (_, i) => _FileTile(file: files[i]),
+                    // Paginación client-side: la lista llega completa y la
+                    // cortamos en páginas de [_pageSize]. `page` se clampa por
+                    // si un borrado/refresh redujo el total bajo `_page`.
+                    final totalPages = (files.length / _pageSize).ceil();
+                    final page = _page.clamp(0, totalPages - 1);
+                    final start = page * _pageSize;
+                    final end = (start + _pageSize) > files.length
+                        ? files.length
+                        : start + _pageSize;
+                    final pageFiles = files.sublist(start, end);
+                    return Column(
+                      children: [
+                        Expanded(
+                          child: ListView.separated(
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 8, 16, 96),
+                            itemCount: pageFiles.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 4),
+                            itemBuilder: (_, i) =>
+                                _FileTile(file: pageFiles[i]),
+                          ),
+                        ),
+                        AppPaginationBar(
+                          currentPage: page,
+                          totalPages: totalPages,
+                          onPrevious: () => setState(() => _page = page - 1),
+                          onNext: () => setState(() => _page = page + 1),
+                        ),
+                      ],
                     );
                   },
                 ),
