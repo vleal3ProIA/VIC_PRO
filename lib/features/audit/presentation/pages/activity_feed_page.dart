@@ -24,29 +24,12 @@ import 'package:myapp/features/audit/presentation/audit_event_visuals.dart';
 /// Eventualmente, cuando `audit_logs` tenga `tenant_id`, esta pantalla
 /// expandirá a "mostrar también acciones de otros miembros del tenant"
 /// — entonces el AppBar mostrará dos tabs "Mio" / "Equipo".
-class ActivityFeedPage extends ConsumerStatefulWidget {
+class ActivityFeedPage extends ConsumerWidget {
   const ActivityFeedPage({super.key});
 
   @override
-  ConsumerState<ActivityFeedPage> createState() => _ActivityFeedPageState();
-}
-
-class _ActivityFeedPageState extends ConsumerState<ActivityFeedPage> {
-  /// Categoría seleccionada en el filtro. `null` = todas.
-  AuditEventCategory? _filter;
-
-  /// Página actual (0-indexed) de la paginación client-side.
-  int _page = 0;
-
-  /// Eventos por página. La lista llega ya capada a 100 desde el provider,
-  /// así que paginamos en cliente sin más fetches.
-  static const int _pageSize = 20;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final entriesAsync = ref.watch(myAuditLogProvider);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -63,72 +46,110 @@ class _ActivityFeedPageState extends ConsumerState<ActivityFeedPage> {
           ),
         ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: double.infinity),
-          child: entriesAsync.when(
-            loading: () => const AppLoadingState(),
-            error: (e, _) => AppErrorState(
-              message: l.activityLoadError,
-              detail: e.toString(),
-              onRetry: () => ref.invalidate(myAuditLogProvider),
-              retryLabel: l.actionRetry,
-            ),
-            data: (entries) {
-              // Filter chips siempre visibles (incluso con lista
-              // vacía) -- así el user ve que hay opciones aunque su
-              // filtro actual no devuelva nada.
-              final filtered = _filter == null
-                  ? entries
-                  : entries
-                      .where((e) => categoryFor(e.event) == _filter)
-                      .toList(growable: false);
+      body: const ActivityView(),
+    );
+  }
+}
 
-              // Paginación client-side: cortamos la lista filtrada en
-              // páginas de [_pageSize]. `page` se clampa por si el filtro
-              // o un refresh redujeron el total por debajo de `_page`.
-              final totalPages =
-                  filtered.isEmpty ? 1 : (filtered.length / _pageSize).ceil();
-              final page = _page.clamp(0, totalPages - 1);
-              final start = page * _pageSize;
-              final end = (start + _pageSize) > filtered.length
-                  ? filtered.length
-                  : start + _pageSize;
-              final pageEntries =
-                  filtered.isEmpty ? filtered : filtered.sublist(start, end);
+/// Cuerpo del activity-feed (sin Scaffold). Reutilizable como página completa
+/// o embebido en el master-detail de Ajustes → Workspace.
+class ActivityView extends ConsumerStatefulWidget {
+  const ActivityView({this.embedded = false, super.key});
 
-              return Column(
-                children: [
-                  _Filters(
-                    selected: _filter,
-                    onChanged: (c) => setState(() {
-                      _filter = c;
-                      _page = 0; // al cambiar el filtro, volvemos a la 1.ª.
-                    }),
-                  ),
-                  Expanded(
-                    child: filtered.isEmpty
-                        ? AppEmptyState(
-                            icon: Icons.history_toggle_off_outlined,
-                            title: _filter == null
-                                ? l.activityEmptyTitle
-                                : l.activityFilteredEmptyTitle,
-                            message: _filter == null
-                                ? l.activityEmptyBody
-                                : l.activityFilteredEmptyBody,
-                          )
-                        : _Timeline(entries: pageEntries),
-                  ),
-                  AppPaginationBar(
-                    currentPage: page,
-                    totalPages: totalPages,
-                    onPrevious: () => setState(() => _page = page - 1),
-                    onNext: () => setState(() => _page = page + 1),
-                  ),
-                ],
-              );
-            },
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Ajustes):
+  /// usa `shrinkWrap` para no requerir altura/scroll propios.
+  final bool embedded;
+
+  @override
+  ConsumerState<ActivityView> createState() => _ActivityViewState();
+}
+
+class _ActivityViewState extends ConsumerState<ActivityView> {
+  /// Categoría seleccionada en el filtro. `null` = todas.
+  AuditEventCategory? _filter;
+
+  /// Página actual (0-indexed) de la paginación client-side.
+  int _page = 0;
+
+  /// Eventos por página. La lista llega ya capada a 100 desde el provider,
+  /// así que paginamos en cliente sin más fetches.
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final entriesAsync = ref.watch(myAuditLogProvider);
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: double.infinity),
+        child: entriesAsync.when(
+          loading: () => const AppLoadingState(),
+          error: (e, _) => AppErrorState(
+            message: l.activityLoadError,
+            detail: e.toString(),
+            onRetry: () => ref.invalidate(myAuditLogProvider),
+            retryLabel: l.actionRetry,
           ),
+          data: (entries) {
+            // Filter chips siempre visibles (incluso con lista
+            // vacía) -- así el user ve que hay opciones aunque su
+            // filtro actual no devuelva nada.
+            final filtered = _filter == null
+                ? entries
+                : entries
+                    .where((e) => categoryFor(e.event) == _filter)
+                    .toList(growable: false);
+
+            // Paginación client-side: cortamos la lista filtrada en
+            // páginas de [_pageSize]. `page` se clampa por si el filtro
+            // o un refresh redujeron el total por debajo de `_page`.
+            final totalPages =
+                filtered.isEmpty ? 1 : (filtered.length / _pageSize).ceil();
+            final page = _page.clamp(0, totalPages - 1);
+            final start = page * _pageSize;
+            final end = (start + _pageSize) > filtered.length
+                ? filtered.length
+                : start + _pageSize;
+            final pageEntries =
+                filtered.isEmpty ? filtered : filtered.sublist(start, end);
+
+            final body = filtered.isEmpty
+                ? AppEmptyState(
+                    icon: Icons.history_toggle_off_outlined,
+                    title: _filter == null
+                        ? l.activityEmptyTitle
+                        : l.activityFilteredEmptyTitle,
+                    message: _filter == null
+                        ? l.activityEmptyBody
+                        : l.activityFilteredEmptyBody,
+                  )
+                : _Timeline(
+                    entries: pageEntries,
+                    embedded: widget.embedded,
+                  );
+
+            return Column(
+              mainAxisSize:
+                  widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+              children: [
+                _Filters(
+                  selected: _filter,
+                  onChanged: (c) => setState(() {
+                    _filter = c;
+                    _page = 0; // al cambiar el filtro, volvemos a la 1.ª.
+                  }),
+                ),
+                if (widget.embedded) body else Expanded(child: body),
+                AppPaginationBar(
+                  currentPage: page,
+                  totalPages: totalPages,
+                  onPrevious: () => setState(() => _page = page - 1),
+                  onNext: () => setState(() => _page = page + 1),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -196,8 +217,11 @@ class _Filters extends StatelessWidget {
 // ───────────────────────────── Timeline ─────────────────────────────
 
 class _Timeline extends StatelessWidget {
-  const _Timeline({required this.entries});
+  const _Timeline({required this.entries, this.embedded = false});
   final List<AuditLogEntry> entries;
+
+  /// `true` dentro del master-detail: shrinkWrap + sin scroll propio.
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -215,6 +239,8 @@ class _Timeline extends StatelessWidget {
     }
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      shrinkWrap: embedded,
+      physics: embedded ? const NeverScrollableScrollPhysics() : null,
       itemCount: items.length,
       itemBuilder: (_, i) {
         final item = items[i];

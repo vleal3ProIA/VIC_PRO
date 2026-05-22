@@ -16,6 +16,8 @@ import 'package:myapp/features/account/presentation/pages/account_sessions_page.
 import 'package:myapp/features/account/presentation/widgets/profile_failure_message.dart';
 import 'package:myapp/features/account/presentation/widgets/settings_master_detail.dart';
 import 'package:myapp/features/account/presentation/widgets/user_avatar.dart';
+import 'package:myapp/features/audit/presentation/pages/activity_feed_page.dart'
+    show ActivityView;
 import 'package:myapp/features/audit/presentation/pages/audit_log_page.dart'
     show AuditLogView;
 import 'package:myapp/features/auth/presentation/pages/passkeys_page.dart'
@@ -785,13 +787,7 @@ class _WorkspaceMasterDetail extends ConsumerWidget {
           SettingsDetailItem(
             icon: Icons.timeline,
             label: l.activityTitle,
-            builder: (_) => SettingsOpenFullScreen(
-              icon: Icons.timeline,
-              title: l.activityTitle,
-              description: l.activityHint,
-              buttonLabel: l.filesOpen,
-              routeName: RouteNames.activity,
-            ),
+            builder: (_) => const ActivityView(embedded: true),
           ),
           SettingsDetailItem(
             icon: Icons.history,
