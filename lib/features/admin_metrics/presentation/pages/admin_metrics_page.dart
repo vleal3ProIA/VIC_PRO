@@ -35,9 +35,6 @@ class AdminMetricsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final overview = ref.watch(adminMetricsOverviewProvider);
-    final range = ref.watch(adminMetricsRangeProvider);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -46,28 +43,56 @@ class AdminMetricsPage extends ConsumerWidget {
           onPressed: () => context.popOrGo(RouteNames.admin),
         ),
         title: Text(l.adminMetricsTitle),
-        actions: [
-          // Selector de rango temporal — afecta a signups/mrr. Lo
-          // mantenemos en el AppBar para que sea siempre visible
-          // (alta-frecuencia de uso).
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: DropdownButton<MetricsRange>(
-              value: range,
-              underline: const SizedBox.shrink(),
-              onChanged: (r) {
-                if (r == null) return;
-                ref.read(adminMetricsRangeProvider.notifier).state = r;
-              },
-              items: [
-                for (final r in MetricsRange.values)
-                  DropdownMenuItem(
-                    value: r,
-                    child: Text(_rangeLabel(context, r)),
-                  ),
-              ],
-            ),
+      ),
+      body: const AdminMetricsView(),
+    );
+  }
+}
+
+/// Cuerpo del dashboard de métricas (sin Scaffold). Reutilizable como página
+/// completa o embebido en el master-detail de Administración.
+///
+/// El selector de rango y el refresh (antes en el AppBar) se reposicionan en
+/// una fila dentro del panel.
+class AdminMetricsView extends ConsumerWidget {
+  const AdminMetricsView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Admin).
+  final bool embedded;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final overview = ref.watch(adminMetricsOverviewProvider);
+    final range = ref.watch(adminMetricsRangeProvider);
+
+    // Selector de rango + refresh (antes en el AppBar).
+    final header = Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.lg,
+        0,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          DropdownButton<MetricsRange>(
+            value: range,
+            underline: const SizedBox.shrink(),
+            onChanged: (r) {
+              if (r == null) return;
+              ref.read(adminMetricsRangeProvider.notifier).state = r;
+            },
+            items: [
+              for (final r in MetricsRange.values)
+                DropdownMenuItem(
+                  value: r,
+                  child: Text(_rangeLabel(context, r)),
+                ),
+            ],
           ),
+          const SizedBox(width: AppSpacing.sm),
           IconButton(
             tooltip: l.actionRetry,
             icon: const Icon(Icons.refresh),
@@ -82,23 +107,31 @@ class AdminMetricsPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppMaxWidths.wide),
-          child: overview.when(
-            loading: () => const AppLoadingState(),
-            error: (e, _) => Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: AppErrorState(
-                message: l.adminMetricsLoadError,
-                detail: e.toString(),
-                onRetry: () =>
-                    ref.invalidate(adminMetricsOverviewProvider),
-                retryLabel: l.actionRetry,
-              ),
-            ),
-            data: (ov) => _Body(overview: ov, range: range),
-          ),
+    );
+
+    final body = overview.when(
+      loading: () => const AppLoadingState(),
+      error: (e, _) => Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: AppErrorState(
+          message: l.adminMetricsLoadError,
+          detail: e.toString(),
+          onRetry: () => ref.invalidate(adminMetricsOverviewProvider),
+          retryLabel: l.actionRetry,
+        ),
+      ),
+      data: (ov) => _Body(overview: ov, range: range, embedded: embedded),
+    );
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppMaxWidths.wide),
+        child: Column(
+          mainAxisSize: embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            header,
+            if (embedded) body else Expanded(child: body),
+          ],
         ),
       ),
     );
@@ -116,9 +149,14 @@ class AdminMetricsPage extends ConsumerWidget {
 }
 
 class _Body extends ConsumerWidget {
-  const _Body({required this.overview, required this.range});
+  const _Body({
+    required this.overview,
+    required this.range,
+    this.embedded = false,
+  });
   final MetricsOverview overview;
   final MetricsRange range;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -128,122 +166,127 @@ class _Body extends ConsumerWidget {
     final plansAsync = ref.watch(adminMetricsPlanDistributionProvider);
     final funnelAsync = ref.watch(adminMetricsFunnelProvider);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    final column = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!embedded) ...[
           PageHeader(
             title: l.adminMetricsTitle,
             subtitle: l.adminMetricsHint,
           ),
           AppSpacing.gapMd,
-          // ─── KPIs grid ───
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: _KpiGrid(overview: overview),
-          ),
-          AppSpacing.gapLg,
-          // ─── Signups chart ───
-          _ChartSection(
-            title: l.adminMetricsSignupsTitle,
-            subtitle: l.adminMetricsSignupsSubtitle(range.days),
-            child: signupsAsync.when(
-              loading: () =>
-                  const SizedBox(height: 220, child: AppLoadingState()),
-              error: (_, __) => _chartError(context, l),
-              data: (points) => SizedBox(
-                height: 220,
-                child: MetricLineChart(
-                  points: points,
-                  formatValue: (v) => v.toInt().toString(),
-                  semanticsLabel: l.adminMetricsSignupsTitle,
-                ),
+        ],
+        // ─── KPIs grid ───
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          child: _KpiGrid(overview: overview),
+        ),
+        AppSpacing.gapLg,
+        // ─── Signups chart ───
+        _ChartSection(
+          title: l.adminMetricsSignupsTitle,
+          subtitle: l.adminMetricsSignupsSubtitle(range.days),
+          child: signupsAsync.when(
+            loading: () =>
+                const SizedBox(height: 220, child: AppLoadingState()),
+            error: (_, __) => _chartError(context, l),
+            data: (points) => SizedBox(
+              height: 220,
+              child: MetricLineChart(
+                points: points,
+                formatValue: (v) => v.toInt().toString(),
+                semanticsLabel: l.adminMetricsSignupsTitle,
               ),
             ),
           ),
-          AppSpacing.gapMd,
-          // ─── MRR chart ───
-          _ChartSection(
-            title: l.adminMetricsMrrTitle,
-            subtitle: l.adminMetricsMrrSubtitle(range.days),
-            child: mrrAsync.when(
-              loading: () =>
-                  const SizedBox(height: 220, child: AppLoadingState()),
-              error: (_, __) => _chartError(context, l),
-              data: (points) => SizedBox(
-                height: 220,
-                child: MetricLineChart(
-                  points: points,
-                  color: Theme.of(context).colorScheme.tertiary,
-                  formatValue: (v) {
-                    // cents -> euros
-                    final eur = v / 100;
-                    if (eur >= 1000) {
-                      return '${(eur / 1000).toStringAsFixed(1)}k€';
-                    }
-                    return '${eur.toStringAsFixed(0)}€';
-                  },
-                  semanticsLabel: l.adminMetricsMrrTitle,
-                ),
+        ),
+        AppSpacing.gapMd,
+        // ─── MRR chart ───
+        _ChartSection(
+          title: l.adminMetricsMrrTitle,
+          subtitle: l.adminMetricsMrrSubtitle(range.days),
+          child: mrrAsync.when(
+            loading: () =>
+                const SizedBox(height: 220, child: AppLoadingState()),
+            error: (_, __) => _chartError(context, l),
+            data: (points) => SizedBox(
+              height: 220,
+              child: MetricLineChart(
+                points: points,
+                color: Theme.of(context).colorScheme.tertiary,
+                formatValue: (v) {
+                  // cents -> euros
+                  final eur = v / 100;
+                  if (eur >= 1000) {
+                    return '${(eur / 1000).toStringAsFixed(1)}k€';
+                  }
+                  return '${eur.toStringAsFixed(0)}€';
+                },
+                semanticsLabel: l.adminMetricsMrrTitle,
               ),
             ),
           ),
-          AppSpacing.gapMd,
-          // ─── Plan distribution + Funnel side by side ───
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: LayoutBuilder(
-              builder: (context, c) {
-                final isWide = c.maxWidth > 800;
-                final left = _ChartCard(
-                  title: l.adminMetricsPlanDistTitle,
-                  subtitle: l.adminMetricsPlanDistSubtitle,
-                  child: plansAsync.when(
-                    loading: () => const Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Center(child: CircularProgressIndicator()),
-                    ),
-                    error: (_, __) => _chartError(context, l),
-                    data: (rows) => PlanDistributionBars(rows: rows),
+        ),
+        AppSpacing.gapMd,
+        // ─── Plan distribution + Funnel side by side ───
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final isWide = c.maxWidth > 800;
+              final left = _ChartCard(
+                title: l.adminMetricsPlanDistTitle,
+                subtitle: l.adminMetricsPlanDistSubtitle,
+                child: plansAsync.when(
+                  loading: () => const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: CircularProgressIndicator()),
                   ),
-                );
-                final right = _ChartCard(
-                  title: l.adminMetricsFunnelTitle,
-                  subtitle: l.adminMetricsFunnelSubtitle,
-                  child: funnelAsync.when(
-                    loading: () => const Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Center(child: CircularProgressIndicator()),
-                    ),
-                    error: (_, __) => _chartError(context, l),
-                    data: (f) => FunnelView(funnel: f),
+                  error: (_, __) => _chartError(context, l),
+                  data: (rows) => PlanDistributionBars(rows: rows),
+                ),
+              );
+              final right = _ChartCard(
+                title: l.adminMetricsFunnelTitle,
+                subtitle: l.adminMetricsFunnelSubtitle,
+                child: funnelAsync.when(
+                  loading: () => const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: CircularProgressIndicator()),
                   ),
-                );
-                if (isWide) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: left),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(child: right),
-                    ],
-                  );
-                }
-                return Column(
+                  error: (_, __) => _chartError(context, l),
+                  data: (f) => FunnelView(funnel: f),
+                ),
+              );
+              if (isWide) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    left,
-                    const SizedBox(height: AppSpacing.md),
-                    right,
+                    Expanded(child: left),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(child: right),
                   ],
                 );
-              },
-            ),
+              }
+              return Column(
+                children: [
+                  left,
+                  const SizedBox(height: AppSpacing.md),
+                  right,
+                ],
+              );
+            },
           ),
-          const SizedBox(height: AppSpacing.xxl),
-        ],
-      ),
+        ),
+        const SizedBox(height: AppSpacing.xxl),
+      ],
     );
+    return embedded
+        ? column
+        : SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: column,
+          );
   }
 
   Widget _chartError(BuildContext context, AppLocalizations l) {
