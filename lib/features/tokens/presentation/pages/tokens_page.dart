@@ -20,22 +20,12 @@ import '../widgets/token_secret_dialog.dart';
 /// crearlos/revocarlos. Diseño calcado de GitHub: cada item muestra
 /// solo el prefix (`pat_xxxxxxxx`) + nombre + scopes + caducidad +
 /// último uso. El secret completo SOLO se ve una vez al crear.
-class TokensPage extends ConsumerStatefulWidget {
+class TokensPage extends ConsumerWidget {
   const TokensPage({super.key});
 
   @override
-  ConsumerState<TokensPage> createState() => _TokensPageState();
-}
-
-class _TokensPageState extends ConsumerState<TokensPage> {
-  int _page = 0;
-  static const int _pageSize = 20;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final async = ref.watch(userTokensProvider);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -44,69 +34,116 @@ class _TokensPageState extends ConsumerState<TokensPage> {
           onPressed: () => context.popOrGo(RouteNames.accountSettings),
         ),
         title: Text(l.tokensTitle),
-        actions: [
-          IconButton(
-            tooltip: l.actionRetry,
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(userTokensProvider),
-          ),
-        ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: const Icon(Icons.add),
-        label: Text(l.tokensCreate),
-        onPressed: _onCreate,
+      body: const TokensView(),
+    );
+  }
+}
+
+/// Cuerpo de la gestión de tokens (sin Scaffold). Reutilizable como página
+/// completa o embebido en el master-detail de Ajustes → Workspace.
+///
+/// El botón de crear (antes un FAB del Scaffold) se reposiciona dentro del
+/// panel para que funcione igual embebido y a pantalla completa.
+class TokensView extends ConsumerStatefulWidget {
+  const TokensView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Ajustes):
+  /// usa `shrinkWrap` para no requerir altura/scroll propios.
+  final bool embedded;
+
+  @override
+  ConsumerState<TokensView> createState() => _TokensViewState();
+}
+
+class _TokensViewState extends ConsumerState<TokensView> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final async = ref.watch(userTokensProvider);
+
+    final content = async.when(
+      loading: () => const AppLoadingState(),
+      error: (e, _) => AppErrorState(
+        message: l.tokensLoadError,
+        detail: e.toString(),
+        onRetry: () => ref.invalidate(userTokensProvider),
+        retryLabel: l.actionRetry,
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: double.infinity),
-          child: async.when(
-            loading: () => const AppLoadingState(),
-            error: (e, _) => AppErrorState(
-              message: l.tokensLoadError,
-              detail: e.toString(),
-              onRetry: () => ref.invalidate(userTokensProvider),
-              retryLabel: l.actionRetry,
+      data: (tokens) {
+        if (tokens.isEmpty) {
+          return AppEmptyState(
+            icon: Icons.vpn_key_outlined,
+            title: l.tokensEmptyTitle,
+            message: l.tokensEmptyBody,
+          );
+        }
+        final totalPages = (tokens.length / _pageSize).ceil();
+        final page = _page.clamp(0, totalPages - 1);
+        final start = page * _pageSize;
+        final end = (start + _pageSize) > tokens.length
+            ? tokens.length
+            : start + _pageSize;
+        final pageTokens = tokens.sublist(start, end);
+        final list = ListView.separated(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, widget.embedded ? 8 : 96),
+          shrinkWrap: widget.embedded,
+          physics:
+              widget.embedded ? const NeverScrollableScrollPhysics() : null,
+          // +1 por el _IntroCard fijo en la posición 0.
+          itemCount: pageTokens.length + 1,
+          separatorBuilder: (_, __) => const SizedBox(height: 4),
+          itemBuilder: (_, i) {
+            if (i == 0) return _IntroCard(l: l);
+            return _TokenTile(token: pageTokens[i - 1]);
+          },
+        );
+        return Column(
+          mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            if (widget.embedded) list else Expanded(child: list),
+            AppPaginationBar(
+              currentPage: page,
+              totalPages: totalPages,
+              onPrevious: () => setState(() => _page = page - 1),
+              onNext: () => setState(() => _page = page + 1),
             ),
-            data: (tokens) {
-              if (tokens.isEmpty) {
-                return AppEmptyState(
-                  icon: Icons.vpn_key_outlined,
-                  title: l.tokensEmptyTitle,
-                  message: l.tokensEmptyBody,
-                );
-              }
-              final totalPages = (tokens.length / _pageSize).ceil();
-              final page = _page.clamp(0, totalPages - 1);
-              final start = page * _pageSize;
-              final end = (start + _pageSize) > tokens.length
-                  ? tokens.length
-                  : start + _pageSize;
-              final pageTokens = tokens.sublist(start, end);
-              return Column(
+          ],
+        );
+      },
+    );
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: double.infinity),
+        child: Column(
+          mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            // Acciones del panel (antes refresh en AppBar + FAB de crear).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                      // +1 por el _IntroCard fijo en la posición 0.
-                      itemCount: pageTokens.length + 1,
-                      separatorBuilder: (_, __) => const SizedBox(height: 4),
-                      itemBuilder: (_, i) {
-                        if (i == 0) return _IntroCard(l: l);
-                        return _TokenTile(token: pageTokens[i - 1]);
-                      },
-                    ),
+                  IconButton(
+                    tooltip: l.actionRetry,
+                    icon: const Icon(Icons.refresh),
+                    onPressed: () => ref.invalidate(userTokensProvider),
                   ),
-                  AppPaginationBar(
-                    currentPage: page,
-                    totalPages: totalPages,
-                    onPrevious: () => setState(() => _page = page - 1),
-                    onNext: () => setState(() => _page = page + 1),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: _onCreate,
+                    icon: const Icon(Icons.add),
+                    label: Text(l.tokensCreate),
                   ),
                 ],
-              );
-            },
-          ),
+              ),
+            ),
+            if (widget.embedded) content else Expanded(child: content),
+          ],
         ),
       ),
     );

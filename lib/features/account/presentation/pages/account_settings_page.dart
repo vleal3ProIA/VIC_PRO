@@ -26,8 +26,14 @@ import 'package:myapp/features/auth/presentation/widgets/change_email_form.dart'
 import 'package:myapp/features/auth/presentation/widgets/change_password_form.dart';
 import 'package:myapp/features/auth/presentation/widgets/delete_account_form.dart';
 import 'package:myapp/features/flags/application/feature_flags_providers.dart';
+import 'package:myapp/features/tenants/presentation/pages/team_page.dart'
+    show TeamView;
+import 'package:myapp/features/tokens/presentation/pages/tokens_page.dart'
+    show TokensView;
 import 'package:myapp/features/uploads/presentation/pages/files_page.dart'
     show FilesView;
+import 'package:myapp/features/webhooks/presentation/pages/webhooks_page.dart'
+    show WebhooksView;
 import 'package:myapp/generated/l10n/app_localizations.dart';
 
 /// `/account-settings` -- pagina de configuracion del user.
@@ -749,35 +755,17 @@ class _WorkspaceMasterDetail extends ConsumerWidget {
         SettingsDetailItem(
           icon: Icons.vpn_key_outlined,
           label: l.tokensTitle,
-          builder: (_) => SettingsOpenFullScreen(
-            icon: Icons.vpn_key_outlined,
-            title: l.tokensTitle,
-            description: l.tokensHint,
-            buttonLabel: l.filesOpen,
-            routeName: RouteNames.tokens,
-          ),
+          builder: (_) => const TokensView(embedded: true),
         ),
         SettingsDetailItem(
           icon: Icons.webhook_outlined,
           label: l.webhooksTitle,
-          builder: (_) => SettingsOpenFullScreen(
-            icon: Icons.webhook_outlined,
-            title: l.webhooksTitle,
-            description: l.webhooksHint,
-            buttonLabel: l.filesOpen,
-            routeName: RouteNames.webhooks,
-          ),
+          builder: (_) => const WebhooksView(embedded: true),
         ),
         SettingsDetailItem(
           icon: Icons.groups_outlined,
           label: l.settingsTeam,
-          builder: (_) => SettingsOpenFullScreen(
-            icon: Icons.groups_outlined,
-            title: l.settingsTeam,
-            description: l.settingsTeamHint,
-            buttonLabel: l.filesOpen,
-            routeName: RouteNames.team,
-          ),
+          builder: (_) => const TeamView(embedded: true),
         ),
         if (auditVisible) ...[
           SettingsDetailItem(

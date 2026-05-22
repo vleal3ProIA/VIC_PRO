@@ -20,22 +20,12 @@ import '../widgets/webhook_secret_dialog.dart';
 /// `/account-settings/webhooks` — gestiona los endpoints salientes
 /// del usuario. Cada item tiene su detalle propio en
 /// `/account-settings/webhooks/<id>` con histórico de deliveries.
-class WebhooksPage extends ConsumerStatefulWidget {
+class WebhooksPage extends ConsumerWidget {
   const WebhooksPage({super.key});
 
   @override
-  ConsumerState<WebhooksPage> createState() => _WebhooksPageState();
-}
-
-class _WebhooksPageState extends ConsumerState<WebhooksPage> {
-  int _page = 0;
-  static const int _pageSize = 20;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final async = ref.watch(webhookEndpointsProvider);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -44,69 +34,116 @@ class _WebhooksPageState extends ConsumerState<WebhooksPage> {
           onPressed: () => context.popOrGo(RouteNames.accountSettings),
         ),
         title: Text(l.webhooksTitle),
-        actions: [
-          IconButton(
-            tooltip: l.actionRetry,
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(webhookEndpointsProvider),
-          ),
-        ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: const Icon(Icons.add),
-        label: Text(l.webhooksCreate),
-        onPressed: _onCreate,
+      body: const WebhooksView(),
+    );
+  }
+}
+
+/// Cuerpo de la gestión de webhooks (sin Scaffold). Reutilizable como página
+/// completa o embebido en el master-detail de Ajustes → Workspace.
+///
+/// El botón de crear (antes un FAB del Scaffold) se reposiciona dentro del
+/// panel para que funcione igual embebido y a pantalla completa.
+class WebhooksView extends ConsumerStatefulWidget {
+  const WebhooksView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Ajustes):
+  /// usa `shrinkWrap` para no requerir altura/scroll propios.
+  final bool embedded;
+
+  @override
+  ConsumerState<WebhooksView> createState() => _WebhooksViewState();
+}
+
+class _WebhooksViewState extends ConsumerState<WebhooksView> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final async = ref.watch(webhookEndpointsProvider);
+
+    final content = async.when(
+      loading: () => const AppLoadingState(),
+      error: (e, _) => AppErrorState(
+        message: l.webhooksLoadError,
+        detail: e.toString(),
+        onRetry: () => ref.invalidate(webhookEndpointsProvider),
+        retryLabel: l.actionRetry,
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: double.infinity),
-          child: async.when(
-            loading: () => const AppLoadingState(),
-            error: (e, _) => AppErrorState(
-              message: l.webhooksLoadError,
-              detail: e.toString(),
-              onRetry: () => ref.invalidate(webhookEndpointsProvider),
-              retryLabel: l.actionRetry,
+      data: (endpoints) {
+        if (endpoints.isEmpty) {
+          return AppEmptyState(
+            icon: Icons.webhook_outlined,
+            title: l.webhooksEmptyTitle,
+            message: l.webhooksEmptyBody,
+          );
+        }
+        final totalPages = (endpoints.length / _pageSize).ceil();
+        final page = _page.clamp(0, totalPages - 1);
+        final start = page * _pageSize;
+        final end = (start + _pageSize) > endpoints.length
+            ? endpoints.length
+            : start + _pageSize;
+        final pageEndpoints = endpoints.sublist(start, end);
+        final list = ListView.separated(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, widget.embedded ? 8 : 96),
+          shrinkWrap: widget.embedded,
+          physics:
+              widget.embedded ? const NeverScrollableScrollPhysics() : null,
+          // +1 por el _IntroCard fijo en la posición 0.
+          itemCount: pageEndpoints.length + 1,
+          separatorBuilder: (_, __) => const SizedBox(height: 4),
+          itemBuilder: (_, i) {
+            if (i == 0) return _IntroCard(l: l);
+            return _EndpointTile(endpoint: pageEndpoints[i - 1]);
+          },
+        );
+        return Column(
+          mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            if (widget.embedded) list else Expanded(child: list),
+            AppPaginationBar(
+              currentPage: page,
+              totalPages: totalPages,
+              onPrevious: () => setState(() => _page = page - 1),
+              onNext: () => setState(() => _page = page + 1),
             ),
-            data: (endpoints) {
-              if (endpoints.isEmpty) {
-                return AppEmptyState(
-                  icon: Icons.webhook_outlined,
-                  title: l.webhooksEmptyTitle,
-                  message: l.webhooksEmptyBody,
-                );
-              }
-              final totalPages = (endpoints.length / _pageSize).ceil();
-              final page = _page.clamp(0, totalPages - 1);
-              final start = page * _pageSize;
-              final end = (start + _pageSize) > endpoints.length
-                  ? endpoints.length
-                  : start + _pageSize;
-              final pageEndpoints = endpoints.sublist(start, end);
-              return Column(
+          ],
+        );
+      },
+    );
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: double.infinity),
+        child: Column(
+          mainAxisSize: widget.embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            // Acciones del panel (antes refresh en AppBar + FAB de crear).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                      // +1 por el _IntroCard fijo en la posición 0.
-                      itemCount: pageEndpoints.length + 1,
-                      separatorBuilder: (_, __) => const SizedBox(height: 4),
-                      itemBuilder: (_, i) {
-                        if (i == 0) return _IntroCard(l: l);
-                        return _EndpointTile(endpoint: pageEndpoints[i - 1]);
-                      },
-                    ),
+                  IconButton(
+                    tooltip: l.actionRetry,
+                    icon: const Icon(Icons.refresh),
+                    onPressed: () => ref.invalidate(webhookEndpointsProvider),
                   ),
-                  AppPaginationBar(
-                    currentPage: page,
-                    totalPages: totalPages,
-                    onPrevious: () => setState(() => _page = page - 1),
-                    onNext: () => setState(() => _page = page + 1),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: _onCreate,
+                    icon: const Icon(Icons.add),
+                    label: Text(l.webhooksCreate),
                   ),
                 ],
-              );
-            },
-          ),
+              ),
+            ),
+            if (widget.embedded) content else Expanded(child: content),
+          ],
         ),
       ),
     );
