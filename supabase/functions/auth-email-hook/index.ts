@@ -173,12 +173,26 @@ Deno.serve(withSentry("auth-email-hook", async (req) => {
   // path estandar `/auth/v1/verify` o `/auth/callback`. Usamos el
   // helper recomendado: site_url + path + query con token_hash + type
   // + redirect_to.
+  // Para un ENLACE clicable se usa `token_hash` (no `token`, que es el OTP de
+  // 6 digitos para entrada manual). Fallback a token por si token_hash viniera
+  // vacio. El verify endpoint de Supabase resuelve el hash y redirige a
+  // redirect_to con la sesion en el fragmento.
+  const verifyToken = payload.email_data.token_hash || payload.email_data.token;
   const params = new URLSearchParams({
-    token: payload.email_data.token,
+    token: verifyToken,
     type: payload.email_data.email_action_type,
     redirect_to: payload.email_data.redirect_to,
   });
-  const actionUrl = `${payload.email_data.site_url}/auth/v1/verify?${params.toString()}`;
+  // El endpoint /auth/v1/verify vive en el dominio de SUPABASE (la API),
+  // NO en site_url (que es testexamen.es -> Apache -> index.html, link roto).
+  // SUPABASE_URL lo inyecta el runtime de Edge Functions automaticamente.
+  const verifyBase = Deno.env.get("SUPABASE_URL") ?? payload.email_data.site_url;
+  const actionUrl = `${verifyBase}/auth/v1/verify?${params.toString()}`;
+  console.log(
+    "[auth-email-hook] actionUrl=", actionUrl,
+    "| verifyBase=", verifyBase,
+    "| token_hash.len=", payload.email_data.token_hash?.length ?? 0,
+  );
 
   // Datos especificos por tipo.
   const data: Record<string, string> = {
