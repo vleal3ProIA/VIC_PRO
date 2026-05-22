@@ -46,7 +46,7 @@ class PageHeader extends StatelessWidget {
       AppSpacing.lg,
       AppSpacing.lg,
       AppSpacing.lg,
-      AppSpacing.md,
+      AppSpacing.lg,
     ),
   });
 
@@ -92,7 +92,7 @@ class PageHeader extends StatelessWidget {
           ),
         ),
         if (subtitle != null) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             subtitle!,
             style: theme.textTheme.bodyMedium?.copyWith(
