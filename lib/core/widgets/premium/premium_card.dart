@@ -55,7 +55,7 @@ class PremiumCard extends StatefulWidget {
   /// usar `AppSpacing.paddingMd`.
   final EdgeInsetsGeometry padding;
 
-  /// Radius custom. Default `AppRadii.md` (12px).
+  /// Radius custom. Default `AppRadii.card` (16px).
   final BorderRadius? borderRadius;
 
   /// `true` -> usa `AppShadows.elevated` en lugar de `AppShadows.card`.
@@ -80,7 +80,7 @@ class _PremiumCardState extends State<PremiumCard> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final borderRadius = widget.borderRadius ?? AppRadii.brMd;
+    final borderRadius = widget.borderRadius ?? AppRadii.brCard;
     final isInteractive = widget.onTap != null;
 
     // Sombras: estado normal vs hover (cuando interactivo).
