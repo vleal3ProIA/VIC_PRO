@@ -14,32 +14,16 @@ import 'package:myapp/features/shell/presentation/widgets/skip_to_content_link.d
 import 'package:myapp/features/shell/presentation/widgets/user_avatar_menu.dart';
 import 'package:myapp/features/status/presentation/widgets/maintenance_banner.dart';
 
-/// Destino de navegación de la zona privada.
-class _Destination {
-  const _Destination({
-    required this.path,
-    required this.routeName,
-    required this.icon,
-    required this.selectedIcon,
-    required this.label,
-  });
-
-  final String path;
-  final String routeName;
-  final IconData icon;
-  final IconData selectedIcon;
-  final String label;
-}
-
 /// Ancho del sidebar lateral expandido (zona privada, pantallas anchas).
 const double _kSidebarWidth = 256;
 
 /// Shell de la zona privada (área autenticada).
 ///
-/// Aporta el cromo común a todas las páginas privadas:
 /// - **Header**: logo + botón para plegar/desplegar el sidebar a la izquierda;
 ///   búsqueda, notificaciones, ayuda y avatar a la derecha.
-/// - **Sidebar lateral** ancho y plegable (ancho) o `Drawer` (móvil).
+/// - **Sidebar lateral** ancho y plegable (ancho) o `Drawer` (móvil), con
+///   navegación: Panel, Ajustes (submenú: Cuenta/Workspace/Facturación/
+///   Seguridad) y Administración (solo admin).
 ///
 /// Se monta vía `ShellRoute`, así que persiste al navegar entre destinos.
 class PrivateShell extends ConsumerStatefulWidget {
@@ -63,10 +47,6 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
   /// Sidebar visible en pantallas anchas. El botón ☰ del header lo togglea.
   bool _sidebarExpanded = true;
 
-  /// Destino del skip-to-content link. Lo coloco en el `body` del Scaffold
-  /// para que la activación del skip-link mueva el foco directamente al
-  /// primer elemento del contenido principal, saltándose el AppBar y el
-  /// sidebar.
   late final FocusNode _mainContentFocus =
       FocusNode(debugLabel: 'private-shell-main-content', skipTraversal: true);
 
@@ -78,48 +58,13 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
 
   @override
   Widget build(BuildContext context) {
-    final l = context.l10n;
     final isAdmin = ref.watch(isAdminProvider);
     final commercialName = ref.watch(brandingOrFallbackProvider).commercialName;
-
-    final destinations = <_Destination>[
-      _Destination(
-        path: RoutePaths.home,
-        routeName: RouteNames.home,
-        icon: Icons.dashboard_outlined,
-        selectedIcon: Icons.dashboard,
-        label: l.navDashboard,
-      ),
-      _Destination(
-        path: RoutePaths.accountSettings,
-        routeName: RouteNames.accountSettings,
-        icon: Icons.settings_outlined,
-        selectedIcon: Icons.settings,
-        label: l.navSettings,
-      ),
-      // El destino de administración solo aparece para admins. Aunque
-      // alguien forzara la ruta, el guard del router lo redirige.
-      if (isAdmin)
-        _Destination(
-          path: RoutePaths.admin,
-          routeName: RouteNames.admin,
-          icon: Icons.admin_panel_settings_outlined,
-          selectedIcon: Icons.admin_panel_settings,
-          label: l.navAdmin,
-        ),
-    ];
-
-    var selectedIndex =
-        destinations.indexWhere((d) => widget.location == d.path);
-    if (selectedIndex < 0) selectedIndex = 0;
-
-    void goTo(int index) {
-      context.goNamed(destinations[index].routeName);
-    }
+    final section =
+        GoRouterState.of(context).uri.queryParameters['section'] ?? 'account';
 
     final isWide = !context.isMobile;
 
-    // Botón ☰: en ancho pliega/despliega el sidebar; en móvil abre el Drawer.
     void onToggleSidebar() {
       if (isWide) {
         setState(() => _sidebarExpanded = !_sidebarExpanded);
@@ -128,14 +73,30 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
       }
     }
 
-    // El body se envuelve en Focus + FocusTraversalGroup para que el
-    // skip-link (debajo del Stack) pueda mover el foco aquí saltándose
-    // el AppBar y la navegación.
-    Widget wrapBody(Widget body) => FocusTraversalGroup(
-          child: Focus(
-            focusNode: _mainContentFocus,
-            child: body,
+    // Navega y, en móvil (drawer abierto), lo cierra primero.
+    void navigate(VoidCallback go) {
+      if (!isWide) Navigator.of(context).maybePop();
+      go();
+    }
+
+    Widget buildNav({required bool showHeader}) => _SidebarNav(
+          location: widget.location,
+          section: section,
+          isAdmin: isAdmin,
+          commercialName: commercialName,
+          showHeader: showHeader,
+          onGoHome: () => navigate(() => context.goNamed(RouteNames.home)),
+          onGoSettings: (s) => navigate(
+            () => context.goNamed(
+              RouteNames.accountSettings,
+              queryParameters: {'section': s},
+            ),
           ),
+          onGoAdmin: () => navigate(() => context.goNamed(RouteNames.admin)),
+        );
+
+    Widget wrapBody(Widget body) => FocusTraversalGroup(
+          child: Focus(focusNode: _mainContentFocus, child: body),
         );
 
     return CmdKShortcut(
@@ -147,7 +108,6 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
               scrolledUnderElevation: 0,
               automaticallyImplyLeading: false,
               titleSpacing: 12,
-              // ─── Izquierda: logo + botón de sidebar ───
               title: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -174,7 +134,6 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
                   ),
                 ],
               ),
-              // ─── Derecha: búsqueda · campana · ayuda · avatar ───
               actions: const [
                 SearchButton(),
                 NotificationBell(),
@@ -186,23 +145,9 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
             ),
             drawer: isWide
                 ? null
-                : Drawer(
-                    child: SafeArea(
-                      child: _SidebarNav(
-                        destinations: destinations,
-                        selectedIndex: selectedIndex,
-                        commercialName: commercialName,
-                        showHeader: true,
-                        onSelected: (i) {
-                          Navigator.of(context).pop(); // cierra el drawer
-                          goTo(i);
-                        },
-                      ),
-                    ),
-                  ),
+                : Drawer(child: SafeArea(child: buildNav(showHeader: true))),
             body: Column(
               children: [
-                // Banner de incidente activo (auto-oculto si no aplica).
                 const MaintenanceBanner(),
                 Expanded(
                   child: isWide
@@ -211,13 +156,7 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
                             if (_sidebarExpanded) ...[
                               SizedBox(
                                 width: _kSidebarWidth,
-                                child: _SidebarNav(
-                                  destinations: destinations,
-                                  selectedIndex: selectedIndex,
-                                  commercialName: commercialName,
-                                  showHeader: false,
-                                  onSelected: goTo,
-                                ),
+                                child: buildNav(showHeader: false),
                               ),
                               const VerticalDivider(width: 1),
                             ],
@@ -229,7 +168,6 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
               ],
             ),
           ),
-          // Skip-to-content link: invisible salvo cuando recibe foco.
           SkipToContentLink(targetFocusNode: _mainContentFocus),
         ],
       ),
@@ -237,27 +175,33 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
   }
 }
 
-/// Lista de navegación lateral. Se usa tanto en el `Drawer` (móvil) como en
-/// el sidebar fijo (ancho). [showHeader] muestra el nombre comercial arriba
-/// (solo en el drawer; en ancho el nombre ya está en el AppBar).
+/// Navegación lateral. Se usa en el `Drawer` (móvil) y en el sidebar fijo
+/// (ancho). [showHeader] muestra el nombre comercial arriba (solo drawer).
 class _SidebarNav extends StatelessWidget {
   const _SidebarNav({
-    required this.destinations,
-    required this.selectedIndex,
+    required this.location,
+    required this.section,
+    required this.isAdmin,
     required this.commercialName,
     required this.showHeader,
-    required this.onSelected,
+    required this.onGoHome,
+    required this.onGoSettings,
+    required this.onGoAdmin,
   });
 
-  final List<_Destination> destinations;
-  final int selectedIndex;
+  final String location;
+  final String section;
+  final bool isAdmin;
   final String commercialName;
   final bool showHeader;
-  final ValueChanged<int> onSelected;
+  final VoidCallback onGoHome;
+  final ValueChanged<String> onGoSettings;
+  final VoidCallback onGoAdmin;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = context.colors;
+    final l = context.l10n;
+    final inSettings = location.startsWith(RoutePaths.accountSettings);
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
@@ -271,34 +215,173 @@ class _SidebarNav extends StatelessWidget {
               ),
             ),
           ),
-        for (var i = 0; i < destinations.length; i++)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            child: ListTile(
-              dense: true,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              leading: Icon(
-                i == selectedIndex
-                    ? destinations[i].selectedIcon
-                    : destinations[i].icon,
-                size: 20,
-              ),
-              title: Text(
-                destinations[i].label,
-                style: context.textTheme.bodyMedium?.copyWith(
-                  fontWeight:
-                      i == selectedIndex ? FontWeight.w700 : FontWeight.w500,
-                ),
-              ),
-              selected: i == selectedIndex,
-              selectedTileColor: scheme.primary.withValues(alpha: 0.10),
-              selectedColor: scheme.primary,
-              onTap: () => onSelected(i),
+        // ─── Panel ───
+        _NavTile(
+          icon: Icons.dashboard_outlined,
+          selectedIcon: Icons.dashboard,
+          label: l.navDashboard,
+          selected: location == RoutePaths.home,
+          onTap: onGoHome,
+        ),
+        // ─── Ajustes (submenú) ───
+        _ExpandableNav(
+          icon: Icons.settings_outlined,
+          selectedIcon: Icons.settings,
+          label: l.navSettings,
+          active: inSettings,
+          children: [
+            _SubNavTile(
+              label: l.settingsTabAccount,
+              selected: inSettings && section == 'account',
+              onTap: () => onGoSettings('account'),
             ),
+            _SubNavTile(
+              label: l.settingsTabWorkspace,
+              selected: inSettings && section == 'workspace',
+              onTap: () => onGoSettings('workspace'),
+            ),
+            _SubNavTile(
+              label: l.settingsTabBilling,
+              selected: inSettings && section == 'billing',
+              onTap: () => onGoSettings('billing'),
+            ),
+            _SubNavTile(
+              label: l.settingsTabSecurity,
+              selected: inSettings && section == 'security',
+              onTap: () => onGoSettings('security'),
+            ),
+          ],
+        ),
+        // ─── Administración (solo admin) ───
+        if (isAdmin)
+          _NavTile(
+            icon: Icons.admin_panel_settings_outlined,
+            selectedIcon: Icons.admin_panel_settings,
+            label: l.navAdmin,
+            selected: location.startsWith(RoutePaths.admin),
+            onTap: onGoAdmin,
           ),
       ],
+    );
+  }
+}
+
+/// Item de primer nivel del sidebar (icono + label).
+class _NavTile extends StatelessWidget {
+  const _NavTile({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: ListTile(
+        dense: true,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        leading: Icon(selected ? selectedIcon : icon, size: 20),
+        title: Text(
+          label,
+          style: context.textTheme.bodyMedium?.copyWith(
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+        selected: selected,
+        selectedTileColor: scheme.primary.withValues(alpha: 0.10),
+        selectedColor: scheme.primary,
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+/// Item de primer nivel desplegable (con subitems).
+class _ExpandableNav extends StatelessWidget {
+  const _ExpandableNav({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.active,
+    required this.children,
+  });
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final bool active;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Theme(
+        // Quita las líneas divisorias por defecto del ExpansionTile.
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          dense: true,
+          initiallyExpanded: active,
+          shape: const Border(),
+          collapsedShape: const Border(),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+          childrenPadding: const EdgeInsets.only(left: 12),
+          leading: Icon(active ? selectedIcon : icon, size: 20),
+          title: Text(
+            label,
+            style: context.textTheme.bodyMedium?.copyWith(
+              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+              color: active ? scheme.primary : null,
+            ),
+          ),
+          children: children,
+        ),
+      ),
+    );
+  }
+}
+
+/// Subitem del submenú (sangrado, sin icono).
+class _SubNavTile extends StatelessWidget {
+  const _SubNavTile({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+    return ListTile(
+      dense: true,
+      visualDensity: VisualDensity.compact,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+      title: Text(
+        label,
+        style: context.textTheme.bodyMedium?.copyWith(
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+        ),
+      ),
+      selected: selected,
+      selectedTileColor: scheme.primary.withValues(alpha: 0.10),
+      selectedColor: scheme.primary,
+      onTap: onTap,
     );
   }
 }

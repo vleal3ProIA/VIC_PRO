@@ -48,6 +48,19 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
   String? _lastSyncedName;
   int _currentTab = 0;
 
+  /// Última sección aplicada desde el query param `?section=`. El submenú
+  /// "Ajustes" del sidebar navega con `?section=account|workspace|billing|
+  /// security`; aquí lo mapeamos a la tab interna. Se guarda para no pisar
+  /// los cambios de tab manuales del usuario en cada rebuild.
+  String? _appliedSection;
+
+  static const Map<String, int> _sectionToTab = {
+    'account': 0,
+    'workspace': 1,
+    'billing': 2,
+    'security': 3,
+  };
+
   @override
   void dispose() {
     _displayNameCtrl.dispose();
@@ -82,6 +95,17 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     final state = ref.watch(profileSettingsNotifierProvider);
     final notifier = ref.read(profileSettingsNotifierProvider.notifier);
     final email = ref.watch(currentUserProvider)?.email ?? '';
+
+    // El submenú "Ajustes" del sidebar navega con `?section=`. Lo aplicamos
+    // a la tab activa solo cuando cambia (para no anular la navegación por
+    // tabs en móvil).
+    final section = GoRouterState.of(context).uri.queryParameters['section'];
+    if (section != null &&
+        section != _appliedSection &&
+        _sectionToTab.containsKey(section)) {
+      _appliedSection = section;
+      _currentTab = _sectionToTab[section]!;
+    }
 
     // Sincroniza el controller con el profile cuando carga / cambia.
     // Usamos `effectiveName` (no `displayName`) para que el campo editable
@@ -163,12 +187,14 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
               title: l.settingsTitle,
               subtitle: l.settingsSubtitle,
             ),
-            // ─── Tabs ───
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-              ),
-              child: PremiumTabs(
+            // ─── Tabs (solo en móvil; en pantallas anchas la sección la
+            // controla el submenú "Ajustes" del sidebar) ───
+            if (context.isMobile)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                ),
+                child: PremiumTabs(
                 tabs: [
                   PremiumTabItem(
                     label: l.settingsTabAccount,
