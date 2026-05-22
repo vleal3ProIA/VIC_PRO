@@ -166,6 +166,18 @@ class AppTheme {
           padding: const WidgetStatePropertyAll(
             EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           ),
+          // Micro-sombra en reposo que "levanta" un poco al pasar el cursor
+          // (peso estilo Stripe). `surfaceTint` transparente → la elevación
+          // produce sombra limpia, sin desplazar el color del botón.
+          elevation: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) return 0;
+            if (states.contains(WidgetState.hovered) ||
+                states.contains(WidgetState.pressed)) {
+              return 3;
+            }
+            return 1.5;
+          }),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(

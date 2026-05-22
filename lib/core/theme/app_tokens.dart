@@ -186,18 +186,19 @@ class AppShadows {
     ];
   }
 
-  /// Sombra para cards estándar. Suave, 12px de blur. Lo más usado.
+  /// Sombra para cards estándar. Suave pero un punto más definida (mejor
+  /// separación del fondo). Lo más usado.
   static List<BoxShadow> card(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
     return [
       BoxShadow(
-        color: Color.fromRGBO(0, 0, 0, isDark ? 0.25 : 0.05),
-        blurRadius: 12,
-        offset: const Offset(0, 2),
+        color: Color.fromRGBO(0, 0, 0, isDark ? 0.28 : 0.07),
+        blurRadius: 14,
+        offset: const Offset(0, 3),
       ),
       BoxShadow(
-        color: Color.fromRGBO(0, 0, 0, isDark ? 0.10 : 0.02),
-        blurRadius: 4,
+        color: Color.fromRGBO(0, 0, 0, isDark ? 0.12 : 0.03),
+        blurRadius: 5,
         offset: const Offset(0, 1),
       ),
     ];
