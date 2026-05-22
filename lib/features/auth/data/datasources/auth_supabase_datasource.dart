@@ -1,3 +1,4 @@
+import 'package:myapp/core/config/env_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// DataSource fino sobre el SDK de Supabase para auth.
@@ -224,8 +225,13 @@ class AuthSupabaseDataSource {
   /// Devuelve el secret, QR y factorId. NO completa el enrollment — el
   /// usuario debe verificar con un challenge después.
   Future<AuthMFAEnrollResponse> enrollTotp({String? friendlyName}) {
+    // `issuer` es OBLIGATORIO para TOTP en gotrue >=2.20: si no se pasa, el
+    // SDK lanza ArgumentError ("expected an issuer for totp factor type") y el
+    // enroll nunca llega al servidor. Es además la etiqueta del emisor que
+    // muestra la app autenticadora (Google Authenticator/Authy/etc.).
     return _client.auth.mfa.enroll(
       factorType: FactorType.totp,
+      issuer: EnvConfig.appName,
       friendlyName: friendlyName,
     );
   }
