@@ -15,7 +15,7 @@ import '../widgets/tax_id_type_picker.dart';
 /// Si la URL trae `?return=/path`, tras guardar redirige a esa ruta. Esto
 /// lo usa el gate de `/billing/plans` para mandar al usuario a completar
 /// datos y devolverlo al catálogo automáticamente.
-class BillingInfoPage extends ConsumerStatefulWidget {
+class BillingInfoPage extends ConsumerWidget {
   const BillingInfoPage({this.returnTo, super.key});
 
   /// Ruta a la que volver tras guardar correctamente. Si null, no redirige
@@ -23,10 +23,40 @@ class BillingInfoPage extends ConsumerStatefulWidget {
   final String? returnTo;
 
   @override
-  ConsumerState<BillingInfoPage> createState() => _BillingInfoPageState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.popOrGo(RouteNames.accountSettings),
+        ),
+        title: Text(l.billingInfoTitle),
+      ),
+      body: BillingInfoView(returnTo: returnTo),
+    );
+  }
 }
 
-class _BillingInfoPageState extends ConsumerState<BillingInfoPage> {
+/// Cuerpo del formulario de datos de facturación (sin Scaffold). Reutilizable
+/// como página completa o embebido en el master-detail de Ajustes →
+/// Facturación.
+class BillingInfoView extends ConsumerStatefulWidget {
+  const BillingInfoView({this.returnTo, this.embedded = false, super.key});
+
+  /// Ruta a la que volver tras guardar correctamente. Si null, no redirige
+  /// (se queda con snackbar de éxito).
+  final String? returnTo;
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Ajustes).
+  final bool embedded;
+
+  @override
+  ConsumerState<BillingInfoView> createState() => _BillingInfoViewState();
+}
+
+class _BillingInfoViewState extends ConsumerState<BillingInfoView> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _firstName;
   late final TextEditingController _lastName;
@@ -55,7 +85,15 @@ class _BillingInfoPageState extends ConsumerState<BillingInfoPage> {
 
   @override
   void dispose() {
-    for (final c in [_firstName, _lastName, _addr1, _addr2, _city, _zip, _taxId]) {
+    for (final c in [
+      _firstName,
+      _lastName,
+      _addr1,
+      _addr2,
+      _city,
+      _zip,
+      _taxId,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -142,213 +180,206 @@ class _BillingInfoPageState extends ConsumerState<BillingInfoPage> {
     final l = context.l10n;
     final asyncInfo = ref.watch(myBillingInfoProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.popOrGo(RouteNames.accountSettings),
+    return asyncInfo.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, __) => Center(
+        child: Text(
+          l.billingInfoLoadError,
+          style: TextStyle(color: context.colors.error),
         ),
-        title: Text(l.billingInfoTitle),
       ),
-      body: asyncInfo.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => Center(
-          child: Text(
-            l.billingInfoLoadError,
-            style: TextStyle(color: context.colors.error),
-          ),
-        ),
-        data: (info) {
-          _hydrate(info);
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: double.infinity),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+      data: (info) {
+        _hydrate(info);
+        final form = Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (widget.returnTo != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: context.colors.tertiaryContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
                     children: [
-                      if (widget.returnTo != null) ...[
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: context.colors.tertiaryContainer,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                color: context.colors.tertiary,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  l.billingInfoCompleteHint,
-                                  style: context.textTheme.bodySmall?.copyWith(
-                                    color: context.colors.onTertiaryContainer,
-                                  ),
-                                ),
-                              ),
-                            ],
+                      Icon(
+                        Icons.info_outline,
+                        color: context.colors.tertiary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l.billingInfoCompleteHint,
+                          style: context.textTheme.bodySmall?.copyWith(
+                            color: context.colors.onTertiaryContainer,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                      ],
-                      _SectionLabel(text: l.billingInfoSectionPersonal),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _firstName,
-                              enabled: !_busy,
-                              decoration: InputDecoration(
-                                labelText: l.billingInfoFieldFirstName,
-                              ),
-                              validator: _required,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _lastName,
-                              enabled: !_busy,
-                              decoration: InputDecoration(
-                                labelText: l.billingInfoFieldLastName,
-                              ),
-                              validator: _required,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      InkWell(
-                        onTap: _busy ? null : _pickDob,
-                        child: InputDecorator(
-                          decoration: InputDecoration(
-                            labelText: l.billingInfoFieldDob,
-                            suffixIcon: const Icon(Icons.calendar_today, size: 18),
-                          ),
-                          child: Text(
-                            _dob == null
-                                ? '—'
-                                : '${_dob!.year}-${_dob!.month.toString().padLeft(2, '0')}-${_dob!.day.toString().padLeft(2, '0')}',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      _SectionLabel(text: l.billingInfoSectionAddress),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _addr1,
-                        enabled: !_busy,
-                        decoration: InputDecoration(
-                          labelText: l.billingInfoFieldAddressLine1,
-                        ),
-                        validator: _required,
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _addr2,
-                        enabled: !_busy,
-                        decoration: InputDecoration(
-                          labelText: l.billingInfoFieldAddressLine2,
-                          helperText: l.billingInfoFieldAddressLine2Help,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: TextFormField(
-                              controller: _city,
-                              enabled: !_busy,
-                              decoration: InputDecoration(
-                                labelText: l.billingInfoFieldCity,
-                              ),
-                              validator: _required,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _zip,
-                              enabled: !_busy,
-                              decoration: InputDecoration(
-                                labelText: l.billingInfoFieldPostalCode,
-                              ),
-                              validator: _required,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      CountryPicker(
-                        value: _country,
-                        enabled: !_busy,
-                        onChanged: (v) => setState(() => _country = v),
-                        validator: (v) =>
-                            v == null ? l.billingInfoFieldCountryRequired : null,
-                      ),
-                      const SizedBox(height: 24),
-                      _SectionLabel(text: l.billingInfoSectionTax),
-                      const SizedBox(height: 4),
-                      Text(
-                        l.billingInfoTaxHint,
-                        style: context.textTheme.bodySmall?.copyWith(
-                          color: context.colors.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _taxId,
-                              enabled: !_busy,
-                              decoration: InputDecoration(
-                                labelText: l.billingInfoFieldTaxId,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TaxIdTypePicker(
-                              value: _taxIdType,
-                              enabled: !_busy && _taxId.text.trim().isNotEmpty,
-                              onChanged: (v) => setState(() => _taxIdType = v),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 32),
-                      FilledButton(
-                        onPressed: _busy ? null : _onSave,
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(48),
-                        ),
-                        child: _busy
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2.4),
-                              )
-                            : Text(l.billingInfoSave),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+              ],
+              _SectionLabel(text: l.billingInfoSectionPersonal),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _firstName,
+                      enabled: !_busy,
+                      decoration: InputDecoration(
+                        labelText: l.billingInfoFieldFirstName,
+                      ),
+                      validator: _required,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _lastName,
+                      enabled: !_busy,
+                      decoration: InputDecoration(
+                        labelText: l.billingInfoFieldLastName,
+                      ),
+                      validator: _required,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          );
-        },
-      ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: _busy ? null : _pickDob,
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: l.billingInfoFieldDob,
+                    suffixIcon: const Icon(Icons.calendar_today, size: 18),
+                  ),
+                  child: Text(
+                    _dob == null
+                        ? '—'
+                        : '${_dob!.year}-${_dob!.month.toString().padLeft(2, '0')}-${_dob!.day.toString().padLeft(2, '0')}',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              _SectionLabel(text: l.billingInfoSectionAddress),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _addr1,
+                enabled: !_busy,
+                decoration: InputDecoration(
+                  labelText: l.billingInfoFieldAddressLine1,
+                ),
+                validator: _required,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _addr2,
+                enabled: !_busy,
+                decoration: InputDecoration(
+                  labelText: l.billingInfoFieldAddressLine2,
+                  helperText: l.billingInfoFieldAddressLine2Help,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: TextFormField(
+                      controller: _city,
+                      enabled: !_busy,
+                      decoration: InputDecoration(
+                        labelText: l.billingInfoFieldCity,
+                      ),
+                      validator: _required,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _zip,
+                      enabled: !_busy,
+                      decoration: InputDecoration(
+                        labelText: l.billingInfoFieldPostalCode,
+                      ),
+                      validator: _required,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              CountryPicker(
+                value: _country,
+                enabled: !_busy,
+                onChanged: (v) => setState(() => _country = v),
+                validator: (v) =>
+                    v == null ? l.billingInfoFieldCountryRequired : null,
+              ),
+              const SizedBox(height: 24),
+              _SectionLabel(text: l.billingInfoSectionTax),
+              const SizedBox(height: 4),
+              Text(
+                l.billingInfoTaxHint,
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _taxId,
+                      enabled: !_busy,
+                      decoration: InputDecoration(
+                        labelText: l.billingInfoFieldTaxId,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TaxIdTypePicker(
+                      value: _taxIdType,
+                      enabled: !_busy && _taxId.text.trim().isNotEmpty,
+                      onChanged: (v) => setState(() => _taxIdType = v),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              FilledButton(
+                onPressed: _busy ? null : _onSave,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                child: _busy
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2.4),
+                      )
+                    : Text(l.billingInfoSave),
+              ),
+            ],
+          ),
+        );
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: double.infinity),
+            child: widget.embedded
+                ? Padding(padding: const EdgeInsets.all(16), child: form)
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: form,
+                  ),
+          ),
+        );
+      },
     );
   }
 

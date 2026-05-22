@@ -25,6 +25,12 @@ import 'package:myapp/features/auth/presentation/pages/passkeys_page.dart'
 import 'package:myapp/features/auth/presentation/widgets/change_email_form.dart';
 import 'package:myapp/features/auth/presentation/widgets/change_password_form.dart';
 import 'package:myapp/features/auth/presentation/widgets/delete_account_form.dart';
+import 'package:myapp/features/billing/presentation/pages/billing_info_page.dart'
+    show BillingInfoView;
+import 'package:myapp/features/billing/presentation/pages/invoices_page.dart'
+    show InvoicesView;
+import 'package:myapp/features/billing/presentation/pages/plans_page.dart'
+    show PlansView;
 import 'package:myapp/features/flags/application/feature_flags_providers.dart';
 import 'package:myapp/features/tenants/presentation/pages/team_page.dart'
     show TeamView;
@@ -217,28 +223,28 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
                   horizontal: AppSpacing.lg,
                 ),
                 child: PremiumTabs(
-                tabs: [
-                  PremiumTabItem(
-                    label: l.settingsTabAccount,
-                    icon: Icons.person_outline,
-                  ),
-                  PremiumTabItem(
-                    label: l.settingsTabWorkspace,
-                    icon: Icons.workspaces_outline,
-                  ),
-                  PremiumTabItem(
-                    label: l.settingsTabBilling,
-                    icon: Icons.receipt_long_outlined,
-                  ),
-                  PremiumTabItem(
-                    label: l.settingsTabSecurity,
-                    icon: Icons.lock_outline,
-                  ),
-                ],
-                currentIndex: _currentTab,
-                onChanged: (i) => setState(() => _currentTab = i),
+                  tabs: [
+                    PremiumTabItem(
+                      label: l.settingsTabAccount,
+                      icon: Icons.person_outline,
+                    ),
+                    PremiumTabItem(
+                      label: l.settingsTabWorkspace,
+                      icon: Icons.workspaces_outline,
+                    ),
+                    PremiumTabItem(
+                      label: l.settingsTabBilling,
+                      icon: Icons.receipt_long_outlined,
+                    ),
+                    PremiumTabItem(
+                      label: l.settingsTabSecurity,
+                      icon: Icons.lock_outline,
+                    ),
+                  ],
+                  currentIndex: _currentTab,
+                  onChanged: (i) => setState(() => _currentTab = i),
+                ),
               ),
-            ),
             // ─── Contenido de la tab activa ───
             Expanded(
               child: SingleChildScrollView(
@@ -257,7 +263,9 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
                   1 => context.isMobile
                       ? const _WorkspaceTab()
                       : const _WorkspaceMasterDetail(),
-                  2 => const _BillingTab(),
+                  2 => context.isMobile
+                      ? const _BillingTab()
+                      : const _BillingMasterDetail(),
                   // Seguridad: en ancho usamos master-detail (menú + contenido
                   // limpio); en móvil mantenemos la lista de enlaces.
                   _ => context.isMobile
@@ -779,6 +787,102 @@ class _WorkspaceMasterDetail extends ConsumerWidget {
             builder: (_) => const AuditLogView(embedded: true),
           ),
         ],
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Tab 3 (ancho): Billing master-detail
+// Planes / Info de facturación / Facturas embebidos limpios reutilizando
+// sus *View. Toda la lógica de Stripe queda intacta. "Descargar mis datos"
+// (export GDPR) se muestra como un panel con su botón de acción.
+// ═══════════════════════════════════════════════════════════════════
+
+class _BillingMasterDetail extends ConsumerWidget {
+  const _BillingMasterDetail();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    return SettingsMasterDetail(
+      items: [
+        SettingsDetailItem(
+          icon: Icons.workspace_premium_outlined,
+          label: l.settingsPlans,
+          builder: (_) => const PlansView(embedded: true),
+        ),
+        SettingsDetailItem(
+          icon: Icons.receipt_long_outlined,
+          label: l.settingsBillingInfo,
+          builder: (_) => const BillingInfoView(embedded: true),
+        ),
+        SettingsDetailItem(
+          icon: Icons.description_outlined,
+          label: l.settingsInvoices,
+          builder: (_) => const InvoicesView(embedded: true),
+        ),
+        SettingsDetailItem(
+          icon: Icons.download_outlined,
+          label: l.settingsDownloadData,
+          builder: (_) => const _DataExportPanel(),
+        ),
+      ],
+    );
+  }
+}
+
+/// Panel para "Descargar mis datos" (export GDPR) dentro del master-detail
+/// de Facturación. Reutiliza el `dataExportNotifierProvider` existente.
+class _DataExportPanel extends ConsumerWidget {
+  const _DataExportPanel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final exportState = ref.watch(dataExportNotifierProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.download_outlined, color: scheme.primary),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                l.settingsDownloadData,
+                style: context.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          l.settingsDownloadDataHint,
+          style: context.textTheme.bodyMedium?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        FilledButton.icon(
+          onPressed: exportState.isBuilding
+              ? null
+              : () => ref
+                  .read(dataExportNotifierProvider.notifier)
+                  .exportAndDownload(),
+          icon: exportState.isBuilding
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2.4),
+                )
+              : const Icon(Icons.download_outlined, size: 18),
+          label: Text(l.settingsDownloadData),
+        ),
       ],
     );
   }
