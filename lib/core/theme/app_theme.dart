@@ -36,17 +36,37 @@ class AppTheme {
   static ThemeData lightFor(BrandingPalette palette) => _baseTheme(
         scheme: palette.lightScheme,
         isDark: false,
-        baseTextTheme:
-            GoogleFonts.interTextTheme().apply(fontSizeFactor: _fontSizeFactor),
+        baseTextTheme: _refineTypography(
+          GoogleFonts.interTextTheme().apply(fontSizeFactor: _fontSizeFactor),
+        ),
       );
 
   /// Tema dark para la paleta dada.
   static ThemeData darkFor(BrandingPalette palette) => _baseTheme(
         scheme: palette.darkScheme,
         isDark: true,
-        baseTextTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme)
-            .apply(fontSizeFactor: _fontSizeFactor),
+        baseTextTheme: _refineTypography(
+          GoogleFonts.interTextTheme(ThemeData.dark().textTheme)
+              .apply(fontSizeFactor: _fontSizeFactor),
+        ),
       );
+
+  /// Refinamiento tipográfico "2026" (editorial): aprieta ligeramente el
+  /// `letterSpacing` de los titulares grandes para un look moderno tipo
+  /// Linear/Vercel, sin tocar tamaños (eso lo controla [_fontSizeFactor]).
+  /// Solo ajusta tracking; no cambia familias, pesos ni alturas.
+  static TextTheme _refineTypography(TextTheme tt) {
+    TextStyle? track(TextStyle? s, double ls) => s?.copyWith(letterSpacing: ls);
+    return tt.copyWith(
+      displayLarge: track(tt.displayLarge, -0.5),
+      displayMedium: track(tt.displayMedium, -0.5),
+      displaySmall: track(tt.displaySmall, -0.4),
+      headlineLarge: track(tt.headlineLarge, -0.4),
+      headlineMedium: track(tt.headlineMedium, -0.3),
+      headlineSmall: track(tt.headlineSmall, -0.2),
+      titleLarge: track(tt.titleLarge, -0.2),
+    );
+  }
 
   /// Atajo con la paleta por defecto. Útil para tests y para builders
   /// que aún no consumen el provider de branding.
@@ -107,6 +127,16 @@ class AppTheme {
       snackBarTheme: base.snackBarTheme.copyWith(
         behavior: SnackBarBehavior.floating,
         showCloseIcon: true,
+      ),
+      // Header plano y moderno (estilo SaaS 2026): sin sombra ni tinte de
+      // superficie al hacer scroll, título alineado a la izquierda. La
+      // separación visual la dan el divider/borde de los paneles, no una
+      // sombra dura bajo el AppBar.
+      appBarTheme: base.appBarTheme.copyWith(
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        centerTitle: false,
       ),
       // Divider más sutil en dark.
       dividerTheme: base.dividerTheme.copyWith(
