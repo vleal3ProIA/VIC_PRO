@@ -88,12 +88,12 @@ class AppTheme {
       subThemesData: FlexSubThemesData(
         blendOnLevel: isDark ? 20 : 10,
         useM2StyleDividerInM3: true,
-        inputDecoratorRadius: AppRadii.md,
+        inputDecoratorRadius: AppRadii.control,
         inputDecoratorBorderType: FlexInputBorderType.outline,
-        elevatedButtonRadius: AppRadii.md,
-        filledButtonRadius: AppRadii.md,
-        outlinedButtonRadius: AppRadii.md,
-        textButtonRadius: AppRadii.md,
+        elevatedButtonRadius: AppRadii.control,
+        filledButtonRadius: AppRadii.control,
+        outlinedButtonRadius: AppRadii.control,
+        textButtonRadius: AppRadii.control,
         cardRadius: AppRadii.lg,
         dialogRadius: AppRadii.lg,
         // Levantar un poco las cards en dark para que destaquen del fondo.

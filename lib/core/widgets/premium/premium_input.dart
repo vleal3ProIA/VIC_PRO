@@ -181,7 +181,7 @@ class _PremiumInputState extends State<PremiumInput> {
                     ? scheme.surface
                     : scheme.surfaceContainerHighest
                         .withValues(alpha: isDark ? 0.45 : 0.7),
-            borderRadius: AppRadii.brMd,
+            borderRadius: AppRadii.brControl,
             border: Border.all(color: borderColor, width: 1),
             boxShadow: _focused && !hasError
                 ? [

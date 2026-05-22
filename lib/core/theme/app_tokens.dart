@@ -53,6 +53,11 @@ class AppRadii {
   AppRadii._();
   static const double sm = 6;
   static const double md = 12;
+
+  /// Radio para controles (botones, inputs): un punto más suave que `md`,
+  /// a juego con las cards (`card` = 16) — estética "soft 2026".
+  static const double control = 14;
+
   /// Radio para cards (estética "soft 2026"): entre `md` y `lg`.
   static const double card = 16;
   static const double lg = 20;
@@ -62,6 +67,8 @@ class AppRadii {
 
   static const BorderRadius brSm = BorderRadius.all(Radius.circular(sm));
   static const BorderRadius brMd = BorderRadius.all(Radius.circular(md));
+  static const BorderRadius brControl =
+      BorderRadius.all(Radius.circular(control));
   static const BorderRadius brCard = BorderRadius.all(Radius.circular(card));
   static const BorderRadius brLg = BorderRadius.all(Radius.circular(lg));
   static const BorderRadius brPill = BorderRadius.all(Radius.circular(pill));
@@ -87,11 +94,14 @@ class AppDurations {
 /// excesivamente largas en pantallas grandes (mejor legibilidad).
 class AppMaxWidths {
   AppMaxWidths._();
+
   /// Para forms y dialogs anchos (se mantiene acotado: auth/diálogos).
   static const double form = 480;
+
   /// Listas de cards / tablas admin. En web aprovechamos el ANCHO COMPLETO
   /// del área de contenido (antes 880).
   static const double content = double.infinity;
+
   /// Layouts wide tipo dashboard. Ancho completo en web (antes 1200).
   static const double wide = double.infinity;
 }
@@ -111,14 +121,19 @@ class AppMaxWidths {
 /// ```
 class AppBreakpoints {
   AppBreakpoints._();
+
   /// Móvil pequeño (< 640): un solo column, padding mínimo.
   static const double sm = 640;
+
   /// Tablet / móvil grande: 2 columnas, padding medio.
   static const double md = 768;
+
   /// Laptop pequeña: 3 columnas, sidebar opcional.
   static const double lg = 1024;
+
   /// Desktop estándar: layout completo con sidebar.
   static const double xl = 1280;
+
   /// Pantalla grande: cuidado con líneas demasiado largas (usar AppMaxWidths).
   static const double xxl = 1536;
 
@@ -133,8 +148,7 @@ class AppBreakpoints {
   }
 
   /// `true` si el ancho actual califica como "mobile" (< md).
-  static bool isMobile(BuildContext ctx) =>
-      MediaQuery.of(ctx).size.width < md;
+  static bool isMobile(BuildContext ctx) => MediaQuery.of(ctx).size.width < md;
 }
 
 /// Sombras premium estilo Stripe / Linear / Notion. Sombras suaves,
