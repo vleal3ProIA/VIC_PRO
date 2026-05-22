@@ -9,6 +9,7 @@ import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/incidents_providers.dart';
@@ -19,11 +20,20 @@ import '../widgets/incident_editor_dialog.dart';
 /// `/admin/incidents` — CRUD de incidentes. Admin-only via router
 /// guard + RLS. Borradores y publicados; permite editar, publicar,
 /// cambiar status y borrar.
-class AdminIncidentsPage extends ConsumerWidget {
+class AdminIncidentsPage extends ConsumerStatefulWidget {
   const AdminIncidentsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminIncidentsPage> createState() =>
+      _AdminIncidentsPageState();
+}
+
+class _AdminIncidentsPageState extends ConsumerState<AdminIncidentsPage> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l10n;
     final async = ref.watch(adminIncidentsProvider);
 
@@ -46,7 +56,7 @@ class AdminIncidentsPage extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
         label: Text(l.adminIncidentsCreate),
-        onPressed: () => _onCreate(context, ref),
+        onPressed: _onCreate,
       ),
       body: Center(
         child: ConstrainedBox(
@@ -67,17 +77,37 @@ class AdminIncidentsPage extends ConsumerWidget {
                   message: l.adminIncidentsEmptyBody,
                 );
               }
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  96,
-                ),
-                itemCount: entries.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSpacing.sm),
-                itemBuilder: (_, i) => _IncidentTile(incident: entries[i]),
+              final totalPages = (entries.length / _pageSize).ceil();
+              final page = _page.clamp(0, totalPages - 1);
+              final start = page * _pageSize;
+              final end = (start + _pageSize) > entries.length
+                  ? entries.length
+                  : start + _pageSize;
+              final pageEntries = entries.sublist(start, end);
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        AppSpacing.md,
+                        AppSpacing.md,
+                        96,
+                      ),
+                      itemCount: pageEntries.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: AppSpacing.sm),
+                      itemBuilder: (_, i) =>
+                          _IncidentTile(incident: pageEntries[i]),
+                    ),
+                  ),
+                  AppPaginationBar(
+                    currentPage: page,
+                    totalPages: totalPages,
+                    onPrevious: () => setState(() => _page = page - 1),
+                    onNext: () => setState(() => _page = page + 1),
+                  ),
+                ],
               );
             },
           ),
@@ -86,14 +116,14 @@ class AdminIncidentsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _onCreate(BuildContext context, WidgetRef ref) async {
+  Future<void> _onCreate() async {
     final l = context.l10n;
     final created = await showDialog<Incident>(
       context: context,
       barrierDismissible: false,
       builder: (_) => const IncidentEditorDialog(),
     );
-    if (created == null || !context.mounted) return;
+    if (created == null || !mounted) return;
     ref
       ..invalidate(adminIncidentsProvider)
       ..invalidate(activeIncidentsProvider)

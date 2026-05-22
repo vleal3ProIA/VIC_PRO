@@ -9,6 +9,7 @@ import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/admin_trash_providers.dart';
@@ -21,11 +22,19 @@ import '../../domain/deleted_tenant.dart';
 /// miembros vuelven a la vida en bloque (la RPC hace el cascade).
 ///
 /// Solo accesible bajo guard admin del router.
-class AdminTrashPage extends ConsumerWidget {
+class AdminTrashPage extends ConsumerStatefulWidget {
   const AdminTrashPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminTrashPage> createState() => _AdminTrashPageState();
+}
+
+class _AdminTrashPageState extends ConsumerState<AdminTrashPage> {
+  int _page = 0;
+  static const int _pageSize = 20;
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l10n;
     final async = ref.watch(deletedTenantsProvider);
 
@@ -63,12 +72,32 @@ class AdminTrashPage extends ConsumerWidget {
                   message: l.adminTrashEmpty,
                 );
               }
-              return ListView.separated(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                itemCount: rows.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSpacing.sm),
-                itemBuilder: (_, i) => _DeletedTenantCard(tenant: rows[i]),
+              final totalPages = (rows.length / _pageSize).ceil();
+              final page = _page.clamp(0, totalPages - 1);
+              final start = page * _pageSize;
+              final end = (start + _pageSize) > rows.length
+                  ? rows.length
+                  : start + _pageSize;
+              final pageRows = rows.sublist(start, end);
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      itemCount: pageRows.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: AppSpacing.sm),
+                      itemBuilder: (_, i) =>
+                          _DeletedTenantCard(tenant: pageRows[i]),
+                    ),
+                  ),
+                  AppPaginationBar(
+                    currentPage: page,
+                    totalPages: totalPages,
+                    onPrevious: () => setState(() => _page = page - 1),
+                    onNext: () => setState(() => _page = page + 1),
+                  ),
+                ],
               );
             },
           ),

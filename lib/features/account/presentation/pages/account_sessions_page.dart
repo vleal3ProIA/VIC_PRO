@@ -8,6 +8,7 @@ import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/app_pagination_bar.dart';
 
 import '../../application/auth_sessions_providers.dart';
 import '../../domain/auth_session.dart';
@@ -18,11 +19,23 @@ import '../../domain/auth_session.dart';
 /// La sesión actual aparece marcada y sin botón de revocar individual:
 /// para cerrar la actual, el usuario debe ir al menú de logout normal.
 /// El botón global "Cerrar todas las demás" sí está disponible siempre.
-class AccountSessionsPage extends ConsumerWidget {
+class AccountSessionsPage extends ConsumerStatefulWidget {
   const AccountSessionsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AccountSessionsPage> createState() =>
+      _AccountSessionsPageState();
+}
+
+class _AccountSessionsPageState extends ConsumerState<AccountSessionsPage> {
+  /// Página actual (0-indexed) de la paginación client-side.
+  int _page = 0;
+
+  /// Sesiones por página.
+  static const int _pageSize = 8;
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l10n;
     final async = ref.watch(authSessionsProvider);
 
@@ -60,17 +73,38 @@ class AccountSessionsPage extends ConsumerWidget {
                   message: l.sessionsEmpty,
                 );
               }
-              return ListView(
-                padding: const EdgeInsets.all(16),
+              // Paginación client-side. El _Header muestra el total real
+              // (todas las sesiones), pero la lista pagina de [_pageSize].
+              final totalPages = (sessions.length / _pageSize).ceil();
+              final page = _page.clamp(0, totalPages - 1);
+              final start = page * _pageSize;
+              final end = (start + _pageSize) > sessions.length
+                  ? sessions.length
+                  : start + _pageSize;
+              final pageSessions = sessions.sublist(start, end);
+              return Column(
                 children: [
-                  _Header(
-                    sessions: sessions,
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        _Header(
+                          sessions: sessions,
+                        ),
+                        const SizedBox(height: 16),
+                        for (final s in pageSessions) ...[
+                          _SessionCard(session: s),
+                          const SizedBox(height: 8),
+                        ],
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  for (final s in sessions) ...[
-                    _SessionCard(session: s),
-                    const SizedBox(height: 8),
-                  ],
+                  AppPaginationBar(
+                    currentPage: page,
+                    totalPages: totalPages,
+                    onPrevious: () => setState(() => _page = page - 1),
+                    onNext: () => setState(() => _page = page + 1),
+                  ),
                 ],
               );
             },
