@@ -73,8 +73,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
 
     // Cualquier acción en curso (login con password, OAuth, passkey) bloquea
     // el resto de botones para evitar disparos simultáneos.
-    final busy =
-        state.isSubmitting || oauthState.isBusy || passkeyState.isBusy;
+    final busy = state.isSubmitting || oauthState.isBusy || passkeyState.isBusy;
 
     String? errOrNull({required bool show, required String? msg}) =>
         show ? msg : null;
@@ -95,178 +94,205 @@ class _LoginFormState extends ConsumerState<LoginForm> {
             ? authFailureMessage(context, oauthState.failure!)
             : null;
 
-    return AutofillGroup(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AppTextField(
-            controller: _email,
-            label: l.fieldEmail,
-            prefixIcon: Icons.email_outlined,
-            keyboardType: TextInputType.emailAddress,
-            autofillHints: const [AutofillHints.email],
-            maxLength: Email.maxLength,
-            errorText: emailError,
-            onChanged: notifier.emailChanged,
-            enabled: !state.isSubmitting,
-          ),
-          AppTextField(
-            controller: _password,
-            label: l.fieldPassword,
-            prefixIcon: Icons.lock_outline,
-            isPassword: true,
-            autofillHints: const [AutofillHints.password],
-            textInputAction: TextInputAction.done,
-            errorText: passwordError,
-            onChanged: notifier.passwordChanged,
-            onSubmitted: (_) => notifier.submit(),
-            enabled: !state.isSubmitting,
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              InkWell(
-                onTap: state.isSubmitting
-                    ? null
-                    : () => notifier.rememberMeChanged(
-                          value: !state.rememberMe,
-                        ),
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 4,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Checkbox(
-                        value: state.rememberMe,
-                        onChanged: state.isSubmitting
-                            ? null
-                            : (v) => notifier.rememberMeChanged(
-                                  value: v ?? false,
-                                ),
+    // NOTA: NO usamos AutofillGroup ni autofillHints en el login. El
+    // navegador autocompletaba la contraseña (a veces de otra cuenta) al
+    // escribir el email, lo que confundía al usuario. Sin autofill, los
+    // campos solo se rellenan si el usuario escribe.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppTextField(
+          controller: _email,
+          label: l.fieldEmail,
+          prefixIcon: Icons.email_outlined,
+          keyboardType: TextInputType.emailAddress,
+          maxLength: Email.maxLength,
+          errorText: emailError,
+          onChanged: notifier.emailChanged,
+          enabled: !state.isSubmitting,
+        ),
+        AppTextField(
+          controller: _password,
+          label: l.fieldPassword,
+          prefixIcon: Icons.lock_outline,
+          isPassword: true,
+          textInputAction: TextInputAction.done,
+          errorText: passwordError,
+          onChanged: notifier.passwordChanged,
+          onSubmitted: (_) => notifier.submit(),
+          enabled: !state.isSubmitting,
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            InkWell(
+              onTap: state.isSubmitting
+                  ? null
+                  : () => notifier.rememberMeChanged(
+                        value: !state.rememberMe,
                       ),
-                      Text(
-                        l.actionRememberMe,
-                        style: context.textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                  vertical: 4,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Checkbox(
+                      value: state.rememberMe,
+                      onChanged: state.isSubmitting
+                          ? null
+                          : (v) => notifier.rememberMeChanged(
+                                value: v ?? false,
+                              ),
+                    ),
+                    Text(
+                      l.actionRememberMe,
+                      style: context.textTheme.bodySmall,
+                    ),
+                  ],
                 ),
               ),
-              TextButton(
-                onPressed: state.isSubmitting
-                    ? null
-                    : () => context.goNamed(RouteNames.forgotPassword),
-                child: Text(l.loginForgotPassword),
-              ),
-            ],
-          ),
-          GeneralErrorSlot(message: generalError),
-          const SizedBox(height: 8),
-          FilledButton(
-            onPressed: busy ? null : notifier.submit,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
             ),
-            child: state.isSubmitting
-                ? const SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.4),
-                  )
-                : Text(l.actionSignIn),
+            TextButton(
+              onPressed: state.isSubmitting
+                  ? null
+                  : () => context.goNamed(RouteNames.forgotPassword),
+              child: Text(l.loginForgotPassword),
+            ),
+          ],
+        ),
+        GeneralErrorSlot(message: generalError),
+        const SizedBox(height: 8),
+        FilledButton(
+          onPressed: busy ? null : notifier.submit,
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              const Expanded(child: Divider()),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  l.loginOrDivider,
-                  style: context.textTheme.labelSmall?.copyWith(
-                    color: context.colors.onSurfaceVariant,
-                  ),
+          child: state.isSubmitting
+              ? const SizedBox(
+                  height: 22,
+                  width: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.4),
+                )
+              : Text(l.actionSignIn),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            const Expanded(child: Divider()),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                l.loginOrDivider,
+                style: context.textTheme.labelSmall?.copyWith(
+                  color: context.colors.onSurfaceVariant,
                 ),
               ),
-              const Expanded(child: Divider()),
-            ],
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: busy ? null : passkeyNotifier.login,
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
             ),
-            icon: passkeyState.isBusy
-                ? const SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2.4),
-                  )
-                : const Icon(Icons.fingerprint, size: 20),
-            label: Text(l.loginWithPasskey),
-          ),
-          const SizedBox(height: 8),
-          SocialSignInButton(
-            label: l.continueWithGoogle,
-            iconAsset: 'assets/icons/google.svg',
-            busy: oauthState.isBusyWith(SocialProvider.google),
-            onPressed: busy
-                ? null
-                : () => oauthNotifier.signIn(SocialProvider.google),
-          ),
-          const SizedBox(height: 8),
-          SocialSignInButton(
-            label: l.continueWithApple,
-            iconAsset: 'assets/icons/apple.svg',
-            iconColor: context.colors.onSurface,
-            busy: oauthState.isBusyWith(SocialProvider.apple),
-            onPressed: busy
-                ? null
-                : () => oauthNotifier.signIn(SocialProvider.apple),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: busy
-                ? null
-                : () => context.goNamed(RouteNames.magicLink),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
+            const Expanded(child: Divider()),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Métodos alternativos compactos: una fila de iconos (con tooltip)
+        // en vez de 5 botones a ancho completo. Ocupa mucho menos.
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _AltAuthButton(
+              icon: Icons.fingerprint,
+              tooltip: l.loginWithPasskey,
+              busy: passkeyState.isBusy,
+              onPressed: busy ? null : passkeyNotifier.login,
             ),
-            icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-            label: Text(l.loginWithMagicLink),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: busy
-                ? null
-                : () => context.goNamed(RouteNames.otpRequest),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
+            SocialSignInButton(
+              label: l.continueWithGoogle,
+              iconAsset: 'assets/icons/google.svg',
+              iconOnly: true,
+              busy: oauthState.isBusyWith(SocialProvider.google),
+              onPressed: busy
+                  ? null
+                  : () => oauthNotifier.signIn(SocialProvider.google),
             ),
-            icon: const Icon(Icons.pin_outlined, size: 18),
-            label: Text(l.loginWithOtp),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(l.loginNoAccount, style: context.textTheme.bodyMedium),
-              const SizedBox(width: 4),
-              TextButton(
-                onPressed: busy
-                    ? null
-                    : () => context.goNamed(RouteNames.register),
-                child: Text(l.loginCreateOne),
-              ),
-            ],
-          ),
-        ],
+            SocialSignInButton(
+              label: l.continueWithApple,
+              iconAsset: 'assets/icons/apple.svg',
+              iconColor: context.colors.onSurface,
+              iconOnly: true,
+              busy: oauthState.isBusyWith(SocialProvider.apple),
+              onPressed: busy
+                  ? null
+                  : () => oauthNotifier.signIn(SocialProvider.apple),
+            ),
+            _AltAuthButton(
+              icon: Icons.auto_awesome_outlined,
+              tooltip: l.loginWithMagicLink,
+              onPressed:
+                  busy ? null : () => context.goNamed(RouteNames.magicLink),
+            ),
+            _AltAuthButton(
+              icon: Icons.pin_outlined,
+              tooltip: l.loginWithOtp,
+              onPressed:
+                  busy ? null : () => context.goNamed(RouteNames.otpRequest),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(l.loginNoAccount, style: context.textTheme.bodyMedium),
+            const SizedBox(width: 4),
+            TextButton(
+              onPressed:
+                  busy ? null : () => context.goNamed(RouteNames.register),
+              child: Text(l.loginCreateOne),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Botón compacto (cuadrado, solo icono + tooltip) para un método de login
+/// alternativo en la fila del login (passkey, magic link, OTP…).
+class _AltAuthButton extends StatelessWidget {
+  const _AltAuthButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.busy = false,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: OutlinedButton(
+        onPressed: busy ? null : onPressed,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(56, 48),
+          padding: EdgeInsets.zero,
+        ),
+        child: busy
+            ? const SizedBox(
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(strokeWidth: 2.4),
+              )
+            : Icon(icon, size: 20),
       ),
     );
   }
