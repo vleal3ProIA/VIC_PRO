@@ -33,6 +33,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
   @override
   Future<Either<ProfileFailure, Profile>> updateMyProfile({
     String? displayName,
+    String? username,
     String? locale,
     String? themeMode,
     String? avatarUrl,
@@ -40,6 +41,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     try {
       final map = await _dataSource.updateMyProfile(
         displayName: displayName,
+        username: username,
         locale: locale,
         themeMode: themeMode,
         avatarUrl: avatarUrl,

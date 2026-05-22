@@ -34,12 +34,14 @@ class ProfileSupabaseDataSource {
   /// fila actualizada.
   Future<Map<String, dynamic>> updateMyProfile({
     String? displayName,
+    String? username,
     String? locale,
     String? themeMode,
     String? avatarUrl,
   }) async {
     final patch = <String, dynamic>{
       if (displayName != null) 'display_name': displayName,
+      if (username != null) 'username': username,
       if (locale != null) 'locale': locale,
       if (themeMode != null) 'theme_mode': themeMode,
       if (avatarUrl != null) 'avatar_url': avatarUrl,

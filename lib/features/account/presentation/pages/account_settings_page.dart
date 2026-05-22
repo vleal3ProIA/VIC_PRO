@@ -84,10 +84,12 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     final email = ref.watch(currentUserProvider)?.email ?? '';
 
     // Sincroniza el controller con el profile cuando carga / cambia.
+    // Usamos `effectiveName` (no `displayName`) para que el campo editable
+    // muestre SIEMPRE el nombre visible: editar y ver son el mismo valor.
     final profile = state.profile;
-    if (profile != null && _lastSyncedName != profile.displayName) {
-      _lastSyncedName = profile.displayName;
-      _displayNameCtrl.text = profile.displayName ?? '';
+    if (profile != null && _lastSyncedName != profile.effectiveName) {
+      _lastSyncedName = profile.effectiveName;
+      _displayNameCtrl.text = profile.effectiveName;
     }
 
     // Snackbar al guardar con éxito.

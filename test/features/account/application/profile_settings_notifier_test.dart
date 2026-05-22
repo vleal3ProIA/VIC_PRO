@@ -31,6 +31,7 @@ class FakeProfileRepository implements ProfileRepository {
   );
 
   String? lastDisplayName;
+  String? lastUsername;
   String? lastLocale;
   String? lastThemeMode;
   String? lastAvatarUrl;
@@ -44,12 +45,14 @@ class FakeProfileRepository implements ProfileRepository {
   @override
   Future<Either<ProfileFailure, Profile>> updateMyProfile({
     String? displayName,
+    String? username,
     String? locale,
     String? themeMode,
     String? avatarUrl,
   }) async {
     updateCalls++;
     lastDisplayName = displayName;
+    lastUsername = username;
     lastLocale = locale;
     lastThemeMode = themeMode;
     lastAvatarUrl = avatarUrl;
@@ -114,6 +117,22 @@ void main() {
     await notifier().saveDisplayName('  New Name  ');
     expect(repo.lastDisplayName, 'New Name');
     expect(state().status, ProfileSettingsStatus.ready);
+  });
+
+  test('saveDisplayName writes username == displayName (same value)',
+      () async {
+    await waitLoad();
+    await notifier().saveDisplayName('  Same Name  ');
+    expect(repo.lastDisplayName, 'Same Name');
+    expect(repo.lastUsername, 'Same Name');
+    expect(repo.lastUsername, repo.lastDisplayName);
+  });
+
+  test('saveDisplayName ignora un nombre vacio (no llama al repo)', () async {
+    await waitLoad();
+    final before = repo.updateCalls;
+    await notifier().saveDisplayName('   ');
+    expect(repo.updateCalls, before);
   });
 
   test('successful save increments savedTick', () async {
