@@ -31,8 +31,6 @@ class AdminBrandingPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    final brandingAsync = ref.watch(stripeBrandingProvider);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -41,25 +39,59 @@ class AdminBrandingPage extends ConsumerWidget {
           onPressed: () => context.popOrGo(RouteNames.admin),
         ),
         title: Text(l.adminBrandingTitle),
-        actions: [
-          IconButton(
-            tooltip: l.actionRetry,
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(stripeBrandingProvider),
-          ),
-        ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
-          child: brandingAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => _LoadError(
-              message: l.adminBrandingLoadError,
-              detail: e.toString(),
+      body: const AdminBrandingView(),
+    );
+  }
+}
+
+/// Cuerpo del branding de Stripe (sin Scaffold). Reutilizable como página
+/// completa o embebido en el master-detail de Administración.
+class AdminBrandingView extends ConsumerWidget {
+  const AdminBrandingView({this.embedded = false, super.key});
+
+  /// `true` cuando se embebe dentro de otro scroll (master-detail de Admin).
+  final bool embedded;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final brandingAsync = ref.watch(stripeBrandingProvider);
+
+    final body = brandingAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => _LoadError(
+        message: l.adminBrandingLoadError,
+        detail: e.toString(),
+      ),
+      data: (branding) => _BrandingView(branding: branding, embedded: embedded),
+    );
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
+        child: Column(
+          mainAxisSize: embedded ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            // Acción refresh (antes en el AppBar).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                0,
+              ),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  tooltip: l.actionRetry,
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () => ref.invalidate(stripeBrandingProvider),
+                ),
+              ),
             ),
-            data: (branding) => _BrandingView(branding: branding),
-          ),
+            if (embedded) body else Expanded(child: body),
+          ],
         ),
       ),
     );
@@ -102,198 +134,202 @@ class _LoadError extends StatelessWidget {
 }
 
 class _BrandingView extends StatelessWidget {
-  const _BrandingView({required this.branding});
+  const _BrandingView({required this.branding, this.embedded = false});
   final StripeBranding branding;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _ReadOnlyBanner(),
-          const SizedBox(height: 16),
+    final column = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ReadOnlyBanner(),
+        const SizedBox(height: 16),
 
-          // ─────── Logo + colores ───────
-          PremiumCard(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _SectionTitle(l.adminBrandingSectionVisuals),
-                const SizedBox(height: 4),
-                Text(
-                  l.adminBrandingSectionVisualsHint,
-                  style: context.textTheme.bodySmall?.copyWith(
-                    color: context.colors.onSurfaceVariant,
-                  ),
+        // ─────── Logo + colores ───────
+        PremiumCard(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SectionTitle(l.adminBrandingSectionVisuals),
+              const SizedBox(height: 4),
+              Text(
+                l.adminBrandingSectionVisualsHint,
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colors.onSurfaceVariant,
                 ),
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _LogoPreview(logoUrl: branding.logoUrl),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _ReadOnlyField(
-                            label: l.adminBrandingPrimaryColor,
-                            value: branding.primaryColor,
-                            swatchColor: _parseHex(branding.primaryColor),
-                          ),
-                          const SizedBox(height: AppSpacing.sm + 4),
-                          _ReadOnlyField(
-                            label: l.adminBrandingSecondaryColor,
-                            value: branding.secondaryColor,
-                            swatchColor: _parseHex(branding.secondaryColor),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: PremiumButton(
-                    label: l.adminBrandingOpenDashboardBranding,
-                    variant: PremiumButtonVariant.secondary,
-                    size: PremiumButtonSize.sm,
-                    leadingIcon: Icons.open_in_new,
-                    onPressed: () => _openUrl(
-                      context,
-                      AdminBrandingPage._dashboardBrandingUrl,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          // ─────── Datos fiscales ───────
-          PremiumCard(
-            padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  _SectionTitle(l.adminBrandingSectionBusiness),
-                  const SizedBox(height: 4),
-                  Text(
-                    l.adminBrandingSectionBusinessHint,
-                    style: context.textTheme.bodySmall?.copyWith(
-                      color: context.colors.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _ReadOnlyField(
-                    label: l.adminBrandingBusinessName,
-                    value: branding.businessName,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: _ReadOnlyField(
-                          label: l.adminBrandingSupportEmail,
-                          value: branding.supportEmail,
+                  _LogoPreview(logoUrl: branding.logoUrl),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _ReadOnlyField(
+                          label: l.adminBrandingPrimaryColor,
+                          value: branding.primaryColor,
+                          swatchColor: _parseHex(branding.primaryColor),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _ReadOnlyField(
-                          label: l.adminBrandingSupportPhone,
-                          value: branding.supportPhone,
+                        const SizedBox(height: AppSpacing.sm + 4),
+                        _ReadOnlyField(
+                          label: l.adminBrandingSecondaryColor,
+                          value: branding.secondaryColor,
+                          swatchColor: _parseHex(branding.secondaryColor),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _ReadOnlyField(
-                    label: l.adminBrandingUrl,
-                    value: branding.url,
-                  ),
-                  const SizedBox(height: 20),
-                  _SectionTitle(l.adminBrandingSectionAddress, small: true),
-                  const SizedBox(height: 12),
-                  _ReadOnlyField(
-                    label: l.adminBrandingAddrLine1,
-                    value: branding.supportAddress.line1,
-                  ),
-                  if (branding.supportAddress.line2 != null &&
-                      branding.supportAddress.line2!.trim().isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    _ReadOnlyField(
-                      label: l.adminBrandingAddrLine2,
-                      value: branding.supportAddress.line2,
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: _ReadOnlyField(
-                          label: l.adminBrandingAddrCity,
-                          value: branding.supportAddress.city,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _ReadOnlyField(
-                          label: l.adminBrandingAddrPostalCode,
-                          value: branding.supportAddress.postalCode,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: _ReadOnlyField(
-                          label: l.adminBrandingAddrState,
-                          value: branding.supportAddress.state,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _ReadOnlyField(
-                          label: l.adminBrandingAddrCountry,
-                          value: branding.supportAddress.country,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: PremiumButton(
-                      label: l.adminBrandingOpenDashboardAccount,
-                      variant: PremiumButtonVariant.secondary,
-                      size: PremiumButtonSize.sm,
-                      leadingIcon: Icons.open_in_new,
-                      onPressed: () => _openUrl(
-                        context,
-                        AdminBrandingPage._dashboardAccountUrl,
-                      ),
+                      ],
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: AppSpacing.md),
+              Align(
+                alignment: Alignment.centerRight,
+                child: PremiumButton(
+                  label: l.adminBrandingOpenDashboardBranding,
+                  variant: PremiumButtonVariant.secondary,
+                  size: PremiumButtonSize.sm,
+                  leadingIcon: Icons.open_in_new,
+                  onPressed: () => _openUrl(
+                    context,
+                    AdminBrandingPage._dashboardBrandingUrl,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.lg),
-        ],
-      ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+
+        // ─────── Datos fiscales ───────
+        PremiumCard(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _SectionTitle(l.adminBrandingSectionBusiness),
+              const SizedBox(height: 4),
+              Text(
+                l.adminBrandingSectionBusinessHint,
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _ReadOnlyField(
+                label: l.adminBrandingBusinessName,
+                value: branding.businessName,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _ReadOnlyField(
+                      label: l.adminBrandingSupportEmail,
+                      value: branding.supportEmail,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ReadOnlyField(
+                      label: l.adminBrandingSupportPhone,
+                      value: branding.supportPhone,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _ReadOnlyField(
+                label: l.adminBrandingUrl,
+                value: branding.url,
+              ),
+              const SizedBox(height: 20),
+              _SectionTitle(l.adminBrandingSectionAddress, small: true),
+              const SizedBox(height: 12),
+              _ReadOnlyField(
+                label: l.adminBrandingAddrLine1,
+                value: branding.supportAddress.line1,
+              ),
+              if (branding.supportAddress.line2 != null &&
+                  branding.supportAddress.line2!.trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _ReadOnlyField(
+                  label: l.adminBrandingAddrLine2,
+                  value: branding.supportAddress.line2,
+                ),
+              ],
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: _ReadOnlyField(
+                      label: l.adminBrandingAddrCity,
+                      value: branding.supportAddress.city,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ReadOnlyField(
+                      label: l.adminBrandingAddrPostalCode,
+                      value: branding.supportAddress.postalCode,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: _ReadOnlyField(
+                      label: l.adminBrandingAddrState,
+                      value: branding.supportAddress.state,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ReadOnlyField(
+                      label: l.adminBrandingAddrCountry,
+                      value: branding.supportAddress.country,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: PremiumButton(
+                  label: l.adminBrandingOpenDashboardAccount,
+                  variant: PremiumButtonVariant.secondary,
+                  size: PremiumButtonSize.sm,
+                  leadingIcon: Icons.open_in_new,
+                  onPressed: () => _openUrl(
+                    context,
+                    AdminBrandingPage._dashboardAccountUrl,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+      ],
     );
+    return embedded
+        ? Padding(padding: const EdgeInsets.all(16), child: column)
+        : SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: column,
+          );
   }
 
   Color? _parseHex(String? hex) {
@@ -366,8 +402,9 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: (small ? context.textTheme.titleSmall : context.textTheme.titleMedium)
-          ?.copyWith(fontWeight: FontWeight.w700),
+      style:
+          (small ? context.textTheme.titleSmall : context.textTheme.titleMedium)
+              ?.copyWith(fontWeight: FontWeight.w700),
     );
   }
 }
