@@ -26,18 +26,26 @@ import 'package:myapp/features/branding/presentation/branding_palettes.dart';
 class AppTheme {
   AppTheme._();
 
+  /// Factor de escala tipográfica global. Reduce ~10% TODOS los tamaños de
+  /// fuente de la app para un look más compacto y profesional (estilo
+  /// dashboard tipo Stripe/Linear). Se aplica al `TextTheme` base, así que
+  /// afecta a toda la jerarquía (titles, body, labels, botones derivados…).
+  static const double _fontSizeFactor = 0.90;
+
   /// Tema light para la paleta dada. Usar con [BrandingPalettes.bySlug].
   static ThemeData lightFor(BrandingPalette palette) => _baseTheme(
         scheme: palette.lightScheme,
         isDark: false,
-        baseTextTheme: GoogleFonts.interTextTheme(),
+        baseTextTheme:
+            GoogleFonts.interTextTheme().apply(fontSizeFactor: _fontSizeFactor),
       );
 
   /// Tema dark para la paleta dada.
   static ThemeData darkFor(BrandingPalette palette) => _baseTheme(
         scheme: palette.darkScheme,
         isDark: true,
-        baseTextTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+        baseTextTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme)
+            .apply(fontSizeFactor: _fontSizeFactor),
       );
 
   /// Atajo con la paleta por defecto. Útil para tests y para builders
