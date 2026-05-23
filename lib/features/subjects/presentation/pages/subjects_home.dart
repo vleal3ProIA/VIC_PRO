@@ -324,6 +324,14 @@ class _DocumentsPanelState extends ConsumerState<_DocumentsPanel> {
               ),
             ],
           ),
+          if (_uploading)
+            const Padding(
+              padding: EdgeInsets.only(top: AppSpacing.sm),
+              child: ClipRRect(
+                borderRadius: BorderRadius.all(Radius.circular(6)),
+                child: LinearProgressIndicator(minHeight: 4),
+              ),
+            ),
           const Divider(height: AppSpacing.lg),
           async.when(
             loading: () => const Padding(
@@ -392,6 +400,14 @@ class _DocRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: context.textTheme.bodyMedium,
                 ),
+                if (doc.inProgress)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.all(Radius.circular(6)),
+                      child: LinearProgressIndicator(minHeight: 3),
+                    ),
+                  ),
                 if (doc.status == DocStatus.failed && doc.error != null)
                   Text(
                     doc.error!,
