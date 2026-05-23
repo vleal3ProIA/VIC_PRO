@@ -22,8 +22,25 @@ export const geminiAdapter = async (
     .filter((m) => m.role !== "system")
     .map((m) => ({
       role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
+      parts: [{ text: m.content }] as Array<Record<string, unknown>>,
     }));
+
+  // Adjuntos (PDF/imagen) -> inline_data en el último contenido de usuario.
+  if (p.attachments && p.attachments.length > 0) {
+    let target = contents.slice().reverse().find((c) => c.role === "user");
+    if (!target) {
+      target = {
+        role: "user",
+        parts: [] as Array<Record<string, unknown>>,
+      };
+      contents.push(target);
+    }
+    for (const a of p.attachments) {
+      target.parts.push({
+        inline_data: { mime_type: a.mimeType, data: a.dataBase64 },
+      });
+    }
+  }
 
   const body: Record<string, unknown> = {
     contents,

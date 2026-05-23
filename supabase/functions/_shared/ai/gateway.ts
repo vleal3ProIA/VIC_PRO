@@ -51,6 +51,12 @@ const ADAPTERS: Record<string, ProviderAdapter> = {
   groq: openAiCompatibleAdapter,
 };
 
+/// Proveedores que aceptan adjuntos (PDF/imagen) por visión nativa. Cuando la
+/// petición trae `attachments`, el gateway solo considera estos (p. ej. la
+/// ingesta de temarios). Groq/OpenAI-compat quedan fuera para no ignorar el
+/// documento silenciosamente.
+const DOCUMENT_CAPABLE = new Set<string>(["gemini", "anthropic"]);
+
 /// base_url por defecto cuando la fila `ai_providers.base_url` está vacía.
 const DEFAULT_BASE_URL: Record<string, string> = {
   openai: "https://api.openai.com/v1",
@@ -90,6 +96,10 @@ export async function runCompletion(
       if (a.tier !== b.tier) return a.tier === "paid" ? -1 : 1;
       return a.priority - b.priority;
     });
+  }
+  // Con adjuntos (visión) solo proveedores capaces de leer documentos.
+  if (req.attachments && req.attachments.length > 0) {
+    providers = providers.filter((p) => DOCUMENT_CAPABLE.has(p.slug));
   }
   if (providers.length === 0) throw new AiGatewayError("no_enabled_providers");
 
@@ -133,6 +143,7 @@ export async function runCompletion(
         messages: req.messages,
         maxOutputTokens: req.maxOutputTokens ?? 2048,
         temperature: req.temperature ?? 0.3,
+        attachments: req.attachments,
       };
       try {
         const r = await adapter(params);

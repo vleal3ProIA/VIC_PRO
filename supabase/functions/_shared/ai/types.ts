@@ -31,6 +31,14 @@ export interface AiMessage {
   content: string;
 }
 
+/// Adjunto para visión nativa (PDF o imagen) codificado en base64. Se manda
+/// junto al primer mensaje de usuario. Solo lo soportan los proveedores
+/// "document-capable" (Gemini, Anthropic); el gateway enruta en consecuencia.
+export interface AiAttachment {
+  mimeType: string; // 'application/pdf', 'image/png', 'image/jpeg', ...
+  dataBase64: string;
+}
+
 /// Petición de completion que el resto de Edge Functions pasan al gateway.
 export interface AiCompletionRequest {
   task: string; // 'index' | 'views' | 'aids' | 'questions' | 'qa' | 'test'
@@ -43,6 +51,7 @@ export interface AiCompletionRequest {
   subjectId?: string | null;
   preferTier?: "free" | "paid"; // hint: lo difícil -> 'paid' primero
   onlyProviderSlug?: string; // forzar un proveedor (usado por el "test")
+  attachments?: AiAttachment[]; // visión nativa (PDF/imagen) para ingesta
 }
 
 export interface AiCompletionResult {
@@ -72,6 +81,7 @@ export interface AdapterParams {
   messages: AiMessage[];
   maxOutputTokens: number;
   temperature: number;
+  attachments?: AiAttachment[];
 }
 
 export type ProviderAdapter = (p: AdapterParams) => Promise<AdapterResult>;
