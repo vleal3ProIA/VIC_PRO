@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 
+import 'package:myapp/features/subjects/presentation/pages/subjects_home.dart';
+
 /// Dashboard de la zona privada (destino `/home` del shell).
 ///
-/// **Rediseño (Fase 1)**: por ahora la Home queda intencionalmente EN BLANCO.
-/// Su contenido se definirá más adelante. El cromo (header + sidebar) lo
-/// aporta `PrivateShell`; aquí solo devolvemos un lienzo vacío.
+/// **Fase 1b**: la Home muestra "Mis temarios" — el desplegable de temarios,
+/// crear uno nuevo y subir material para que la IA lo procese. La Fase 2
+/// ampliará esto al layout completo estilo NotebookLM (card central con 3
+/// pestañas + recursos a la derecha).
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox.expand();
+    return const SubjectsHome();
   }
 }
