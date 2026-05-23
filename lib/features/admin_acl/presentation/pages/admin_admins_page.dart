@@ -683,6 +683,10 @@ IconData _capabilityIcon(String cap) {
       return Icons.delete_outline_rounded;
     case AdminCapability.runAudits:
       return Icons.shield_outlined;
+    case AdminCapability.manageAi:
+      return Icons.smart_toy_outlined;
+    case AdminCapability.viewAiContent:
+      return Icons.auto_stories_outlined;
     default:
       return Icons.help_outline;
   }
@@ -717,6 +721,10 @@ String _capabilityLabel(AppLocalizations l, String cap) {
       return l.adminCapManageTrash;
     case AdminCapability.runAudits:
       return l.adminCapRunAudits;
+    case AdminCapability.manageAi:
+      return l.adminCapManageAi;
+    case AdminCapability.viewAiContent:
+      return l.adminCapViewAiContent;
     default:
       return cap;
   }

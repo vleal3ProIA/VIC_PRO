@@ -19,6 +19,8 @@ import 'package:myapp/features/admin_metrics/presentation/pages/admin_metrics_pa
     show AdminMetricsView;
 import 'package:myapp/features/admin_users/presentation/pages/admin_users_page.dart'
     show AdminUsersView;
+import 'package:myapp/features/ai_providers/presentation/pages/admin_ai_providers_page.dart'
+    show AdminAiProvidersView;
 import 'package:myapp/features/audit_center/presentation/pages/admin_audit_page.dart'
     show AdminAuditView;
 import 'package:myapp/features/billing/presentation/pages/admin_branding_page.dart'
@@ -93,6 +95,7 @@ class AdminPage extends ConsumerWidget {
     final billing = filter(destinations.billing);
     final communications = filter(destinations.communications);
     final content = filter(destinations.content);
+    final ai = filter(destinations.ai);
     final superSection =
         isSuper ? destinations.superTools : const <_AdminDestination>[];
 
@@ -134,6 +137,12 @@ class AdminPage extends ConsumerWidget {
           l.adminSectionContent,
           l.adminSectionContentHint,
           content,
+        ),
+      if (ai.isNotEmpty)
+        _AdminSection(
+          l.adminSectionAi,
+          l.adminSectionAiHint,
+          ai,
         ),
     ];
 
@@ -543,6 +552,20 @@ class _AdminDestinations {
           route: RouteNames.adminMetrics,
           capability: AdminCapability.viewMetrics,
           embeddedBuilder: (_) => const AdminMetricsView(embedded: true),
+        ),
+      ];
+
+  /// Inteligencia artificial: proveedores/keys del gateway de IA. Gated
+  /// por la capability `manage_ai` (el super la tiene siempre).
+  List<_AdminDestination> get ai => [
+        _AdminDestination(
+          icon: Icons.smart_toy_outlined,
+          colorSeed: const Color(0xFF6366F1), // indigo-500
+          title: l.adminAiProvidersTitle,
+          hint: l.adminAiProvidersHint,
+          route: RouteNames.adminAiProviders,
+          capability: AdminCapability.manageAi,
+          embeddedBuilder: (_) => const AdminAiProvidersView(embedded: true),
         ),
       ];
 
