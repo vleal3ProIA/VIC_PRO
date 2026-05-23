@@ -39,6 +39,7 @@ class RouteNames {
   static const String adminAudit = 'admin_audit';
   static const String adminAuditDetail = 'admin_audit_detail';
   static const String adminAdmins = 'admin_admins';
+  static const String adminAiProviders = 'admin_ai_providers';
   static const String status = 'status';
   static const String accountSettings = 'account_settings';
   static const String changePassword = 'change_password';
@@ -124,6 +125,7 @@ class RoutePaths {
   // grant/revoke capability. Si un admin normal navega aqui, el guard
   // lo redirige a /admin.
   static const String adminAdmins = '/admin/admins';
+  static const String adminAiProviders = '/admin/ai-providers';
   static const String status = '/status';
   static const String accountSettings = '/account-settings';
   static const String changePassword = '/change-password';

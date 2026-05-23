@@ -57,6 +57,7 @@ const privateRoutes = <String>{
   RoutePaths.adminBroadcastsNew,
   RoutePaths.adminIncidents,
   RoutePaths.adminAudit,
+  RoutePaths.adminAiProviders,
   RoutePaths.changelog,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
@@ -104,6 +105,7 @@ const adminRoutes = <String>{
   RoutePaths.adminIncidents,
   RoutePaths.adminAudit,
   RoutePaths.adminAdmins,
+  RoutePaths.adminAiProviders,
 };
 
 /// Mapeo route -> capability requerida (post migracion 0044). Si una
@@ -132,6 +134,7 @@ const Map<String, String> kRouteToCapability = {
   RoutePaths.adminBroadcastsNew:'manage_broadcasts',
   RoutePaths.adminIncidents:    'manage_incidents',
   RoutePaths.adminAudit:        'run_audits',
+  RoutePaths.adminAiProviders:  'manage_ai',
 };
 
 /// Devuelve la capability requerida por una ruta, o `null` si la ruta
