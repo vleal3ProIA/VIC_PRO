@@ -89,6 +89,8 @@
   "studyProgressSections": "Sections studied",
   "studyProgressFlashcards": "Flashcards mastered",
   "studyProgressQuiz": "Quiz accuracy",
+  "studyTtsListen": "Listen",
+  "studyTtsStop": "Stop",
 
   "homeSubjectsTitle": "My study sets",
   "homeSubjectsSubtitle": "Upload your material and the AI turns it into summaries and tests.",

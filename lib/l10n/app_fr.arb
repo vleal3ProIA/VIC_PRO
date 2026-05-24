@@ -85,6 +85,8 @@
   "studyProgressSections": "Sections étudiées",
   "studyProgressFlashcards": "Cartes maîtrisées",
   "studyProgressQuiz": "Précision au quiz",
+  "studyTtsListen": "Écouter",
+  "studyTtsStop": "Arrêter",
 
   "homeSubjectsTitle": "Mes cours",
   "homeSubjectsSubtitle": "Téléversez votre matériel et l'IA en fait des résumés et des tests.",

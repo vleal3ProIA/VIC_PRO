@@ -85,6 +85,8 @@
   "studyProgressSections": "Изученные разделы",
   "studyProgressFlashcards": "Освоенные карточки",
   "studyProgressQuiz": "Точность теста",
+  "studyTtsListen": "Слушать",
+  "studyTtsStop": "Стоп",
 
   "homeSubjectsTitle": "Мои материалы",
   "homeSubjectsSubtitle": "Загрузите материал, и ИИ сделает из него конспекты и тесты.",

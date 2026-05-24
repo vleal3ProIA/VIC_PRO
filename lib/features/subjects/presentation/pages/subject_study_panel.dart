@@ -33,6 +33,7 @@ import '../../data/subjects_datasource.dart';
 import '../../domain/subject.dart';
 import '../util/file_picker_web.dart';
 import '../util/study_export.dart';
+import '../util/study_tts.dart';
 
 const double _kMinColWidth = 240;
 const double _kHandleWidth = 36;
@@ -1188,8 +1189,25 @@ class _NodeView extends ConsumerStatefulWidget {
 
 class _NodeViewState extends ConsumerState<_NodeView> {
   bool _busy = false;
+  bool _speaking = false;
 
   NodeViewKey get _key => (nodeId: widget.nodeId, kind: widget.kind);
+
+  @override
+  void dispose() {
+    if (_speaking) ttsStop();
+    super.dispose();
+  }
+
+  void _toggleSpeak(String content) {
+    if (_speaking) {
+      ttsStop();
+      setState(() => _speaking = false);
+    } else {
+      ttsSpeak(content, lang: Localizations.localeOf(context).toLanguageTag());
+      setState(() => _speaking = true);
+    }
+  }
 
   Future<void> _generate({bool force = false}) async {
     if (_busy) return;
@@ -1312,6 +1330,17 @@ class _NodeViewState extends ConsumerState<_NodeView> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                IconButton(
+                  tooltip: _speaking ? l.studyTtsStop : l.studyTtsListen,
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    _speaking
+                        ? Icons.stop_circle_outlined
+                        : Icons.volume_up_outlined,
+                    size: 18,
+                  ),
+                  onPressed: () => _toggleSpeak(content),
+                ),
                 IconButton(
                   tooltip: l.studyExport,
                   visualDensity: VisualDensity.compact,
@@ -2383,6 +2412,23 @@ class _GuideView extends ConsumerStatefulWidget {
 
 class _GuideViewState extends ConsumerState<_GuideView> {
   bool _busy = false;
+  bool _speaking = false;
+
+  @override
+  void dispose() {
+    if (_speaking) ttsStop();
+    super.dispose();
+  }
+
+  void _toggleSpeak(String content) {
+    if (_speaking) {
+      ttsStop();
+      setState(() => _speaking = false);
+    } else {
+      ttsSpeak(content, lang: Localizations.localeOf(context).toLanguageTag());
+      setState(() => _speaking = true);
+    }
+  }
 
   Future<void> _generate() async {
     if (_busy) return;
@@ -2469,6 +2515,17 @@ class _GuideViewState extends ConsumerState<_GuideView> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                IconButton(
+                  tooltip: _speaking ? l.studyTtsStop : l.studyTtsListen,
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    _speaking
+                        ? Icons.stop_circle_outlined
+                        : Icons.volume_up_outlined,
+                    size: 18,
+                  ),
+                  onPressed: () => _toggleSpeak(content),
+                ),
                 IconButton(
                   tooltip: l.studyExport,
                   visualDensity: VisualDensity.compact,

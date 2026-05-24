@@ -85,6 +85,8 @@
   "studyProgressSections": "Secções estudadas",
   "studyProgressFlashcards": "Flashcards dominadas",
   "studyProgressQuiz": "Acerto no teste",
+  "studyTtsListen": "Ouvir",
+  "studyTtsStop": "Parar",
 
   "homeSubjectsTitle": "Os meus temas",
   "homeSubjectsSubtitle": "Carrega o teu material e a IA transforma-o em resumos e testes.",

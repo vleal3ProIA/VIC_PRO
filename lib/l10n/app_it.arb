@@ -85,6 +85,8 @@
   "studyProgressSections": "Sezioni studiate",
   "studyProgressFlashcards": "Flashcard padroneggiate",
   "studyProgressQuiz": "Precisione al quiz",
+  "studyTtsListen": "Ascolta",
+  "studyTtsStop": "Ferma",
 
   "homeSubjectsTitle": "I miei corsi",
   "homeSubjectsSubtitle": "Carica il tuo materiale e l'IA lo trasforma in riassunti e test.",

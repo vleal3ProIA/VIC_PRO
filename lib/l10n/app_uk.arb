@@ -85,6 +85,8 @@
   "studyProgressSections": "Опрацьовані розділи",
   "studyProgressFlashcards": "Опановані картки",
   "studyProgressQuiz": "Точність тесту",
+  "studyTtsListen": "Слухати",
+  "studyTtsStop": "Стоп",
 
   "homeSubjectsTitle": "Мої матеріали",
   "homeSubjectsSubtitle": "Завантажте матеріал, і ШІ зробить із нього конспекти й тести.",

@@ -85,6 +85,8 @@
   "studyProgressSections": "Bearbeitete Abschnitte",
   "studyProgressFlashcards": "Beherrschte Lernkarten",
   "studyProgressQuiz": "Quiz-Trefferquote",
+  "studyTtsListen": "Anhören",
+  "studyTtsStop": "Stopp",
 
   "homeSubjectsTitle": "Meine Lernsets",
   "homeSubjectsSubtitle": "Lade dein Material hoch und die KI macht Zusammenfassungen und Tests daraus.",
