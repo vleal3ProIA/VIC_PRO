@@ -41,6 +41,8 @@
   "studioFlashEasy": "Einfach",
   "studioFlashAllDone": "Alles wiederholt!",
   "studioFlashReviewAgain": "Erneut wiederholen",
+  "studioMindmapEmpty": "Erstelle zuerst den Index, um die Mindmap zu sehen.",
+  "studioMindmapReset": "Zentrieren",
 
   "homeSubjectsTitle": "Meine Lernsets",
   "homeSubjectsSubtitle": "Lade dein Material hoch und die KI macht Zusammenfassungen und Tests daraus.",

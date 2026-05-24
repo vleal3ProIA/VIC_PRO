@@ -41,6 +41,8 @@
   "studioFlashEasy": "Easy",
   "studioFlashAllDone": "All caught up!",
   "studioFlashReviewAgain": "Review again",
+  "studioMindmapEmpty": "Generate the index first to see the mind map.",
+  "studioMindmapReset": "Center",
 
   "homeSubjectsTitle": "My study sets",
   "homeSubjectsSubtitle": "Upload your material and the AI turns it into summaries and tests.",

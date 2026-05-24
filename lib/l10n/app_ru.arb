@@ -41,6 +41,8 @@
   "studioFlashEasy": "Легко",
   "studioFlashAllDone": "Всё повторено!",
   "studioFlashReviewAgain": "Повторить снова",
+  "studioMindmapEmpty": "Сначала создайте оглавление, чтобы увидеть интеллект-карту.",
+  "studioMindmapReset": "Центрировать",
 
   "homeSubjectsTitle": "Мои материалы",
   "homeSubjectsSubtitle": "Загрузите материал, и ИИ сделает из него конспекты и тесты.",

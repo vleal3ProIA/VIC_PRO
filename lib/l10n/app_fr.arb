@@ -41,6 +41,8 @@
   "studioFlashEasy": "Facile",
   "studioFlashAllDone": "Révision terminée !",
   "studioFlashReviewAgain": "Revoir à nouveau",
+  "studioMindmapEmpty": "Générez d'abord l'index pour voir la carte mentale.",
+  "studioMindmapReset": "Centrer",
 
   "homeSubjectsTitle": "Mes cours",
   "homeSubjectsSubtitle": "Téléversez votre matériel et l'IA en fait des résumés et des tests.",

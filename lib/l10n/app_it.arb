@@ -41,6 +41,8 @@
   "studioFlashEasy": "Facile",
   "studioFlashAllDone": "Ripasso completato!",
   "studioFlashReviewAgain": "Ripassa di nuovo",
+  "studioMindmapEmpty": "Genera prima l'indice per vedere la mappa mentale.",
+  "studioMindmapReset": "Centra",
 
   "homeSubjectsTitle": "I miei corsi",
   "homeSubjectsSubtitle": "Carica il tuo materiale e l'IA lo trasforma in riassunti e test.",

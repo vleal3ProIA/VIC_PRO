@@ -41,6 +41,8 @@
   "studioFlashEasy": "Fácil",
   "studioFlashAllDone": "¡Repaso completado!",
   "studioFlashReviewAgain": "Repasar de nuevo",
+  "studioMindmapEmpty": "Genera primero el índice para ver el mapa mental.",
+  "studioMindmapReset": "Centrar",
 
   "homeSubjectsTitle": "Mis temarios",
   "homeSubjectsSubtitle": "Sube tu material y la IA lo convierte en resúmenes y tests.",
