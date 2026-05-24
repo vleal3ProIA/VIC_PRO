@@ -167,16 +167,20 @@ Deno.serve(withSentry("generate-exam", async (req) => {
     sections = ((data ?? []) as NodeRow[]);
   }
 
-  // Material: el 'original' de las secciones elegidas; si no hay, todo el
-  // temario (texto o visión).
+  // Material: SIEMPRE preferimos el texto 'original' ya guardado de las
+  // secciones implicadas (las elegidas, o todas las del índice cuando es "todo
+  // el temario"). Al ser TEXTO, el gateway puede usar cualquier proveedor con
+  // fallback (gratis→pago); si tirásemos del documento como adjunto de visión
+  // quedaríamos atados a Gemini/Anthropic y fallaría al saturarse.
   let textContext = "";
   let attachments: AiAttachment[] = [];
-  if (nodeIds.length > 0) {
+  const sectionIds = sections.map((s) => s.id);
+  if (sectionIds.length > 0) {
     const { data: contents } = await admin
       .from("node_content")
       .select("node_id, content")
       .eq("kind", "original")
-      .in("node_id", nodeIds);
+      .in("node_id", sectionIds);
     const byNode = new Map<string, string>();
     for (const c of ((contents ?? []) as Array<{ node_id: string; content: string | null }>)) {
       if (c.content) byNode.set(c.node_id, c.content);
@@ -188,6 +192,8 @@ Deno.serve(withSentry("generate-exam", async (req) => {
     }
     textContext = parts.join("\n\n").slice(0, 200000);
   }
+  // Respaldo: si las secciones no tienen 'original' guardado, recurrimos al
+  // material completo del temario (texto extraído o, en último caso, visión).
   if (textContext.length < 50) {
     const mat = await gatherMaterial(admin, subjectId);
     if (mat.textContext.trim().length > 0) {
