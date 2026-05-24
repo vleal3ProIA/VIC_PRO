@@ -1449,11 +1449,33 @@ class _QuizViewState extends ConsumerState<_QuizView> {
   bool _answered = false;
   int _correct = 0;
 
+  /// IDs de las preguntas falladas en la ronda actual (para "practicar
+  /// falladas").
+  final Set<String> _wrong = {};
+
+  /// Si no es null, la ronda actual repasa solo este subconjunto (falladas).
+  List<QuizQuestion>? _practice;
+
   void _reset() {
     _index = 0;
     _selected = null;
     _answered = false;
     _correct = 0;
+    _wrong.clear();
+    _practice = null;
+  }
+
+  /// Ordena por "debilidad" (peor dominio primero) usando las estadísticas
+  /// persistidas; las no vistas quedan en medio. Determinista (estable).
+  List<QuizQuestion> _byWeakness(List<QuizQuestion> qs) {
+    double weakness(QuizQuestion q) =>
+        q.timesSeen > 0 ? 1 - q.timesCorrect / q.timesSeen : 0.5;
+    final list = [...qs];
+    list.sort((a, b) {
+      final cmp = weakness(b).compareTo(weakness(a));
+      return cmp != 0 ? cmp : a.id.compareTo(b.id);
+    });
+    return list;
   }
 
   Future<void> _generate() async {
@@ -1493,7 +1515,11 @@ class _QuizViewState extends ConsumerState<_QuizView> {
     setState(() {
       _selected = i;
       _answered = true;
-      if (correct) _correct++;
+      if (correct) {
+        _correct++;
+      } else {
+        _wrong.add(q.id);
+      }
     });
     // Estadística best-effort (no bloquea el flujo).
     ref.read(subjectsDataSourceProvider).recordQuizAnswer(q, correct: correct);
@@ -1548,10 +1574,11 @@ class _QuizViewState extends ConsumerState<_QuizView> {
             ),
           );
         }
-        if (_index >= qs.length) return _result(context, qs.length);
+        final questions = _practice ?? _byWeakness(qs);
+        if (_index >= questions.length) return _result(context, questions);
 
-        final q = qs[_index];
-        final last = _index == qs.length - 1;
+        final q = questions[_index];
+        final last = _index == questions.length - 1;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1565,7 +1592,7 @@ class _QuizViewState extends ConsumerState<_QuizView> {
               child: Row(
                 children: [
                   Text(
-                    '${_index + 1} / ${qs.length}',
+                    '${_index + 1} / ${questions.length}',
                     style: context.textTheme.labelMedium
                         ?.copyWith(color: context.colors.onSurfaceVariant),
                   ),
@@ -1684,37 +1711,59 @@ class _QuizViewState extends ConsumerState<_QuizView> {
     );
   }
 
-  Widget _result(BuildContext context, int total) {
+  Widget _result(BuildContext context, List<QuizQuestion> questions) {
     final l = context.l10n;
+    final total = questions.length;
+    final failed =
+        questions.where((q) => _wrong.contains(q.id)).toList(growable: false);
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(l.studioQuizResult, style: context.textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            '$_correct / $total',
-            style: context.textTheme.headlineMedium
-                ?.copyWith(fontWeight: FontWeight.w800, color: context.colors.primary),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () => setState(_reset),
-                icon: const Icon(Icons.replay, size: 16),
-                label: Text(l.studioQuizRetry),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(l.studioQuizResult, style: context.textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              '$_correct / $total',
+              style: context.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: context.colors.primary,
               ),
-              const SizedBox(width: AppSpacing.sm),
-              PremiumButton(
-                label: l.studyRegenerate,
-                leadingIcon: Icons.refresh,
-                onPressed: _generate,
-              ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              alignment: WrapAlignment.center,
+              children: [
+                if (failed.isNotEmpty)
+                  PremiumButton(
+                    label: '${l.studioQuizPracticeFailed} (${failed.length})',
+                    leadingIcon: Icons.fitness_center,
+                    onPressed: () => setState(() {
+                      _practice = failed;
+                      _index = 0;
+                      _selected = null;
+                      _answered = false;
+                      _correct = 0;
+                      _wrong.clear();
+                    }),
+                  ),
+                OutlinedButton.icon(
+                  onPressed: () => setState(_reset),
+                  icon: const Icon(Icons.replay, size: 16),
+                  label: Text(l.studioQuizRetry),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _generate,
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: Text(l.studyRegenerate),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

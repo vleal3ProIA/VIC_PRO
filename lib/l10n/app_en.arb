@@ -49,6 +49,7 @@
   "studioQuizFinish": "Finish",
   "studioQuizResult": "Your score",
   "studioQuizRetry": "Try again",
+  "studioQuizPracticeFailed": "Practice the ones you missed",
   "studyTabChat": "Chat",
   "studyChatEmpty": "Ask the AI anything about this material. It answers using your documents.",
   "studyChatSend": "Send",
