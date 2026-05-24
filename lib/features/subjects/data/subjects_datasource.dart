@@ -133,4 +133,76 @@ class SubjectsDataSource {
     }
     await _client.from('documents').delete().eq('id', doc.id);
   }
+
+  // ─────────────────── Índice + vistas (Fase 2) ───────────────────
+
+  /// Dispara la generación del índice (EF en background; la UI hace polling
+  /// de `subjects.index_status`).
+  Future<void> generateIndex(String subjectId) async {
+    try {
+      await _client.functions.invoke(
+        'generate-index',
+        body: {'subject_id': subjectId},
+      );
+    } on FunctionException catch (e) {
+      throw SubjectsException(_efError(e));
+    }
+  }
+
+  Future<List<IndexNode>> listIndexNodes(String subjectId) async {
+    final data = await _client
+        .from('index_nodes')
+        .select()
+        .eq('subject_id', subjectId)
+        .order('depth')
+        .order('position');
+    return (data as List)
+        .cast<Map<String, dynamic>>()
+        .map(IndexNode.fromMap)
+        .toList(growable: false);
+  }
+
+  /// Lee la vista cacheada de un nodo (`null` si aún no se ha generado).
+  Future<String?> getNodeContent(String nodeId, String kind) async {
+    final data = await _client
+        .from('node_content')
+        .select('content')
+        .eq('node_id', nodeId)
+        .eq('kind', kind)
+        .maybeSingle();
+    if (data == null) return null;
+    return data['content'] as String?;
+  }
+
+  /// Genera (o regenera con [force]) una vista de un nodo y devuelve el texto.
+  Future<String> generateView({
+    required String nodeId,
+    required String kind,
+    bool force = false,
+  }) async {
+    try {
+      final res = await _client.functions.invoke(
+        'generate-views',
+        body: {'node_id': nodeId, 'kind': kind, if (force) 'force': true},
+      );
+      final data = res.data;
+      if (data is! Map) throw const SubjectsException('invalid_response');
+      final p = data.cast<String, dynamic>();
+      if (p['ok'] != true) {
+        throw SubjectsException(
+          (p['error'] as String?) ?? 'generation_failed',
+          detail: p['detail'] as String?,
+        );
+      }
+      return (p['content'] as String?) ?? '';
+    } on FunctionException catch (e) {
+      throw SubjectsException(_efError(e));
+    }
+  }
+
+  String _efError(FunctionException e) {
+    final d = e.details;
+    if (d is Map && d['error'] is String) return d['error'] as String;
+    return 'server_error';
+  }
 }

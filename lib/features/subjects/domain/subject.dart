@@ -20,11 +20,27 @@ DocStatus docStatusFrom(String? s) {
   }
 }
 
+enum IndexStatus { none, generating, ready, failed }
+
+IndexStatus indexStatusFrom(String? s) {
+  switch (s) {
+    case 'generating':
+      return IndexStatus.generating;
+    case 'ready':
+      return IndexStatus.ready;
+    case 'failed':
+      return IndexStatus.failed;
+    default:
+      return IndexStatus.none;
+  }
+}
+
 class Subject {
   const Subject({
     required this.id,
     required this.title,
     this.language,
+    this.indexStatus = IndexStatus.none,
     this.createdAt,
   });
 
@@ -32,13 +48,46 @@ class Subject {
         id: m['id'] as String,
         title: (m['title'] as String?) ?? '',
         language: m['language'] as String?,
+        indexStatus: indexStatusFrom(m['index_status'] as String?),
         createdAt: _ts(m['created_at']),
       );
 
   final String id;
   final String title;
   final String? language;
+  final IndexStatus indexStatus;
   final DateTime? createdAt;
+
+  bool get indexGenerating => indexStatus == IndexStatus.generating;
+  bool get indexReady => indexStatus == IndexStatus.ready;
+}
+
+/// Nodo del índice jerárquico (espejo de `index_nodes`).
+class IndexNode {
+  const IndexNode({
+    required this.id,
+    required this.subjectId,
+    required this.title,
+    required this.position,
+    required this.depth,
+    this.parentId,
+  });
+
+  factory IndexNode.fromMap(Map<String, dynamic> m) => IndexNode(
+        id: m['id'] as String,
+        subjectId: m['subject_id'] as String,
+        title: (m['title'] as String?) ?? '',
+        position: (m['position'] as num?)?.toInt() ?? 0,
+        depth: (m['depth'] as num?)?.toInt() ?? 0,
+        parentId: m['parent_id'] as String?,
+      );
+
+  final String id;
+  final String subjectId;
+  final String title;
+  final int position;
+  final int depth;
+  final String? parentId;
 }
 
 class SubjectDocument {

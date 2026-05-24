@@ -23,3 +23,21 @@ final subjectDocumentsProvider =
     FutureProvider.family<List<SubjectDocument>, String>((ref, subjectId) {
   return ref.watch(subjectsDataSourceProvider).listDocuments(subjectId);
 });
+
+/// Nodos del índice de un temario (lista plana; el árbol se arma en la UI).
+final indexNodesProvider =
+    FutureProvider.family<List<IndexNode>, String>((ref, subjectId) {
+  return ref.watch(subjectsDataSourceProvider).listIndexNodes(subjectId);
+});
+
+/// Clave (nodo, tipo de vista) para cachear contenido de nodo.
+typedef NodeViewKey = ({String nodeId, String kind});
+
+/// Vista cacheada de un nodo (`null` si aún no se generó).
+final nodeContentProvider =
+    FutureProvider.family<String?, NodeViewKey>((ref, key) {
+  return ref.watch(subjectsDataSourceProvider).getNodeContent(
+        key.nodeId,
+        key.kind,
+      );
+});

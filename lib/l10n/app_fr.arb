@@ -1,6 +1,20 @@
 {
   "@@locale": "fr",
 
+  "studyGenerateIndex": "Générer l'index",
+  "studyIndexGenerating": "Génération de l'index…",
+  "studyIndexFailed": "Échec de la génération de l'index. Réessayez.",
+  "studyIndexNeedsDoc": "Téléversez et traitez d'abord un document.",
+  "studyIndexTitle": "Index",
+  "studySelectNode": "Sélectionnez une section de l'index pour la lire.",
+  "studyTabOriginal": "Original",
+  "studyTabExplained": "Expliqué",
+  "studyTabSummary": "Résumé",
+  "studyGenerateView": "Générer",
+  "studyGenerating": "Génération…",
+  "studyViewError": "Impossible de générer cette vue",
+  "studyRegenerate": "Régénérer",
+
   "homeSubjectsTitle": "Mes cours",
   "homeSubjectsSubtitle": "Téléversez votre matériel et l'IA en fait des résumés et des tests.",
   "subjectsAdd": "Ajouter un cours",
