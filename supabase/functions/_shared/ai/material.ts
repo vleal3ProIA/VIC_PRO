@@ -17,6 +17,34 @@ import type { AiAttachment } from "./types.ts";
 const MAX_ATTACH_BYTES = 18 * 1024 * 1024;
 const MAX_TEXT_CHARS = 300000;
 
+/// Deduce el mime real: respeta pdf/image/text; si es genérico o vacío, lo
+/// infiere por la extensión del path en Storage.
+function normalizeMime(mime: string | null, path: string): string {
+  const m = (mime ?? "").toLowerCase();
+  if (m === "application/pdf" || m.startsWith("image/") || m.startsWith("text/")) {
+    return m;
+  }
+  const ext = path.toLowerCase().split(".").pop() ?? "";
+  switch (ext) {
+    case "pdf":
+      return "application/pdf";
+    case "png":
+      return "image/png";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "webp":
+      return "image/webp";
+    case "gif":
+      return "image/gif";
+    case "txt":
+    case "md":
+      return "text/plain";
+    default:
+      return m;
+  }
+}
+
 export function toBase64(bytes: Uint8Array): string {
   let binary = "";
   const chunk = 0x8000;
@@ -51,7 +79,10 @@ export async function gatherMaterial(
   let attachBytes = 0;
 
   for (const d of rows) {
-    const mime = d.mime_type ?? "";
+    // mime robusto: si el navegador guardó un mime genérico/ausente, lo
+    // deducimos por la extensión del archivo (el PDF se trataba como "texto"
+    // y se caía al extracted_text truncado).
+    const mime = normalizeMime(d.mime_type, d.storage_path);
     const isDoc = mime === "application/pdf" || mime.startsWith("image/");
     if (isDoc) {
       let attached = false;

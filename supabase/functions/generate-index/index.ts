@@ -138,7 +138,9 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
 
     const system =
       "You build a hierarchical table of contents (index) for study material. " +
-      "Return ONLY minified JSON of the form " +
+      "Cover the ENTIRE document from the first page to the LAST one: every " +
+      "chapter, topic, theme and section — not just the first ones. Return " +
+      "ONLY minified JSON of the form " +
       '{"nodes":[{"title":"...","children":[{"title":"..."}]}]} with 1 to 3 ' +
       "levels of depth. Titles must be concise and in the SAME language as the " +
       "material. Do NOT include any content, only titles. No commentary.";
@@ -153,7 +155,7 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
           : "Build the index from the attached document(s).",
       }],
       attachments: attachments.length > 0 ? attachments : undefined,
-      maxOutputTokens: 4096,
+      maxOutputTokens: 8192,
       temperature: 0.2,
       userId: subject.user_id,
       subjectId: subject.id,
