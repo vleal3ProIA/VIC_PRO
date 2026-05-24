@@ -436,6 +436,97 @@ SQL Editor de Supabase si prefieres control fino sobre el intervalo
 
 ---
 
+## Funciones de estudio con IA (estilo NotebookLM)
+
+Checklist para dejar operativas las funciones de IA (temarios → índice,
+Original/Explicado/Resumen, Chat, Notas, Flashcards, Cuestionario, Mapa
+mental y Guía de estudio).
+
+### 0. Prerrequisito — activar un proveedor de IA (una vez)
+
+Sin esto, **nada de lo generado por IA funciona** (índice, vistas, chat…).
+
+1. Entra como superadmin a **`/admin/ai-providers`**.
+2. Activa al menos **un proveedor** (p. ej. Gemini o Groq, gratis) y añade
+   su **API key**. Comprueba el **modelo** (los IDs cambian; p. ej.
+   `gemini-2.0-flash`, `llama-3.3-70b-versatile`).
+3. Pulsa **Probar conexión** para verificar que responde.
+   - Recomendado: activa **2+ proveedores** (uno gratis y uno de pago como
+     fallback) para que, si uno se queda sin cuota, el gateway use el otro.
+
+### 1. Migraciones de base de datos
+
+Aplica todas las pendientes a tu proyecto remoto:
+```bash
+supabase db push
+```
+Migraciones de estas funciones (idempotentes — verás `already exists,
+skipping` si ya estaban, es normal):
+
+| Migración | Para |
+|---|---|
+| `0050_ai_foundation` | proveedores + credenciales + uso + capabilities |
+| `0051_ai_subjects_documents` | temarios + documentos + bucket `temarios` |
+| `0052_ai_index_views` | índice + vistas + notas |
+| `0053_index_lock` | validar/bloquear el índice |
+| `0054_flashcards` | flashcards (repaso espaciado) |
+| `0055_quiz` | cuestionario tipo test |
+| `0056_chat_messages` | persistencia del chat |
+| `0057_study_guides` | guía de estudio |
+
+Para ver qué falta por aplicar: `supabase migration list` (columna *Remote*
+vacía = pendiente).
+
+### 2. Edge Functions
+
+Despliega todas (no requieren Docker; el `WARNING: Docker is not running`
+es inofensivo):
+```bash
+supabase functions deploy ingest-document
+supabase functions deploy generate-index
+supabase functions deploy generate-views
+supabase functions deploy generate-flashcards
+supabase functions deploy generate-quiz
+supabase functions deploy generate-study-guide
+supabase functions deploy ask-subject
+supabase functions deploy ai-admin
+supabase functions deploy ai-gateway
+```
+
+### 3. Front (Flutter web)
+
+Se despliega solo al hacer push a `main` (GitHub Actions → FTPS). Tras el
+deploy, **Ctrl+Shift+R** o ventana de incógnito (el service worker cachea).
+Si tras un deploy verde no ves los cambios, lanza un **"Run workflow"**
+manual en Actions → Deploy (fuerza resubida completa).
+
+### 4. Qué probar de cada función
+
+1. **Subir temario**: crea un temario, sube un PDF → pasa a *ready*.
+2. **Índice** (columna izquierda): "Generar índice" → árbol hasta artículos.
+   - **Validar índice** → ya no se puede regenerar (sello ✓).
+3. **Centro**: selecciona una sección →
+   - **Original** muestra el texto real (sin IA).
+   - **Explicado** / **Resumen** se generan los dos a la vez (Markdown).
+   - **Chat**: pregunta algo → responde citando secciones (chips clicables);
+     recarga → la conversación persiste.
+4. **Estudio** (columna derecha):
+   - **Notas** (añadir/editar/borrar).
+   - **Flashcards**: generar → repasar (Otra vez/Bien/Fácil).
+   - **Cuestionario**: generar → responder → "Practicar las falladas".
+   - **Mapa mental**: árbol interactivo; clic en nodo salta a la sección.
+   - **Guía**: genera el esquema; botón de **exportar (.md)**.
+
+### 5. Si algo falla al generar
+
+El mensaje de error muestra el detalle del proveedor. Lo más común:
+- `no_enabled_providers` → no activaste ningún proveedor (paso 0).
+- `generation_failed: ...quota...` → el proveedor agotó cuota; activa otro
+  o espera (el gateway pone la credencial en cooldown 1 h).
+- Revisa **Supabase Dashboard → Logs → Edge Functions** para el runtime.
+
+---
+
 ## En caso de duda
 
 1. Mira `/admin/email-log` si los emails no llegan
