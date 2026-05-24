@@ -179,13 +179,19 @@ Deno.serve(withSentry("generate-views", async (req) => {
     if (kind === "original") {
       content = await genOne("original");
     } else {
-      // Explicado y Resumen se generan SIEMPRE a la vez: al pedir cualquiera
-      // de los dos, se generan y cachean ambos.
-      const [explained, summary] = await Promise.all([
-        genOne("explained"),
-        genOne("summary"),
-      ]);
-      content = kind === "summary" ? summary : explained;
+      // Explicado y Resumen se generan a la vez (en la misma petición), pero
+      // SECUENCIALMENTE: primero lo que pidió el usuario (y se devuelve), y la
+      // otra vista en best-effort. Así evitamos saturar al proveedor gratuito
+      // con dos llamadas en paralelo (rate limit) y, si la segunda falla, no
+      // tiramos la petición entera: el usuario sí ve lo que pidió.
+      content = await genOne(kind);
+      const other = kind === "summary" ? "explained" : "summary";
+      try {
+        await genOne(other);
+      } catch (e2) {
+        const d = e2 instanceof AiGatewayError ? e2.message : (e2 as Error).message;
+        console.error(`generate-views: other view (${other}) failed:`, d);
+      }
     }
 
     return json({ ok: true, cached: false, content }, 200);

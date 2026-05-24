@@ -635,10 +635,14 @@ class _NodeViewState extends ConsumerState<_NodeView> {
       );
       ref.invalidate(aiContentNodeIdsProvider(widget.subjectId));
     } on SubjectsException catch (e) {
+      final detail = e.detail != null && e.detail!.isNotEmpty
+          ? ': ${e.detail}'
+          : '';
       messenger.showSnackBar(
         SnackBar(
           backgroundColor: errBg,
-          content: Text('${l.studyViewError} (${e.code})'),
+          duration: const Duration(seconds: 8),
+          content: Text('${l.studyViewError} (${e.code})$detail'),
         ),
       );
     } catch (_) {
