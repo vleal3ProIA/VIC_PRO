@@ -305,6 +305,12 @@ class _IndexTreeState extends State<_IndexTree> {
                     if (isExpanded) {
                       _expanded.remove(n.id);
                     } else {
+                      // Acordeón: al abrir un nodo cerramos sus hermanos, así
+                      // el índice no ocupa tanto.
+                      for (final s
+                          in byParent[n.parentId] ?? const <IndexNode>[]) {
+                        _expanded.remove(s.id);
+                      }
                       _expanded.add(n.id);
                     }
                   })
@@ -420,6 +426,13 @@ class _TreeTile extends StatelessWidget {
                       )
                     : null,
               ),
+              // Tipo de nodo: carpeta si tiene hijos, punto si es hoja.
+              Icon(
+                hasChildren ? Icons.folder_outlined : Icons.fiber_manual_record,
+                size: hasChildren ? 16 : 8,
+                color: scheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   node.title,
