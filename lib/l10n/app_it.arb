@@ -27,6 +27,12 @@
   "studyNoteDelete": "Elimina",
   "studyNoteDeleteTitle": "Eliminare la nota?",
   "studyNoteDeleteBody": "Questa nota verrà eliminata definitivamente.",
+  "studioTitle": "Studio",
+  "studyAskHint": "Fai una domanda su questo argomento o sezione…",
+  "studyComingSoon": "Prossimamente",
+  "studioFlashcards": "Flashcard",
+  "studioQuiz": "Quiz",
+  "studioMindmap": "Mappa mentale",
 
   "homeSubjectsTitle": "I miei corsi",
   "homeSubjectsSubtitle": "Carica il tuo materiale e l'IA lo trasforma in riassunti e test.",

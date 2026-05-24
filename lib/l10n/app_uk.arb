@@ -27,6 +27,12 @@
   "studyNoteDelete": "Видалити",
   "studyNoteDeleteTitle": "Видалити нотатку?",
   "studyNoteDeleteBody": "Цю нотатку буде видалено назавжди.",
+  "studioTitle": "Студія",
+  "studyAskHint": "Запитайте про цю тему чи розділ…",
+  "studyComingSoon": "Незабаром",
+  "studioFlashcards": "Картки",
+  "studioQuiz": "Тест",
+  "studioMindmap": "Інтелект-карта",
 
   "homeSubjectsTitle": "Мої матеріали",
   "homeSubjectsSubtitle": "Завантажте матеріал, і ШІ зробить із нього конспекти й тести.",

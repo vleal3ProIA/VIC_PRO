@@ -27,6 +27,12 @@
   "studyNoteDelete": "Удалить",
   "studyNoteDeleteTitle": "Удалить заметку?",
   "studyNoteDeleteBody": "Эта заметка будет удалена безвозвратно.",
+  "studioTitle": "Студия",
+  "studyAskHint": "Спросите об этой теме или разделе…",
+  "studyComingSoon": "Скоро",
+  "studioFlashcards": "Карточки",
+  "studioQuiz": "Тест",
+  "studioMindmap": "Интеллект-карта",
 
   "homeSubjectsTitle": "Мои материалы",
   "homeSubjectsSubtitle": "Загрузите материал, и ИИ сделает из него конспекты и тесты.",

@@ -1,11 +1,17 @@
 // ============================================================================
-// subjects · Panel de estudio (Fase 2) — índice + card central de 3 pestañas
+// subjects · Workspace de estudio (Fase 2) — layout tipo NotebookLM
 // ----------------------------------------------------------------------------
-// Se monta bajo el panel de documentos. Si el índice no está generado, ofrece
-// "Generar índice" (con polling de subjects.index_status). Cuando está listo,
-// muestra el árbol del índice y, para el nodo seleccionado, una card con 3
-// pestañas (Original / Explicado / Resumen) que se generan bajo demanda vía
-// generate-views y se cachean.
+// Tres columnas redimensionables para un temario:
+//   - IZQUIERDA: el ÍNDICE (con sus fuentes/documentos arriba). Permite subir
+//     material, generar el índice, validarlo (bloquea regeneración) y navegar
+//     por las secciones.
+//   - CENTRO: el contenido de la sección seleccionada en pestañas
+//     (Original / Explicado / Resumen) y, abajo, una barra para preguntar a la
+//     IA (próximamente).
+//   - DERECHA: "Estudio" — Notas (operativas) + Flashcards / Cuestionario /
+//     Mapa mental (próximamente).
+// El ancho de cada columna se puede ajustar arrastrando los separadores y se
+// recuerda entre sesiones (SharedPreferences).
 // ============================================================================
 
 import 'dart:async';
@@ -14,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
+import 'package:myapp/core/providers/preferences_provider.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
@@ -25,6 +32,12 @@ import '../../application/subjects_providers.dart';
 import '../../data/subjects_datasource.dart';
 import '../../domain/subject.dart';
 import '../util/file_picker_web.dart';
+
+const double _kMinColWidth = 240;
+const double _kHandleWidth = 10;
+const double _kStackedBreakpoint = 1000;
+const String _kPrefLeftFrac = 'study_left_frac';
+const String _kPrefRightFrac = 'study_right_frac';
 
 class SubjectStudyPanel extends ConsumerStatefulWidget {
   const SubjectStudyPanel({required this.subject, super.key});
@@ -46,20 +59,21 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
     super.dispose();
   }
 
-  void _syncPolling(bool generating) {
-    if (generating) {
+  void _syncPolling(bool active) {
+    if (active) {
       _poll ??= Timer.periodic(const Duration(seconds: 4), (_) {
         if (!mounted) {
           _poll?.cancel();
           _poll = null;
           return;
         }
-        ref.invalidate(subjectsListProvider);
+        ref
+          ..invalidate(subjectsListProvider)
+          ..invalidate(subjectDocumentsProvider(widget.subject.id));
       });
     } else if (_poll != null) {
       _poll!.cancel();
       _poll = null;
-      // Recién terminó: refresca el árbol del índice tras el frame.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) ref.invalidate(indexNodesProvider(widget.subject.id));
       });
@@ -86,18 +100,13 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
       );
     } catch (_) {
       messenger.showSnackBar(
-        SnackBar(
-          backgroundColor: errBg,
-          content: Text(l.studyIndexFailed),
-        ),
+        SnackBar(backgroundColor: errBg, content: Text(l.studyIndexFailed)),
       );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  /// Valida el índice (bloqueo definitivo): tras confirmar, ya no se podrá
-  /// regenerar.
   Future<void> _validateIndex() async {
     if (_busy) return;
     final l = context.l10n;
@@ -126,143 +135,7 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    _syncPolling(widget.subject.indexGenerating);
-    final l = context.l10n;
-
-    // Estado del índice: generating / ready / (none|failed).
-    if (widget.subject.indexGenerating) {
-      return PremiumCard(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l.studyIndexGenerating,
-              style: context.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const ClipRRect(
-              borderRadius: BorderRadius.all(Radius.circular(6)),
-              child: LinearProgressIndicator(minHeight: 4),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (!widget.subject.indexReady) {
-      // none o failed -> ofrecer generar (si hay documentos 'ready').
-      final docsAsync = ref.watch(subjectDocumentsProvider(widget.subject.id));
-      final hasReady =
-          docsAsync.valueOrNull?.any((d) => d.status == DocStatus.ready) ??
-              false;
-      return PremiumCard(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          children: [
-            Icon(Icons.account_tree_outlined, color: context.colors.primary),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                widget.subject.indexStatus == IndexStatus.failed
-                    ? l.studyIndexFailed
-                    : (hasReady ? l.studyIndexTitle : l.studyIndexNeedsDoc),
-                style: context.textTheme.bodyMedium,
-              ),
-            ),
-            PremiumButton(
-              label: l.studyGenerateIndex,
-              leadingIcon: Icons.auto_awesome_outlined,
-              loading: _busy,
-              onPressed: (_busy || !hasReady) ? null : _generateIndex,
-            ),
-          ],
-        ),
-      );
-    }
-
-    // ready -> índice + card central.
-    final nodesAsync = ref.watch(indexNodesProvider(widget.subject.id));
-    return nodesAsync.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 32),
-        child: AppLoadingState(),
-      ),
-      error: (e, _) => AppErrorState(
-        message: l.studyViewError,
-        detail: e.toString(),
-        onRetry: () => ref.invalidate(indexNodesProvider(widget.subject.id)),
-        retryLabel: l.actionRetry,
-      ),
-      data: (nodes) {
-        if (nodes.isEmpty) {
-          // Índice "ready" pero vacío: permitir regenerar (salvo bloqueado).
-          return PremiumCard(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Row(
-              children: [
-                Expanded(child: Text(l.studySelectNode)),
-                if (!widget.subject.indexLocked)
-                  PremiumButton(
-                    label: l.studyGenerateIndex,
-                    loading: _busy,
-                    onPressed: _busy ? null : _generateIndex,
-                  ),
-              ],
-            ),
-          );
-        }
-        final ordered = _dfs(nodes);
-        final selectedId = ordered.any((n) => n.id == _selectedNodeId)
-            ? _selectedNodeId!
-            : ordered.first.id;
-
-        final locked = widget.subject.indexLocked;
-        final aiNodeIds =
-            ref.watch(aiContentNodeIdsProvider(widget.subject.id)).valueOrNull ??
-                const <String>{};
-
-        final tree = _IndexTree(
-          nodes: ordered,
-          selectedId: selectedId,
-          aiNodeIds: aiNodeIds,
-          locked: locked,
-          onRegenerate: (_busy || locked) ? null : _generateIndex,
-          onValidate: _busy ? null : _validateIndex,
-          regenerating: _busy,
-          onSelect: (id) => setState(() => _selectedNodeId = id),
-        );
-        final card = _CentralCard(
-          nodeId: selectedId,
-          subjectId: widget.subject.id,
-        );
-
-        return LayoutBuilder(
-          builder: (ctx, c) {
-            if (c.maxWidth >= 820) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(width: 300, child: tree),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(child: card),
-                ],
-              );
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [tree, const SizedBox(height: AppSpacing.md), card],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  /// Ordena los nodos en recorrido DFS (para indentar el árbol).
+  /// Recorrido DFS para indentar el árbol del índice.
   List<IndexNode> _dfs(List<IndexNode> all) {
     final byParent = <String?, List<IndexNode>>{};
     for (final n in all) {
@@ -282,32 +155,420 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
     visit(null);
     return out;
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final docsAsync = ref.watch(subjectDocumentsProvider(widget.subject.id));
+    final anyDocInProgress =
+        docsAsync.valueOrNull?.any((d) => d.inProgress) ?? false;
+    _syncPolling(widget.subject.indexGenerating || anyDocInProgress);
+
+    final nodesAsync = ref.watch(indexNodesProvider(widget.subject.id));
+    final nodes = nodesAsync.valueOrNull ?? const <IndexNode>[];
+    final ordered = _dfs(nodes);
+    final selectedId = ordered.any((n) => n.id == _selectedNodeId)
+        ? _selectedNodeId
+        : (ordered.isNotEmpty ? ordered.first.id : null);
+
+    final left = _IndexColumn(
+      subject: widget.subject,
+      orderedNodes: ordered,
+      nodesLoading: nodesAsync.isLoading,
+      selectedId: selectedId,
+      aiNodeIds: ref
+              .watch(aiContentNodeIdsProvider(widget.subject.id))
+              .valueOrNull ??
+          const <String>{},
+      busy: _busy,
+      onSelect: (id) => setState(() => _selectedNodeId = id),
+      onGenerate: _generateIndex,
+      onValidate: _validateIndex,
+    );
+    final center = _ContentColumn(
+      subjectId: widget.subject.id,
+      nodeId: selectedId,
+      nodeTitle: ordered
+          .where((n) => n.id == selectedId)
+          .map((n) => n.title)
+          .cast<String?>()
+          .firstWhere((_) => true, orElse: () => null),
+    );
+    final right = _StudioColumn(
+      subjectId: widget.subject.id,
+      nodeId: selectedId,
+    );
+
+    return LayoutBuilder(
+      builder: (ctx, c) {
+        if (c.maxWidth < _kStackedBreakpoint) {
+          return ListView(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            children: [
+              SizedBox(height: 420, child: left),
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(height: 520, child: center),
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(height: 460, child: right),
+            ],
+          );
+        }
+        return _ResizableRow(left: left, center: center, right: right);
+      },
+    );
+  }
 }
 
+// ─────────────────────────── Columnas redimensionables ──────────────────────
+
+/// Fila de 3 columnas con separadores arrastrables; recuerda los anchos.
+class _ResizableRow extends ConsumerStatefulWidget {
+  const _ResizableRow({
+    required this.left,
+    required this.center,
+    required this.right,
+  });
+
+  final Widget left;
+  final Widget center;
+  final Widget right;
+
+  @override
+  ConsumerState<_ResizableRow> createState() => _ResizableRowState();
+}
+
+class _ResizableRowState extends ConsumerState<_ResizableRow> {
+  double _leftF = 0.24;
+  double _rightF = 0.28;
+
+  @override
+  void initState() {
+    super.initState();
+    final prefs = ref.read(sharedPreferencesProvider);
+    _leftF = prefs.getDouble(_kPrefLeftFrac) ?? 0.24;
+    _rightF = prefs.getDouble(_kPrefRightFrac) ?? 0.28;
+  }
+
+  void _persist() {
+    final prefs = ref.read(sharedPreferencesProvider);
+    prefs
+      ..setDouble(_kPrefLeftFrac, _leftF)
+      ..setDouble(_kPrefRightFrac, _rightF);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (ctx, c) {
+        final avail = c.maxWidth - 2 * _kHandleWidth;
+        if (avail <= 3 * _kMinColWidth) {
+          // Demasiado estrecho para 3 columnas con mínimos: reparto a tercios.
+          final w = avail / 3;
+          return Row(
+            children: [
+              SizedBox(width: w, child: widget.left),
+              const SizedBox(width: _kHandleWidth),
+              SizedBox(width: w, child: widget.center),
+              const SizedBox(width: _kHandleWidth),
+              SizedBox(width: w, child: widget.right),
+            ],
+          );
+        }
+        final maxSide = avail - 2 * _kMinColWidth;
+        var leftW = (_leftF * avail).clamp(_kMinColWidth, maxSide);
+        var rightW = (_rightF * avail).clamp(_kMinColWidth, avail - leftW - _kMinColWidth);
+        final centerW = avail - leftW - rightW;
+
+        return Row(
+          children: [
+            SizedBox(width: leftW, child: widget.left),
+            _DragHandle(
+              onDelta: (dx) {
+                setState(() {
+                  leftW = (leftW + dx)
+                      .clamp(_kMinColWidth, avail - rightW - _kMinColWidth);
+                  _leftF = leftW / avail;
+                });
+              },
+              onEnd: _persist,
+            ),
+            SizedBox(width: centerW, child: widget.center),
+            _DragHandle(
+              onDelta: (dx) {
+                setState(() {
+                  rightW = (rightW - dx)
+                      .clamp(_kMinColWidth, avail - leftW - _kMinColWidth);
+                  _rightF = rightW / avail;
+                });
+              },
+              onEnd: _persist,
+            ),
+            SizedBox(width: rightW, child: widget.right),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DragHandle extends StatelessWidget {
+  const _DragHandle({required this.onDelta, required this.onEnd});
+
+  final ValueChanged<double> onDelta;
+  final VoidCallback onEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeLeftRight,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragUpdate: (d) => onDelta(d.delta.dx),
+        onHorizontalDragEnd: (_) => onEnd(),
+        child: SizedBox(
+          width: _kHandleWidth,
+          child: Center(
+            child: Container(
+              width: 2,
+              decoration: BoxDecoration(
+                color: context.colors.outlineVariant,
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Marco común de columna: card con cabecera (título + acciones) y cuerpo.
+class _ColumnCard extends StatelessWidget {
+  const _ColumnCard({
+    required this.title,
+    required this.body,
+    this.leading,
+    this.actions = const [],
+  });
+
+  final String title;
+  final IconData? leading;
+  final List<Widget> actions;
+  final Widget body;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.xs,
+              AppSpacing.xs,
+            ),
+            child: Row(
+              children: [
+                if (leading != null) ...[
+                  Icon(leading, size: 18, color: context.colors.primary),
+                  const SizedBox(width: AppSpacing.xs),
+                ],
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                ...actions,
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(child: body),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────── Columna ÍNDICE ─────────────────────────────
+
+class _IndexColumn extends ConsumerWidget {
+  const _IndexColumn({
+    required this.subject,
+    required this.orderedNodes,
+    required this.nodesLoading,
+    required this.selectedId,
+    required this.aiNodeIds,
+    required this.busy,
+    required this.onSelect,
+    required this.onGenerate,
+    required this.onValidate,
+  });
+
+  final Subject subject;
+  final List<IndexNode> orderedNodes;
+  final bool nodesLoading;
+  final String? selectedId;
+  final Set<String> aiNodeIds;
+  final bool busy;
+  final ValueChanged<String> onSelect;
+  final VoidCallback onGenerate;
+  final VoidCallback onValidate;
+
+  void _openSources(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => Dialog(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560, maxHeight: 640),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: _DocumentsPanel(subjectId: subject.id),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final locked = subject.indexLocked;
+    final ready = subject.indexReady && orderedNodes.isNotEmpty;
+
+    final actions = <Widget>[
+      IconButton(
+        tooltip: l.subjectDocsTitle,
+        visualDensity: VisualDensity.compact,
+        icon: const Icon(Icons.source_outlined, size: 18),
+        onPressed: () => _openSources(context),
+      ),
+      if (ready)
+        if (locked)
+          Tooltip(
+            message: l.studyIndexValidated,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Icon(
+                Icons.verified_outlined,
+                size: 18,
+                color: context.colors.primary,
+              ),
+            ),
+          )
+        else ...[
+          IconButton(
+            tooltip: l.studyValidateIndex,
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.verified_outlined, size: 18),
+            onPressed: busy ? null : onValidate,
+          ),
+          IconButton(
+            tooltip: l.studyRegenerate,
+            visualDensity: VisualDensity.compact,
+            icon: busy
+                ? const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2.2),
+                  )
+                : const Icon(Icons.refresh, size: 18),
+            onPressed: busy ? null : onGenerate,
+          ),
+        ],
+    ];
+
+    return _ColumnCard(
+      title: l.studyIndexTitle,
+      leading: Icons.account_tree_outlined,
+      actions: actions,
+      body: _indexBody(context, ref),
+    );
+  }
+
+  Widget _indexBody(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+
+    if (subject.indexGenerating) {
+      return Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l.studyIndexGenerating, style: context.textTheme.bodySmall),
+            const SizedBox(height: AppSpacing.sm),
+            const ClipRRect(
+              borderRadius: BorderRadius.all(Radius.circular(6)),
+              child: LinearProgressIndicator(minHeight: 4),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (!subject.indexReady || orderedNodes.isEmpty) {
+      final docsAsync = ref.watch(subjectDocumentsProvider(subject.id));
+      final hasReady =
+          docsAsync.valueOrNull?.any((d) => d.status == DocStatus.ready) ??
+              false;
+      final failed = subject.indexStatus == IndexStatus.failed;
+      return Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              failed
+                  ? l.studyIndexFailed
+                  : (hasReady ? l.studyIndexTitle : l.studyIndexNeedsDoc),
+              style: context.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            PremiumButton(
+              label: l.studyGenerateIndex,
+              leadingIcon: Icons.auto_awesome_outlined,
+              loading: busy,
+              onPressed: (busy || !hasReady || subject.indexLocked)
+                  ? null
+                  : onGenerate,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _IndexTree(
+      nodes: orderedNodes,
+      selectedId: selectedId,
+      aiNodeIds: aiNodeIds,
+      onSelect: onSelect,
+    );
+  }
+}
+
+/// Árbol del índice (solo las filas, en acordeón). La cabecera/acciones las pone
+/// la columna contenedora.
 class _IndexTree extends StatefulWidget {
   const _IndexTree({
     required this.nodes,
     required this.selectedId,
     required this.aiNodeIds,
-    required this.locked,
     required this.onSelect,
-    required this.onRegenerate,
-    required this.onValidate,
-    required this.regenerating,
   });
 
   final List<IndexNode> nodes;
-  final String selectedId;
-
-  /// Nodos con contenido IA (explicado/resumen) -> se pintan en azul.
+  final String? selectedId;
   final Set<String> aiNodeIds;
-
-  /// Índice validado: sin botón de regenerar.
-  final bool locked;
   final ValueChanged<String> onSelect;
-  final VoidCallback? onRegenerate;
-  final VoidCallback? onValidate;
-  final bool regenerating;
 
   @override
   State<_IndexTree> createState() => _IndexTreeState();
@@ -319,7 +580,6 @@ class _IndexTreeState extends State<_IndexTree> {
   @override
   void initState() {
     super.initState();
-    // Por defecto expandimos solo los nodos raíz (depth 0).
     for (final n in widget.nodes) {
       if (n.parentId == null) _expanded.add(n.id);
     }
@@ -327,9 +587,6 @@ class _IndexTreeState extends State<_IndexTree> {
 
   @override
   Widget build(BuildContext context) {
-    final l = context.l10n;
-    final scheme = context.colors;
-
     final byParent = <String?, List<IndexNode>>{};
     for (final n in widget.nodes) {
       byParent.putIfAbsent(n.parentId, () => []).add(n);
@@ -355,8 +612,6 @@ class _IndexTreeState extends State<_IndexTree> {
                     if (isExpanded) {
                       _expanded.remove(n.id);
                     } else {
-                      // Acordeón: al abrir un nodo cerramos sus hermanos, así
-                      // el índice no ocupa tanto.
                       for (final s
                           in byParent[n.parentId] ?? const <IndexNode>[]) {
                         _expanded.remove(s.id);
@@ -379,79 +634,13 @@ class _IndexTreeState extends State<_IndexTree> {
       emit(root);
     }
 
-    return PremiumCard(
+    return ListView(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.sm,
-              AppSpacing.xs,
-              AppSpacing.xs,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l.studyIndexTitle,
-                    style: context.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-                if (widget.locked)
-                  Tooltip(
-                    message: l.studyIndexValidated,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: AppSpacing.sm),
-                      child: Icon(
-                        Icons.verified_outlined,
-                        size: 18,
-                        color: scheme.primary,
-                      ),
-                    ),
-                  )
-                else ...[
-                  if (widget.regenerating)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: SizedBox(
-                        height: 16,
-                        width: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2.2),
-                      ),
-                    )
-                  else ...[
-                    IconButton(
-                      tooltip: l.studyValidateIndex,
-                      visualDensity: VisualDensity.compact,
-                      icon: const Icon(Icons.verified_outlined, size: 18),
-                      onPressed: widget.onValidate,
-                    ),
-                    IconButton(
-                      tooltip: l.studyRegenerate,
-                      visualDensity: VisualDensity.compact,
-                      icon: const Icon(Icons.refresh, size: 18),
-                      onPressed: widget.onRegenerate,
-                    ),
-                  ],
-                ],
-              ],
-            ),
-          ),
-          ...rows,
-        ],
-      ),
+      children: rows,
     );
   }
 }
 
-/// Una fila del árbol: chevron (si tiene hijos) + título. El chevron expande/
-/// contrae; el título selecciona el nodo.
 class _TreeTile extends StatelessWidget {
   const _TreeTile({
     required this.node,
@@ -465,8 +654,6 @@ class _TreeTile extends StatelessWidget {
 
   final IndexNode node;
   final bool hasChildren;
-
-  /// `true` si este nodo ya tiene Explicado/Resumen generado -> texto azul.
   final bool hasAi;
   final bool expanded;
   final bool selected;
@@ -505,7 +692,6 @@ class _TreeTile extends StatelessWidget {
                       )
                     : null,
               ),
-              // Tipo de nodo: carpeta si tiene hijos, punto si es hoja.
               Icon(
                 hasChildren ? Icons.folder_outlined : Icons.fiber_manual_record,
                 size: hasChildren ? 16 : 8,
@@ -521,8 +707,6 @@ class _TreeTile extends StatelessWidget {
                     fontWeight: (selected || node.parentId == null)
                         ? FontWeight.w700
                         : FontWeight.w500,
-                    // Azul = ya tiene contenido IA (explicado/resumen). La
-                    // selección se distingue por el fondo resaltado + negrita.
                     color: hasAi ? scheme.primary : null,
                   ),
                 ),
@@ -535,61 +719,92 @@ class _TreeTile extends StatelessWidget {
   }
 }
 
-/// Card central con 3 pestañas para el nodo seleccionado.
-class _CentralCard extends StatelessWidget {
-  const _CentralCard({
-    required this.nodeId,
+// ─────────────────────────────── Columna CENTRO ─────────────────────────────
+
+class _ContentColumn extends StatelessWidget {
+  const _ContentColumn({
     required this.subjectId,
+    required this.nodeId,
+    required this.nodeTitle,
   });
 
-  final String nodeId;
   final String subjectId;
+  final String? nodeId;
+  final String? nodeTitle;
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    if (nodeId == null) {
+      return _ColumnCard(
+        title: l.studyTabOriginal,
+        leading: Icons.menu_book_outlined,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Text(
+              l.studySelectNode,
+              textAlign: TextAlign.center,
+              style: context.textTheme.bodyMedium
+                  ?.copyWith(color: context.colors.onSurfaceVariant),
+            ),
+          ),
+        ),
+      );
+    }
+
     return PremiumCard(
-      padding: const EdgeInsets.all(AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: DefaultTabController(
-        length: 4,
+        length: 3,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                0,
+              ),
+              child: Text(
+                nodeTitle ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
             TabBar(
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
               tabs: [
                 Tab(text: l.studyTabOriginal),
                 Tab(text: l.studyTabExplained),
                 Tab(text: l.studyTabSummary),
-                Tab(text: l.studyTabNotes),
               ],
             ),
-            const SizedBox(height: AppSpacing.sm),
-            SizedBox(
-              height: 460,
+            Expanded(
               child: TabBarView(
                 children: [
                   _NodeView(
-                    nodeId: nodeId,
+                    nodeId: nodeId!,
                     kind: 'original',
                     subjectId: subjectId,
                   ),
                   _NodeView(
-                    nodeId: nodeId,
+                    nodeId: nodeId!,
                     kind: 'explained',
                     subjectId: subjectId,
                   ),
                   _NodeView(
-                    nodeId: nodeId,
+                    nodeId: nodeId!,
                     kind: 'summary',
                     subjectId: subjectId,
                   ),
-                  _NotesView(nodeId: nodeId, subjectId: subjectId),
                 ],
               ),
             ),
+            const Divider(height: 1),
+            _ChatBar(),
           ],
         ),
       ),
@@ -597,7 +812,39 @@ class _CentralCard extends StatelessWidget {
   }
 }
 
-/// Una pestaña: muestra la vista cacheada o un botón para generarla.
+/// Barra para preguntar a la IA sobre el tema/sección. Próximamente.
+class _ChatBar extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              enabled: false,
+              decoration: InputDecoration(
+                hintText: l.studyAskHint,
+                border: const OutlineInputBorder(),
+                isDense: true,
+                suffixIcon: const Icon(Icons.send_outlined, size: 18),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          PremiumBadge(
+            label: l.studyComingSoon,
+            variant: PremiumBadgeVariant.neutral,
+            dense: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Una pestaña de contenido: muestra la vista cacheada o un botón para generarla.
 class _NodeView extends ConsumerStatefulWidget {
   const _NodeView({
     required this.nodeId,
@@ -630,19 +877,17 @@ class _NodeViewState extends ConsumerState<_NodeView> {
             kind: widget.kind,
             force: force,
           );
-      // El backend genera Explicado y Resumen a la vez: refrescamos ambas
-      // vistas y la marca azul del índice.
-      ref.invalidate(
-        nodeContentProvider((nodeId: widget.nodeId, kind: 'explained')),
-      );
-      ref.invalidate(
-        nodeContentProvider((nodeId: widget.nodeId, kind: 'summary')),
-      );
-      ref.invalidate(aiContentNodeIdsProvider(widget.subjectId));
+      ref
+        ..invalidate(
+          nodeContentProvider((nodeId: widget.nodeId, kind: 'explained')),
+        )
+        ..invalidate(
+          nodeContentProvider((nodeId: widget.nodeId, kind: 'summary')),
+        )
+        ..invalidate(aiContentNodeIdsProvider(widget.subjectId));
     } on SubjectsException catch (e) {
-      final detail = e.detail != null && e.detail!.isNotEmpty
-          ? ': ${e.detail}'
-          : '';
+      final detail =
+          e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
       messenger.showSnackBar(
         SnackBar(
           backgroundColor: errBg,
@@ -652,19 +897,13 @@ class _NodeViewState extends ConsumerState<_NodeView> {
       );
     } catch (_) {
       messenger.showSnackBar(
-        SnackBar(
-          backgroundColor: errBg,
-          content: Text(l.studyViewError),
-        ),
+        SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
       );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  /// Raíz + Original: abre el documento original tal cual (PDF/imagen) en una
-  /// pestaña nueva, en vez de generar texto (el documento completo no cabría
-  /// en una sola respuesta del modelo).
   Future<void> _openOriginal() async {
     if (_busy) return;
     setState(() => _busy = true);
@@ -708,8 +947,6 @@ class _NodeViewState extends ConsumerState<_NodeView> {
       data: (content) {
         final hasContent = content != null && content.isNotEmpty;
 
-        // ORIGINAL: nunca usa IA. Muestra el texto guardado; si no lo hay,
-        // ofrece abrir el documento original (PDF).
         if (isOriginal) {
           if (hasContent) return _scroll(context, content, markdown: false);
           return Center(
@@ -722,7 +959,6 @@ class _NodeViewState extends ConsumerState<_NodeView> {
           );
         }
 
-        // EXPLICADO / RESUMEN: generación bajo demanda.
         if (_busy) {
           return Center(
             child: Column(
@@ -762,8 +998,6 @@ class _NodeViewState extends ConsumerState<_NodeView> {
     );
   }
 
-  /// [markdown] true para Explicado/Resumen (render con encabezados, listas y
-  /// negrita); false para Original (texto verbatim sin interpretar).
   Widget _scroll(BuildContext context, String content, {required bool markdown}) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.sm),
@@ -777,9 +1011,152 @@ class _NodeViewState extends ConsumerState<_NodeView> {
   }
 }
 
-/// Pestaña "Notas": notas del usuario sobre la sección seleccionada. Permite
-/// añadir, editar y borrar (las notas son del usuario, independientes del
-/// bloqueo del índice).
+// ─────────────────────────────── Columna ESTUDIO ────────────────────────────
+
+enum _StudioTool { home, notes }
+
+class _StudioColumn extends StatefulWidget {
+  const _StudioColumn({required this.subjectId, required this.nodeId});
+
+  final String subjectId;
+  final String? nodeId;
+
+  @override
+  State<_StudioColumn> createState() => _StudioColumnState();
+}
+
+class _StudioColumnState extends State<_StudioColumn> {
+  _StudioTool _tool = _StudioTool.home;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final inNotes = _tool == _StudioTool.notes && widget.nodeId != null;
+    return _ColumnCard(
+      title: inNotes ? l.studyTabNotes : l.studioTitle,
+      leading: inNotes ? Icons.sticky_note_2_outlined : Icons.auto_awesome,
+      actions: [
+        if (inNotes)
+          IconButton(
+            tooltip: l.actionCancel,
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.arrow_back, size: 18),
+            onPressed: () => setState(() => _tool = _StudioTool.home),
+          ),
+      ],
+      body: inNotes
+          ? _NotesView(nodeId: widget.nodeId!, subjectId: widget.subjectId)
+          : _studioGrid(context),
+    );
+  }
+
+  Widget _studioGrid(BuildContext context) {
+    final l = context.l10n;
+    final canNotes = widget.nodeId != null;
+    final tiles = <Widget>[
+      _StudioTile(
+        icon: Icons.sticky_note_2_outlined,
+        label: l.studyTabNotes,
+        enabled: canNotes,
+        onTap: canNotes
+            ? () => setState(() => _tool = _StudioTool.notes)
+            : null,
+      ),
+      _StudioTile(
+        icon: Icons.style_outlined,
+        label: l.studioFlashcards,
+        comingSoon: true,
+      ),
+      _StudioTile(
+        icon: Icons.quiz_outlined,
+        label: l.studioQuiz,
+        comingSoon: true,
+      ),
+      _StudioTile(
+        icon: Icons.hub_outlined,
+        label: l.studioMindmap,
+        comingSoon: true,
+      ),
+    ];
+    return GridView.count(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      crossAxisCount: 2,
+      mainAxisSpacing: AppSpacing.sm,
+      crossAxisSpacing: AppSpacing.sm,
+      childAspectRatio: 1.4,
+      children: tiles,
+    );
+  }
+}
+
+class _StudioTile extends StatelessWidget {
+  const _StudioTile({
+    required this.icon,
+    required this.label,
+    this.enabled = true,
+    this.comingSoon = false,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool enabled;
+  final bool comingSoon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final dim = comingSoon || !enabled;
+    return InkWell(
+      onTap: comingSoon
+          ? () => ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(l.studyComingSoon)),
+              )
+          : onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: scheme.outlineVariant),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              icon,
+              size: 22,
+              color: dim ? scheme.onSurfaceVariant : scheme.primary,
+            ),
+            const Spacer(),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: dim ? scheme.onSurfaceVariant : null,
+              ),
+            ),
+            if (comingSoon)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  l.studyComingSoon,
+                  style: context.textTheme.labelSmall
+                      ?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Notas del usuario sobre la sección seleccionada (añadir / editar / borrar).
 class _NotesView extends ConsumerStatefulWidget {
   const _NotesView({required this.nodeId, required this.subjectId});
 
@@ -876,7 +1253,6 @@ class _NotesViewState extends ConsumerState<_NotesView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Composer de nueva nota.
         Padding(
           padding: const EdgeInsets.all(AppSpacing.sm),
           child: Column(
@@ -1008,5 +1384,262 @@ class _NotesViewState extends ConsumerState<_NotesView> {
               ],
             ),
     );
+  }
+}
+
+// ─────────────────────────── Documentos / fuentes ───────────────────────────
+
+/// Panel de documentos de un temario: lista con estado + subir archivo.
+/// Hace polling mientras algún documento esté en proceso.
+class _DocumentsPanel extends ConsumerStatefulWidget {
+  const _DocumentsPanel({required this.subjectId});
+
+  final String subjectId;
+
+  @override
+  ConsumerState<_DocumentsPanel> createState() => _DocumentsPanelState();
+}
+
+class _DocumentsPanelState extends ConsumerState<_DocumentsPanel> {
+  Timer? _poll;
+  bool _uploading = false;
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  void _syncPolling(List<SubjectDocument> docs) {
+    final anyInProgress = docs.any((d) => d.inProgress);
+    if (anyInProgress) {
+      if (_poll == null || !_poll!.isActive) {
+        _poll = Timer.periodic(const Duration(seconds: 4), (_) {
+          if (!mounted) {
+            _poll?.cancel();
+            return;
+          }
+          ref.invalidate(subjectDocumentsProvider(widget.subjectId));
+        });
+      }
+    } else {
+      _poll?.cancel();
+      _poll = null;
+    }
+  }
+
+  Future<void> _upload() async {
+    if (_uploading) return;
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final errBg = Theme.of(context).colorScheme.error;
+    final picked = await pickFile();
+    if (picked == null) return;
+    setState(() => _uploading = true);
+    try {
+      await ref.read(subjectsDataSourceProvider).uploadDocument(
+            subjectId: widget.subjectId,
+            file: picked,
+          );
+      ref.invalidate(subjectDocumentsProvider(widget.subjectId));
+      messenger.showSnackBar(SnackBar(content: Text(l.subjectUploaded)));
+    } on SubjectsException catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: errBg,
+          content: Text('${l.subjectUploadError} (${e.code})'),
+        ),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(backgroundColor: errBg, content: Text(l.subjectUploadError)),
+      );
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Future<void> _deleteDoc(SubjectDocument doc) async {
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    await ref.read(subjectsDataSourceProvider).deleteDocument(doc);
+    ref.invalidate(subjectDocumentsProvider(widget.subjectId));
+    if (mounted) {
+      messenger.showSnackBar(SnackBar(content: Text(l.subjectDocDeleted)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final async = ref.watch(subjectDocumentsProvider(widget.subjectId));
+    async.whenData(_syncPolling);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                l.subjectDocsTitle,
+                style: context.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: _uploading ? null : _upload,
+              icon: _uploading
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2.2),
+                    )
+                  : const Icon(Icons.upload_file_outlined, size: 18),
+              label: Text(l.subjectUpload),
+            ),
+          ],
+        ),
+        if (_uploading)
+          const Padding(
+            padding: EdgeInsets.only(top: AppSpacing.sm),
+            child: ClipRRect(
+              borderRadius: BorderRadius.all(Radius.circular(6)),
+              child: LinearProgressIndicator(minHeight: 4),
+            ),
+          ),
+        const Divider(height: AppSpacing.lg),
+        Flexible(
+          child: async.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: AppLoadingState(),
+            ),
+            error: (e, _) => AppErrorState(
+              message: l.subjectsLoadError,
+              detail: e.toString(),
+              onRetry: () =>
+                  ref.invalidate(subjectDocumentsProvider(widget.subjectId)),
+              retryLabel: l.actionRetry,
+            ),
+            data: (docs) {
+              if (docs.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    l.subjectNoDocs,
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                );
+              }
+              return ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final d in docs) _DocRow(doc: d, onDelete: _deleteDoc),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DocRow extends StatelessWidget {
+  const _DocRow({required this.doc, required this.onDelete});
+
+  final SubjectDocument doc;
+  final Future<void> Function(SubjectDocument) onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(Icons.description_outlined, size: 18, color: scheme.onSurfaceVariant),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  doc.fileName ?? doc.storagePath,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.textTheme.bodyMedium,
+                ),
+                if (doc.inProgress)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.all(Radius.circular(6)),
+                      child: LinearProgressIndicator(minHeight: 3),
+                    ),
+                  ),
+                if (doc.status == DocStatus.failed && doc.error != null)
+                  Text(
+                    doc.error!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.textTheme.bodySmall
+                        ?.copyWith(color: scheme.error),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          _StatusChip(status: doc.status),
+          IconButton(
+            tooltip: l.aiDeleteCta,
+            icon: const Icon(Icons.delete_outline, size: 18),
+            onPressed: () => onDelete(doc),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.status});
+
+  final DocStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    switch (status) {
+      case DocStatus.queued:
+        return PremiumBadge(
+          label: l.docStatusQueued,
+          variant: PremiumBadgeVariant.neutral,
+          dense: true,
+        );
+      case DocStatus.processing:
+        return PremiumBadge(
+          label: l.docStatusProcessing,
+          variant: PremiumBadgeVariant.info,
+          dense: true,
+        );
+      case DocStatus.ready:
+        return PremiumBadge(
+          label: l.docStatusReady,
+          variant: PremiumBadgeVariant.success,
+          dense: true,
+        );
+      case DocStatus.failed:
+        return PremiumBadge(
+          label: l.docStatusFailed,
+          variant: PremiumBadgeVariant.error,
+          dense: true,
+        );
+    }
   }
 }

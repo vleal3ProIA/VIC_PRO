@@ -27,6 +27,12 @@
   "studyNoteDelete": "Löschen",
   "studyNoteDeleteTitle": "Notiz löschen?",
   "studyNoteDeleteBody": "Diese Notiz wird dauerhaft gelöscht.",
+  "studioTitle": "Studio",
+  "studyAskHint": "Frage zu diesem Thema oder Abschnitt…",
+  "studyComingSoon": "Demnächst",
+  "studioFlashcards": "Lernkarten",
+  "studioQuiz": "Quiz",
+  "studioMindmap": "Mindmap",
 
   "homeSubjectsTitle": "Meine Lernsets",
   "homeSubjectsSubtitle": "Lade dein Material hoch und die KI macht Zusammenfassungen und Tests daraus.",

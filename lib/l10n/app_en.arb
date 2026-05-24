@@ -27,6 +27,12 @@
   "studyNoteDelete": "Delete",
   "studyNoteDeleteTitle": "Delete note?",
   "studyNoteDeleteBody": "This note will be permanently deleted.",
+  "studioTitle": "Studio",
+  "studyAskHint": "Ask about this topic or section…",
+  "studyComingSoon": "Coming soon",
+  "studioFlashcards": "Flashcards",
+  "studioQuiz": "Quiz",
+  "studioMindmap": "Mind map",
 
   "homeSubjectsTitle": "My study sets",
   "homeSubjectsSubtitle": "Upload your material and the AI turns it into summaries and tests.",
