@@ -57,6 +57,7 @@
   "studyChatEmpty": "Pergunta à IA o que quiseres sobre este material. Responde usando os teus documentos.",
   "studyChatSend": "Enviar",
   "studyChatClear": "Limpar",
+  "studyChatSources": "Secções citadas",
   "studyChatClearTitle": "Limpar a conversa?",
   "studyChatClearBody": "Isto vai apagar todo o chat deste tema.",
   "studyExport": "Exportar (.md)",

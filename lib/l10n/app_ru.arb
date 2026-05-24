@@ -57,6 +57,7 @@
   "studyChatEmpty": "Спросите ИИ что угодно об этом материале. Он отвечает по вашим документам.",
   "studyChatSend": "Отправить",
   "studyChatClear": "Очистить",
+  "studyChatSources": "Упомянутые разделы",
   "studyChatClearTitle": "Очистить переписку?",
   "studyChatClearBody": "Будет удалён весь чат этого материала.",
   "studyExport": "Экспорт (.md)",

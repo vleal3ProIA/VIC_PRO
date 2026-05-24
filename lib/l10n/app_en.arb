@@ -57,6 +57,7 @@
   "studyChatEmpty": "Ask the AI anything about this material. It answers using your documents.",
   "studyChatSend": "Send",
   "studyChatClear": "Clear",
+  "studyChatSources": "Cited sections",
   "studyChatClearTitle": "Clear conversation?",
   "studyChatClearBody": "This will delete the whole chat for this study set.",
   "studyExport": "Export (.md)",

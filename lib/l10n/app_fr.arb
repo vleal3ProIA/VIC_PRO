@@ -57,6 +57,7 @@
   "studyChatEmpty": "Posez n'importe quelle question à l'IA sur ce contenu. Elle répond à partir de vos documents.",
   "studyChatSend": "Envoyer",
   "studyChatClear": "Effacer",
+  "studyChatSources": "Sections citées",
   "studyChatClearTitle": "Effacer la conversation ?",
   "studyChatClearBody": "Cela supprimera tout le chat de ce cours.",
   "studyExport": "Exporter (.md)",

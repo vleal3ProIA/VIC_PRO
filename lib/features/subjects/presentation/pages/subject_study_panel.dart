@@ -193,6 +193,8 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
           .map((n) => n.title)
           .cast<String?>()
           .firstWhere((_) => true, orElse: () => null),
+      nodes: ordered,
+      onSelectNode: (id) => setState(() => _selectedNodeId = id),
     );
     final right = _StudioColumn(
       subjectId: widget.subject.id,
@@ -741,11 +743,15 @@ class _ContentColumn extends StatelessWidget {
     required this.subjectId,
     required this.nodeId,
     required this.nodeTitle,
+    required this.nodes,
+    required this.onSelectNode,
   });
 
   final String subjectId;
   final String? nodeId;
   final String? nodeTitle;
+  final List<IndexNode> nodes;
+  final ValueChanged<String> onSelectNode;
 
   @override
   Widget build(BuildContext context) {
@@ -822,6 +828,8 @@ class _ContentColumn extends StatelessWidget {
                     key: ValueKey('chat_$subjectId'),
                     subjectId: subjectId,
                     nodeId: nodeId,
+                    nodes: nodes,
+                    onSelectNode: onSelectNode,
                   ),
                 ],
               ),
@@ -842,11 +850,15 @@ class _ChatView extends ConsumerStatefulWidget {
   const _ChatView({
     required this.subjectId,
     required this.nodeId,
+    required this.nodes,
+    required this.onSelectNode,
     super.key,
   });
 
   final String subjectId;
   final String? nodeId;
+  final List<IndexNode> nodes;
+  final ValueChanged<String> onSelectNode;
 
   @override
   ConsumerState<_ChatView> createState() => _ChatViewState();
@@ -1071,8 +1083,39 @@ class _ChatViewState extends ConsumerState<_ChatView> {
     );
   }
 
+  /// Extrae las secciones citadas como [[Título]] y las casa con los nodos del
+  /// índice (igualdad o "contiene", sin distinguir mayúsculas). Únicas por id.
+  List<IndexNode> _citations(String text) {
+    final out = <IndexNode>[];
+    final seen = <String>{};
+    for (final mch in RegExp(r'\[\[(.+?)\]\]').allMatches(text)) {
+      final cap = mch.group(1)!.trim().toLowerCase();
+      if (cap.isEmpty) continue;
+      for (final n in widget.nodes) {
+        final t = n.title.trim().toLowerCase();
+        if (t.isEmpty) continue;
+        if ((t == cap || t.contains(cap) || cap.contains(t)) &&
+            seen.add(n.id)) {
+          out.add(n);
+          break;
+        }
+      }
+    }
+    return out;
+  }
+
   Widget _bubble(BuildContext context, _ChatMsg m) {
     final scheme = context.colors;
+    final l = context.l10n;
+    // En las respuestas de la IA, convertimos [[Título]] en texto normal y
+    // añadimos chips clicables debajo que saltan a la sección citada.
+    final citations = m.fromUser ? const <IndexNode>[] : _citations(m.text);
+    final clean = m.fromUser
+        ? m.text
+        : m.text.replaceAllMapped(
+            RegExp(r'\[\[(.+?)\]\]'),
+            (mch) => mch.group(1) ?? '',
+          );
     return Align(
       alignment: m.fromUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -1085,9 +1128,41 @@ class _ChatViewState extends ConsumerState<_ChatView> {
               : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: m.fromUser
-            ? Text(m.text, style: context.textTheme.bodyMedium)
-            : MarkdownText(m.text),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (m.fromUser)
+              Text(clean, style: context.textTheme.bodyMedium)
+            else
+              MarkdownText(clean),
+            if (citations.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                l.studyChatSources,
+                style: context.textTheme.labelSmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final n in citations)
+                    ActionChip(
+                      avatar: const Icon(Icons.link, size: 14),
+                      label: Text(
+                        n.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => widget.onSelectNode(n.id),
+                    ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

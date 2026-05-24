@@ -57,6 +57,7 @@
   "studyChatEmpty": "Запитайте ШІ будь-що про цей матеріал. Він відповідає за вашими документами.",
   "studyChatSend": "Надіслати",
   "studyChatClear": "Очистити",
+  "studyChatSources": "Згадані розділи",
   "studyChatClearTitle": "Очистити розмову?",
   "studyChatClearBody": "Буде видалено весь чат цього матеріалу.",
   "studyExport": "Експорт (.md)",

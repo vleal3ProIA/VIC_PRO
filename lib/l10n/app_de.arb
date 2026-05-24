@@ -57,6 +57,7 @@
   "studyChatEmpty": "Frag die KI alles über dieses Material. Sie antwortet anhand deiner Dokumente.",
   "studyChatSend": "Senden",
   "studyChatClear": "Leeren",
+  "studyChatSources": "Zitierte Abschnitte",
   "studyChatClearTitle": "Unterhaltung löschen?",
   "studyChatClearBody": "Dadurch wird der gesamte Chat dieses Lernsets gelöscht.",
   "studyExport": "Exportieren (.md)",

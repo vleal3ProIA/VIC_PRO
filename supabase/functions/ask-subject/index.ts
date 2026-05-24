@@ -143,6 +143,25 @@ Deno.serve(withSentry("ask-subject", async (req) => {
     return json({ error: "no_ready_documents" }, 409);
   }
 
+  // Lista de secciones del índice (para citas clicables). Acotada para no
+  // inflar el prompt en temarios enormes.
+  const { data: nodeTitles } = await admin
+    .from("index_nodes")
+    .select("title")
+    .eq("subject_id", subjectId)
+    .order("depth")
+    .order("position")
+    .limit(150);
+  const titles = ((nodeTitles ?? []) as Array<{ title: string }>)
+    .map((n) => n.title)
+    .filter((t) => typeof t === "string" && t.trim().length > 0);
+  const sectionsBlock = titles.length > 0
+    ? "\n\nThe material is organized in these sections:\n" +
+      titles.map((t) => `- ${t}`).join("\n") +
+      "\nWhen your answer refers to a specific section, cite it inline as " +
+      "[[exact section title]] using a title COPIED from this list."
+    : "";
+
   const lang = subject.language && subject.language.length > 0
     ? `Answer in this language (ISO code): ${subject.language}.`
     : "Answer in the SAME language as the material/question.";
@@ -150,6 +169,7 @@ Deno.serve(withSentry("ask-subject", async (req) => {
     "Answer the question using ONLY the material provided; if the answer is not " +
     "in the material, say clearly that you can't find it there (do not invent). " +
     `Be clear and concise, use Markdown when helpful. ${lang}` +
+    sectionsBlock +
     (textContext ? "\n\nMATERIAL:\n\n" + textContext : "");
 
   // Historial reciente como contexto + la pregunta actual (un solo turno de
