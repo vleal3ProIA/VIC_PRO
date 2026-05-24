@@ -95,6 +95,34 @@ class IndexNode {
   final String? parentId;
 }
 
+/// Nota del usuario asociada a una sección del índice (espejo de `annotations`).
+class Annotation {
+  const Annotation({
+    required this.id,
+    required this.subjectId,
+    required this.body,
+    this.nodeId,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory Annotation.fromMap(Map<String, dynamic> m) => Annotation(
+        id: m['id'] as String,
+        subjectId: m['subject_id'] as String,
+        body: (m['body'] as String?) ?? '',
+        nodeId: m['node_id'] as String?,
+        createdAt: _ts(m['created_at']),
+        updatedAt: _ts(m['updated_at']),
+      );
+
+  final String id;
+  final String subjectId;
+  final String body;
+  final String? nodeId;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+}
+
 class SubjectDocument {
   const SubjectDocument({
     required this.id,

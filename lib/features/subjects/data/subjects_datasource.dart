@@ -222,6 +222,50 @@ class SubjectsDataSource {
     }
   }
 
+  // ─────────────────── Notas / anotaciones (Fase 2) ───────────────────
+
+  /// Notas de una sección del índice (más recientes primero).
+  Future<List<Annotation>> listAnnotations(String nodeId) async {
+    final data = await _client
+        .from('annotations')
+        .select()
+        .eq('node_id', nodeId)
+        .order('created_at', ascending: false);
+    return (data as List)
+        .cast<Map<String, dynamic>>()
+        .map(Annotation.fromMap)
+        .toList(growable: false);
+  }
+
+  /// Crea una nota en la sección [nodeId] del temario [subjectId].
+  Future<Annotation> createAnnotation({
+    required String subjectId,
+    required String nodeId,
+    required String body,
+  }) async {
+    final data = await _client
+        .from('annotations')
+        .insert({
+          'subject_id': subjectId,
+          'user_id': _uid,
+          'node_id': nodeId,
+          'body': body,
+        })
+        .select()
+        .single();
+    return Annotation.fromMap(data);
+  }
+
+  /// Actualiza el texto de una nota.
+  Future<void> updateAnnotation(String id, String body) async {
+    await _client.from('annotations').update({'body': body}).eq('id', id);
+  }
+
+  /// Borra una nota.
+  Future<void> deleteAnnotation(String id) async {
+    await _client.from('annotations').delete().eq('id', id);
+  }
+
   /// URL firmada (1 h) del primer documento del temario, para abrir el
   /// original tal cual. `null` si no hay documentos.
   Future<String?> originalDocumentUrl(String subjectId) async {

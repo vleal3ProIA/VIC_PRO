@@ -551,16 +551,19 @@ class _CentralCard extends StatelessWidget {
     return PremiumCard(
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: DefaultTabController(
-        length: 3,
+        length: 4,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TabBar(
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
               tabs: [
                 Tab(text: l.studyTabOriginal),
                 Tab(text: l.studyTabExplained),
                 Tab(text: l.studyTabSummary),
+                Tab(text: l.studyTabNotes),
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -583,6 +586,7 @@ class _CentralCard extends StatelessWidget {
                     kind: 'summary',
                     subjectId: subjectId,
                   ),
+                  _NotesView(nodeId: nodeId, subjectId: subjectId),
                 ],
               ),
             ),
@@ -768,6 +772,240 @@ class _NodeViewState extends ConsumerState<_NodeView> {
           : SelectableText(
               content,
               style: context.textTheme.bodyMedium?.copyWith(height: 1.5),
+            ),
+    );
+  }
+}
+
+/// Pestaña "Notas": notas del usuario sobre la sección seleccionada. Permite
+/// añadir, editar y borrar (las notas son del usuario, independientes del
+/// bloqueo del índice).
+class _NotesView extends ConsumerStatefulWidget {
+  const _NotesView({required this.nodeId, required this.subjectId});
+
+  final String nodeId;
+  final String subjectId;
+
+  @override
+  ConsumerState<_NotesView> createState() => _NotesViewState();
+}
+
+class _NotesViewState extends ConsumerState<_NotesView> {
+  final _newCtrl = TextEditingController();
+  final _editCtrl = TextEditingController();
+  String? _editingId;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _newCtrl.dispose();
+    _editCtrl.dispose();
+    super.dispose();
+  }
+
+  void _toast(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Theme.of(context).colorScheme.error,
+        content: Text(msg),
+      ),
+    );
+  }
+
+  Future<void> _add() async {
+    final body = _newCtrl.text.trim();
+    if (body.isEmpty || _busy) return;
+    setState(() => _busy = true);
+    final l = context.l10n;
+    try {
+      await ref.read(subjectsDataSourceProvider).createAnnotation(
+            subjectId: widget.subjectId,
+            nodeId: widget.nodeId,
+            body: body,
+          );
+      _newCtrl.clear();
+      ref.invalidate(annotationsProvider(widget.nodeId));
+    } catch (_) {
+      _toast(l.studyViewError);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _saveEdit(String id) async {
+    final body = _editCtrl.text.trim();
+    if (body.isEmpty || _busy) return;
+    setState(() => _busy = true);
+    final l = context.l10n;
+    try {
+      await ref.read(subjectsDataSourceProvider).updateAnnotation(id, body);
+      if (mounted) setState(() => _editingId = null);
+      ref.invalidate(annotationsProvider(widget.nodeId));
+    } catch (_) {
+      _toast(l.studyViewError);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _delete(String id) async {
+    final l = context.l10n;
+    final ok = await AppConfirmDialog.show(
+      context,
+      title: l.studyNoteDeleteTitle,
+      body: l.studyNoteDeleteBody,
+      confirmLabel: l.studyNoteDelete,
+      danger: true,
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(subjectsDataSourceProvider).deleteAnnotation(id);
+      ref.invalidate(annotationsProvider(widget.nodeId));
+    } catch (_) {
+      _toast(l.studyViewError);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final async = ref.watch(annotationsProvider(widget.nodeId));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Composer de nueva nota.
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              TextField(
+                controller: _newCtrl,
+                minLines: 2,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  hintText: l.studyNoteHint,
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              PremiumButton(
+                label: l.studyNoteAdd,
+                leadingIcon: Icons.add,
+                loading: _busy && _editingId == null,
+                onPressed: _busy ? null : _add,
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: async.when(
+            loading: () => const Center(child: AppLoadingState()),
+            error: (e, _) => AppErrorState(
+              message: l.studyViewError,
+              detail: e.toString(),
+              onRetry: () =>
+                  ref.invalidate(annotationsProvider(widget.nodeId)),
+              retryLabel: l.actionRetry,
+            ),
+            data: (notes) {
+              if (notes.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Text(
+                      l.studyNoteEmpty,
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                );
+              }
+              return ListView.separated(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                itemCount: notes.length,
+                itemBuilder: (ctx, i) => _noteTile(notes[i]),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: AppSpacing.xs),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _noteTile(Annotation note) {
+    final l = context.l10n;
+    final editing = _editingId == note.id;
+    return PremiumCard(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: editing
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                TextField(
+                  controller: _editCtrl,
+                  minLines: 2,
+                  maxLines: 6,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: _busy
+                          ? null
+                          : () => setState(() => _editingId = null),
+                      child: Text(l.actionCancel),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    FilledButton(
+                      onPressed: _busy ? null : () => _saveEdit(note.id),
+                      child: Text(l.actionSave),
+                    ),
+                  ],
+                ),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: SelectableText(
+                    note.body,
+                    style: context.textTheme.bodyMedium?.copyWith(height: 1.4),
+                  ),
+                ),
+                IconButton(
+                  tooltip: l.studyNoteEdit,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  onPressed: _busy
+                      ? null
+                      : () => setState(() {
+                            _editingId = note.id;
+                            _editCtrl.text = note.body;
+                          }),
+                ),
+                IconButton(
+                  tooltip: l.studyNoteDelete,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  onPressed: _busy ? null : () => _delete(note.id),
+                ),
+              ],
             ),
     );
   }

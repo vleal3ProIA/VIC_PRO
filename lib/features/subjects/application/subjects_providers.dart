@@ -37,6 +37,12 @@ final aiContentNodeIdsProvider =
   return ref.watch(subjectsDataSourceProvider).listAiNodeIds(subjectId);
 });
 
+/// Notas del usuario de una sección del índice (por nodo).
+final annotationsProvider =
+    FutureProvider.family<List<Annotation>, String>((ref, nodeId) {
+  return ref.watch(subjectsDataSourceProvider).listAnnotations(nodeId);
+});
+
 /// Clave (nodo, tipo de vista) para cachear contenido de nodo.
 typedef NodeViewKey = ({String nodeId, String kind});
 
