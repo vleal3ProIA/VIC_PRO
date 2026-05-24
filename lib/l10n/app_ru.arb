@@ -80,6 +80,11 @@
   "studyMockWrong": "Ошибки",
   "studyMockBlank": "Пусто",
   "studyMockReview": "Посмотреть ответы",
+  "studioProgress": "Прогресс",
+  "studyProgressStreak": "Серия {days} дней",
+  "studyProgressSections": "Изученные разделы",
+  "studyProgressFlashcards": "Освоенные карточки",
+  "studyProgressQuiz": "Точность теста",
 
   "homeSubjectsTitle": "Мои материалы",
   "homeSubjectsSubtitle": "Загрузите материал, и ИИ сделает из него конспекты и тесты.",

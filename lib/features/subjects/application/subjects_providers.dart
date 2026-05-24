@@ -66,6 +66,32 @@ final cramProvider = FutureProvider.family<String?, String>((ref, subjectId) {
   return ref.watch(subjectsDataSourceProvider).getCram(subjectId);
 });
 
+/// Racha de estudio: días consecutivos (terminando hoy o ayer) + el conjunto
+/// de días estudiados ('yyyy-mm-dd') para un mini-calendario.
+typedef StudyStreak = ({int current, Set<String> days});
+
+String _ymd(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}-'
+    '${d.day.toString().padLeft(2, '0')}';
+
+final studyStreakProvider = FutureProvider<StudyStreak>((ref) async {
+  final days = await ref.watch(subjectsDataSourceProvider).listStudyDays();
+  final set = {for (final d in days) _ymd(d)};
+  final today = DateTime.now();
+  final t0 = DateTime(today.year, today.month, today.day);
+  // La racha cuenta hacia atrás desde hoy; si hoy aún no estudió, desde ayer.
+  var cursor = set.contains(_ymd(t0))
+      ? t0
+      : t0.subtract(const Duration(days: 1));
+  var streak = 0;
+  while (set.contains(_ymd(cursor))) {
+    streak++;
+    cursor = cursor.subtract(const Duration(days: 1));
+  }
+  return (current: streak, days: set);
+});
+
 /// Clave (nodo, tipo de vista) para cachear contenido de nodo.
 typedef NodeViewKey = ({String nodeId, String kind});
 

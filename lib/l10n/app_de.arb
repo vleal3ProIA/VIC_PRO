@@ -80,6 +80,11 @@
   "studyMockWrong": "Falsch",
   "studyMockBlank": "Leer",
   "studyMockReview": "Antworten ansehen",
+  "studioProgress": "Fortschritt",
+  "studyProgressStreak": "{days}-Tage-Serie",
+  "studyProgressSections": "Bearbeitete Abschnitte",
+  "studyProgressFlashcards": "Beherrschte Lernkarten",
+  "studyProgressQuiz": "Quiz-Trefferquote",
 
   "homeSubjectsTitle": "Meine Lernsets",
   "homeSubjectsSubtitle": "Lade dein Material hoch und die KI macht Zusammenfassungen und Tests daraus.",

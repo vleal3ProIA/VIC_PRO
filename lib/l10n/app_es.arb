@@ -80,6 +80,11 @@
   "studyMockWrong": "Fallos",
   "studyMockBlank": "En blanco",
   "studyMockReview": "Revisar respuestas",
+  "studioProgress": "Progreso",
+  "studyProgressStreak": "Racha de {days} días",
+  "studyProgressSections": "Secciones trabajadas",
+  "studyProgressFlashcards": "Flashcards dominadas",
+  "studyProgressQuiz": "Acierto en test",
 
   "homeSubjectsTitle": "Mis temarios",
   "homeSubjectsSubtitle": "Sube tu material y la IA lo convierte en resúmenes y tests.",

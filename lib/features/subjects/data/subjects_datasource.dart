@@ -7,6 +7,8 @@
 // Edge Function `ingest-document` que procesa el archivo por visión.
 // ============================================================================
 
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/subject.dart';
@@ -348,6 +350,42 @@ class SubjectsDataSource {
       'due_at': due.toUtc().toIso8601String(),
       'last_reviewed_at': now.toUtc().toIso8601String(),
     }).eq('id', c.id);
+    unawaited(recordStudyToday());
+  }
+
+  // ─────────────────── Actividad / racha (Fase 3) ───────────────────
+
+  static String _ymd(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  /// Marca "hoy" como día estudiado (idempotente). Best-effort, no bloquea.
+  Future<void> recordStudyToday() async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return;
+    try {
+      await _client.from('study_activity').upsert(
+        {'user_id': uid, 'day': _ymd(DateTime.now())},
+        onConflict: 'user_id,day',
+        ignoreDuplicates: true,
+      );
+    } catch (_) {
+      // best-effort
+    }
+  }
+
+  /// Días en los que el usuario estudió (recientes primero, máx 180).
+  Future<List<DateTime>> listStudyDays() async {
+    final data = await _client
+        .from('study_activity')
+        .select('day')
+        .order('day', ascending: false)
+        .limit(180);
+    return (data as List)
+        .map((e) => DateTime.tryParse((e as Map)['day'].toString()))
+        .whereType<DateTime>()
+        .toList(growable: false);
   }
 
   // ─────────────────── Cuestionario (Fase 3) ───────────────────
@@ -402,6 +440,7 @@ class SubjectsDataSource {
       'times_seen': q.timesSeen + 1,
       'times_correct': q.timesCorrect + (correct ? 1 : 0),
     }).eq('id', q.id);
+    unawaited(recordStudyToday());
   }
 
   // ─────────────────── Chat / preguntas a la IA (Fase 3) ───────────────────

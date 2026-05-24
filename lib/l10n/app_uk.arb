@@ -80,6 +80,11 @@
   "studyMockWrong": "Помилки",
   "studyMockBlank": "Порожні",
   "studyMockReview": "Переглянути відповіді",
+  "studioProgress": "Прогрес",
+  "studyProgressStreak": "Серія {days} днів",
+  "studyProgressSections": "Опрацьовані розділи",
+  "studyProgressFlashcards": "Опановані картки",
+  "studyProgressQuiz": "Точність тесту",
 
   "homeSubjectsTitle": "Мої матеріали",
   "homeSubjectsSubtitle": "Завантажте матеріал, і ШІ зробить із нього конспекти й тести.",

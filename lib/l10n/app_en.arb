@@ -83,6 +83,12 @@
   "studyMockWrong": "Wrong",
   "studyMockBlank": "Blank",
   "studyMockReview": "Review answers",
+  "studioProgress": "Progress",
+  "studyProgressStreak": "{days}-day streak",
+  "@studyProgressStreak": { "placeholders": { "days": { "type": "int" } } },
+  "studyProgressSections": "Sections studied",
+  "studyProgressFlashcards": "Flashcards mastered",
+  "studyProgressQuiz": "Quiz accuracy",
 
   "homeSubjectsTitle": "My study sets",
   "homeSubjectsSubtitle": "Upload your material and the AI turns it into summaries and tests.",

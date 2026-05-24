@@ -1350,7 +1350,17 @@ class _NodeViewState extends ConsumerState<_NodeView> {
 
 // ─────────────────────────────── Columna ESTUDIO ────────────────────────────
 
-enum _StudioTool { home, notes, flashcards, mindmap, quiz, guide, exam, mock }
+enum _StudioTool {
+  home,
+  notes,
+  flashcards,
+  mindmap,
+  quiz,
+  guide,
+  exam,
+  mock,
+  progress,
+}
 
 class _StudioColumn extends StatefulWidget {
   const _StudioColumn({
@@ -1384,6 +1394,7 @@ class _StudioColumnState extends State<_StudioColumn> {
     final inGuide = _tool == _StudioTool.guide;
     final inExam = _tool == _StudioTool.exam;
     final inMock = _tool == _StudioTool.mock;
+    final inProgress = _tool == _StudioTool.progress;
 
     final String title;
     final IconData leading;
@@ -1408,6 +1419,9 @@ class _StudioColumnState extends State<_StudioColumn> {
     } else if (inMock) {
       title = l.studioMock;
       leading = Icons.timer_outlined;
+    } else if (inProgress) {
+      title = l.studioProgress;
+      leading = Icons.insights_outlined;
     } else {
       title = l.studioTitle;
       leading = Icons.auto_awesome;
@@ -1436,6 +1450,8 @@ class _StudioColumnState extends State<_StudioColumn> {
       );
     } else if (inMock) {
       body = _MockExamView(subjectId: widget.subjectId);
+    } else if (inProgress) {
+      body = _ProgressView(subjectId: widget.subjectId);
     } else {
       body = _studioGrid(context);
     }
@@ -1444,7 +1460,14 @@ class _StudioColumnState extends State<_StudioColumn> {
       title: title,
       leading: leading,
       actions: [
-        if (inNotes || inFlash || inMind || inQuiz || inGuide || inExam || inMock)
+        if (inNotes ||
+            inFlash ||
+            inMind ||
+            inQuiz ||
+            inGuide ||
+            inExam ||
+            inMock ||
+            inProgress)
           IconButton(
             tooltip: l.actionCancel,
             visualDensity: VisualDensity.compact,
@@ -1497,6 +1520,11 @@ class _StudioColumnState extends State<_StudioColumn> {
         icon: Icons.timer_outlined,
         label: l.studioMock,
         onTap: () => setState(() => _tool = _StudioTool.mock),
+      ),
+      _StudioTile(
+        icon: Icons.insights_outlined,
+        label: l.studioProgress,
+        onTap: () => setState(() => _tool = _StudioTool.progress),
       ),
     ];
     return GridView.count(
@@ -1557,6 +1585,134 @@ class _StudioTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Progreso del temario: racha de estudio + barras de avance (secciones
+/// trabajadas, flashcards dominadas, acierto en test).
+class _ProgressView extends ConsumerWidget {
+  const _ProgressView({required this.subjectId});
+
+  final String subjectId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final streakAsync = ref.watch(studyStreakProvider);
+    final nodes =
+        ref.watch(indexNodesProvider(subjectId)).valueOrNull ?? const [];
+    final aiIds = ref.watch(aiContentNodeIdsProvider(subjectId)).valueOrNull ??
+        const <String>{};
+    final cards =
+        ref.watch(flashcardsProvider(subjectId)).valueOrNull ?? const [];
+    final quiz =
+        ref.watch(quizQuestionsProvider(subjectId)).valueOrNull ?? const [];
+
+    final sections = nodes.where((n) => n.parentId != null).toList();
+    final sectionsDone = sections.where((n) => aiIds.contains(n.id)).length;
+    final mastered = cards.where((c) => c.reps >= 2).length;
+    var seen = 0;
+    var ok = 0;
+    for (final q in quiz) {
+      seen += q.timesSeen;
+      ok += q.timesCorrect;
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      children: [
+        // ─── Racha ───
+        streakAsync.when(
+          loading: () => const SizedBox(
+            height: 24,
+            child: Center(child: AppLoadingState()),
+          ),
+          error: (_, __) => const SizedBox.shrink(),
+          data: (s) => Row(
+            children: [
+              Icon(Icons.local_fire_department,
+                  color: s.current > 0 ? Colors.orange : scheme.onSurfaceVariant,),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                l.studyProgressStreak(s.current),
+                style: context.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const Spacer(),
+              ..._last14(context, s.days),
+            ],
+          ),
+        ),
+        const Divider(height: AppSpacing.lg),
+        _bar(context, l.studyProgressSections, sectionsDone, sections.length),
+        const SizedBox(height: AppSpacing.md),
+        _bar(context, l.studyProgressFlashcards, mastered, cards.length),
+        const SizedBox(height: AppSpacing.md),
+        _bar(context, l.studyProgressQuiz, ok, seen, asPercent: true),
+      ],
+    );
+  }
+
+  /// Mini-mapa de los últimos 14 días (punto lleno = estudiado).
+  List<Widget> _last14(BuildContext context, Set<String> days) {
+    final scheme = context.colors;
+    final today = DateTime.now();
+    final out = <Widget>[];
+    for (var i = 13; i >= 0; i--) {
+      final d = today.subtract(Duration(days: i));
+      final ymd = '${d.year.toString().padLeft(4, '0')}-'
+          '${d.month.toString().padLeft(2, '0')}-'
+          '${d.day.toString().padLeft(2, '0')}';
+      final on = days.contains(ymd);
+      out.add(Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 1),
+        child: Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: on ? scheme.primary : scheme.outlineVariant,
+            shape: BoxShape.circle,
+          ),
+        ),
+      ),);
+    }
+    return out;
+  }
+
+  Widget _bar(
+    BuildContext context,
+    String label,
+    int value,
+    int total, {
+    bool asPercent = false,
+  }) {
+    final scheme = context.colors;
+    final frac = total > 0 ? (value / total).clamp(0.0, 1.0) : 0.0;
+    final trailing =
+        asPercent ? '${(frac * 100).round()}%' : '$value/$total';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(label, style: context.textTheme.bodyMedium),
+            ),
+            Text(
+              trailing,
+              style: context.textTheme.labelMedium
+                  ?.copyWith(fontWeight: FontWeight.w700, color: scheme.primary),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(value: frac, minHeight: 8),
+        ),
+      ],
     );
   }
 }
