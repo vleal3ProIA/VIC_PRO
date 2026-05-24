@@ -18,6 +18,7 @@ import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
+import 'package:myapp/core/widgets/markdown_text.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/subjects_providers.dart';
@@ -706,7 +707,7 @@ class _NodeViewState extends ConsumerState<_NodeView> {
         // ORIGINAL: nunca usa IA. Muestra el texto guardado; si no lo hay,
         // ofrece abrir el documento original (PDF).
         if (isOriginal) {
-          if (hasContent) return _scroll(context, content);
+          if (hasContent) return _scroll(context, content, markdown: false);
           return Center(
             child: PremiumButton(
               label: l.studyOpenOriginal,
@@ -750,20 +751,24 @@ class _NodeViewState extends ConsumerState<_NodeView> {
                 label: Text(l.studyRegenerate),
               ),
             ),
-            Expanded(child: _scroll(context, content)),
+            Expanded(child: _scroll(context, content, markdown: true)),
           ],
         );
       },
     );
   }
 
-  Widget _scroll(BuildContext context, String content) {
+  /// [markdown] true para Explicado/Resumen (render con encabezados, listas y
+  /// negrita); false para Original (texto verbatim sin interpretar).
+  Widget _scroll(BuildContext context, String content, {required bool markdown}) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.sm),
-      child: SelectableText(
-        content,
-        style: context.textTheme.bodyMedium?.copyWith(height: 1.5),
-      ),
+      child: markdown
+          ? MarkdownText(content)
+          : SelectableText(
+              content,
+              style: context.textTheme.bodyMedium?.copyWith(height: 1.5),
+            ),
     );
   }
 }
