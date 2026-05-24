@@ -16,7 +16,6 @@ import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { captureError, withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
 import { gatherMaterial } from "../_shared/ai/material.ts";
-import type { AiAttachment } from "../_shared/ai/types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -234,14 +233,6 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       .map((d) => d.extracted_text ?? "")
       .filter((t) => t.length > 0)
       .join("\n\n");
-    // Texto completo (unpdf) si lo hay. Si es corto (p.ej. aún no re-ingerido),
-    // construimos el índice adjuntando el PDF por visión para que salga
-    // COMPLETO igualmente; el troceo del original solo se hace si hay texto.
-    const useText = fullText.trim().length > 1000;
-    const forModel = fullText.length > 300000
-      ? fullText.slice(0, 300000)
-      : fullText;
-
     const system =
       "You build a hierarchical table of contents (index) for study material. " +
       "Cover it from start to end: every chapter/topic and the FINEST unit as " +
@@ -253,30 +244,27 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       "(max ~80 chars), so it can be located. Folders need only `title`. " +
       "Titles concise and in the SAME language as the material. No commentary.";
 
-    let messages: Array<{ role: "user"; content: string }>;
-    let attachments: AiAttachment[] | undefined;
-    if (useText) {
-      messages = [{ role: "user", content: "Material:\n\n" + forModel }];
-      attachments = undefined;
-    } else {
-      const mat = await gatherMaterial(admin, subject.id);
-      if (!mat.textContext && mat.attachments.length === 0) {
-        throw new Error("no_ready_documents");
-      }
-      messages = [{
-        role: "user",
-        content: mat.textContext
-          ? "Material:\n\n" + mat.textContext
-          : "Build the index from the attached document(s).",
-      }];
-      attachments = mat.attachments.length > 0 ? mat.attachments : undefined;
+    // El índice SIEMPRE se construye leyendo el documento (visión del PDF +
+    // texto de .txt) para que salga COMPLETO. El troceo del original usa el
+    // texto guardado (unpdf) si lo hay.
+    const mat = await gatherMaterial(admin, subject.id);
+    if (
+      !mat.textContext && mat.attachments.length === 0 &&
+      fullText.trim().length === 0
+    ) {
+      throw new Error("no_ready_documents");
     }
 
     const result = await runCompletion(admin, {
       task: "index",
       system,
-      messages,
-      attachments,
+      messages: [{
+        role: "user",
+        content: mat.textContext
+          ? "Material:\n\n" + mat.textContext
+          : "Build the index from the attached document(s).",
+      }],
+      attachments: mat.attachments.length > 0 ? mat.attachments : undefined,
       maxOutputTokens: 8192,
       temperature: 0.2,
       userId: subject.user_id,
@@ -286,9 +274,10 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
     const raw = parseNodes(result.text);
     if (raw.length === 0) throw new Error("empty_index");
 
-    // Árbol interno. Solo troceamos el original si tenemos el texto completo.
+    // Troceo del original (best-effort) con el texto guardado, si lo hay.
+    const hasFullText = fullText.trim().length > 0;
     const tree = toPTree(raw);
-    if (useText) {
+    if (hasFullText) {
       const leaves: PNode[] = [];
       collectLeaves(tree, leaves);
       assignLeafRanges(leaves, fullText);
@@ -309,7 +298,7 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       .select("id")
       .single();
     if (rootErr || !rootRow) throw new Error("root_insert_failed");
-    if (useText) {
+    if (hasFullText) {
       await storeOriginal(admin, subject, rootRow.id as string, fullText);
     }
     await insertTree(admin, subject, tree, rootRow.id as string, 1, fullText);
