@@ -15,6 +15,7 @@ import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
 import { gatherMaterial } from "../_shared/ai/material.ts";
+import type { AiAttachment } from "../_shared/ai/types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -131,7 +132,7 @@ Deno.serve(withSentry("generate-views", async (req) => {
   });
   if (!rateOk) return json({ error: "rate_limited" }, 429);
 
-  // Idioma del temario + material completo como contexto.
+  // Idioma del temario.
   const { data: subj } = await admin
     .from("subjects")
     .select("language")
@@ -139,12 +140,30 @@ Deno.serve(withSentry("generate-views", async (req) => {
     .maybeSingle();
   const language = (subj as { language: string | null } | null)?.language ?? null;
 
-  // Material completo (PDF/imagen como adjunto + texto de .txt).
-  const { textContext, attachments } = await gatherMaterial(
-    admin,
-    node.subject_id,
-  );
-  if (!textContext && attachments.length === 0) {
+  // Material para la vista. Preferimos el TEXTO de la sección (el 'original'
+  // guardado al construir el índice): así CUALQUIER proveedor (incluido Groq)
+  // puede generarla y el fallback gratis->pago funciona. Re-adjuntar el PDF por
+  // visión limitaría a Gemini/Anthropic (sin fallback si se agota la cuota).
+  // Solo si no hay texto en ningún sitio caemos a visión (PDF adjunto).
+  const { data: orig } = await admin
+    .from("node_content")
+    .select("content")
+    .eq("node_id", node.id)
+    .eq("kind", "original")
+    .maybeSingle();
+  let textContext =
+    ((orig as { content: string | null } | null)?.content ?? "").trim();
+  let attachments: AiAttachment[] = [];
+  if (textContext.length < 20) {
+    const mat = await gatherMaterial(admin, node.subject_id);
+    if (mat.textContext.trim().length > 0) {
+      textContext = mat.textContext;
+    } else {
+      textContext = "";
+      attachments = mat.attachments;
+    }
+  }
+  if (textContext.length === 0 && attachments.length === 0) {
     return json({ error: "no_ready_documents" }, 409);
   }
 
