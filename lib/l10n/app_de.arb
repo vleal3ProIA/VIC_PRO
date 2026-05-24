@@ -52,6 +52,9 @@
   "studyTabChat": "Chat",
   "studyChatEmpty": "Frag die KI alles über dieses Material. Sie antwortet anhand deiner Dokumente.",
   "studyChatSend": "Senden",
+  "studyChatClear": "Leeren",
+  "studyChatClearTitle": "Unterhaltung löschen?",
+  "studyChatClearBody": "Dadurch wird der gesamte Chat dieses Lernsets gelöscht.",
 
   "homeSubjectsTitle": "Meine Lernsets",
   "homeSubjectsSubtitle": "Lade dein Material hoch und die KI macht Zusammenfassungen und Tests daraus.",

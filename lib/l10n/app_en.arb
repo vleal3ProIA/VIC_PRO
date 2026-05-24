@@ -52,6 +52,9 @@
   "studyTabChat": "Chat",
   "studyChatEmpty": "Ask the AI anything about this material. It answers using your documents.",
   "studyChatSend": "Send",
+  "studyChatClear": "Clear",
+  "studyChatClearTitle": "Clear conversation?",
+  "studyChatClearBody": "This will delete the whole chat for this study set.",
 
   "homeSubjectsTitle": "My study sets",
   "homeSubjectsSubtitle": "Upload your material and the AI turns it into summaries and tests.",

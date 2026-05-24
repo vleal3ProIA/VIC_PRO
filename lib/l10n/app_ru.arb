@@ -52,6 +52,9 @@
   "studyTabChat": "Чат",
   "studyChatEmpty": "Спросите ИИ что угодно об этом материале. Он отвечает по вашим документам.",
   "studyChatSend": "Отправить",
+  "studyChatClear": "Очистить",
+  "studyChatClearTitle": "Очистить переписку?",
+  "studyChatClearBody": "Будет удалён весь чат этого материала.",
 
   "homeSubjectsTitle": "Мои материалы",
   "homeSubjectsSubtitle": "Загрузите материал, и ИИ сделает из него конспекты и тесты.",

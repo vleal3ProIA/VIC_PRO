@@ -52,6 +52,9 @@
   "studyTabChat": "Chat",
   "studyChatEmpty": "Pergunta à IA o que quiseres sobre este material. Responde usando os teus documentos.",
   "studyChatSend": "Enviar",
+  "studyChatClear": "Limpar",
+  "studyChatClearTitle": "Limpar a conversa?",
+  "studyChatClearBody": "Isto vai apagar todo o chat deste tema.",
 
   "homeSubjectsTitle": "Os meus temas",
   "homeSubjectsSubtitle": "Carrega o teu material e a IA transforma-o em resumos e testes.",

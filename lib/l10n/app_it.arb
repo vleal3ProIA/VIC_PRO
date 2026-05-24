@@ -52,6 +52,9 @@
   "studyTabChat": "Chat",
   "studyChatEmpty": "Chiedi all'IA qualsiasi cosa su questo materiale. Risponde usando i tuoi documenti.",
   "studyChatSend": "Invia",
+  "studyChatClear": "Svuota",
+  "studyChatClearTitle": "Svuotare la conversazione?",
+  "studyChatClearBody": "Verrà eliminata tutta la chat di questo corso.",
 
   "homeSubjectsTitle": "I miei corsi",
   "homeSubjectsSubtitle": "Carica il tuo materiale e l'IA lo trasforma in riassunti e test.",

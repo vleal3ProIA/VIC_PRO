@@ -856,6 +856,53 @@ class _ChatViewState extends ConsumerState<_ChatView> {
   final _scroll = ScrollController();
   final List<_ChatMsg> _messages = [];
   bool _busy = false;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final msgs = await ref
+          .read(subjectsDataSourceProvider)
+          .listChatMessages(widget.subjectId);
+      if (mounted) {
+        setState(() {
+          _messages
+            ..clear()
+            ..addAll(msgs);
+          _loading = false;
+        });
+        _scrollToEnd();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _clear() async {
+    if (_busy || _messages.isEmpty) return;
+    final l = context.l10n;
+    final ok = await AppConfirmDialog.show(
+      context,
+      title: l.studyChatClearTitle,
+      body: l.studyChatClearBody,
+      confirmLabel: l.studyNoteDelete,
+      danger: true,
+    );
+    if (ok != true || !mounted) return;
+    setState(_messages.clear);
+    try {
+      await ref
+          .read(subjectsDataSourceProvider)
+          .clearChatMessages(widget.subjectId);
+    } catch (_) {
+      // best-effort
+    }
+  }
 
   @override
   void dispose() {
@@ -891,16 +938,29 @@ class _ChatViewState extends ConsumerState<_ChatView> {
       _ctrl.clear();
     });
     _scrollToEnd();
+    final ds = ref.read(subjectsDataSourceProvider);
     try {
-      final answer = await ref.read(subjectsDataSourceProvider).askSubject(
-            subjectId: widget.subjectId,
-            nodeId: widget.nodeId,
-            question: q,
-            history: history,
-          );
+      // Persistimos la pregunta antes de llamar a la IA (así se guarda aunque
+      // la respuesta falle).
+      await ds.addChatMessage(
+        subjectId: widget.subjectId,
+        fromUser: true,
+        content: q,
+      );
+      final answer = await ds.askSubject(
+        subjectId: widget.subjectId,
+        nodeId: widget.nodeId,
+        question: q,
+        history: history,
+      );
       if (mounted) {
         setState(() => _messages.add((fromUser: false, text: answer)));
       }
+      await ds.addChatMessage(
+        subjectId: widget.subjectId,
+        fromUser: false,
+        content: answer,
+      );
     } on SubjectsException catch (e) {
       final detail =
           e.detail != null && e.detail!.isNotEmpty ? ' (${e.detail})' : '';
@@ -923,9 +983,19 @@ class _ChatViewState extends ConsumerState<_ChatView> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    if (_loading) return const Center(child: AppLoadingState());
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (_messages.isNotEmpty)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: _busy ? null : _clear,
+              icon: const Icon(Icons.delete_sweep_outlined, size: 16),
+              label: Text(l.studyChatClear),
+            ),
+          ),
         Expanded(
           child: _messages.isEmpty && !_busy
               ? Center(

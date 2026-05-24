@@ -406,6 +406,45 @@ class SubjectsDataSource {
 
   // ─────────────────── Chat / preguntas a la IA (Fase 3) ───────────────────
 
+  /// Historial del chat de un temario (cronológico).
+  Future<List<({bool fromUser, String text})>> listChatMessages(
+    String subjectId,
+  ) async {
+    final data = await _client
+        .from('chat_messages')
+        .select('role, content')
+        .eq('subject_id', subjectId)
+        .order('created_at');
+    return (data as List)
+        .map((e) {
+          final m = e as Map;
+          return (
+            fromUser: (m['role'] as String?) == 'user',
+            text: (m['content'] as String?) ?? '',
+          );
+        })
+        .toList(growable: false);
+  }
+
+  /// Persiste un turno del chat.
+  Future<void> addChatMessage({
+    required String subjectId,
+    required bool fromUser,
+    required String content,
+  }) async {
+    await _client.from('chat_messages').insert({
+      'subject_id': subjectId,
+      'user_id': _uid,
+      'role': fromUser ? 'user' : 'assistant',
+      'content': content,
+    });
+  }
+
+  /// Borra toda la conversación de un temario.
+  Future<void> clearChatMessages(String subjectId) async {
+    await _client.from('chat_messages').delete().eq('subject_id', subjectId);
+  }
+
   /// Pregunta a la IA sobre el temario (o la sección [nodeId]). [history] son
   /// los turnos previos ({role:'user'|'assistant', content}). Devuelve la
   /// respuesta en texto (Markdown).

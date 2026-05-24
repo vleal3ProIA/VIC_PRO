@@ -52,6 +52,9 @@
   "studyTabChat": "Чат",
   "studyChatEmpty": "Запитайте ШІ будь-що про цей матеріал. Він відповідає за вашими документами.",
   "studyChatSend": "Надіслати",
+  "studyChatClear": "Очистити",
+  "studyChatClearTitle": "Очистити розмову?",
+  "studyChatClearBody": "Буде видалено весь чат цього матеріалу.",
 
   "homeSubjectsTitle": "Мої матеріали",
   "homeSubjectsSubtitle": "Завантажте матеріал, і ШІ зробить із нього конспекти й тести.",
