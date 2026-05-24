@@ -99,70 +99,73 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
     final l = context.l10n;
     final async = ref.watch(subjectsListProvider);
 
-    // Fondo del workspace distinto al `surface` de las cards: así los márgenes
-    // y los huecos entre columnas se VEN (las cards "flotan" sobre este tono).
-    return ColoredBox(
-      color: context.colors.surfaceContainerLowest,
-      child: async.when(
-        loading: () => const Center(child: AppLoadingState()),
-        error: (e, _) => Center(
-          child: AppErrorState(
-            message: l.subjectsLoadError,
-            detail: e.toString(),
-            onRetry: () => ref.invalidate(subjectsListProvider),
-            retryLabel: l.actionRetry,
+    // Fondo oscuro SOLO detrás de las columnas (no en la barra superior, que
+    // queda transparente sobre el fondo de la app). Así las cards "flotan" y
+    // se ven los huecos, pero la barra del tema + botón no parece una card.
+    Widget workspace(Widget child) => Expanded(
+          child: ColoredBox(
+            color: context.colors.surfaceContainerLowest,
+            child: child,
           ),
+        );
+
+    return async.when(
+      loading: () => const Center(child: AppLoadingState()),
+      error: (e, _) => Center(
+        child: AppErrorState(
+          message: l.subjectsLoadError,
+          detail: e.toString(),
+          onRetry: () => ref.invalidate(subjectsListProvider),
+          retryLabel: l.actionRetry,
         ),
-        data: (subjects) {
-          if (subjects.isEmpty) {
-            return Column(
-              children: [
-                _TopBar(
-                  subjects: const [],
-                  selected: null,
-                  busy: _busy,
-                  onSelect: _select,
-                  onAdd: _busy ? null : _createSubject,
-                  onDelete: null,
-                ),
-                const Divider(height: 1),
-                Expanded(
-                  child: AppEmptyState(
-                    icon: Icons.menu_book_outlined,
-                    title: l.subjectsEmptyTitle,
-                    message: l.subjectsEmptyBody,
-                  ),
-                ),
-              ],
-            );
-          }
-
-          final selected = subjects.firstWhere(
-            (s) => s.id == _selectedId,
-            orElse: () => subjects.first,
-          );
-
+      ),
+      data: (subjects) {
+        if (subjects.isEmpty) {
           return Column(
             children: [
               _TopBar(
-                subjects: subjects,
-                selected: selected,
+                subjects: const [],
+                selected: null,
                 busy: _busy,
                 onSelect: _select,
                 onAdd: _busy ? null : _createSubject,
-                onDelete: _busy ? null : () => _deleteSubject(selected),
+                onDelete: null,
               ),
-              const Divider(height: 1),
-              Expanded(
-                child: SubjectStudyPanel(
-                  key: ValueKey('study_${selected.id}'),
-                  subject: selected,
+              workspace(
+                AppEmptyState(
+                  icon: Icons.menu_book_outlined,
+                  title: l.subjectsEmptyTitle,
+                  message: l.subjectsEmptyBody,
                 ),
               ),
             ],
           );
-        },
-      ),
+        }
+
+        final selected = subjects.firstWhere(
+          (s) => s.id == _selectedId,
+          orElse: () => subjects.first,
+        );
+
+        return Column(
+          children: [
+            _TopBar(
+              subjects: subjects,
+              selected: selected,
+              busy: _busy,
+              onSelect: _select,
+              onAdd: _busy ? null : _createSubject,
+              onDelete: _busy ? null : () => _deleteSubject(selected),
+            ),
+            workspace(
+              SubjectStudyPanel(
+                key: ValueKey('study_${selected.id}'),
+                subject: selected,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
