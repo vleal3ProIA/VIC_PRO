@@ -43,6 +43,12 @@
   "studioFlashReviewAgain": "Erneut wiederholen",
   "studioMindmapEmpty": "Erstelle zuerst den Index, um die Mindmap zu sehen.",
   "studioMindmapReset": "Zentrieren",
+  "studioQuizGenerate": "Quiz erstellen",
+  "studioQuizEmpty": "Noch kein Quiz.",
+  "studioQuizNext": "Weiter",
+  "studioQuizFinish": "Fertig",
+  "studioQuizResult": "Dein Ergebnis",
+  "studioQuizRetry": "Erneut versuchen",
 
   "homeSubjectsTitle": "Meine Lernsets",
   "homeSubjectsSubtitle": "Lade dein Material hoch und die KI macht Zusammenfassungen und Tests daraus.",

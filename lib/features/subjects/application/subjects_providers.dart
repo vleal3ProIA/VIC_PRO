@@ -49,6 +49,12 @@ final flashcardsProvider =
   return ref.watch(subjectsDataSourceProvider).listFlashcards(subjectId);
 });
 
+/// Preguntas del cuestionario de un temario.
+final quizQuestionsProvider =
+    FutureProvider.family<List<QuizQuestion>, String>((ref, subjectId) {
+  return ref.watch(subjectsDataSourceProvider).listQuizQuestions(subjectId);
+});
+
 /// Clave (nodo, tipo de vista) para cachear contenido de nodo.
 typedef NodeViewKey = ({String nodeId, String kind});
 

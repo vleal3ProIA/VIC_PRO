@@ -43,6 +43,12 @@
   "studioFlashReviewAgain": "Revoir à nouveau",
   "studioMindmapEmpty": "Générez d'abord l'index pour voir la carte mentale.",
   "studioMindmapReset": "Centrer",
+  "studioQuizGenerate": "Générer le questionnaire",
+  "studioQuizEmpty": "Aucun questionnaire pour l'instant.",
+  "studioQuizNext": "Suivant",
+  "studioQuizFinish": "Terminer",
+  "studioQuizResult": "Votre score",
+  "studioQuizRetry": "Réessayer",
 
   "homeSubjectsTitle": "Mes cours",
   "homeSubjectsSubtitle": "Téléversez votre matériel et l'IA en fait des résumés et des tests.",

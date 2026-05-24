@@ -43,6 +43,12 @@
   "studioFlashReviewAgain": "Повторить снова",
   "studioMindmapEmpty": "Сначала создайте оглавление, чтобы увидеть интеллект-карту.",
   "studioMindmapReset": "Центрировать",
+  "studioQuizGenerate": "Создать тест",
+  "studioQuizEmpty": "Теста пока нет.",
+  "studioQuizNext": "Далее",
+  "studioQuizFinish": "Завершить",
+  "studioQuizResult": "Ваш результат",
+  "studioQuizRetry": "Пройти снова",
 
   "homeSubjectsTitle": "Мои материалы",
   "homeSubjectsSubtitle": "Загрузите материал, и ИИ сделает из него конспекты и тесты.",

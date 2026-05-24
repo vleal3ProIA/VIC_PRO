@@ -43,6 +43,12 @@
   "studioFlashReviewAgain": "Ripassa di nuovo",
   "studioMindmapEmpty": "Genera prima l'indice per vedere la mappa mentale.",
   "studioMindmapReset": "Centra",
+  "studioQuizGenerate": "Genera quiz",
+  "studioQuizEmpty": "Ancora nessun quiz.",
+  "studioQuizNext": "Avanti",
+  "studioQuizFinish": "Termina",
+  "studioQuizResult": "Il tuo punteggio",
+  "studioQuizRetry": "Riprova",
 
   "homeSubjectsTitle": "I miei corsi",
   "homeSubjectsSubtitle": "Carica il tuo materiale e l'IA lo trasforma in riassunti e test.",

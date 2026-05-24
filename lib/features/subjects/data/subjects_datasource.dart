@@ -350,6 +350,60 @@ class SubjectsDataSource {
     }).eq('id', c.id);
   }
 
+  // ─────────────────── Cuestionario (Fase 3) ───────────────────
+
+  /// Genera (vía EF) un cuestionario tipo test. Reemplaza el lote anterior del
+  /// mismo ámbito. Devuelve cuántas preguntas creó.
+  Future<int> generateQuiz({
+    required String subjectId,
+    String? nodeId,
+    int count = 8,
+  }) async {
+    try {
+      final res = await _client.functions.invoke(
+        'generate-quiz',
+        body: {
+          'subject_id': subjectId,
+          if (nodeId != null) 'node_id': nodeId,
+          'count': count,
+        },
+      );
+      final data = res.data;
+      if (data is! Map) throw const SubjectsException('invalid_response');
+      final p = data.cast<String, dynamic>();
+      if (p['ok'] != true) {
+        throw SubjectsException(
+          (p['error'] as String?) ?? 'generation_failed',
+          detail: p['detail'] as String?,
+        );
+      }
+      return (p['count'] as num?)?.toInt() ?? 0;
+    } on FunctionException catch (e) {
+      throw SubjectsException(_efError(e));
+    }
+  }
+
+  /// Preguntas del cuestionario de un temario.
+  Future<List<QuizQuestion>> listQuizQuestions(String subjectId) async {
+    final data = await _client
+        .from('quiz_questions')
+        .select()
+        .eq('subject_id', subjectId)
+        .order('created_at');
+    return (data as List)
+        .cast<Map<String, dynamic>>()
+        .map(QuizQuestion.fromMap)
+        .toList(growable: false);
+  }
+
+  /// Registra el resultado de responder una pregunta (estadística de dominio).
+  Future<void> recordQuizAnswer(QuizQuestion q, {required bool correct}) async {
+    await _client.from('quiz_questions').update({
+      'times_seen': q.timesSeen + 1,
+      'times_correct': q.timesCorrect + (correct ? 1 : 0),
+    }).eq('id', q.id);
+  }
+
   /// URL firmada (1 h) del primer documento del temario, para abrir el
   /// original tal cual. `null` si no hay documentos.
   Future<String?> originalDocumentUrl(String subjectId) async {

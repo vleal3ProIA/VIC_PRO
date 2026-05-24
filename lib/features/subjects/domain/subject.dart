@@ -171,6 +171,46 @@ class Flashcard {
   }
 }
 
+/// Pregunta de opción múltiple del cuestionario (espejo de `quiz_questions`).
+class QuizQuestion {
+  const QuizQuestion({
+    required this.id,
+    required this.subjectId,
+    required this.question,
+    required this.options,
+    required this.correctIndex,
+    this.explanation,
+    this.timesSeen = 0,
+    this.timesCorrect = 0,
+  });
+
+  factory QuizQuestion.fromMap(Map<String, dynamic> m) {
+    final rawOpts = m['options'];
+    final opts = rawOpts is List
+        ? rawOpts.map((e) => e.toString()).toList(growable: false)
+        : const <String>[];
+    return QuizQuestion(
+      id: m['id'] as String,
+      subjectId: m['subject_id'] as String,
+      question: (m['question'] as String?) ?? '',
+      options: opts,
+      correctIndex: (m['correct_index'] as num?)?.toInt() ?? 0,
+      explanation: m['explanation'] as String?,
+      timesSeen: (m['times_seen'] as num?)?.toInt() ?? 0,
+      timesCorrect: (m['times_correct'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  final String id;
+  final String subjectId;
+  final String question;
+  final List<String> options;
+  final int correctIndex;
+  final String? explanation;
+  final int timesSeen;
+  final int timesCorrect;
+}
+
 class SubjectDocument {
   const SubjectDocument({
     required this.id,

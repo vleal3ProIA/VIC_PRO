@@ -43,6 +43,12 @@
   "studioFlashReviewAgain": "Repasar de nuevo",
   "studioMindmapEmpty": "Genera primero el índice para ver el mapa mental.",
   "studioMindmapReset": "Centrar",
+  "studioQuizGenerate": "Generar cuestionario",
+  "studioQuizEmpty": "Aún no hay cuestionario.",
+  "studioQuizNext": "Siguiente",
+  "studioQuizFinish": "Finalizar",
+  "studioQuizResult": "Tu puntuación",
+  "studioQuizRetry": "Reintentar",
 
   "homeSubjectsTitle": "Mis temarios",
   "homeSubjectsSubtitle": "Sube tu material y la IA lo convierte en resúmenes y tests.",

@@ -1014,7 +1014,7 @@ class _NodeViewState extends ConsumerState<_NodeView> {
 
 // ─────────────────────────────── Columna ESTUDIO ────────────────────────────
 
-enum _StudioTool { home, notes, flashcards, mindmap }
+enum _StudioTool { home, notes, flashcards, mindmap, quiz }
 
 class _StudioColumn extends StatefulWidget {
   const _StudioColumn({
@@ -1040,6 +1040,7 @@ class _StudioColumnState extends State<_StudioColumn> {
     final inNotes = _tool == _StudioTool.notes && widget.nodeId != null;
     final inFlash = _tool == _StudioTool.flashcards;
     final inMind = _tool == _StudioTool.mindmap;
+    final inQuiz = _tool == _StudioTool.quiz;
 
     final String title;
     final IconData leading;
@@ -1052,16 +1053,36 @@ class _StudioColumnState extends State<_StudioColumn> {
     } else if (inMind) {
       title = l.studioMindmap;
       leading = Icons.hub_outlined;
+    } else if (inQuiz) {
+      title = l.studioQuiz;
+      leading = Icons.quiz_outlined;
     } else {
       title = l.studioTitle;
       leading = Icons.auto_awesome;
+    }
+
+    final Widget body;
+    if (inNotes) {
+      body = _NotesView(nodeId: widget.nodeId!, subjectId: widget.subjectId);
+    } else if (inFlash) {
+      body = _FlashcardsView(subjectId: widget.subjectId);
+    } else if (inMind) {
+      body = _MindMapView(
+        subjectId: widget.subjectId,
+        selectedId: widget.nodeId,
+        onSelectNode: widget.onSelectNode,
+      );
+    } else if (inQuiz) {
+      body = _QuizView(subjectId: widget.subjectId);
+    } else {
+      body = _studioGrid(context);
     }
 
     return _ColumnCard(
       title: title,
       leading: leading,
       actions: [
-        if (inNotes || inFlash || inMind)
+        if (inNotes || inFlash || inMind || inQuiz)
           IconButton(
             tooltip: l.actionCancel,
             visualDensity: VisualDensity.compact,
@@ -1069,17 +1090,7 @@ class _StudioColumnState extends State<_StudioColumn> {
             onPressed: () => setState(() => _tool = _StudioTool.home),
           ),
       ],
-      body: inNotes
-          ? _NotesView(nodeId: widget.nodeId!, subjectId: widget.subjectId)
-          : inFlash
-              ? _FlashcardsView(subjectId: widget.subjectId)
-              : inMind
-                  ? _MindMapView(
-                      subjectId: widget.subjectId,
-                      selectedId: widget.nodeId,
-                      onSelectNode: widget.onSelectNode,
-                    )
-                  : _studioGrid(context),
+      body: body,
     );
   }
 
@@ -1103,7 +1114,7 @@ class _StudioColumnState extends State<_StudioColumn> {
       _StudioTile(
         icon: Icons.quiz_outlined,
         label: l.studioQuiz,
-        comingSoon: true,
+        onTap: () => setState(() => _tool = _StudioTool.quiz),
       ),
       _StudioTile(
         icon: Icons.hub_outlined,
@@ -1127,27 +1138,20 @@ class _StudioTile extends StatelessWidget {
     required this.icon,
     required this.label,
     this.enabled = true,
-    this.comingSoon = false,
     this.onTap,
   });
 
   final IconData icon;
   final String label;
   final bool enabled;
-  final bool comingSoon;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final l = context.l10n;
     final scheme = context.colors;
-    final dim = comingSoon || !enabled;
+    final dim = !enabled;
     return InkWell(
-      onTap: comingSoon
-          ? () => ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l.studyComingSoon)),
-              )
-          : onTap,
+      onTap: enabled ? onTap : null,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(
@@ -1173,17 +1177,297 @@ class _StudioTile extends StatelessWidget {
                 color: dim ? scheme.onSurfaceVariant : null,
               ),
             ),
-            if (comingSoon)
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Cuestionario tipo test: responder preguntas con corrección inmediata,
+/// explicación y puntuación final.
+class _QuizView extends ConsumerStatefulWidget {
+  const _QuizView({required this.subjectId});
+
+  final String subjectId;
+
+  @override
+  ConsumerState<_QuizView> createState() => _QuizViewState();
+}
+
+class _QuizViewState extends ConsumerState<_QuizView> {
+  bool _busy = false;
+  int _index = 0;
+  int? _selected;
+  bool _answered = false;
+  int _correct = 0;
+
+  void _reset() {
+    _index = 0;
+    _selected = null;
+    _answered = false;
+    _correct = 0;
+  }
+
+  Future<void> _generate() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final errBg = Theme.of(context).colorScheme.error;
+    try {
+      await ref
+          .read(subjectsDataSourceProvider)
+          .generateQuiz(subjectId: widget.subjectId);
+      if (mounted) setState(_reset);
+      ref.invalidate(quizQuestionsProvider(widget.subjectId));
+    } on SubjectsException catch (e) {
+      final detail =
+          e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: errBg,
+          duration: const Duration(seconds: 8),
+          content: Text('${l.studyViewError} (${e.code})$detail'),
+        ),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _answer(QuizQuestion q, int i) {
+    if (_answered) return;
+    final correct = i == q.correctIndex;
+    setState(() {
+      _selected = i;
+      _answered = true;
+      if (correct) _correct++;
+    });
+    // Estadística best-effort (no bloquea el flujo).
+    ref.read(subjectsDataSourceProvider).recordQuizAnswer(q, correct: correct);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    if (_busy) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: AppSpacing.sm),
+            Text(l.studyGenerating, style: context.textTheme.bodySmall),
+          ],
+        ),
+      );
+    }
+    final async = ref.watch(quizQuestionsProvider(widget.subjectId));
+    return async.when(
+      loading: () => const Center(child: AppLoadingState()),
+      error: (e, _) => AppErrorState(
+        message: l.studyViewError,
+        detail: e.toString(),
+        onRetry: () => ref.invalidate(quizQuestionsProvider(widget.subjectId)),
+        retryLabel: l.actionRetry,
+      ),
+      data: (qs) {
+        if (qs.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l.studioQuizEmpty,
+                    textAlign: TextAlign.center,
+                    style: context.textTheme.bodyMedium
+                        ?.copyWith(color: context.colors.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  PremiumButton(
+                    label: l.studioQuizGenerate,
+                    leadingIcon: Icons.auto_awesome_outlined,
+                    onPressed: _generate,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        if (_index >= qs.length) return _result(context, qs.length);
+
+        final q = qs[_index];
+        final last = _index == qs.length - 1;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.xs,
+                AppSpacing.xs,
+                AppSpacing.xs,
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    '${_index + 1} / ${qs.length}',
+                    style: context.textTheme.labelMedium
+                        ?.copyWith(color: context.colors.onSurfaceVariant),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    tooltip: l.studyRegenerate,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    onPressed: _generate,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      q.question,
+                      style: context.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    for (var i = 0; i < q.options.length; i++)
+                      _option(context, q, i),
+                    if (_answered && (q.explanation?.isNotEmpty ?? false))
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.sm),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(AppSpacing.sm),
+                          decoration: BoxDecoration(
+                            color: context.colors.surfaceContainerHighest
+                                .withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            q.explanation!,
+                            style: context.textTheme.bodySmall
+                                ?.copyWith(height: 1.4),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            if (_answered)
               Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  l.studyComingSoon,
-                  style: context.textTheme.labelSmall
-                      ?.copyWith(color: scheme.onSurfaceVariant),
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton(
+                    onPressed: () => setState(() {
+                      _index++;
+                      _selected = null;
+                      _answered = false;
+                    }),
+                    child: Text(last ? l.studioQuizFinish : l.studioQuizNext),
+                  ),
                 ),
               ),
           ],
+        );
+      },
+    );
+  }
+
+  Widget _option(BuildContext context, QuizQuestion q, int i) {
+    final scheme = context.colors;
+    final isCorrect = i == q.correctIndex;
+    final isSelected = i == _selected;
+    Color border = scheme.outlineVariant;
+    Color? bg;
+    IconData icon = Icons.radio_button_unchecked;
+    Color iconColor = scheme.onSurfaceVariant;
+    if (_answered) {
+      if (isCorrect) {
+        border = Colors.green;
+        bg = Colors.green.withValues(alpha: 0.12);
+        icon = Icons.check_circle;
+        iconColor = Colors.green;
+      } else if (isSelected) {
+        border = scheme.error;
+        bg = scheme.error.withValues(alpha: 0.12);
+        icon = Icons.cancel;
+        iconColor = scheme.error;
+      }
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: InkWell(
+        onTap: _answered ? null : () => _answer(q, i),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: border),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: iconColor),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(q.options[i], style: context.textTheme.bodyMedium),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _result(BuildContext context, int total) {
+    final l = context.l10n;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(l.studioQuizResult, style: context.textTheme.titleSmall),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            '$_correct / $total',
+            style: context.textTheme.headlineMedium
+                ?.copyWith(fontWeight: FontWeight.w800, color: context.colors.primary),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => setState(_reset),
+                icon: const Icon(Icons.replay, size: 16),
+                label: Text(l.studioQuizRetry),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              PremiumButton(
+                label: l.studyRegenerate,
+                leadingIcon: Icons.refresh,
+                onPressed: _generate,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

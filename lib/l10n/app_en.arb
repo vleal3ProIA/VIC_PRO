@@ -43,6 +43,12 @@
   "studioFlashReviewAgain": "Review again",
   "studioMindmapEmpty": "Generate the index first to see the mind map.",
   "studioMindmapReset": "Center",
+  "studioQuizGenerate": "Generate quiz",
+  "studioQuizEmpty": "No quiz yet.",
+  "studioQuizNext": "Next",
+  "studioQuizFinish": "Finish",
+  "studioQuizResult": "Your score",
+  "studioQuizRetry": "Try again",
 
   "homeSubjectsTitle": "My study sets",
   "homeSubjectsSubtitle": "Upload your material and the AI turns it into summaries and tests.",
