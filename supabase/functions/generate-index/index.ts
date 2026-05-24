@@ -15,7 +15,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { captureError, withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
-import { gatherMaterial } from "../_shared/ai/material.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,6 +38,7 @@ interface SubjectRow {
 
 interface IndexNode {
   title?: unknown;
+  anchor?: unknown;
   children?: unknown;
 }
 
@@ -127,49 +127,148 @@ Deno.serve(withSentry("generate-index", async (req) => {
   return json({ ok: true, subject_id: subject.id, status: "generating" }, 202);
 }));
 
+/// Nodo del árbol interno con su rango [start,end) dentro del texto completo.
+interface PNode {
+  title: string;
+  anchor: string | null;
+  children: PNode[];
+  start: number;
+  end: number;
+}
+
+function toPTree(raw: IndexNode[]): PNode[] {
+  const out: PNode[] = [];
+  for (const r of raw) {
+    if (!r || typeof r.title !== "string" || r.title.trim().length === 0) {
+      continue;
+    }
+    const children = Array.isArray(r.children)
+      ? toPTree(r.children as IndexNode[])
+      : [] as PNode[];
+    out.push({
+      title: (r.title as string).slice(0, 300),
+      anchor: typeof r.anchor === "string" ? r.anchor as string : null,
+      children,
+      start: 0,
+      end: 0,
+    });
+  }
+  return out;
+}
+
+function collectLeaves(nodes: PNode[], acc: PNode[]): void {
+  for (const n of nodes) {
+    if (n.children.length === 0) {
+      acc.push(n);
+    } else {
+      collectLeaves(n.children, acc);
+    }
+  }
+}
+
+/// Localiza cada hoja por su anchor (texto verbatim de su cabecera) dentro del
+/// texto completo, con cursor monótono. Cada hoja va desde su posición hasta la
+/// de la siguiente.
+function assignLeafRanges(leaves: PNode[], fullText: string): void {
+  let cursor = 0;
+  for (const leaf of leaves) {
+    const probe = (leaf.anchor ?? leaf.title).trim();
+    let pos = -1;
+    if (probe.length >= 3) {
+      pos = fullText.indexOf(probe, cursor);
+      if (pos < 0) pos = fullText.indexOf(probe.slice(0, 40), cursor);
+    }
+    leaf.start = pos < 0 ? cursor : pos;
+    cursor = leaf.start + 1;
+  }
+  for (let i = 0; i < leaves.length; i++) {
+    leaves[i].end = i + 1 < leaves.length
+      ? leaves[i + 1].start
+      : fullText.length;
+  }
+}
+
+/// Rango de una carpeta = abarca a todas sus hojas descendientes.
+function rollupFolders(nodes: PNode[]): void {
+  for (const n of nodes) {
+    if (n.children.length > 0) {
+      rollupFolders(n.children);
+      const acc: PNode[] = [];
+      collectLeaves([n], acc);
+      if (acc.length > 0) {
+        n.start = Math.min(...acc.map((l) => l.start));
+        n.end = Math.max(...acc.map((l) => l.end));
+      }
+    }
+  }
+}
+
+// deno-lint-ignore no-explicit-any
+async function storeOriginal(
+  admin: any,
+  subject: SubjectRow,
+  nodeId: string,
+  text: string,
+): Promise<void> {
+  const content = text.trim();
+  if (content.length === 0) return;
+  await admin.from("node_content").insert({
+    node_id: nodeId,
+    user_id: subject.user_id,
+    kind: "original",
+    content,
+  });
+}
+
 // deno-lint-ignore no-explicit-any
 async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
   try {
-    // Material completo: PDF/imagen como adjunto (visión, lee el documento
-    // entero) + texto de los .txt. Evita el truncado del texto extraído.
-    const { textContext, attachments } = await gatherMaterial(admin, subject.id);
-    if (!textContext && attachments.length === 0) {
-      throw new Error("no_ready_documents");
-    }
+    const { data: docs } = await admin
+      .from("documents")
+      .select("extracted_text")
+      .eq("subject_id", subject.id)
+      .eq("status", "ready");
+    const fullText = ((docs ?? []) as Array<{ extracted_text: string | null }>)
+      .map((d) => d.extracted_text ?? "")
+      .filter((t) => t.length > 0)
+      .join("\n\n");
+    if (fullText.trim().length === 0) throw new Error("no_ready_documents");
+    const forModel = fullText.length > 300000
+      ? fullText.slice(0, 300000)
+      : fullText;
 
     const system =
       "You build a hierarchical table of contents (index) for study material. " +
-      "Cover the ENTIRE document from the first page to the LAST one: every " +
-      "chapter, topic, theme and section — not just the first ones. Return " +
-      "ONLY minified JSON of the form " +
-      '{"nodes":[{"title":"...","children":[{"title":"..."}]}]}. Use the ' +
-      "natural hierarchy of the material and go DOWN TO THE FINEST unit as the " +
-      "deepest leaves (e.g. for laws: parte > título > capítulo > ARTÍCULO; " +
-      "for books: parte > capítulo > sección). Include EVERY article/section, " +
-      "do not skip any. Titles concise and in the SAME language as the " +
-      "material. Do NOT include any content, only titles. No commentary.";
+      "Cover it from start to end: every chapter/topic and the FINEST unit as " +
+      "the deepest leaves (e.g. for laws: título > capítulo > ARTÍCULO). " +
+      "Return ONLY minified JSON: " +
+      '{"nodes":[{"title":"...","anchor":"...","children":[...]}]}. For LEAF ' +
+      "nodes (no children), `anchor` MUST be the exact verbatim text of the " +
+      "first line/heading of that section, copied literally from the material " +
+      "(max ~80 chars), so it can be located. Folders need only `title`. " +
+      "Titles concise and in the SAME language as the material. No commentary.";
 
     const result = await runCompletion(admin, {
       task: "index",
       system,
-      messages: [{
-        role: "user",
-        content: textContext
-          ? "Material:\n\n" + textContext
-          : "Build the index from the attached document(s).",
-      }],
-      attachments: attachments.length > 0 ? attachments : undefined,
+      messages: [{ role: "user", content: "Material:\n\n" + forModel }],
       maxOutputTokens: 8192,
       temperature: 0.2,
       userId: subject.user_id,
       subjectId: subject.id,
     });
 
-    const nodes = parseNodes(result.text);
-    if (nodes.length === 0) throw new Error("empty_index");
+    const raw = parseNodes(result.text);
+    if (raw.length === 0) throw new Error("empty_index");
 
-    // Nodo raíz = nombre del temario (depth 0). Al pulsarlo se mostrará el
-    // documento original completo. El resto del índice cuelga de él.
+    // Árbol interno con rangos de carácter para trocear el original.
+    const tree = toPTree(raw);
+    const leaves: PNode[] = [];
+    collectLeaves(tree, leaves);
+    assignLeafRanges(leaves, fullText);
+    rollupFolders(tree);
+
+    // Nodo raíz = nombre del temario, con el ORIGINAL completo.
     const { data: rootRow, error: rootErr } = await admin
       .from("index_nodes")
       .insert({
@@ -183,7 +282,8 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       .select("id")
       .single();
     if (rootErr || !rootRow) throw new Error("root_insert_failed");
-    await insertNodes(admin, subject, nodes, rootRow.id as string, 1);
+    await storeOriginal(admin, subject, rootRow.id as string, fullText);
+    await insertTree(admin, subject, tree, rootRow.id as string, 1, fullText);
 
     await admin.from("subjects")
       .update({ index_status: "ready" })
@@ -198,39 +298,35 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
 }
 
 // deno-lint-ignore no-explicit-any
-async function insertNodes(
+async function insertTree(
   admin: any,
   subject: SubjectRow,
-  nodes: IndexNode[],
-  parentId: string | null,
+  nodes: PNode[],
+  parentId: string,
   depth: number,
+  fullText: string,
 ): Promise<void> {
   let position = 0;
   for (const n of nodes) {
-    if (!n || typeof n.title !== "string" || n.title.trim().length === 0) {
-      continue;
-    }
     const { data: row, error } = await admin
       .from("index_nodes")
       .insert({
         subject_id: subject.id,
         user_id: subject.user_id,
         parent_id: parentId,
-        title: (n.title as string).slice(0, 300),
+        title: n.title,
         position: position++,
         depth,
       })
       .select("id")
       .single();
     if (error || !row) continue;
-    if (Array.isArray(n.children) && n.children.length > 0 && depth < 6) {
-      await insertNodes(
-        admin,
-        subject,
-        n.children as IndexNode[],
-        row.id as string,
-        depth + 1,
-      );
+    const nodeId = row.id as string;
+    if (n.end > n.start) {
+      await storeOriginal(admin, subject, nodeId, fullText.slice(n.start, n.end));
+    }
+    if (n.children.length > 0 && depth < 6) {
+      await insertTree(admin, subject, n.children, nodeId, depth + 1, fullText);
     }
   }
 }
