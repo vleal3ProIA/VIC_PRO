@@ -1,6 +1,20 @@
 {
   "@@locale": "de",
 
+  "studyGenerateIndex": "Index erstellen",
+  "studyIndexGenerating": "Index wird erstellt…",
+  "studyIndexFailed": "Index-Erstellung fehlgeschlagen. Erneut versuchen.",
+  "studyIndexNeedsDoc": "Lade zuerst ein Dokument hoch und verarbeite es.",
+  "studyIndexTitle": "Index",
+  "studySelectNode": "Wähle einen Abschnitt im Index, um ihn zu lesen.",
+  "studyTabOriginal": "Original",
+  "studyTabExplained": "Erklärt",
+  "studyTabSummary": "Zusammenfassung",
+  "studyGenerateView": "Erstellen",
+  "studyGenerating": "Wird erstellt…",
+  "studyViewError": "Diese Ansicht konnte nicht erstellt werden",
+  "studyRegenerate": "Neu erstellen",
+
   "homeSubjectsTitle": "Meine Lernsets",
   "homeSubjectsSubtitle": "Lade dein Material hoch und die KI macht Zusammenfassungen und Tests daraus.",
   "subjectsAdd": "Lernset hinzufügen",

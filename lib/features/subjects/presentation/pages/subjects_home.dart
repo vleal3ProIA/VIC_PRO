@@ -24,6 +24,7 @@ import '../../application/subjects_providers.dart';
 import '../../data/subjects_datasource.dart';
 import '../../domain/subject.dart';
 import '../util/file_picker_web.dart';
+import 'subject_study_panel.dart';
 
 class SubjectsHome extends ConsumerStatefulWidget {
   const SubjectsHome({super.key});
@@ -201,7 +202,15 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
           ),
         ),
         AppSpacing.gapMd,
-        _DocumentsPanel(key: ValueKey(selected.id), subjectId: selected.id),
+        _DocumentsPanel(
+          key: ValueKey('docs_${selected.id}'),
+          subjectId: selected.id,
+        ),
+        AppSpacing.gapMd,
+        SubjectStudyPanel(
+          key: ValueKey('study_${selected.id}'),
+          subject: selected,
+        ),
       ],
     );
   }

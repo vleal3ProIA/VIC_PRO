@@ -1,6 +1,20 @@
 {
   "@@locale": "en",
 
+  "studyGenerateIndex": "Generate index",
+  "studyIndexGenerating": "Generating index…",
+  "studyIndexFailed": "Index generation failed. Try again.",
+  "studyIndexNeedsDoc": "Upload and process a document first.",
+  "studyIndexTitle": "Index",
+  "studySelectNode": "Select a section from the index to read it.",
+  "studyTabOriginal": "Original",
+  "studyTabExplained": "Explained",
+  "studyTabSummary": "Summary",
+  "studyGenerateView": "Generate",
+  "studyGenerating": "Generating…",
+  "studyViewError": "Could not generate this view",
+  "studyRegenerate": "Regenerate",
+
   "homeSubjectsTitle": "My study sets",
   "homeSubjectsSubtitle": "Upload your material and the AI turns it into summaries and tests.",
   "subjectsAdd": "Add study set",

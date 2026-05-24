@@ -1,6 +1,20 @@
 {
   "@@locale": "ru",
 
+  "studyGenerateIndex": "Создать оглавление",
+  "studyIndexGenerating": "Создание оглавления…",
+  "studyIndexFailed": "Не удалось создать оглавление. Попробуйте снова.",
+  "studyIndexNeedsDoc": "Сначала загрузите и обработайте документ.",
+  "studyIndexTitle": "Оглавление",
+  "studySelectNode": "Выберите раздел оглавления, чтобы прочитать его.",
+  "studyTabOriginal": "Оригинал",
+  "studyTabExplained": "Объяснение",
+  "studyTabSummary": "Конспект",
+  "studyGenerateView": "Создать",
+  "studyGenerating": "Создание…",
+  "studyViewError": "Не удалось создать это представление",
+  "studyRegenerate": "Пересоздать",
+
   "homeSubjectsTitle": "Мои материалы",
   "homeSubjectsSubtitle": "Загрузите материал, и ИИ сделает из него конспекты и тесты.",
   "subjectsAdd": "Добавить материал",

@@ -1,6 +1,20 @@
 {
   "@@locale": "pt",
 
+  "studyGenerateIndex": "Gerar índice",
+  "studyIndexGenerating": "A gerar índice…",
+  "studyIndexFailed": "Falha ao gerar o índice. Tenta de novo.",
+  "studyIndexNeedsDoc": "Primeiro carrega e processa um documento.",
+  "studyIndexTitle": "Índice",
+  "studySelectNode": "Seleciona uma secção do índice para a ler.",
+  "studyTabOriginal": "Original",
+  "studyTabExplained": "Explicado",
+  "studyTabSummary": "Resumo",
+  "studyGenerateView": "Gerar",
+  "studyGenerating": "A gerar…",
+  "studyViewError": "Não foi possível gerar esta vista",
+  "studyRegenerate": "Regenerar",
+
   "homeSubjectsTitle": "Os meus temas",
   "homeSubjectsSubtitle": "Carrega o teu material e a IA transforma-o em resumos e testes.",
   "subjectsAdd": "Adicionar tema",

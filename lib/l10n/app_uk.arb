@@ -1,6 +1,20 @@
 {
   "@@locale": "uk",
 
+  "studyGenerateIndex": "Створити зміст",
+  "studyIndexGenerating": "Створення змісту…",
+  "studyIndexFailed": "Не вдалося створити зміст. Спробуйте ще раз.",
+  "studyIndexNeedsDoc": "Спочатку завантажте та обробіть документ.",
+  "studyIndexTitle": "Зміст",
+  "studySelectNode": "Виберіть розділ змісту, щоб прочитати його.",
+  "studyTabOriginal": "Оригінал",
+  "studyTabExplained": "Пояснення",
+  "studyTabSummary": "Конспект",
+  "studyGenerateView": "Створити",
+  "studyGenerating": "Створення…",
+  "studyViewError": "Не вдалося створити це подання",
+  "studyRegenerate": "Перестворити",
+
   "homeSubjectsTitle": "Мої матеріали",
   "homeSubjectsSubtitle": "Завантажте матеріал, і ШІ зробить із нього конспекти й тести.",
   "subjectsAdd": "Додати матеріал",

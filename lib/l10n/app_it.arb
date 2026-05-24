@@ -1,6 +1,20 @@
 {
   "@@locale": "it",
 
+  "studyGenerateIndex": "Genera indice",
+  "studyIndexGenerating": "Generazione indice…",
+  "studyIndexFailed": "Generazione dell'indice non riuscita. Riprova.",
+  "studyIndexNeedsDoc": "Prima carica ed elabora un documento.",
+  "studyIndexTitle": "Indice",
+  "studySelectNode": "Seleziona una sezione dell'indice per leggerla.",
+  "studyTabOriginal": "Originale",
+  "studyTabExplained": "Spiegato",
+  "studyTabSummary": "Riassunto",
+  "studyGenerateView": "Genera",
+  "studyGenerating": "Generazione…",
+  "studyViewError": "Impossibile generare questa vista",
+  "studyRegenerate": "Rigenera",
+
   "homeSubjectsTitle": "I miei corsi",
   "homeSubjectsSubtitle": "Carica il tuo materiale e l'IA lo trasforma in riassunti e test.",
   "subjectsAdd": "Aggiungi corso",
