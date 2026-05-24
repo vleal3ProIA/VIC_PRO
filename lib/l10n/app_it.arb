@@ -49,6 +49,9 @@
   "studioQuizFinish": "Termina",
   "studioQuizResult": "Il tuo punteggio",
   "studioQuizRetry": "Riprova",
+  "studyTabChat": "Chat",
+  "studyChatEmpty": "Chiedi all'IA qualsiasi cosa su questo materiale. Risponde usando i tuoi documenti.",
+  "studyChatSend": "Invia",
 
   "homeSubjectsTitle": "I miei corsi",
   "homeSubjectsSubtitle": "Carica il tuo materiale e l'IA lo trasforma in riassunti e test.",

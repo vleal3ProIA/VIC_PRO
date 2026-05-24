@@ -49,6 +49,9 @@
   "studioQuizFinish": "Fertig",
   "studioQuizResult": "Dein Ergebnis",
   "studioQuizRetry": "Erneut versuchen",
+  "studyTabChat": "Chat",
+  "studyChatEmpty": "Frag die KI alles über dieses Material. Sie antwortet anhand deiner Dokumente.",
+  "studyChatSend": "Senden",
 
   "homeSubjectsTitle": "Meine Lernsets",
   "homeSubjectsSubtitle": "Lade dein Material hoch und die KI macht Zusammenfassungen und Tests daraus.",

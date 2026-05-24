@@ -49,6 +49,9 @@
   "studioQuizFinish": "Завершити",
   "studioQuizResult": "Ваш результат",
   "studioQuizRetry": "Спробувати знову",
+  "studyTabChat": "Чат",
+  "studyChatEmpty": "Запитайте ШІ будь-що про цей матеріал. Він відповідає за вашими документами.",
+  "studyChatSend": "Надіслати",
 
   "homeSubjectsTitle": "Мої матеріали",
   "homeSubjectsSubtitle": "Завантажте матеріал, і ШІ зробить із нього конспекти й тести.",

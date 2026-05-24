@@ -404,6 +404,42 @@ class SubjectsDataSource {
     }).eq('id', q.id);
   }
 
+  // ─────────────────── Chat / preguntas a la IA (Fase 3) ───────────────────
+
+  /// Pregunta a la IA sobre el temario (o la sección [nodeId]). [history] son
+  /// los turnos previos ({role:'user'|'assistant', content}). Devuelve la
+  /// respuesta en texto (Markdown).
+  Future<String> askSubject({
+    required String subjectId,
+    required String question,
+    String? nodeId,
+    List<Map<String, String>> history = const [],
+  }) async {
+    try {
+      final res = await _client.functions.invoke(
+        'ask-subject',
+        body: {
+          'subject_id': subjectId,
+          if (nodeId != null) 'node_id': nodeId,
+          'question': question,
+          'history': history,
+        },
+      );
+      final data = res.data;
+      if (data is! Map) throw const SubjectsException('invalid_response');
+      final p = data.cast<String, dynamic>();
+      if (p['ok'] != true) {
+        throw SubjectsException(
+          (p['error'] as String?) ?? 'generation_failed',
+          detail: p['detail'] as String?,
+        );
+      }
+      return (p['answer'] as String?) ?? '';
+    } on FunctionException catch (e) {
+      throw SubjectsException(_efError(e));
+    }
+  }
+
   /// URL firmada (1 h) del primer documento del temario, para abrir el
   /// original tal cual. `null` si no hay documentos.
   Future<String?> originalDocumentUrl(String subjectId) async {

@@ -49,6 +49,9 @@
   "studioQuizFinish": "Terminer",
   "studioQuizResult": "Votre score",
   "studioQuizRetry": "Réessayer",
+  "studyTabChat": "Chat",
+  "studyChatEmpty": "Posez n'importe quelle question à l'IA sur ce contenu. Elle répond à partir de vos documents.",
+  "studyChatSend": "Envoyer",
 
   "homeSubjectsTitle": "Mes cours",
   "homeSubjectsSubtitle": "Téléversez votre matériel et l'IA en fait des résumés et des tests.",

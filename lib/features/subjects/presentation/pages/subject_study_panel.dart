@@ -770,7 +770,7 @@ class _ContentColumn extends StatelessWidget {
     return PremiumCard(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: DefaultTabController(
-        length: 3,
+        length: 4,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -790,10 +790,13 @@ class _ContentColumn extends StatelessWidget {
               ),
             ),
             TabBar(
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
               tabs: [
                 Tab(text: l.studyTabOriginal),
                 Tab(text: l.studyTabExplained),
                 Tab(text: l.studyTabSummary),
+                Tab(text: l.studyTabChat),
               ],
             ),
             Expanded(
@@ -814,11 +817,14 @@ class _ContentColumn extends StatelessWidget {
                     kind: 'summary',
                     subjectId: subjectId,
                   ),
+                  _ChatView(
+                    key: ValueKey('chat_$subjectId'),
+                    subjectId: subjectId,
+                    nodeId: nodeId,
+                  ),
                 ],
               ),
             ),
-            const Divider(height: 1),
-            _ChatBar(),
           ],
         ),
       ),
@@ -826,33 +832,191 @@ class _ContentColumn extends StatelessWidget {
   }
 }
 
-/// Barra para preguntar a la IA sobre el tema/sección. Próximamente.
-class _ChatBar extends StatelessWidget {
+/// Mensaje de la conversación del chat.
+typedef _ChatMsg = ({bool fromUser, String text});
+
+/// Chat para preguntar a la IA sobre el temario / la sección seleccionada.
+/// La conversación vive en memoria mientras dura la sesión del temario.
+class _ChatView extends ConsumerStatefulWidget {
+  const _ChatView({
+    required this.subjectId,
+    required this.nodeId,
+    super.key,
+  });
+
+  final String subjectId;
+  final String? nodeId;
+
+  @override
+  ConsumerState<_ChatView> createState() => _ChatViewState();
+}
+
+class _ChatViewState extends ConsumerState<_ChatView> {
+  final _ctrl = TextEditingController();
+  final _scroll = ScrollController();
+  final List<_ChatMsg> _messages = [];
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _scrollToEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scroll.hasClients) {
+        _scroll.animateTo(
+          _scroll.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _send() async {
+    final q = _ctrl.text.trim();
+    if (q.isEmpty || _busy) return;
+    final l = context.l10n;
+    // Historial (antes de añadir el nuevo turno).
+    final history = [
+      for (final m in _messages)
+        {'role': m.fromUser ? 'user' : 'assistant', 'content': m.text},
+    ];
+    setState(() {
+      _messages.add((fromUser: true, text: q));
+      _busy = true;
+      _ctrl.clear();
+    });
+    _scrollToEnd();
+    try {
+      final answer = await ref.read(subjectsDataSourceProvider).askSubject(
+            subjectId: widget.subjectId,
+            nodeId: widget.nodeId,
+            question: q,
+            history: history,
+          );
+      if (mounted) {
+        setState(() => _messages.add((fromUser: false, text: answer)));
+      }
+    } on SubjectsException catch (e) {
+      final detail =
+          e.detail != null && e.detail!.isNotEmpty ? ' (${e.detail})' : '';
+      if (mounted) {
+        setState(() => _messages.add(
+              (fromUser: false, text: '⚠️ ${l.studyViewError}$detail'),
+            ),);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() =>
+            _messages.add((fromUser: false, text: '⚠️ ${l.studyViewError}')),);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+      _scrollToEnd();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              enabled: false,
-              decoration: InputDecoration(
-                hintText: l.studyAskHint,
-                border: const OutlineInputBorder(),
-                isDense: true,
-                suffixIcon: const Icon(Icons.send_outlined, size: 18),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: _messages.isEmpty && !_busy
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Text(
+                      l.studyChatEmpty,
+                      textAlign: TextAlign.center,
+                      style: context.textTheme.bodyMedium
+                          ?.copyWith(color: context.colors.onSurfaceVariant),
+                    ),
+                  ),
+                )
+              : ListView.builder(
+                  controller: _scroll,
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  itemCount: _messages.length + (_busy ? 1 : 0),
+                  itemBuilder: (ctx, i) {
+                    if (i >= _messages.length) {
+                      return Padding(
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        child: Row(
+                          children: [
+                            const SizedBox(
+                              height: 16,
+                              width: 16,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2.2),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(
+                              l.studyGenerating,
+                              style: context.textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return _bubble(context, _messages[i]);
+                  },
+                ),
+        ),
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _ctrl,
+                  minLines: 1,
+                  maxLines: 4,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _send(),
+                  decoration: InputDecoration(
+                    hintText: l.studyAskHint,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: AppSpacing.xs),
+              IconButton.filled(
+                tooltip: l.studyChatSend,
+                onPressed: _busy ? null : _send,
+                icon: const Icon(Icons.send, size: 18),
+              ),
+            ],
           ),
-          const SizedBox(width: AppSpacing.xs),
-          PremiumBadge(
-            label: l.studyComingSoon,
-            variant: PremiumBadgeVariant.neutral,
-            dense: true,
-          ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  Widget _bubble(BuildContext context, _ChatMsg m) {
+    final scheme = context.colors;
+    return Align(
+      alignment: m.fromUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        constraints: const BoxConstraints(maxWidth: 460),
+        decoration: BoxDecoration(
+          color: m.fromUser
+              ? scheme.primary.withValues(alpha: 0.12)
+              : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: m.fromUser
+            ? Text(m.text, style: context.textTheme.bodyMedium)
+            : MarkdownText(m.text),
       ),
     );
   }

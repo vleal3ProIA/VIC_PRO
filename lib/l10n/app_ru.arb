@@ -49,6 +49,9 @@
   "studioQuizFinish": "Завершить",
   "studioQuizResult": "Ваш результат",
   "studioQuizRetry": "Пройти снова",
+  "studyTabChat": "Чат",
+  "studyChatEmpty": "Спросите ИИ что угодно об этом материале. Он отвечает по вашим документам.",
+  "studyChatSend": "Отправить",
 
   "homeSubjectsTitle": "Мои материалы",
   "homeSubjectsSubtitle": "Загрузите материал, и ИИ сделает из него конспекты и тесты.",

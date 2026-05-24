@@ -49,6 +49,9 @@
   "studioQuizFinish": "Finalizar",
   "studioQuizResult": "Tu puntuación",
   "studioQuizRetry": "Reintentar",
+  "studyTabChat": "Chat",
+  "studyChatEmpty": "Pregunta a la IA lo que quieras sobre este material. Responde usando tus documentos.",
+  "studyChatSend": "Enviar",
 
   "homeSubjectsTitle": "Mis temarios",
   "homeSubjectsSubtitle": "Sube tu material y la IA lo convierte en resúmenes y tests.",
