@@ -14,6 +14,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
+import { gatherMaterial } from "../_shared/ai/material.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -134,17 +135,14 @@ Deno.serve(withSentry("generate-views", async (req) => {
     .maybeSingle();
   const language = (subj as { language: string | null } | null)?.language ?? null;
 
-  const { data: docs } = await admin
-    .from("documents")
-    .select("extracted_text")
-    .eq("subject_id", node.subject_id)
-    .eq("status", "ready");
-  const texts = ((docs ?? []) as Array<{ extracted_text: string | null }>)
-    .map((d) => d.extracted_text ?? "")
-    .filter((t) => t.length > 0);
-  if (texts.length === 0) return json({ error: "no_ready_documents" }, 409);
-  let full = texts.join("\n\n---\n\n");
-  if (full.length > 300000) full = full.slice(0, 300000);
+  // Material completo (PDF/imagen como adjunto + texto de .txt).
+  const { textContext, attachments } = await gatherMaterial(
+    admin,
+    node.subject_id,
+  );
+  if (!textContext && attachments.length === 0) {
+    return json({ error: "no_ready_documents" }, 409);
+  }
 
   try {
     const result = await runCompletion(admin, {
@@ -152,8 +150,11 @@ Deno.serve(withSentry("generate-views", async (req) => {
       system: systemFor(kind, language),
       messages: [{
         role: "user",
-        content: `Section title: ${node.title}\n\nMaterial:\n\n${full}`,
+        content: textContext
+          ? `Section title: ${node.title}\n\nMaterial:\n\n${textContext}`
+          : `Section title: ${node.title}\n\nUse the attached document(s).`,
       }],
+      attachments: attachments.length > 0 ? attachments : undefined,
       maxOutputTokens: kind === "summary" ? 2048 : 8192,
       temperature: kind === "original" ? 0 : 0.3,
       userId: node.user_id,

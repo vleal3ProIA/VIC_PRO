@@ -15,6 +15,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { captureError, withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
+import { gatherMaterial } from "../_shared/ai/material.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -128,18 +129,12 @@ Deno.serve(withSentry("generate-index", async (req) => {
 // deno-lint-ignore no-explicit-any
 async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
   try {
-    const { data: docs } = await admin
-      .from("documents")
-      .select("extracted_text")
-      .eq("subject_id", subject.id)
-      .eq("status", "ready");
-    const texts = ((docs ?? []) as Array<{ extracted_text: string | null }>)
-      .map((d) => d.extracted_text ?? "")
-      .filter((t) => t.length > 0);
-    if (texts.length === 0) throw new Error("no_ready_documents");
-
-    let full = texts.join("\n\n---\n\n");
-    if (full.length > 300000) full = full.slice(0, 300000);
+    // Material completo: PDF/imagen como adjunto (visión, lee el documento
+    // entero) + texto de los .txt. Evita el truncado del texto extraído.
+    const { textContext, attachments } = await gatherMaterial(admin, subject.id);
+    if (!textContext && attachments.length === 0) {
+      throw new Error("no_ready_documents");
+    }
 
     const system =
       "You build a hierarchical table of contents (index) for study material. " +
@@ -151,7 +146,13 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
     const result = await runCompletion(admin, {
       task: "index",
       system,
-      messages: [{ role: "user", content: "Material:\n\n" + full }],
+      messages: [{
+        role: "user",
+        content: textContext
+          ? "Material:\n\n" + textContext
+          : "Build the index from the attached document(s).",
+      }],
+      attachments: attachments.length > 0 ? attachments : undefined,
       maxOutputTokens: 4096,
       temperature: 0.2,
       userId: subject.user_id,
