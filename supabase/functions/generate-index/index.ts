@@ -34,6 +34,7 @@ function json(body: unknown, status: number): Response {
 interface SubjectRow {
   id: string;
   user_id: string;
+  title: string;
 }
 
 interface IndexNode {
@@ -88,7 +89,7 @@ Deno.serve(withSentry("generate-index", async (req) => {
 
   const { data: subj, error: sErr } = await admin
     .from("subjects")
-    .select("id, user_id")
+    .select("id, user_id, title")
     .eq("id", subjectId)
     .maybeSingle();
   if (sErr) return json({ error: "db_error", detail: sErr.message }, 500);
@@ -141,8 +142,11 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       "Cover the ENTIRE document from the first page to the LAST one: every " +
       "chapter, topic, theme and section — not just the first ones. Return " +
       "ONLY minified JSON of the form " +
-      '{"nodes":[{"title":"...","children":[{"title":"..."}]}]} with 1 to 3 ' +
-      "levels of depth. Titles must be concise and in the SAME language as the " +
+      '{"nodes":[{"title":"...","children":[{"title":"..."}]}]}. Use the ' +
+      "natural hierarchy of the material and go DOWN TO THE FINEST unit as the " +
+      "deepest leaves (e.g. for laws: parte > título > capítulo > ARTÍCULO; " +
+      "for books: parte > capítulo > sección). Include EVERY article/section, " +
+      "do not skip any. Titles concise and in the SAME language as the " +
       "material. Do NOT include any content, only titles. No commentary.";
 
     const result = await runCompletion(admin, {
@@ -164,7 +168,22 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
     const nodes = parseNodes(result.text);
     if (nodes.length === 0) throw new Error("empty_index");
 
-    await insertNodes(admin, subject, nodes, null, 0);
+    // Nodo raíz = nombre del temario (depth 0). Al pulsarlo se mostrará el
+    // documento original completo. El resto del índice cuelga de él.
+    const { data: rootRow, error: rootErr } = await admin
+      .from("index_nodes")
+      .insert({
+        subject_id: subject.id,
+        user_id: subject.user_id,
+        parent_id: null,
+        title: subject.title.slice(0, 300),
+        position: 0,
+        depth: 0,
+      })
+      .select("id")
+      .single();
+    if (rootErr || !rootRow) throw new Error("root_insert_failed");
+    await insertNodes(admin, subject, nodes, rootRow.id as string, 1);
 
     await admin.from("subjects")
       .update({ index_status: "ready" })
@@ -204,7 +223,7 @@ async function insertNodes(
       .select("id")
       .single();
     if (error || !row) continue;
-    if (Array.isArray(n.children) && n.children.length > 0 && depth < 4) {
+    if (Array.isArray(n.children) && n.children.length > 0 && depth < 6) {
       await insertNodes(
         admin,
         subject,

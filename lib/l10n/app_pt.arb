@@ -1,5 +1,6 @@
 {
   "@@locale": "pt",
+  "studyOpenOriginal": "Abrir documento original",
 
   "studyGenerateIndex": "Gerar índice",
   "studyIndexGenerating": "A gerar índice…",

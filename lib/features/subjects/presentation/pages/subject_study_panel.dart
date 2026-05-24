@@ -22,6 +22,7 @@ import 'package:myapp/core/widgets/premium/premium.dart';
 import '../../application/subjects_providers.dart';
 import '../../data/subjects_datasource.dart';
 import '../../domain/subject.dart';
+import '../util/file_picker_web.dart';
 
 class SubjectStudyPanel extends ConsumerStatefulWidget {
   const SubjectStudyPanel({required this.subject, super.key});
@@ -193,7 +194,12 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
           regenerating: _busy,
           onSelect: (id) => setState(() => _selectedNodeId = id),
         );
-        final card = _CentralCard(nodeId: selectedId);
+        final selectedNode = ordered.firstWhere((n) => n.id == selectedId);
+        final card = _CentralCard(
+          nodeId: selectedId,
+          isRoot: selectedNode.parentId == null,
+          subjectId: widget.subject.id,
+        );
 
         return LayoutBuilder(
           builder: (ctx, c) {
@@ -239,7 +245,7 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
   }
 }
 
-class _IndexTree extends StatelessWidget {
+class _IndexTree extends StatefulWidget {
   const _IndexTree({
     required this.nodes,
     required this.selectedId,
@@ -255,9 +261,68 @@ class _IndexTree extends StatelessWidget {
   final bool regenerating;
 
   @override
+  State<_IndexTree> createState() => _IndexTreeState();
+}
+
+class _IndexTreeState extends State<_IndexTree> {
+  final Set<String> _expanded = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // Por defecto expandimos solo los nodos raíz (depth 0).
+    for (final n in widget.nodes) {
+      if (n.parentId == null) _expanded.add(n.id);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     final scheme = context.colors;
+
+    final byParent = <String?, List<IndexNode>>{};
+    for (final n in widget.nodes) {
+      byParent.putIfAbsent(n.parentId, () => []).add(n);
+    }
+    for (final list in byParent.values) {
+      list.sort((a, b) => a.position.compareTo(b.position));
+    }
+
+    final rows = <Widget>[];
+    void emit(IndexNode n) {
+      final children = byParent[n.id] ?? const <IndexNode>[];
+      final hasChildren = children.isNotEmpty;
+      final isExpanded = _expanded.contains(n.id);
+      rows.add(
+        _TreeTile(
+          node: n,
+          hasChildren: hasChildren,
+          expanded: isExpanded,
+          selected: n.id == widget.selectedId,
+          onToggle: hasChildren
+              ? () => setState(() {
+                    if (isExpanded) {
+                      _expanded.remove(n.id);
+                    } else {
+                      _expanded.add(n.id);
+                    }
+                  })
+              : null,
+          onSelect: () => widget.onSelect(n.id),
+        ),
+      );
+      if (hasChildren && isExpanded) {
+        for (final c in children) {
+          emit(c);
+        }
+      }
+    }
+
+    for (final root in byParent[null] ?? const <IndexNode>[]) {
+      emit(root);
+    }
+
     return PremiumCard(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Column(
@@ -285,39 +350,92 @@ class _IndexTree extends StatelessWidget {
                 IconButton(
                   tooltip: l.studyRegenerate,
                   visualDensity: VisualDensity.compact,
-                  icon: regenerating
+                  icon: widget.regenerating
                       ? const SizedBox(
                           height: 16,
                           width: 16,
                           child: CircularProgressIndicator(strokeWidth: 2.2),
                         )
                       : const Icon(Icons.refresh, size: 18),
-                  onPressed: onRegenerate,
+                  onPressed: widget.onRegenerate,
                 ),
               ],
             ),
           ),
-          for (final n in nodes)
-            ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.only(
-                left: AppSpacing.md + n.depth * 14.0,
-                right: AppSpacing.sm,
+          ...rows,
+        ],
+      ),
+    );
+  }
+}
+
+/// Una fila del árbol: chevron (si tiene hijos) + título. El chevron expande/
+/// contrae; el título selecciona el nodo.
+class _TreeTile extends StatelessWidget {
+  const _TreeTile({
+    required this.node,
+    required this.hasChildren,
+    required this.expanded,
+    required this.selected,
+    required this.onToggle,
+    required this.onSelect,
+  });
+
+  final IndexNode node;
+  final bool hasChildren;
+  final bool expanded;
+  final bool selected;
+  final VoidCallback? onToggle;
+  final VoidCallback onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+    return InkWell(
+      onTap: onSelect,
+      child: ColoredBox(
+        color: selected
+            ? scheme.primary.withValues(alpha: 0.10)
+            : Colors.transparent,
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: AppSpacing.sm + node.depth * 14.0,
+            right: AppSpacing.sm,
+            top: 6,
+            bottom: 6,
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 24,
+                child: hasChildren
+                    ? InkWell(
+                        onTap: onToggle,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Icon(
+                          expanded ? Icons.expand_more : Icons.chevron_right,
+                          size: 18,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      )
+                    : null,
               ),
-              title: Text(
-                n.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: context.textTheme.bodySmall?.copyWith(
-                  fontWeight:
-                      n.id == selectedId ? FontWeight.w700 : FontWeight.w500,
+              Expanded(
+                child: Text(
+                  node.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.textTheme.bodySmall?.copyWith(
+                    fontWeight: (selected || node.parentId == null)
+                        ? FontWeight.w700
+                        : FontWeight.w500,
+                    color: selected ? scheme.primary : null,
+                  ),
                 ),
               ),
-              selected: n.id == selectedId,
-              selectedTileColor: scheme.primary.withValues(alpha: 0.10),
-              onTap: () => onSelect(n.id),
-            ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -325,9 +443,15 @@ class _IndexTree extends StatelessWidget {
 
 /// Card central con 3 pestañas para el nodo seleccionado.
 class _CentralCard extends StatelessWidget {
-  const _CentralCard({required this.nodeId});
+  const _CentralCard({
+    required this.nodeId,
+    required this.isRoot,
+    required this.subjectId,
+  });
 
   final String nodeId;
+  final bool isRoot;
+  final String subjectId;
 
   @override
   Widget build(BuildContext context) {
@@ -352,9 +476,24 @@ class _CentralCard extends StatelessWidget {
               height: 460,
               child: TabBarView(
                 children: [
-                  _NodeView(nodeId: nodeId, kind: 'original'),
-                  _NodeView(nodeId: nodeId, kind: 'explained'),
-                  _NodeView(nodeId: nodeId, kind: 'summary'),
+                  _NodeView(
+                    nodeId: nodeId,
+                    kind: 'original',
+                    isRoot: isRoot,
+                    subjectId: subjectId,
+                  ),
+                  _NodeView(
+                    nodeId: nodeId,
+                    kind: 'explained',
+                    isRoot: isRoot,
+                    subjectId: subjectId,
+                  ),
+                  _NodeView(
+                    nodeId: nodeId,
+                    kind: 'summary',
+                    isRoot: isRoot,
+                    subjectId: subjectId,
+                  ),
                 ],
               ),
             ),
@@ -367,10 +506,17 @@ class _CentralCard extends StatelessWidget {
 
 /// Una pestaña: muestra la vista cacheada o un botón para generarla.
 class _NodeView extends ConsumerStatefulWidget {
-  const _NodeView({required this.nodeId, required this.kind});
+  const _NodeView({
+    required this.nodeId,
+    required this.kind,
+    required this.isRoot,
+    required this.subjectId,
+  });
 
   final String nodeId;
   final String kind;
+  final bool isRoot;
+  final String subjectId;
 
   @override
   ConsumerState<_NodeView> createState() => _NodeViewState();
@@ -413,9 +559,51 @@ class _NodeViewState extends ConsumerState<_NodeView> {
     }
   }
 
+  /// Raíz + Original: abre el documento original tal cual (PDF/imagen) en una
+  /// pestaña nueva, en vez de generar texto (el documento completo no cabría
+  /// en una sola respuesta del modelo).
+  Future<void> _openOriginal() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final errBg = Theme.of(context).colorScheme.error;
+    try {
+      final url = await ref
+          .read(subjectsDataSourceProvider)
+          .originalDocumentUrl(widget.subjectId);
+      if (url != null) {
+        openUrlInNewTab(url);
+      } else {
+        messenger.showSnackBar(
+          SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+        );
+      }
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+
+    // Raíz + Original = abrir el documento original completo (PDF).
+    if (widget.isRoot && widget.kind == 'original') {
+      return Center(
+        child: PremiumButton(
+          label: l.studyOpenOriginal,
+          leadingIcon: Icons.open_in_new,
+          loading: _busy,
+          onPressed: _busy ? null : _openOriginal,
+        ),
+      );
+    }
+
     final async = ref.watch(nodeContentProvider(_key));
 
     return async.when(

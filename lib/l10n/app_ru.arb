@@ -1,5 +1,6 @@
 {
   "@@locale": "ru",
+  "studyOpenOriginal": "Открыть оригинал документа",
 
   "studyGenerateIndex": "Создать оглавление",
   "studyIndexGenerating": "Создание оглавления…",
