@@ -34,7 +34,7 @@ import '../../domain/subject.dart';
 import '../util/file_picker_web.dart';
 
 const double _kMinColWidth = 240;
-const double _kHandleWidth = 18;
+const double _kHandleWidth = 36;
 const double _kStackedBreakpoint = 1000;
 const String _kPrefLeftFrac = 'study_left_frac';
 const String _kPrefRightFrac = 'study_right_frac';
@@ -204,26 +204,26 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
         if (c.maxWidth < _kStackedBreakpoint) {
           return ListView(
             padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.sm,
+              AppSpacing.xl,
               AppSpacing.md,
               AppSpacing.xl,
+              AppSpacing.xxl,
             ),
             children: [
               SizedBox(height: 420, child: left),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.xl),
               SizedBox(height: 520, child: center),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.xl),
               SizedBox(height: 460, child: right),
             ],
           );
         }
         return Padding(
           padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.sm,
-            AppSpacing.md,
-            AppSpacing.md,
+            AppSpacing.xl,
+            AppSpacing.lg,
+            AppSpacing.xl,
+            AppSpacing.xl,
           ),
           child: _ResizableRow(left: left, center: center, right: right),
         );
@@ -372,16 +372,16 @@ class _ColumnCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PremiumCard(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
               AppSpacing.md,
               AppSpacing.sm,
-              AppSpacing.xs,
-              AppSpacing.xs,
+              AppSpacing.sm,
             ),
             child: Row(
               children: [

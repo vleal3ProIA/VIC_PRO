@@ -190,10 +190,10 @@ class _TopBar extends StatelessWidget {
     final l = context.l10n;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xl,
         AppSpacing.lg,
+        AppSpacing.xl,
         AppSpacing.md,
-        AppSpacing.lg,
-        AppSpacing.sm,
       ),
       child: Row(
         children: [
