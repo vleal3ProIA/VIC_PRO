@@ -15,6 +15,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { captureError, withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
+import { gatherMaterial } from "../_shared/ai/material.ts";
+import type { AiAttachment } from "../_shared/ai/types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -232,7 +234,10 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       .map((d) => d.extracted_text ?? "")
       .filter((t) => t.length > 0)
       .join("\n\n");
-    if (fullText.trim().length === 0) throw new Error("no_ready_documents");
+    // Texto completo (unpdf) si lo hay. Si es corto (p.ej. aún no re-ingerido),
+    // construimos el índice adjuntando el PDF por visión para que salga
+    // COMPLETO igualmente; el troceo del original solo se hace si hay texto.
+    const useText = fullText.trim().length > 1000;
     const forModel = fullText.length > 300000
       ? fullText.slice(0, 300000)
       : fullText;
@@ -248,10 +253,30 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       "(max ~80 chars), so it can be located. Folders need only `title`. " +
       "Titles concise and in the SAME language as the material. No commentary.";
 
+    let messages: Array<{ role: "user"; content: string }>;
+    let attachments: AiAttachment[] | undefined;
+    if (useText) {
+      messages = [{ role: "user", content: "Material:\n\n" + forModel }];
+      attachments = undefined;
+    } else {
+      const mat = await gatherMaterial(admin, subject.id);
+      if (!mat.textContext && mat.attachments.length === 0) {
+        throw new Error("no_ready_documents");
+      }
+      messages = [{
+        role: "user",
+        content: mat.textContext
+          ? "Material:\n\n" + mat.textContext
+          : "Build the index from the attached document(s).",
+      }];
+      attachments = mat.attachments.length > 0 ? mat.attachments : undefined;
+    }
+
     const result = await runCompletion(admin, {
       task: "index",
       system,
-      messages: [{ role: "user", content: "Material:\n\n" + forModel }],
+      messages,
+      attachments,
       maxOutputTokens: 8192,
       temperature: 0.2,
       userId: subject.user_id,
@@ -261,12 +286,14 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
     const raw = parseNodes(result.text);
     if (raw.length === 0) throw new Error("empty_index");
 
-    // Árbol interno con rangos de carácter para trocear el original.
+    // Árbol interno. Solo troceamos el original si tenemos el texto completo.
     const tree = toPTree(raw);
-    const leaves: PNode[] = [];
-    collectLeaves(tree, leaves);
-    assignLeafRanges(leaves, fullText);
-    rollupFolders(tree);
+    if (useText) {
+      const leaves: PNode[] = [];
+      collectLeaves(tree, leaves);
+      assignLeafRanges(leaves, fullText);
+      rollupFolders(tree);
+    }
 
     // Nodo raíz = nombre del temario, con el ORIGINAL completo.
     const { data: rootRow, error: rootErr } = await admin
@@ -282,7 +309,9 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       .select("id")
       .single();
     if (rootErr || !rootRow) throw new Error("root_insert_failed");
-    await storeOriginal(admin, subject, rootRow.id as string, fullText);
+    if (useText) {
+      await storeOriginal(admin, subject, rootRow.id as string, fullText);
+    }
     await insertTree(admin, subject, tree, rootRow.id as string, 1, fullText);
 
     await admin.from("subjects")
