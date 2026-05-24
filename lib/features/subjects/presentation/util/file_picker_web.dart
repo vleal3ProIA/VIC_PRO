@@ -65,3 +65,8 @@ Future<PickedFile?> pickFile({
   input.click();
   return completer.future;
 }
+
+/// Abre una URL en una pestaña nueva (para ver el documento original).
+void openUrlInNewTab(String url) {
+  web.window.open(url, '_blank');
+}

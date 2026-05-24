@@ -200,6 +200,21 @@ class SubjectsDataSource {
     }
   }
 
+  /// URL firmada (1 h) del primer documento del temario, para abrir el
+  /// original tal cual. `null` si no hay documentos.
+  Future<String?> originalDocumentUrl(String subjectId) async {
+    final rows = await _client
+        .from('documents')
+        .select('storage_path')
+        .eq('subject_id', subjectId)
+        .order('created_at')
+        .limit(1);
+    final list = rows as List;
+    if (list.isEmpty) return null;
+    final path = (list.first as Map)['storage_path'] as String;
+    return _client.storage.from(_bucket).createSignedUrl(path, 3600);
+  }
+
   String _efError(FunctionException e) {
     final d = e.details;
     if (d is Map && d['error'] is String) return d['error'] as String;

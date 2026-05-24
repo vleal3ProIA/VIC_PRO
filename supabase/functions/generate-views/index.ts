@@ -49,9 +49,13 @@ function systemFor(kind: string, language: string | null): string {
         "complete, only the text of the requested section (keep its headings " +
         "and structure). Do not summarize, do not add commentary.";
     case "explained":
-      return "You are an expert tutor. Explain the requested section in a " +
-        "clear, structured and didactic way, expanding difficult points with " +
-        `examples where useful. ${lang} Use Markdown. No preamble.`;
+      return "You are an expert tutor. Rewrite and explain the requested " +
+        "section using EASY-READING principles (lectura fácil): short " +
+        "sentences with ONE idea each; simple and common words; active voice; " +
+        "explain every difficult or technical term in parentheses; clear " +
+        "headings and bullet lists; and a concrete example when it helps. " +
+        `Stay faithful to the content, do not invent. ${lang} Use Markdown. ` +
+        "No preamble.";
     case "summary":
       return "You summarize study material. Produce a concise summary of the " +
         `key points of the requested section as bullet points. ${lang} ` +
