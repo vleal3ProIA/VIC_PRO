@@ -55,6 +55,12 @@ final quizQuestionsProvider =
   return ref.watch(subjectsDataSourceProvider).listQuizQuestions(subjectId);
 });
 
+/// Banco de preguntas de examen de un temario (tests configurables).
+final examQuestionsProvider =
+    FutureProvider.family<List<QuizQuestion>, String>((ref, subjectId) {
+  return ref.watch(subjectsDataSourceProvider).listExamQuestions(subjectId);
+});
+
 /// Guía de estudio cacheada de un temario (`null` si aún no se generó).
 final studyGuideProvider =
     FutureProvider.family<String?, String>((ref, subjectId) {

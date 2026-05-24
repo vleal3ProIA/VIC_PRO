@@ -186,7 +186,8 @@ class Flashcard {
   }
 }
 
-/// Pregunta de opción múltiple del cuestionario (espejo de `quiz_questions`).
+/// Pregunta de opción múltiple del cuestionario / examen (espejo de
+/// `quiz_questions` y `exam_questions`). En examen, `nodeId` indica la sección.
 class QuizQuestion {
   const QuizQuestion({
     required this.id,
@@ -194,6 +195,7 @@ class QuizQuestion {
     required this.question,
     required this.options,
     required this.correctIndex,
+    this.nodeId,
     this.explanation,
     this.timesSeen = 0,
     this.timesCorrect = 0,
@@ -210,6 +212,7 @@ class QuizQuestion {
       question: (m['question'] as String?) ?? '',
       options: opts,
       correctIndex: (m['correct_index'] as num?)?.toInt() ?? 0,
+      nodeId: m['node_id'] as String?,
       explanation: m['explanation'] as String?,
       timesSeen: (m['times_seen'] as num?)?.toInt() ?? 0,
       timesCorrect: (m['times_correct'] as num?)?.toInt() ?? 0,
@@ -221,6 +224,7 @@ class QuizQuestion {
   final String question;
   final List<String> options;
   final int correctIndex;
+  final String? nodeId;
   final String? explanation;
   final int timesSeen;
   final int timesCorrect;

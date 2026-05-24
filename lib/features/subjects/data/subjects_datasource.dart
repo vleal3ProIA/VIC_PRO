@@ -443,6 +443,52 @@ class SubjectsDataSource {
     unawaited(recordStudyToday());
   }
 
+  // ─────────────────── Test/examen configurable (Fase 4) ───────────────────
+
+  /// Genera (vía EF) un banco de preguntas de examen de las secciones [nodeIds]
+  /// (vacío = todo el temario). Reemplaza el banco anterior. Devuelve cuántas.
+  Future<int> generateExam({
+    required String subjectId,
+    List<String> nodeIds = const [],
+    int count = 10,
+  }) async {
+    try {
+      final res = await _client.functions.invoke(
+        'generate-exam',
+        body: {
+          'subject_id': subjectId,
+          'node_ids': nodeIds,
+          'count': count,
+        },
+      );
+      final data = res.data;
+      if (data is! Map) throw const SubjectsException('invalid_response');
+      final p = data.cast<String, dynamic>();
+      if (p['ok'] != true) {
+        throw SubjectsException(
+          (p['error'] as String?) ?? 'generation_failed',
+          detail: p['detail'] as String?,
+        );
+      }
+      return (p['count'] as num?)?.toInt() ?? 0;
+    } on FunctionException catch (e) {
+      throw SubjectsException(_efError(e));
+    }
+  }
+
+  /// Banco de preguntas de examen del temario.
+  Future<List<QuizQuestion>> listExamQuestions(String subjectId) async {
+    final data = await _client
+        .from('exam_questions')
+        .select()
+        .eq('subject_id', subjectId)
+        .order('created_at');
+    return (data as List)
+        .cast<Map<String, dynamic>>()
+        .map(QuizQuestion.fromMap)
+        .toList(growable: false);
+  }
+
   // ─────────────────── Chat / preguntas a la IA (Fase 3) ───────────────────
 
   // ─────────────────── Examen: fecha + modo pánico (Fase 3) ───────────────────

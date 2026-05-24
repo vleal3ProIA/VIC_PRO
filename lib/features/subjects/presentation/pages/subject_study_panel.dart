@@ -203,6 +203,7 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
       onSelectNode: (id) => setState(() => _selectedNodeId = id),
       examDate: widget.subject.examDate,
       sectionCount: ordered.where((n) => n.parentId != null).length,
+      nodes: ordered,
     );
 
     return LayoutBuilder(
@@ -1398,6 +1399,7 @@ class _StudioColumn extends StatefulWidget {
     required this.onSelectNode,
     required this.examDate,
     required this.sectionCount,
+    required this.nodes,
   });
 
   final String subjectId;
@@ -1405,6 +1407,7 @@ class _StudioColumn extends StatefulWidget {
   final ValueChanged<String> onSelectNode;
   final DateTime? examDate;
   final int sectionCount;
+  final List<IndexNode> nodes;
 
   @override
   State<_StudioColumn> createState() => _StudioColumnState();
@@ -1446,7 +1449,7 @@ class _StudioColumnState extends State<_StudioColumn> {
       title = l.studyExamLabel;
       leading = Icons.event_outlined;
     } else if (inMock) {
-      title = l.studioMock;
+      title = l.studioTest;
       leading = Icons.timer_outlined;
     } else if (inProgress) {
       title = l.studioProgress;
@@ -1478,7 +1481,11 @@ class _StudioColumnState extends State<_StudioColumn> {
         sectionCount: widget.sectionCount,
       );
     } else if (inMock) {
-      body = _MockExamView(subjectId: widget.subjectId);
+      body = _MockExamView(
+        subjectId: widget.subjectId,
+        nodes: widget.nodes,
+        onSelectNode: widget.onSelectNode,
+      );
     } else if (inProgress) {
       body = _ProgressView(subjectId: widget.subjectId);
     } else {
@@ -1749,22 +1756,36 @@ class _ProgressView extends ConsumerWidget {
 /// Simulacro de examen: cronometrado, sin feedback hasta el final, con
 /// penalización (aciertos − errores/3) y nota sobre 10. Reusa las preguntas del
 /// cuestionario.
-enum _MockPhase { intro, running, done }
+enum _MockPhase { config, running, done }
 
 class _MockExamView extends ConsumerStatefulWidget {
-  const _MockExamView({required this.subjectId});
+  const _MockExamView({
+    required this.subjectId,
+    required this.nodes,
+    required this.onSelectNode,
+  });
 
   final String subjectId;
+  final List<IndexNode> nodes;
+  final ValueChanged<String> onSelectNode;
 
   @override
   ConsumerState<_MockExamView> createState() => _MockExamViewState();
 }
 
 class _MockExamViewState extends ConsumerState<_MockExamView> {
-  static const int _secsPerQuestion = 60;
-
-  _MockPhase _phase = _MockPhase.intro;
+  _MockPhase _phase = _MockPhase.config;
   bool _busy = false;
+
+  // Configuración del test.
+  bool _all = true;
+  final Set<String> _selected = {};
+  int _count = 10;
+  bool _timed = false;
+  int _minutes = 20;
+  bool _penalty = true;
+
+  // Ejecución.
   List<QuizQuestion> _qs = [];
   List<int?> _answers = [];
   int _cur = 0;
@@ -1778,7 +1799,7 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
     super.dispose();
   }
 
-  int get _totalSecs => _qs.length * _secsPerQuestion;
+  int get _totalSecs => _minutes * 60;
 
   String _fmt(int secs) {
     final m = (secs ~/ 60).toString().padLeft(2, '0');
@@ -1796,25 +1817,21 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
       _review = false;
       _phase = _MockPhase.running;
     });
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) {
-        _timer?.cancel();
-        return;
-      }
-      setState(() => _elapsed++);
-      if (_elapsed >= _totalSecs) _finish();
-    });
+    if (_timed) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) {
+          _timer?.cancel();
+          return;
+        }
+        setState(() => _elapsed++);
+        if (_elapsed >= _totalSecs) _finish();
+      });
+    }
   }
 
   void _finish() {
     _timer?.cancel();
-    final ds = ref.read(subjectsDataSourceProvider);
-    for (var i = 0; i < _qs.length; i++) {
-      final a = _answers[i];
-      if (a != null) {
-        ds.recordQuizAnswer(_qs[i], correct: a == _qs[i].correctIndex);
-      }
-    }
+    unawaited(ref.read(subjectsDataSourceProvider).recordStudyToday());
     if (mounted) setState(() => _phase = _MockPhase.done);
   }
 
@@ -1825,10 +1842,12 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
     final messenger = ScaffoldMessenger.of(context);
     final errBg = Theme.of(context).colorScheme.error;
     try {
-      await ref
-          .read(subjectsDataSourceProvider)
-          .generateQuiz(subjectId: widget.subjectId);
-      ref.invalidate(quizQuestionsProvider(widget.subjectId));
+      await ref.read(subjectsDataSourceProvider).generateExam(
+            subjectId: widget.subjectId,
+            nodeIds: _all ? const [] : _selected.toList(),
+            count: _count,
+          );
+      ref.invalidate(examQuestionsProvider(widget.subjectId));
     } on SubjectsException catch (e) {
       final detail =
           e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
@@ -1865,65 +1884,118 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
     }
     if (_phase == _MockPhase.running) return _running(context);
     if (_phase == _MockPhase.done) return _results(context);
+    return _config(context);
+  }
 
-    final async = ref.watch(quizQuestionsProvider(widget.subjectId));
-    return async.when(
-      loading: () => const Center(child: AppLoadingState()),
-      error: (e, _) => AppErrorState(
-        message: l.studyViewError,
-        detail: e.toString(),
-        onRetry: () => ref.invalidate(quizQuestionsProvider(widget.subjectId)),
-        retryLabel: l.actionRetry,
-      ),
-      data: (qs) {
-        if (qs.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    l.studioQuizEmpty,
-                    textAlign: TextAlign.center,
-                    style: context.textTheme.bodyMedium
-                        ?.copyWith(color: context.colors.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  PremiumButton(
-                    label: l.studioQuizGenerate,
-                    leadingIcon: Icons.auto_awesome_outlined,
-                    onPressed: _generate,
-                  ),
-                ],
+  Widget _config(BuildContext context) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final bank =
+        ref.watch(examQuestionsProvider(widget.subjectId)).valueOrNull ??
+            const <QuizQuestion>[];
+    final sections = widget.nodes.where((n) => n.parentId != null).toList();
+    final canGenerate = _all || _selected.isNotEmpty;
+
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      children: [
+        // ─── Secciones ───
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                l.studyTestSections,
+                style: context.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
-          );
-        }
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.timer_outlined, size: 40, color: context.colors.primary),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  l.studioMockIntro(qs.length, qs.length),
-                  textAlign: TextAlign.center,
-                  style: context.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                PremiumButton(
-                  label: l.studyMockStart,
-                  leadingIcon: Icons.play_arrow,
-                  onPressed: () => _start(qs),
-                ),
-              ],
+            Text(l.studyTestAll, style: context.textTheme.bodySmall),
+            Switch(value: _all, onChanged: (v) => setState(() => _all = v)),
+          ],
+        ),
+        if (!_all)
+          for (final s in sections)
+            CheckboxListTile(
+              dense: true,
+              contentPadding: EdgeInsets.only(left: 4 + s.depth * 12.0),
+              controlAffinity: ListTileControlAffinity.leading,
+              value: _selected.contains(s.id),
+              title: Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+              onChanged: (v) => setState(() {
+                if (v ?? false) {
+                  _selected.add(s.id);
+                } else {
+                  _selected.remove(s.id);
+                }
+              }),
             ),
+        const Divider(height: AppSpacing.lg),
+        // ─── Nº de preguntas ───
+        Row(
+          children: [
+            Expanded(child: Text(l.studyTestCount)),
+            DropdownButton<int>(
+              value: _count,
+              items: [5, 10, 20, 30, 40]
+                  .map((n) => DropdownMenuItem(value: n, child: Text('$n')))
+                  .toList(),
+              onChanged: (v) => setState(() => _count = v ?? 10),
+            ),
+          ],
+        ),
+        // ─── Tiempo ───
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(l.studyTestTimed),
+          value: _timed,
+          onChanged: (v) => setState(() => _timed = v),
+        ),
+        if (_timed)
+          Row(
+            children: [
+              Expanded(child: Text(l.studyTestMinutes)),
+              DropdownButton<int>(
+                value: _minutes,
+                items: [5, 10, 20, 30, 45, 60]
+                    .map((n) => DropdownMenuItem(value: n, child: Text('$n')))
+                    .toList(),
+                onChanged: (v) => setState(() => _minutes = v ?? 20),
+              ),
+            ],
           ),
-        );
-      },
+        // ─── Penalización ───
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(l.studyTestPenalty),
+          value: _penalty,
+          onChanged: (v) => setState(() => _penalty = v),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        if (bank.isNotEmpty)
+          Text(
+            l.studyTestBank(bank.length),
+            style: context.textTheme.bodySmall
+                ?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        const SizedBox(height: AppSpacing.sm),
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            PremiumButton(
+              label: bank.isEmpty ? l.studyTestGenerate : l.studyTestRegenerate,
+              leadingIcon: Icons.auto_awesome_outlined,
+              onPressed: canGenerate ? _generate : null,
+            ),
+            if (bank.isNotEmpty)
+              FilledButton.icon(
+                onPressed: () => _start(bank),
+                icon: const Icon(Icons.play_arrow, size: 16),
+                label: Text(l.studyTestStart),
+              ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -1945,9 +2017,15 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
           ),
           child: Row(
             children: [
-              const Icon(Icons.timer_outlined, size: 16),
-              const SizedBox(width: 4),
-              Text(_fmt(remaining), style: context.textTheme.labelMedium),
+              if (_timed) ...[
+                Icon(
+                  Icons.timer_outlined,
+                  size: 16,
+                  color: remaining <= 30 ? context.colors.error : null,
+                ),
+                const SizedBox(width: 4),
+                Text(_fmt(remaining), style: context.textTheme.labelMedium),
+              ],
               const Spacer(),
               Text(
                 '${_cur + 1}/${_qs.length} · $answered',
@@ -2026,7 +2104,7 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
       }
     }
     final total = _qs.length;
-    final raw = correct - wrong / 3;
+    final raw = _penalty ? correct - wrong / 3 : correct.toDouble();
     final grade = total == 0 ? 0.0 : (raw < 0 ? 0.0 : raw / total * 10);
 
     return ListView(
@@ -2076,7 +2154,7 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
                   PremiumButton(
                     label: l.studioQuizRetry,
                     leadingIcon: Icons.replay,
-                    onPressed: () => setState(() => _phase = _MockPhase.intro),
+                    onPressed: () => setState(() => _phase = _MockPhase.config),
                   ),
                 ],
               ),
@@ -2092,6 +2170,8 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
   }
 
   Widget _reviewItem(BuildContext context, int i) {
+    final l = context.l10n;
+    final scheme = context.colors;
     final q = _qs[i];
     final mine = _answers[i];
     return Padding(
@@ -2112,6 +2192,31 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
               selected: mine == j,
               correct: j == q.correctIndex,
               readOnly: true,
+            ),
+          if (q.explanation?.isNotEmpty ?? false)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  q.explanation!,
+                  style: context.textTheme.bodySmall?.copyWith(height: 1.4),
+                ),
+              ),
+            ),
+          if (q.nodeId != null)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => widget.onSelectNode(q.nodeId!),
+                icon: const Icon(Icons.menu_book_outlined, size: 16),
+                label: Text(l.studyTestViewInMaterial),
+              ),
             ),
         ],
       ),
