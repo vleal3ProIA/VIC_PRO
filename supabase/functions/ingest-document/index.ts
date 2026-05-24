@@ -19,6 +19,22 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { captureError, withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
+import { extractText, getDocumentProxy } from "https://esm.sh/unpdf@0.12.1";
+
+/// Extrae el texto COMPLETO de un PDF con capa de texto (sin IA, sin truncado).
+/// Devuelve "" si no hay texto (PDF escaneado) o si falla.
+async function extractPdfText(bytes: Uint8Array): Promise<string> {
+  try {
+    const pdf = await getDocumentProxy(bytes);
+    const res = await extractText(pdf, { mergePages: true });
+    const t = (res as { text: unknown }).text;
+    if (typeof t === "string") return t;
+    if (Array.isArray(t)) return t.join("\n\n");
+    return "";
+  } catch (_) {
+    return "";
+  }
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -168,6 +184,20 @@ async function processDocument(
       throw new Error("download_failed: " + (dlErr?.message ?? "no_blob"));
     }
     const bytes = new Uint8Array(await blob.arrayBuffer());
+
+    // PDF con capa de texto: extraemos el TEXTO COMPLETO sin IA ni truncado.
+    if (mime === "application/pdf") {
+      const pdfText = await extractPdfText(bytes);
+      if (pdfText.trim().length >= 200) {
+        await admin.from("documents").update({
+          status: "ready",
+          extracted_text: pdfText,
+          error: null,
+        }).eq("id", document.id);
+        return;
+      }
+      // PDF escaneado (sin texto extraíble): seguimos al extractor por visión.
+    }
 
     const system =
       "You are a document ingestion engine for a study app. Extract the full " +

@@ -194,10 +194,8 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
           regenerating: _busy,
           onSelect: (id) => setState(() => _selectedNodeId = id),
         );
-        final selectedNode = ordered.firstWhere((n) => n.id == selectedId);
         final card = _CentralCard(
           nodeId: selectedId,
-          isRoot: selectedNode.parentId == null,
           subjectId: widget.subject.id,
         );
 
@@ -458,12 +456,10 @@ class _TreeTile extends StatelessWidget {
 class _CentralCard extends StatelessWidget {
   const _CentralCard({
     required this.nodeId,
-    required this.isRoot,
     required this.subjectId,
   });
 
   final String nodeId;
-  final bool isRoot;
   final String subjectId;
 
   @override
@@ -492,19 +488,16 @@ class _CentralCard extends StatelessWidget {
                   _NodeView(
                     nodeId: nodeId,
                     kind: 'original',
-                    isRoot: isRoot,
                     subjectId: subjectId,
                   ),
                   _NodeView(
                     nodeId: nodeId,
                     kind: 'explained',
-                    isRoot: isRoot,
                     subjectId: subjectId,
                   ),
                   _NodeView(
                     nodeId: nodeId,
                     kind: 'summary',
-                    isRoot: isRoot,
                     subjectId: subjectId,
                   ),
                 ],
@@ -522,13 +515,11 @@ class _NodeView extends ConsumerStatefulWidget {
   const _NodeView({
     required this.nodeId,
     required this.kind,
-    required this.isRoot,
     required this.subjectId,
   });
 
   final String nodeId;
   final String kind;
-  final bool isRoot;
   final String subjectId;
 
   @override
@@ -604,20 +595,8 @@ class _NodeViewState extends ConsumerState<_NodeView> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-
-    // Raíz + Original = abrir el documento original completo (PDF).
-    if (widget.isRoot && widget.kind == 'original') {
-      return Center(
-        child: PremiumButton(
-          label: l.studyOpenOriginal,
-          leadingIcon: Icons.open_in_new,
-          loading: _busy,
-          onPressed: _busy ? null : _openOriginal,
-        ),
-      );
-    }
-
     final async = ref.watch(nodeContentProvider(_key));
+    final isOriginal = widget.kind == 'original';
 
     return async.when(
       loading: () => const Center(child: AppLoadingState()),
@@ -628,6 +607,23 @@ class _NodeViewState extends ConsumerState<_NodeView> {
         retryLabel: l.actionRetry,
       ),
       data: (content) {
+        final hasContent = content != null && content.isNotEmpty;
+
+        // ORIGINAL: nunca usa IA. Muestra el texto guardado; si no lo hay,
+        // ofrece abrir el documento original (PDF).
+        if (isOriginal) {
+          if (hasContent) return _scroll(context, content);
+          return Center(
+            child: PremiumButton(
+              label: l.studyOpenOriginal,
+              leadingIcon: Icons.open_in_new,
+              loading: _busy,
+              onPressed: _busy ? null : _openOriginal,
+            ),
+          );
+        }
+
+        // EXPLICADO / RESUMEN: generación bajo demanda.
         if (_busy) {
           return Center(
             child: Column(
@@ -640,7 +636,7 @@ class _NodeViewState extends ConsumerState<_NodeView> {
             ),
           );
         }
-        if (content == null || content.isEmpty) {
+        if (!hasContent) {
           return Center(
             child: PremiumButton(
               label: l.studyGenerateView,
@@ -660,18 +656,20 @@ class _NodeViewState extends ConsumerState<_NodeView> {
                 label: Text(l.studyRegenerate),
               ),
             ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                child: SelectableText(
-                  content,
-                  style: context.textTheme.bodyMedium?.copyWith(height: 1.5),
-                ),
-              ),
-            ),
+            Expanded(child: _scroll(context, content)),
           ],
         );
       },
+    );
+  }
+
+  Widget _scroll(BuildContext context, String content) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: SelectableText(
+        content,
+        style: context.textTheme.bodyMedium?.copyWith(height: 1.5),
+      ),
     );
   }
 }
