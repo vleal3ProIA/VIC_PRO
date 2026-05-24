@@ -406,6 +406,53 @@ class SubjectsDataSource {
 
   // ─────────────────── Chat / preguntas a la IA (Fase 3) ───────────────────
 
+  // ─────────────────── Examen: fecha + modo pánico (Fase 3) ───────────────────
+
+  /// Fija (o limpia con `null`) la fecha de examen del temario.
+  Future<void> setExamDate(String subjectId, DateTime? date) async {
+    final iso = date == null
+        ? null
+        : '${date.year.toString().padLeft(4, '0')}-'
+            '${date.month.toString().padLeft(2, '0')}-'
+            '${date.day.toString().padLeft(2, '0')}';
+    await _client
+        .from('subjects')
+        .update({'exam_date': iso}).eq('id', subjectId);
+  }
+
+  /// Genera (vía EF) la chuleta "modo pánico" del temario y devuelve su texto.
+  Future<String> generateCram(String subjectId) async {
+    try {
+      final res = await _client.functions.invoke(
+        'generate-cram',
+        body: {'subject_id': subjectId},
+      );
+      final data = res.data;
+      if (data is! Map) throw const SubjectsException('invalid_response');
+      final p = data.cast<String, dynamic>();
+      if (p['ok'] != true) {
+        throw SubjectsException(
+          (p['error'] as String?) ?? 'generation_failed',
+          detail: p['detail'] as String?,
+        );
+      }
+      return (p['content'] as String?) ?? '';
+    } on FunctionException catch (e) {
+      throw SubjectsException(_efError(e));
+    }
+  }
+
+  /// Chuleta "modo pánico" cacheada (`null` si aún no se generó).
+  Future<String?> getCram(String subjectId) async {
+    final data = await _client
+        .from('cram_sheets')
+        .select('content')
+        .eq('subject_id', subjectId)
+        .maybeSingle();
+    if (data == null) return null;
+    return data['content'] as String?;
+  }
+
   // ─────────────────── Guía de estudio (Fase 3) ───────────────────
 
   /// Genera (vía EF) la guía de estudio del temario y devuelve su contenido.

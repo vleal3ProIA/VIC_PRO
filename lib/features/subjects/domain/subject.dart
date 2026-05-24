@@ -42,6 +42,7 @@ class Subject {
     this.language,
     this.indexStatus = IndexStatus.none,
     this.indexLocked = false,
+    this.examDate,
     this.createdAt,
   });
 
@@ -51,6 +52,7 @@ class Subject {
         language: m['language'] as String?,
         indexStatus: indexStatusFrom(m['index_status'] as String?),
         indexLocked: (m['index_locked'] as bool?) ?? false,
+        examDate: _ts(m['exam_date']),
         createdAt: _ts(m['created_at']),
       );
 
@@ -61,7 +63,20 @@ class Subject {
 
   /// `true` cuando el usuario ha validado el índice: ya no se puede regenerar.
   final bool indexLocked;
+
+  /// Fecha del examen (para la cuenta atrás y el ritmo de estudio).
+  final DateTime? examDate;
   final DateTime? createdAt;
+
+  /// Días que faltan para el examen (negativo si ya pasó, `null` si sin fecha).
+  int? get daysToExam {
+    final d = examDate;
+    if (d == null) return null;
+    final today = DateTime.now();
+    final t0 = DateTime(today.year, today.month, today.day);
+    final e0 = DateTime(d.year, d.month, d.day);
+    return e0.difference(t0).inDays;
+  }
 
   bool get indexGenerating => indexStatus == IndexStatus.generating;
   bool get indexReady => indexStatus == IndexStatus.ready;

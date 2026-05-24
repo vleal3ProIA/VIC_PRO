@@ -200,6 +200,8 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
       subjectId: widget.subject.id,
       nodeId: selectedId,
       onSelectNode: (id) => setState(() => _selectedNodeId = id),
+      examDate: widget.subject.examDate,
+      sectionCount: ordered.where((n) => n.parentId != null).length,
     );
 
     return LayoutBuilder(
@@ -1348,18 +1350,22 @@ class _NodeViewState extends ConsumerState<_NodeView> {
 
 // ─────────────────────────────── Columna ESTUDIO ────────────────────────────
 
-enum _StudioTool { home, notes, flashcards, mindmap, quiz, guide }
+enum _StudioTool { home, notes, flashcards, mindmap, quiz, guide, exam }
 
 class _StudioColumn extends StatefulWidget {
   const _StudioColumn({
     required this.subjectId,
     required this.nodeId,
     required this.onSelectNode,
+    required this.examDate,
+    required this.sectionCount,
   });
 
   final String subjectId;
   final String? nodeId;
   final ValueChanged<String> onSelectNode;
+  final DateTime? examDate;
+  final int sectionCount;
 
   @override
   State<_StudioColumn> createState() => _StudioColumnState();
@@ -1376,6 +1382,7 @@ class _StudioColumnState extends State<_StudioColumn> {
     final inMind = _tool == _StudioTool.mindmap;
     final inQuiz = _tool == _StudioTool.quiz;
     final inGuide = _tool == _StudioTool.guide;
+    final inExam = _tool == _StudioTool.exam;
 
     final String title;
     final IconData leading;
@@ -1394,6 +1401,9 @@ class _StudioColumnState extends State<_StudioColumn> {
     } else if (inGuide) {
       title = l.studioGuide;
       leading = Icons.menu_book_outlined;
+    } else if (inExam) {
+      title = l.studyExamLabel;
+      leading = Icons.event_outlined;
     } else {
       title = l.studioTitle;
       leading = Icons.auto_awesome;
@@ -1414,6 +1424,12 @@ class _StudioColumnState extends State<_StudioColumn> {
       body = _QuizView(subjectId: widget.subjectId);
     } else if (inGuide) {
       body = _GuideView(subjectId: widget.subjectId);
+    } else if (inExam) {
+      body = _ExamView(
+        subjectId: widget.subjectId,
+        examDate: widget.examDate,
+        sectionCount: widget.sectionCount,
+      );
     } else {
       body = _studioGrid(context);
     }
@@ -1422,7 +1438,7 @@ class _StudioColumnState extends State<_StudioColumn> {
       title: title,
       leading: leading,
       actions: [
-        if (inNotes || inFlash || inMind || inQuiz || inGuide)
+        if (inNotes || inFlash || inMind || inQuiz || inGuide || inExam)
           IconButton(
             tooltip: l.actionCancel,
             visualDensity: VisualDensity.compact,
@@ -1465,6 +1481,11 @@ class _StudioColumnState extends State<_StudioColumn> {
         icon: Icons.menu_book_outlined,
         label: l.studioGuide,
         onTap: () => setState(() => _tool = _StudioTool.guide),
+      ),
+      _StudioTile(
+        icon: Icons.event_outlined,
+        label: l.studyExamLabel,
+        onTap: () => setState(() => _tool = _StudioTool.exam),
       ),
     ];
     return GridView.count(
@@ -1525,6 +1546,231 @@ class _StudioTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Examen: cuenta atrás, ritmo de estudio y "modo pánico" (chuleta IA).
+class _ExamView extends ConsumerStatefulWidget {
+  const _ExamView({
+    required this.subjectId,
+    required this.examDate,
+    required this.sectionCount,
+  });
+
+  final String subjectId;
+  final DateTime? examDate;
+  final int sectionCount;
+
+  @override
+  ConsumerState<_ExamView> createState() => _ExamViewState();
+}
+
+class _ExamViewState extends ConsumerState<_ExamView> {
+  bool _busy = false;
+
+  int? _daysToExam() {
+    final d = widget.examDate;
+    if (d == null) return null;
+    final n = DateTime.now();
+    final t0 = DateTime(n.year, n.month, n.day);
+    final e0 = DateTime(d.year, d.month, d.day);
+    return e0.difference(t0).inDays;
+  }
+
+  Future<void> _setDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: widget.examDate ?? now.add(const Duration(days: 30)),
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 6),
+    );
+    if (picked == null) return;
+    await ref.read(subjectsDataSourceProvider).setExamDate(widget.subjectId, picked);
+    ref.invalidate(subjectsListProvider);
+  }
+
+  Future<void> _clearDate() async {
+    await ref.read(subjectsDataSourceProvider).setExamDate(widget.subjectId, null);
+    ref.invalidate(subjectsListProvider);
+  }
+
+  Future<void> _generateCram() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final errBg = Theme.of(context).colorScheme.error;
+    try {
+      await ref.read(subjectsDataSourceProvider).generateCram(widget.subjectId);
+      ref.invalidate(cramProvider(widget.subjectId));
+    } on SubjectsException catch (e) {
+      final detail =
+          e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: errBg,
+          duration: const Duration(seconds: 8),
+          content: Text('${l.studyViewError} (${e.code})$detail'),
+        ),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final days = _daysToExam();
+    final perDay = (days != null && days > 0 && widget.sectionCount > 0)
+        ? (widget.sectionCount / days).ceil()
+        : null;
+    final cram = ref.watch(cramProvider(widget.subjectId));
+
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      children: [
+        // ─── Cuenta atrás ───
+        if (days == null)
+          Text(
+            l.studyExamNoDate,
+            style: context.textTheme.bodyMedium
+                ?.copyWith(color: scheme.onSurfaceVariant),
+          )
+        else ...[
+          Text(
+            days > 0
+                ? l.studyExamIn(days)
+                : (days == 0 ? l.studyExamToday : l.studyExamPast),
+            style: context.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: scheme.primary,
+            ),
+          ),
+          if (perDay != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                l.studyExamPace(perDay),
+                style: context.textTheme.bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ),
+        ],
+        const SizedBox(height: AppSpacing.sm),
+        Wrap(
+          spacing: AppSpacing.sm,
+          children: [
+            OutlinedButton.icon(
+              onPressed: _setDate,
+              icon: const Icon(Icons.event_outlined, size: 16),
+              label: Text(l.studyExamSetDate),
+            ),
+            if (widget.examDate != null)
+              TextButton.icon(
+                onPressed: _clearDate,
+                icon: const Icon(Icons.event_busy_outlined, size: 16),
+                label: Text(l.studyExamClear),
+              ),
+          ],
+        ),
+        const Divider(height: AppSpacing.lg),
+
+        // ─── Modo pánico (chuleta) ───
+        Row(
+          children: [
+            Icon(Icons.bolt, size: 18, color: scheme.primary),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(
+              child: Text(
+                l.studyPanicTitle,
+                style: context.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        if (_busy)
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(l.studyGenerating, style: context.textTheme.bodySmall),
+                ],
+              ),
+            ),
+          )
+        else
+          cram.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(AppSpacing.md),
+              child: Center(child: AppLoadingState()),
+            ),
+            error: (e, _) => AppErrorState(
+              message: l.studyViewError,
+              detail: e.toString(),
+              onRetry: () => ref.invalidate(cramProvider(widget.subjectId)),
+              retryLabel: l.actionRetry,
+            ),
+            data: (content) {
+              if (content == null || content.isEmpty) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l.studyPanicEmpty,
+                      style: context.textTheme.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    PremiumButton(
+                      label: l.studyPanicGenerate,
+                      leadingIcon: Icons.bolt,
+                      onPressed: _generateCram,
+                    ),
+                  ],
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        tooltip: l.studyExport,
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.download_outlined, size: 18),
+                        onPressed: () => downloadStudyText(
+                          filename: 'chuleta.md',
+                          text: content,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: _generateCram,
+                        icon: const Icon(Icons.refresh, size: 16),
+                        label: Text(l.studyRegenerate),
+                      ),
+                    ],
+                  ),
+                  MarkdownText(content),
+                ],
+              );
+            },
+          ),
+      ],
     );
   }
 }

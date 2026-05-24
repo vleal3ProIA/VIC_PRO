@@ -94,6 +94,19 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
     }
   }
 
+  Future<void> _setExamDate(Subject s) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: s.examDate ?? now.add(const Duration(days: 30)),
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 6),
+    );
+    if (picked == null) return;
+    await _ds.setExamDate(s.id, picked);
+    ref.invalidate(subjectsListProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
@@ -130,6 +143,7 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
                 onSelect: _select,
                 onAdd: _busy ? null : _createSubject,
                 onDelete: null,
+                onSetExamDate: null,
               ),
               workspace(
                 AppEmptyState(
@@ -156,6 +170,7 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
               onSelect: _select,
               onAdd: _busy ? null : _createSubject,
               onDelete: _busy ? null : () => _deleteSubject(selected),
+              onSetExamDate: _busy ? null : () => _setExamDate(selected),
             ),
             workspace(
               SubjectStudyPanel(
@@ -179,6 +194,7 @@ class _TopBar extends StatelessWidget {
     required this.onSelect,
     required this.onAdd,
     required this.onDelete,
+    required this.onSetExamDate,
   });
 
   final List<Subject> subjects;
@@ -187,6 +203,16 @@ class _TopBar extends StatelessWidget {
   final ValueChanged<String> onSelect;
   final VoidCallback? onAdd;
   final VoidCallback? onDelete;
+  final VoidCallback? onSetExamDate;
+
+  String _examLabel(BuildContext context) {
+    final l = context.l10n;
+    final d = selected?.daysToExam;
+    if (d == null) return l.studyExamLabel;
+    if (d > 0) return l.studyExamIn(d);
+    if (d == 0) return l.studyExamToday;
+    return l.studyExamPast;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -240,6 +266,14 @@ class _TopBar extends StatelessWidget {
               onPressed: onDelete,
             ),
           const Spacer(),
+          if (selected != null) ...[
+            ActionChip(
+              avatar: const Icon(Icons.event_outlined, size: 16),
+              label: Text(_examLabel(context)),
+              onPressed: onSetExamDate,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+          ],
           PremiumButton(
             label: l.subjectsAdd,
             leadingIcon: Icons.add,

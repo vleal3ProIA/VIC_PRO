@@ -61,6 +61,11 @@ final studyGuideProvider =
   return ref.watch(subjectsDataSourceProvider).getStudyGuide(subjectId);
 });
 
+/// Chuleta "modo pánico" cacheada de un temario (`null` si aún no se generó).
+final cramProvider = FutureProvider.family<String?, String>((ref, subjectId) {
+  return ref.watch(subjectsDataSourceProvider).getCram(subjectId);
+});
+
 /// Clave (nodo, tipo de vista) para cachear contenido de nodo.
 typedef NodeViewKey = ({String nodeId, String kind});
 
