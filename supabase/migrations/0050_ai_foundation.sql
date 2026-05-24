@@ -124,6 +124,7 @@ alter table public.ai_usage       enable row level security;
 -- policy `for all`: el USING cubre select/delete y el WITH CHECK insert/update.
 drop policy if exists "ai_providers_admin_select" on public.ai_providers;
 drop policy if exists "ai_providers_admin_write" on public.ai_providers;
+drop policy if exists "ai_providers_admin_all" on public.ai_providers;
 create policy "ai_providers_admin_all"
   on public.ai_providers for all
   using (public.has_capability('manage_ai'))
