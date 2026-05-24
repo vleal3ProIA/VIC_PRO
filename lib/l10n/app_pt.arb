@@ -15,6 +15,10 @@
   "studyGenerating": "A gerar…",
   "studyViewError": "Não foi possível gerar esta vista",
   "studyRegenerate": "Regenerar",
+  "studyValidateIndex": "Validar índice",
+  "studyValidateConfirmTitle": "Validar o índice?",
+  "studyValidateConfirmBody": "Depois de validado, não poderás regenerar este índice.",
+  "studyIndexValidated": "Índice validado",
 
   "homeSubjectsTitle": "Os meus temas",
   "homeSubjectsSubtitle": "Carrega o teu material e a IA transforma-o em resumos e testes.",

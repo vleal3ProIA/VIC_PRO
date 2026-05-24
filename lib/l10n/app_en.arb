@@ -15,6 +15,10 @@
   "studyGenerating": "Generating…",
   "studyViewError": "Could not generate this view",
   "studyRegenerate": "Regenerate",
+  "studyValidateIndex": "Validate index",
+  "studyValidateConfirmTitle": "Validate index?",
+  "studyValidateConfirmBody": "Once validated, you won't be able to regenerate this index.",
+  "studyIndexValidated": "Index validated",
 
   "homeSubjectsTitle": "My study sets",
   "homeSubjectsSubtitle": "Upload your material and the AI turns it into summaries and tests.",

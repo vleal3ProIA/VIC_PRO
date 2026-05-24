@@ -162,6 +162,28 @@ class SubjectsDataSource {
         .toList(growable: false);
   }
 
+  /// Valida (bloquea) el índice: una vez validado ya no se puede regenerar.
+  /// RLS de subjects (propietario) permite el UPDATE desde el cliente.
+  Future<void> validateIndex(String subjectId) async {
+    await _client.from('subjects').update({
+      'index_locked': true,
+      'index_locked_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', subjectId);
+  }
+
+  /// IDs de los nodos que YA tienen contenido generado por IA (explicado o
+  /// resumen), para marcarlos en el índice. RLS limita al usuario; los UUID de
+  /// nodo son únicos, así que el árbol del temario los cruza sin ambigüedad.
+  Future<Set<String>> listAiNodeIds(String subjectId) async {
+    final data = await _client
+        .from('node_content')
+        .select('node_id')
+        .neq('kind', 'original');
+    return (data as List)
+        .map((e) => (e as Map)['node_id'] as String)
+        .toSet();
+  }
+
   /// Lee la vista cacheada de un nodo (`null` si aún no se ha generado).
   Future<String?> getNodeContent(String nodeId, String kind) async {
     final data = await _client

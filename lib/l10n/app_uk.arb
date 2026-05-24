@@ -15,6 +15,10 @@
   "studyGenerating": "Створення…",
   "studyViewError": "Не вдалося створити це подання",
   "studyRegenerate": "Перестворити",
+  "studyValidateIndex": "Підтвердити зміст",
+  "studyValidateConfirmTitle": "Підтвердити зміст?",
+  "studyValidateConfirmBody": "Після підтвердження повторно створити зміст буде неможливо.",
+  "studyIndexValidated": "Зміст підтверджено",
 
   "homeSubjectsTitle": "Мої матеріали",
   "homeSubjectsSubtitle": "Завантажте матеріал, і ШІ зробить із нього конспекти й тести.",

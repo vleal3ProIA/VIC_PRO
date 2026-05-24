@@ -41,6 +41,7 @@ class Subject {
     required this.title,
     this.language,
     this.indexStatus = IndexStatus.none,
+    this.indexLocked = false,
     this.createdAt,
   });
 
@@ -49,6 +50,7 @@ class Subject {
         title: (m['title'] as String?) ?? '',
         language: m['language'] as String?,
         indexStatus: indexStatusFrom(m['index_status'] as String?),
+        indexLocked: (m['index_locked'] as bool?) ?? false,
         createdAt: _ts(m['created_at']),
       );
 
@@ -56,6 +58,9 @@ class Subject {
   final String title;
   final String? language;
   final IndexStatus indexStatus;
+
+  /// `true` cuando el usuario ha validado el índice: ya no se puede regenerar.
+  final bool indexLocked;
   final DateTime? createdAt;
 
   bool get indexGenerating => indexStatus == IndexStatus.generating;

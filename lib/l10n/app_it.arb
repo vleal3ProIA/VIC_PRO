@@ -15,6 +15,10 @@
   "studyGenerating": "Generazione…",
   "studyViewError": "Impossibile generare questa vista",
   "studyRegenerate": "Rigenera",
+  "studyValidateIndex": "Convalida indice",
+  "studyValidateConfirmTitle": "Convalidare l'indice?",
+  "studyValidateConfirmBody": "Una volta convalidato, non potrai più rigenerare questo indice.",
+  "studyIndexValidated": "Indice convalidato",
 
   "homeSubjectsTitle": "I miei corsi",
   "homeSubjectsSubtitle": "Carica il tuo materiale e l'IA lo trasforma in riassunti e test.",

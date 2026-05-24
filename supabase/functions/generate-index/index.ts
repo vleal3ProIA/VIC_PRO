@@ -35,6 +35,7 @@ interface SubjectRow {
   id: string;
   user_id: string;
   title: string;
+  index_locked?: boolean;
 }
 
 interface IndexNode {
@@ -90,7 +91,7 @@ Deno.serve(withSentry("generate-index", async (req) => {
 
   const { data: subj, error: sErr } = await admin
     .from("subjects")
-    .select("id, user_id, title")
+    .select("id, user_id, title, index_locked")
     .eq("id", subjectId)
     .maybeSingle();
   if (sErr) return json({ error: "db_error", detail: sErr.message }, 500);
@@ -99,6 +100,11 @@ Deno.serve(withSentry("generate-index", async (req) => {
     return json({ error: "forbidden" }, 403);
   }
   const subject = subj as SubjectRow;
+
+  // Índice validado por el usuario: ya no se puede regenerar.
+  if (subject.index_locked === true) {
+    return json({ error: "index_locked" }, 409);
+  }
 
   const rateOk = await checkRateLimit(admin, {
     bucketKey: `generate-index:${user.id}`,

@@ -15,6 +15,10 @@
   "studyGenerating": "Wird erstellt…",
   "studyViewError": "Diese Ansicht konnte nicht erstellt werden",
   "studyRegenerate": "Neu erstellen",
+  "studyValidateIndex": "Index bestätigen",
+  "studyValidateConfirmTitle": "Index bestätigen?",
+  "studyValidateConfirmBody": "Nach der Bestätigung kann dieser Index nicht mehr neu erstellt werden.",
+  "studyIndexValidated": "Index bestätigt",
 
   "homeSubjectsTitle": "Meine Lernsets",
   "homeSubjectsSubtitle": "Lade dein Material hoch und die KI macht Zusammenfassungen und Tests daraus.",

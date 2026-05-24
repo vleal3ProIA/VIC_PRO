@@ -15,6 +15,10 @@
   "studyGenerating": "Génération…",
   "studyViewError": "Impossible de générer cette vue",
   "studyRegenerate": "Régénérer",
+  "studyValidateIndex": "Valider l'index",
+  "studyValidateConfirmTitle": "Valider l'index ?",
+  "studyValidateConfirmBody": "Une fois validé, vous ne pourrez plus régénérer cet index.",
+  "studyIndexValidated": "Index validé",
 
   "homeSubjectsTitle": "Mes cours",
   "homeSubjectsSubtitle": "Téléversez votre matériel et l'IA en fait des résumés et des tests.",

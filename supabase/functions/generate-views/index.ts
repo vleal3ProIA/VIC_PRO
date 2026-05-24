@@ -148,10 +148,11 @@ Deno.serve(withSentry("generate-views", async (req) => {
     return json({ error: "no_ready_documents" }, 409);
   }
 
-  try {
+  // Genera una vista concreta y la cachea; devuelve el texto.
+  const genOne = async (k: string): Promise<string> => {
     const result = await runCompletion(admin, {
-      task: `view:${kind}`,
-      system: systemFor(kind, language),
+      task: `view:${k}`,
+      system: systemFor(k, language),
       messages: [{
         role: "user",
         content: textContext
@@ -159,20 +160,35 @@ Deno.serve(withSentry("generate-views", async (req) => {
           : `Section title: ${node.title}\n\nUse the attached document(s).`,
       }],
       attachments: attachments.length > 0 ? attachments : undefined,
-      maxOutputTokens: kind === "summary" ? 2048 : 8192,
-      temperature: kind === "original" ? 0 : 0.3,
+      maxOutputTokens: k === "summary" ? 2048 : 8192,
+      temperature: k === "original" ? 0 : 0.3,
       userId: node.user_id,
       subjectId: node.subject_id,
     });
-
     await admin.from("node_content").upsert({
       node_id: node.id,
       user_id: node.user_id,
-      kind,
+      kind: k,
       content: result.text,
     }, { onConflict: "node_id,kind" });
+    return result.text;
+  };
 
-    return json({ ok: true, cached: false, content: result.text }, 200);
+  try {
+    let content: string;
+    if (kind === "original") {
+      content = await genOne("original");
+    } else {
+      // Explicado y Resumen se generan SIEMPRE a la vez: al pedir cualquiera
+      // de los dos, se generan y cachean ambos.
+      const [explained, summary] = await Promise.all([
+        genOne("explained"),
+        genOne("summary"),
+      ]);
+      content = kind === "summary" ? summary : explained;
+    }
+
+    return json({ ok: true, cached: false, content }, 200);
   } catch (e) {
     const detail = e instanceof AiGatewayError
       ? e.message

@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
+import 'package:myapp/core/widgets/app_confirm_dialog.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
@@ -94,6 +95,36 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
     }
   }
 
+  /// Valida el índice (bloqueo definitivo): tras confirmar, ya no se podrá
+  /// regenerar.
+  Future<void> _validateIndex() async {
+    if (_busy) return;
+    final l = context.l10n;
+    final ok = await AppConfirmDialog.show(
+      context,
+      title: l.studyValidateConfirmTitle,
+      body: l.studyValidateConfirmBody,
+      confirmLabel: l.studyValidateIndex,
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final errBg = Theme.of(context).colorScheme.error;
+    try {
+      await ref
+          .read(subjectsDataSourceProvider)
+          .validateIndex(widget.subject.id);
+      ref.invalidate(subjectsListProvider);
+      messenger.showSnackBar(SnackBar(content: Text(l.studyIndexValidated)));
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     _syncPolling(widget.subject.indexGenerating);
@@ -167,17 +198,18 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
       ),
       data: (nodes) {
         if (nodes.isEmpty) {
-          // Índice "ready" pero vacío: permitir regenerar.
+          // Índice "ready" pero vacío: permitir regenerar (salvo bloqueado).
           return PremiumCard(
             padding: const EdgeInsets.all(AppSpacing.md),
             child: Row(
               children: [
                 Expanded(child: Text(l.studySelectNode)),
-                PremiumButton(
-                  label: l.studyGenerateIndex,
-                  loading: _busy,
-                  onPressed: _busy ? null : _generateIndex,
-                ),
+                if (!widget.subject.indexLocked)
+                  PremiumButton(
+                    label: l.studyGenerateIndex,
+                    loading: _busy,
+                    onPressed: _busy ? null : _generateIndex,
+                  ),
               ],
             ),
           );
@@ -187,10 +219,18 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
             ? _selectedNodeId!
             : ordered.first.id;
 
+        final locked = widget.subject.indexLocked;
+        final aiNodeIds =
+            ref.watch(aiContentNodeIdsProvider(widget.subject.id)).valueOrNull ??
+                const <String>{};
+
         final tree = _IndexTree(
           nodes: ordered,
           selectedId: selectedId,
-          onRegenerate: _busy ? null : _generateIndex,
+          aiNodeIds: aiNodeIds,
+          locked: locked,
+          onRegenerate: (_busy || locked) ? null : _generateIndex,
+          onValidate: _busy ? null : _validateIndex,
           regenerating: _busy,
           onSelect: (id) => setState(() => _selectedNodeId = id),
         );
@@ -247,15 +287,25 @@ class _IndexTree extends StatefulWidget {
   const _IndexTree({
     required this.nodes,
     required this.selectedId,
+    required this.aiNodeIds,
+    required this.locked,
     required this.onSelect,
     required this.onRegenerate,
+    required this.onValidate,
     required this.regenerating,
   });
 
   final List<IndexNode> nodes;
   final String selectedId;
+
+  /// Nodos con contenido IA (explicado/resumen) -> se pintan en azul.
+  final Set<String> aiNodeIds;
+
+  /// Índice validado: sin botón de regenerar.
+  final bool locked;
   final ValueChanged<String> onSelect;
   final VoidCallback? onRegenerate;
+  final VoidCallback? onValidate;
   final bool regenerating;
 
   @override
@@ -296,6 +346,7 @@ class _IndexTreeState extends State<_IndexTree> {
         _TreeTile(
           node: n,
           hasChildren: hasChildren,
+          hasAi: widget.aiNodeIds.contains(n.id),
           expanded: isExpanded,
           selected: n.id == widget.selectedId,
           onToggle: hasChildren
@@ -351,18 +402,43 @@ class _IndexTreeState extends State<_IndexTree> {
                     ),
                   ),
                 ),
-                IconButton(
-                  tooltip: l.studyRegenerate,
-                  visualDensity: VisualDensity.compact,
-                  icon: widget.regenerating
-                      ? const SizedBox(
-                          height: 16,
-                          width: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2.2),
-                        )
-                      : const Icon(Icons.refresh, size: 18),
-                  onPressed: widget.onRegenerate,
-                ),
+                if (widget.locked)
+                  Tooltip(
+                    message: l.studyIndexValidated,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.sm),
+                      child: Icon(
+                        Icons.verified_outlined,
+                        size: 18,
+                        color: scheme.primary,
+                      ),
+                    ),
+                  )
+                else ...[
+                  if (widget.regenerating)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2.2),
+                      ),
+                    )
+                  else ...[
+                    IconButton(
+                      tooltip: l.studyValidateIndex,
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.verified_outlined, size: 18),
+                      onPressed: widget.onValidate,
+                    ),
+                    IconButton(
+                      tooltip: l.studyRegenerate,
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.refresh, size: 18),
+                      onPressed: widget.onRegenerate,
+                    ),
+                  ],
+                ],
               ],
             ),
           ),
@@ -379,6 +455,7 @@ class _TreeTile extends StatelessWidget {
   const _TreeTile({
     required this.node,
     required this.hasChildren,
+    required this.hasAi,
     required this.expanded,
     required this.selected,
     required this.onToggle,
@@ -387,6 +464,9 @@ class _TreeTile extends StatelessWidget {
 
   final IndexNode node;
   final bool hasChildren;
+
+  /// `true` si este nodo ya tiene Explicado/Resumen generado -> texto azul.
+  final bool hasAi;
   final bool expanded;
   final bool selected;
   final VoidCallback? onToggle;
@@ -440,7 +520,9 @@ class _TreeTile extends StatelessWidget {
                     fontWeight: (selected || node.parentId == null)
                         ? FontWeight.w700
                         : FontWeight.w500,
-                    color: selected ? scheme.primary : null,
+                    // Azul = ya tiene contenido IA (explicado/resumen). La
+                    // selección se distingue por el fondo resaltado + negrita.
+                    color: hasAi ? scheme.primary : null,
                   ),
                 ),
               ),
@@ -543,7 +625,15 @@ class _NodeViewState extends ConsumerState<_NodeView> {
             kind: widget.kind,
             force: force,
           );
-      ref.invalidate(nodeContentProvider(_key));
+      // El backend genera Explicado y Resumen a la vez: refrescamos ambas
+      // vistas y la marca azul del índice.
+      ref.invalidate(
+        nodeContentProvider((nodeId: widget.nodeId, kind: 'explained')),
+      );
+      ref.invalidate(
+        nodeContentProvider((nodeId: widget.nodeId, kind: 'summary')),
+      );
+      ref.invalidate(aiContentNodeIdsProvider(widget.subjectId));
     } on SubjectsException catch (e) {
       messenger.showSnackBar(
         SnackBar(

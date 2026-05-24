@@ -30,6 +30,13 @@ final indexNodesProvider =
   return ref.watch(subjectsDataSourceProvider).listIndexNodes(subjectId);
 });
 
+/// IDs de los nodos del índice que ya tienen contenido IA (explicado/resumen),
+/// para pintarlos en azul. Se invalida tras generar una vista.
+final aiContentNodeIdsProvider =
+    FutureProvider.family<Set<String>, String>((ref, subjectId) {
+  return ref.watch(subjectsDataSourceProvider).listAiNodeIds(subjectId);
+});
+
 /// Clave (nodo, tipo de vista) para cachear contenido de nodo.
 typedef NodeViewKey = ({String nodeId, String kind});
 

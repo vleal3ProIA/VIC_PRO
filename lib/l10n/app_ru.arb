@@ -15,6 +15,10 @@
   "studyGenerating": "Создание…",
   "studyViewError": "Не удалось создать это представление",
   "studyRegenerate": "Пересоздать",
+  "studyValidateIndex": "Подтвердить оглавление",
+  "studyValidateConfirmTitle": "Подтвердить оглавление?",
+  "studyValidateConfirmBody": "После подтверждения пересоздать оглавление будет нельзя.",
+  "studyIndexValidated": "Оглавление подтверждено",
 
   "homeSubjectsTitle": "Мои материалы",
   "homeSubjectsSubtitle": "Загрузите материал, и ИИ сделает из него конспекты и тесты.",
