@@ -34,7 +34,7 @@ import '../../domain/subject.dart';
 import '../util/file_picker_web.dart';
 
 const double _kMinColWidth = 240;
-const double _kHandleWidth = 10;
+const double _kHandleWidth = 18;
 const double _kStackedBreakpoint = 1000;
 const String _kPrefLeftFrac = 'study_left_frac';
 const String _kPrefRightFrac = 'study_right_frac';
@@ -203,17 +203,30 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
       builder: (ctx, c) {
         if (c.maxWidth < _kStackedBreakpoint) {
           return ListView(
-            padding: const EdgeInsets.all(AppSpacing.sm),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              AppSpacing.xl,
+            ),
             children: [
               SizedBox(height: 420, child: left),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.md),
               SizedBox(height: 520, child: center),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.md),
               SizedBox(height: 460, child: right),
             ],
           );
         }
-        return _ResizableRow(left: left, center: center, right: right);
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.sm,
+            AppSpacing.md,
+            AppSpacing.md,
+          ),
+          child: _ResizableRow(left: left, center: center, right: right),
+        );
       },
     );
   }

@@ -184,9 +184,11 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = context.l10n;
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.xs,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.sm,
       ),
       child: Row(
         children: [
@@ -232,6 +234,7 @@ class _TopBar extends StatelessWidget {
           PremiumButton(
             label: l.subjectsAdd,
             leadingIcon: Icons.add,
+            size: PremiumButtonSize.sm,
             loading: busy,
             onPressed: onAdd,
           ),
