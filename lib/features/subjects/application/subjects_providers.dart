@@ -43,6 +43,12 @@ final annotationsProvider =
   return ref.watch(subjectsDataSourceProvider).listAnnotations(nodeId);
 });
 
+/// Flashcards de un temario (ordenadas por fecha de repaso).
+final flashcardsProvider =
+    FutureProvider.family<List<Flashcard>, String>((ref, subjectId) {
+  return ref.watch(subjectsDataSourceProvider).listFlashcards(subjectId);
+});
+
 /// Clave (nodo, tipo de vista) para cachear contenido de nodo.
 typedef NodeViewKey = ({String nodeId, String kind});
 

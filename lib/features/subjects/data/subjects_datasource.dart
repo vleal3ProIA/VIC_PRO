@@ -266,6 +266,90 @@ class SubjectsDataSource {
     await _client.from('annotations').delete().eq('id', id);
   }
 
+  // ─────────────────── Flashcards (Fase 3) ───────────────────
+
+  /// Genera (vía EF) un lote de flashcards del temario o de una sección.
+  /// Reemplaza el lote anterior del mismo ámbito. Devuelve cuántas creó.
+  Future<int> generateFlashcards({
+    required String subjectId,
+    String? nodeId,
+    int count = 12,
+  }) async {
+    try {
+      final res = await _client.functions.invoke(
+        'generate-flashcards',
+        body: {
+          'subject_id': subjectId,
+          if (nodeId != null) 'node_id': nodeId,
+          'count': count,
+        },
+      );
+      final data = res.data;
+      if (data is! Map) throw const SubjectsException('invalid_response');
+      final p = data.cast<String, dynamic>();
+      if (p['ok'] != true) {
+        throw SubjectsException(
+          (p['error'] as String?) ?? 'generation_failed',
+          detail: p['detail'] as String?,
+        );
+      }
+      return (p['count'] as num?)?.toInt() ?? 0;
+    } on FunctionException catch (e) {
+      throw SubjectsException(_efError(e));
+    }
+  }
+
+  /// Flashcards del temario, ordenadas por fecha de repaso (lo que toca antes).
+  Future<List<Flashcard>> listFlashcards(String subjectId) async {
+    final data = await _client
+        .from('flashcards')
+        .select()
+        .eq('subject_id', subjectId)
+        .order('due_at');
+    return (data as List)
+        .cast<Map<String, dynamic>>()
+        .map(Flashcard.fromMap)
+        .toList(growable: false);
+  }
+
+  /// Aplica un repaso (SM-2 lite) y reprograma la tarjeta.
+  Future<void> reviewFlashcard(Flashcard c, ReviewRating rating) async {
+    final now = DateTime.now();
+    var ease = c.ease;
+    var reps = c.reps;
+    var lapses = c.lapses;
+    var interval = c.intervalDays;
+    final DateTime due;
+    switch (rating) {
+      case ReviewRating.again:
+        reps = 0;
+        lapses += 1;
+        interval = 0;
+        ease = (ease - 0.2).clamp(1.3, 3.0);
+        due = now.add(const Duration(minutes: 10));
+      case ReviewRating.good:
+        reps += 1;
+        interval = reps <= 1 ? 1 : (reps == 2 ? 6 : (interval * ease).round());
+        if (interval < 1) interval = 1;
+        due = now.add(Duration(days: interval));
+      case ReviewRating.easy:
+        reps += 1;
+        ease = (ease + 0.15).clamp(1.3, 3.0);
+        final base = interval == 0 ? 1 : interval;
+        interval = reps <= 1 ? 2 : (base * ease * 1.3).round();
+        if (interval < 2) interval = 2;
+        due = now.add(Duration(days: interval));
+    }
+    await _client.from('flashcards').update({
+      'ease': ease,
+      'interval_days': interval,
+      'reps': reps,
+      'lapses': lapses,
+      'due_at': due.toUtc().toIso8601String(),
+      'last_reviewed_at': now.toUtc().toIso8601String(),
+    }).eq('id', c.id);
+  }
+
   /// URL firmada (1 h) del primer documento del temario, para abrir el
   /// original tal cual. `null` si no hay documentos.
   Future<String?> originalDocumentUrl(String subjectId) async {

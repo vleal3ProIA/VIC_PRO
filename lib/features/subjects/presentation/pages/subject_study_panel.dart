@@ -1013,7 +1013,7 @@ class _NodeViewState extends ConsumerState<_NodeView> {
 
 // ─────────────────────────────── Columna ESTUDIO ────────────────────────────
 
-enum _StudioTool { home, notes }
+enum _StudioTool { home, notes, flashcards }
 
 class _StudioColumn extends StatefulWidget {
   const _StudioColumn({required this.subjectId, required this.nodeId});
@@ -1032,11 +1032,26 @@ class _StudioColumnState extends State<_StudioColumn> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final inNotes = _tool == _StudioTool.notes && widget.nodeId != null;
+    final inFlash = _tool == _StudioTool.flashcards;
+
+    final String title;
+    final IconData leading;
+    if (inNotes) {
+      title = l.studyTabNotes;
+      leading = Icons.sticky_note_2_outlined;
+    } else if (inFlash) {
+      title = l.studioFlashcards;
+      leading = Icons.style_outlined;
+    } else {
+      title = l.studioTitle;
+      leading = Icons.auto_awesome;
+    }
+
     return _ColumnCard(
-      title: inNotes ? l.studyTabNotes : l.studioTitle,
-      leading: inNotes ? Icons.sticky_note_2_outlined : Icons.auto_awesome,
+      title: title,
+      leading: leading,
       actions: [
-        if (inNotes)
+        if (inNotes || inFlash)
           IconButton(
             tooltip: l.actionCancel,
             visualDensity: VisualDensity.compact,
@@ -1046,7 +1061,9 @@ class _StudioColumnState extends State<_StudioColumn> {
       ],
       body: inNotes
           ? _NotesView(nodeId: widget.nodeId!, subjectId: widget.subjectId)
-          : _studioGrid(context),
+          : inFlash
+              ? _FlashcardsView(subjectId: widget.subjectId)
+              : _studioGrid(context),
     );
   }
 
@@ -1065,7 +1082,7 @@ class _StudioColumnState extends State<_StudioColumn> {
       _StudioTile(
         icon: Icons.style_outlined,
         label: l.studioFlashcards,
-        comingSoon: true,
+        onTap: () => setState(() => _tool = _StudioTool.flashcards),
       ),
       _StudioTile(
         icon: Icons.quiz_outlined,
@@ -1152,6 +1169,266 @@ class _StudioTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Flashcards del temario con repaso espaciado (flip + Otra vez/Bien/Fácil).
+class _FlashcardsView extends ConsumerStatefulWidget {
+  const _FlashcardsView({required this.subjectId});
+
+  final String subjectId;
+
+  @override
+  ConsumerState<_FlashcardsView> createState() => _FlashcardsViewState();
+}
+
+class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
+  bool _busy = false;
+  bool _flipped = false;
+  int _index = 0;
+
+  Future<void> _generate() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final errBg = Theme.of(context).colorScheme.error;
+    try {
+      await ref
+          .read(subjectsDataSourceProvider)
+          .generateFlashcards(subjectId: widget.subjectId);
+      if (mounted) {
+        setState(() {
+            _index = 0;
+            _flipped = false;
+          });
+      }
+      ref.invalidate(flashcardsProvider(widget.subjectId));
+    } on SubjectsException catch (e) {
+      final detail =
+          e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: errBg,
+          duration: const Duration(seconds: 8),
+          content: Text('${l.studyViewError} (${e.code})$detail'),
+        ),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _review(Flashcard c, ReviewRating rating) async {
+    try {
+      await ref.read(subjectsDataSourceProvider).reviewFlashcard(c, rating);
+    } catch (_) {
+      // El repaso es best-effort: avanzamos igualmente.
+    }
+    if (mounted) {
+      setState(() {
+        _flipped = false;
+        _index++;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    if (_busy) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: AppSpacing.sm),
+            Text(l.studyGenerating, style: context.textTheme.bodySmall),
+          ],
+        ),
+      );
+    }
+
+    final async = ref.watch(flashcardsProvider(widget.subjectId));
+    return async.when(
+      loading: () => const Center(child: AppLoadingState()),
+      error: (e, _) => AppErrorState(
+        message: l.studyViewError,
+        detail: e.toString(),
+        onRetry: () => ref.invalidate(flashcardsProvider(widget.subjectId)),
+        retryLabel: l.actionRetry,
+      ),
+      data: (cards) {
+        if (cards.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l.studioFlashEmpty,
+                    textAlign: TextAlign.center,
+                    style: context.textTheme.bodyMedium
+                        ?.copyWith(color: context.colors.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  PremiumButton(
+                    label: l.studioFlashGenerate,
+                    leadingIcon: Icons.auto_awesome_outlined,
+                    onPressed: _generate,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final done = _index >= cards.length;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.xs,
+                AppSpacing.xs,
+                AppSpacing.xs,
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    done ? '${cards.length} / ${cards.length}'
+                        : '${_index + 1} / ${cards.length}',
+                    style: context.textTheme.labelMedium
+                        ?.copyWith(color: context.colors.onSurfaceVariant),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    tooltip: l.studyRegenerate,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    onPressed: _generate,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: done
+                  ? _allDone(context)
+                  : _cardArea(context, cards[_index]),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _allDone(BuildContext context) {
+    final l = context.l10n;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.check_circle_outline,
+              size: 40, color: context.colors.primary,),
+          const SizedBox(height: AppSpacing.sm),
+          Text(l.studioFlashAllDone, style: context.textTheme.titleSmall),
+          const SizedBox(height: AppSpacing.md),
+          PremiumButton(
+            label: l.studioFlashReviewAgain,
+            leadingIcon: Icons.replay,
+            onPressed: () {
+              setState(() {
+                _index = 0;
+                _flipped = false;
+              });
+              ref.invalidate(flashcardsProvider(widget.subjectId));
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cardArea(BuildContext context, Flashcard card) {
+    final l = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: InkWell(
+            onTap: () => setState(() => _flipped = !_flipped),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    card.front,
+                    style: context.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  if (_flipped) ...[
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                      child: Divider(height: 1),
+                    ),
+                    SelectableText(
+                      card.back,
+                      style: context.textTheme.bodyMedium
+                          ?.copyWith(height: 1.5),
+                    ),
+                  ] else
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.md),
+                      child: Text(
+                        l.studioFlashShowAnswer,
+                        textAlign: TextAlign.center,
+                        style: context.textTheme.bodySmall
+                            ?.copyWith(color: context.colors.onSurfaceVariant),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (_flipped)
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _review(card, ReviewRating.again),
+                    child: Text(l.studioFlashAgain),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: FilledButton.tonal(
+                    onPressed: () => _review(card, ReviewRating.good),
+                    child: Text(l.studioFlashGood),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => _review(card, ReviewRating.easy),
+                    child: Text(l.studioFlashEasy),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

@@ -123,6 +123,54 @@ class Annotation {
   final DateTime? updatedAt;
 }
 
+/// Calificación de un repaso de flashcard (alimenta el repaso espaciado).
+enum ReviewRating { again, good, easy }
+
+/// Flashcard pregunta/respuesta con estado de repaso espaciado (SM-2 lite).
+class Flashcard {
+  const Flashcard({
+    required this.id,
+    required this.subjectId,
+    required this.front,
+    required this.back,
+    this.nodeId,
+    this.ease = 2.5,
+    this.intervalDays = 0,
+    this.reps = 0,
+    this.lapses = 0,
+    this.dueAt,
+  });
+
+  factory Flashcard.fromMap(Map<String, dynamic> m) => Flashcard(
+        id: m['id'] as String,
+        subjectId: m['subject_id'] as String,
+        front: (m['front'] as String?) ?? '',
+        back: (m['back'] as String?) ?? '',
+        nodeId: m['node_id'] as String?,
+        ease: (m['ease'] as num?)?.toDouble() ?? 2.5,
+        intervalDays: (m['interval_days'] as num?)?.toInt() ?? 0,
+        reps: (m['reps'] as num?)?.toInt() ?? 0,
+        lapses: (m['lapses'] as num?)?.toInt() ?? 0,
+        dueAt: _ts(m['due_at']),
+      );
+
+  final String id;
+  final String subjectId;
+  final String front;
+  final String back;
+  final String? nodeId;
+  final double ease;
+  final int intervalDays;
+  final int reps;
+  final int lapses;
+  final DateTime? dueAt;
+
+  bool get isDue {
+    final d = dueAt;
+    return d == null || !d.isAfter(DateTime.now());
+  }
+}
+
 class SubjectDocument {
   const SubjectDocument({
     required this.id,
