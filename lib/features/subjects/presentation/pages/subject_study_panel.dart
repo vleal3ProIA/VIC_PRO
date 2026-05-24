@@ -1450,7 +1450,7 @@ class _StudioColumnState extends State<_StudioColumn> {
       leading = Icons.event_outlined;
     } else if (inMock) {
       title = l.studioTest;
-      leading = Icons.timer_outlined;
+      leading = Icons.fact_check_outlined;
     } else if (inProgress) {
       title = l.studioProgress;
       leading = Icons.insights_outlined;
@@ -1522,6 +1522,7 @@ class _StudioColumnState extends State<_StudioColumn> {
       _StudioTile(
         icon: Icons.sticky_note_2_outlined,
         label: l.studyTabNotes,
+        color: Colors.amber.shade700,
         enabled: canNotes,
         onTap: canNotes
             ? () => setState(() => _tool = _StudioTool.notes)
@@ -1530,60 +1531,71 @@ class _StudioColumnState extends State<_StudioColumn> {
       _StudioTile(
         icon: Icons.style_outlined,
         label: l.studioFlashcards,
+        color: Colors.blue.shade600,
         onTap: () => setState(() => _tool = _StudioTool.flashcards),
       ),
       _StudioTile(
         icon: Icons.quiz_outlined,
         label: l.studioQuiz,
+        color: Colors.deepPurple.shade400,
         onTap: () => setState(() => _tool = _StudioTool.quiz),
       ),
       _StudioTile(
         icon: Icons.hub_outlined,
         label: l.studioMindmap,
+        color: Colors.teal.shade500,
         onTap: () => setState(() => _tool = _StudioTool.mindmap),
       ),
       _StudioTile(
         icon: Icons.menu_book_outlined,
         label: l.studioGuide,
+        color: Colors.green.shade600,
         onTap: () => setState(() => _tool = _StudioTool.guide),
       ),
       _StudioTile(
         icon: Icons.event_outlined,
         label: l.studyExamLabel,
+        color: Colors.deepOrange.shade400,
         onTap: () => setState(() => _tool = _StudioTool.exam),
       ),
       _StudioTile(
-        icon: Icons.timer_outlined,
-        label: l.studioMock,
+        icon: Icons.fact_check_outlined,
+        label: l.studioTest,
+        color: Colors.indigo.shade400,
         onTap: () => setState(() => _tool = _StudioTool.mock),
       ),
       _StudioTile(
         icon: Icons.insights_outlined,
         label: l.studioProgress,
+        color: Colors.pink.shade400,
         onTap: () => setState(() => _tool = _StudioTool.progress),
       ),
     ];
     return GridView.count(
       padding: const EdgeInsets.all(AppSpacing.sm),
-      crossAxisCount: 2,
-      mainAxisSpacing: AppSpacing.sm,
-      crossAxisSpacing: AppSpacing.sm,
-      childAspectRatio: 1.4,
+      crossAxisCount: 4,
+      mainAxisSpacing: AppSpacing.xs,
+      crossAxisSpacing: AppSpacing.xs,
+      childAspectRatio: 2.1,
       children: tiles,
     );
   }
 }
 
+/// Etiqueta compacta del panel de estudio: mitad de ancho (4 por fila) y
+/// un tercio de alto que la versión anterior, cada una con su propio color.
 class _StudioTile extends StatelessWidget {
   const _StudioTile({
     required this.icon,
     required this.label,
+    required this.color,
     this.enabled = true,
     this.onTap,
   });
 
   final IconData icon;
   final String label;
+  final Color color;
   final bool enabled;
   final VoidCallback? onTap;
 
@@ -1591,34 +1603,38 @@ class _StudioTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = context.colors;
     final dim = !enabled;
-    return InkWell(
-      onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: scheme.outlineVariant),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              icon,
-              size: 22,
-              color: dim ? scheme.onSurfaceVariant : scheme.primary,
-            ),
-            const Spacer(),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: context.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: dim ? scheme.onSurfaceVariant : null,
+    final c = dim ? scheme.onSurfaceVariant : color;
+    return Tooltip(
+      message: label,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: c.withValues(alpha: dim ? 0.06 : 0.12),
+            border: Border.all(color: c.withValues(alpha: dim ? 0.18 : 0.40)),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: c),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: context.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: dim ? scheme.onSurfaceVariant : null,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1753,11 +1769,9 @@ class _ProgressView extends ConsumerWidget {
   }
 }
 
-/// Simulacro de examen: cronometrado, sin feedback hasta el final, con
-/// penalización (aciertos − errores/3) y nota sobre 10. Reusa las preguntas del
-/// cuestionario.
-enum _MockPhase { config, running, done }
-
+/// Configurador del test: elegir secciones del índice (o todo), número de
+/// preguntas, tiempo opcional y penalización. Al pulsar "Empezar" abre el test
+/// en un modal casi a pantalla completa ([_TestRunnerDialog]).
 class _MockExamView extends ConsumerStatefulWidget {
   const _MockExamView({
     required this.subjectId,
@@ -1774,7 +1788,6 @@ class _MockExamView extends ConsumerStatefulWidget {
 }
 
 class _MockExamViewState extends ConsumerState<_MockExamView> {
-  _MockPhase _phase = _MockPhase.config;
   bool _busy = false;
 
   // Configuración del test.
@@ -1785,54 +1798,23 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
   int _minutes = 20;
   bool _penalty = true;
 
-  // Ejecución.
-  List<QuizQuestion> _qs = [];
-  List<int?> _answers = [];
-  int _cur = 0;
-  int _elapsed = 0;
-  Timer? _timer;
-  bool _review = false;
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  int get _totalSecs => _minutes * 60;
-
-  String _fmt(int secs) {
-    final m = (secs ~/ 60).toString().padLeft(2, '0');
-    final s = (secs % 60).toString().padLeft(2, '0');
-    return '$m:$s';
-  }
-
-  void _start(List<QuizQuestion> qs) {
-    _timer?.cancel();
-    setState(() {
-      _qs = List.of(qs);
-      _answers = List<int?>.filled(_qs.length, null);
-      _cur = 0;
-      _elapsed = 0;
-      _review = false;
-      _phase = _MockPhase.running;
-    });
-    if (_timed) {
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (!mounted) {
-          _timer?.cancel();
-          return;
-        }
-        setState(() => _elapsed++);
-        if (_elapsed >= _totalSecs) _finish();
-      });
-    }
-  }
-
-  void _finish() {
-    _timer?.cancel();
-    unawaited(ref.read(subjectsDataSourceProvider).recordStudyToday());
-    if (mounted) setState(() => _phase = _MockPhase.done);
+  /// Abre el test en un modal casi a pantalla completa, con una copia
+  /// barajada del banco de preguntas (para variar el orden al repetir).
+  Future<void> _open(List<QuizQuestion> bank) async {
+    final qs = List.of(bank)..shuffle();
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      useSafeArea: false,
+      builder: (_) => _TestRunnerDialog(
+        subjectId: widget.subjectId,
+        questions: qs,
+        timed: _timed,
+        minutes: _minutes,
+        penalty: _penalty,
+        onSelectNode: widget.onSelectNode,
+      ),
+    );
   }
 
   Future<void> _generate() async {
@@ -1882,8 +1864,6 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
         ),
       );
     }
-    if (_phase == _MockPhase.running) return _running(context);
-    if (_phase == _MockPhase.done) return _results(context);
     return _config(context);
   }
 
@@ -1989,7 +1969,7 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
             ),
             if (bank.isNotEmpty)
               FilledButton.icon(
-                onPressed: () => _start(bank),
+                onPressed: () => _open(bank),
                 icon: const Icon(Icons.play_arrow, size: 16),
                 label: Text(l.studyTestStart),
               ),
@@ -1999,38 +1979,173 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
     );
   }
 
+}
+
+/// Test en marcha dentro de un modal casi a pantalla completa: la pregunta va
+/// sobre fondo azul claro con su número (1/50), las respuestas A/B/C/D en
+/// tarjetas, navegación adelante/atrás, "Finalizar" siempre visible (con
+/// confirmación) y, sin cerrar el modal, los resultados (nota /10 + desglose)
+/// y el repaso pregunta a pregunta (respuesta correcta + explicación + salto al
+/// temario).
+class _TestRunnerDialog extends ConsumerStatefulWidget {
+  const _TestRunnerDialog({
+    required this.subjectId,
+    required this.questions,
+    required this.timed,
+    required this.minutes,
+    required this.penalty,
+    required this.onSelectNode,
+  });
+
+  final String subjectId;
+  final List<QuizQuestion> questions;
+  final bool timed;
+  final int minutes;
+  final bool penalty;
+  final ValueChanged<String> onSelectNode;
+
+  @override
+  ConsumerState<_TestRunnerDialog> createState() => _TestRunnerDialogState();
+}
+
+class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
+  late final List<int?> _answers =
+      List<int?>.filled(widget.questions.length, null);
+  int _cur = 0;
+  int _elapsed = 0;
+  Timer? _timer;
+  bool _done = false;
+  bool _review = false;
+
+  int get _totalSecs => widget.minutes * 60;
+  int get _answered => _answers.where((a) => a != null).length;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.timed) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) {
+          _timer?.cancel();
+          return;
+        }
+        setState(() => _elapsed++);
+        if (_elapsed >= _totalSecs) _finish(confirm: false);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _fmt(int secs) {
+    final m = (secs ~/ 60).toString().padLeft(2, '0');
+    final s = (secs % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  Future<void> _finish({bool confirm = true}) async {
+    if (confirm) {
+      final l = context.l10n;
+      final ok = await AppConfirmDialog.show(
+        context,
+        title: l.studyTestFinishTitle,
+        body: l.studyTestFinishBody(_answered, widget.questions.length),
+        confirmLabel: l.studyMockFinish,
+      );
+      if (ok != true) return;
+    }
+    _timer?.cancel();
+    unawaited(ref.read(subjectsDataSourceProvider).recordStudyToday());
+    if (mounted) setState(() => _done = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final w = (size.width - 48).clamp(280.0, 1100.0);
+    final h = size.height - 48;
+    return Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        width: w,
+        height: h,
+        child: _done ? _results(context) : _running(context),
+      ),
+    );
+  }
+
+  /// Cabecera común del modal (título + acción a la derecha).
+  Widget _header(BuildContext context, {required Widget trailing}) {
+    final scheme = context.colors;
+    final l = context.l10n;
+    return Material(
+      color: scheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.sm,
+          AppSpacing.sm,
+          AppSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.fact_check_outlined, size: 18, color: scheme.primary),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              l.studioTest,
+              style: context.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const Spacer(),
+            trailing,
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _running(BuildContext context) {
     final l = context.l10n;
-    final q = _qs[_cur];
-    final answered = _answers.where((a) => a != null).length;
+    final scheme = context.colors;
+    final q = widget.questions[_cur];
+    final total = widget.questions.length;
     final remaining = (_totalSecs - _elapsed).clamp(0, _totalSecs);
-    final last = _cur == _qs.length - 1;
+    final last = _cur == total - 1;
+    final danger = widget.timed && remaining <= 30;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.xs,
-            AppSpacing.md,
-            AppSpacing.xs,
-          ),
-          child: Row(
+        _header(
+          context,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              if (_timed) ...[
+              if (widget.timed) ...[
                 Icon(
                   Icons.timer_outlined,
                   size: 16,
-                  color: remaining <= 30 ? context.colors.error : null,
+                  color: danger ? scheme.error : scheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 4),
-                Text(_fmt(remaining), style: context.textTheme.labelMedium),
+                Text(
+                  _fmt(remaining),
+                  style: context.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: danger ? scheme.error : null,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
               ],
-              const Spacer(),
-              Text(
-                '${_cur + 1}/${_qs.length} · $answered',
-                style: context.textTheme.labelMedium
-                    ?.copyWith(color: context.colors.onSurfaceVariant),
+              FilledButton.icon(
+                onPressed: _finish,
+                icon: const Icon(Icons.flag_outlined, size: 16),
+                label: Text(l.studyMockFinish),
               ),
             ],
           ),
@@ -2038,47 +2153,92 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
         const Divider(height: 1),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  q.question,
-                  style: context.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                for (var i = 0; i < q.options.length; i++)
-                  _optionTile(
-                    context,
-                    text: q.options[i],
-                    selected: _answers[_cur] == i,
-                    onTap: () => setState(
-                      () => _answers[_cur] = _answers[_cur] == i ? null : i,
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Pregunta sobre fondo azul claro, con su número (1/50).
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: Colors.blue.withValues(alpha: 0.30),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '${_cur + 1}/$total',
+                              style: context.textTheme.labelMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: Colors.blue.shade800,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            q.question,
+                            style: context.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-              ],
+                    const SizedBox(height: AppSpacing.lg),
+                    // Respuestas A/B/C/D en tarjetas.
+                    for (var i = 0; i < q.options.length; i++)
+                      _optionCard(
+                        context,
+                        index: i,
+                        text: q.options[i],
+                        selected: _answers[_cur] == i,
+                        onTap: () => setState(
+                          () => _answers[_cur] = _answers[_cur] == i ? null : i,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
         const Divider(height: 1),
+        // Navegación: atrás / contador / siguiente.
         Padding(
-          padding: const EdgeInsets.all(AppSpacing.sm),
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
             children: [
-              IconButton(
+              IconButton.filledTonal(
                 onPressed: _cur > 0 ? () => setState(() => _cur--) : null,
                 icon: const Icon(Icons.chevron_left),
               ),
-              IconButton(
-                onPressed: !last ? () => setState(() => _cur++) : null,
-                icon: const Icon(Icons.chevron_right),
+              const Spacer(),
+              Text(
+                '${_cur + 1}/$total · $_answered',
+                style: context.textTheme.titleSmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
               ),
               const Spacer(),
-              FilledButton.icon(
-                onPressed: _finish,
-                icon: const Icon(Icons.flag_outlined, size: 16),
-                label: Text(l.studyMockFinish),
+              IconButton.filledTonal(
+                onPressed: !last ? () => setState(() => _cur++) : null,
+                icon: const Icon(Icons.chevron_right),
               ),
             ],
           ),
@@ -2090,81 +2250,127 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
   Widget _results(BuildContext context) {
     final l = context.l10n;
     final scheme = context.colors;
+    final total = widget.questions.length;
     var correct = 0;
     var wrong = 0;
     var blank = 0;
-    for (var i = 0; i < _qs.length; i++) {
+    for (var i = 0; i < total; i++) {
       final a = _answers[i];
       if (a == null) {
         blank++;
-      } else if (a == _qs[i].correctIndex) {
+      } else if (a == widget.questions[i].correctIndex) {
         correct++;
       } else {
         wrong++;
       }
     }
-    final total = _qs.length;
-    final raw = _penalty ? correct - wrong / 3 : correct.toDouble();
+    final raw = widget.penalty ? correct - wrong / 3 : correct.toDouble();
     final grade = total == 0 ? 0.0 : (raw < 0 ? 0.0 : raw / total * 10);
+    final gradeColor = grade >= 5 ? Colors.green.shade600 : scheme.error;
 
-    return ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Center(
-          child: Column(
+        _header(
+          context,
+          trailing: IconButton(
+            tooltip: l.actionClose,
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.close),
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
-              Text(l.studioQuizResult, style: context.textTheme.titleSmall),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                '${grade.toStringAsFixed(2)} / 10',
-                style: context.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: scheme.primary,
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 760),
+                  child: Column(
+                    children: [
+                      Text(
+                        l.studioQuizResult,
+                        style: context.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        '${grade.toStringAsFixed(2)} / 10',
+                        style: context.textTheme.displaySmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: gradeColor,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        l.studyTestAnswered(total - blank, total),
+                        style: context.textTheme.bodyMedium
+                            ?.copyWith(color: scheme.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.xs,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          Chip(
+                            avatar: const Icon(Icons.check,
+                                size: 14, color: Colors.green,),
+                            label: Text('${l.studyMockCorrect}: $correct'),
+                          ),
+                          Chip(
+                            avatar: Icon(Icons.close,
+                                size: 14, color: scheme.error,),
+                            label: Text('${l.studyMockWrong}: $wrong'),
+                          ),
+                          Chip(
+                            avatar: const Icon(Icons.remove, size: 14),
+                            label: Text('${l.studyMockBlank}: $blank'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () =>
+                                setState(() => _review = !_review),
+                            icon: const Icon(Icons.fact_check_outlined,
+                                size: 16,),
+                            label: Text(l.studyMockReview),
+                          ),
+                          FilledButton.tonalIcon(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.close, size: 16),
+                            label: Text(l.actionClose),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              Wrap(
-                spacing: AppSpacing.sm,
-                children: [
-                  Chip(
-                    avatar: const Icon(Icons.check, size: 14, color: Colors.green),
-                    label: Text('${l.studyMockCorrect}: $correct'),
+              if (_review) ...[
+                const Divider(height: AppSpacing.xl),
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 760),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var i = 0; i < total; i++)
+                          _reviewItem(context, i),
+                      ],
+                    ),
                   ),
-                  Chip(
-                    avatar: Icon(Icons.close, size: 14, color: scheme.error),
-                    label: Text('${l.studyMockWrong}: $wrong'),
-                  ),
-                  Chip(
-                    avatar: const Icon(Icons.remove, size: 14),
-                    label: Text('${l.studyMockBlank}: $blank'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                alignment: WrapAlignment.center,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: () => setState(() => _review = !_review),
-                    icon: const Icon(Icons.fact_check_outlined, size: 16),
-                    label: Text(l.studyMockReview),
-                  ),
-                  PremiumButton(
-                    label: l.studioQuizRetry,
-                    leadingIcon: Icons.replay,
-                    onPressed: () => setState(() => _phase = _MockPhase.config),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ],
           ),
         ),
-        if (_review) ...[
-          const Divider(height: AppSpacing.lg),
-          for (var i = 0; i < _qs.length; i++) _reviewItem(context, i),
-        ],
       ],
     );
   }
@@ -2172,22 +2378,23 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
   Widget _reviewItem(BuildContext context, int i) {
     final l = context.l10n;
     final scheme = context.colors;
-    final q = _qs[i];
+    final q = widget.questions[i];
     final mine = _answers[i];
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             '${i + 1}. ${q.question}',
-            style: context.textTheme.bodyMedium
+            style: context.textTheme.titleSmall
                 ?.copyWith(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.sm),
           for (var j = 0; j < q.options.length; j++)
-            _optionTile(
+            _optionCard(
               context,
+              index: j,
               text: q.options[j],
               selected: mine == j,
               correct: j == q.correctIndex,
@@ -2198,14 +2405,14 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
               padding: const EdgeInsets.only(top: 6),
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(AppSpacing.sm),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   q.explanation!,
-                  style: context.textTheme.bodySmall?.copyWith(height: 1.4),
+                  style: context.textTheme.bodyMedium?.copyWith(height: 1.4),
                 ),
               ),
             ),
@@ -2213,7 +2420,10 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
-                onPressed: () => widget.onSelectNode(q.nodeId!),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  widget.onSelectNode(q.nodeId!);
+                },
                 icon: const Icon(Icons.menu_book_outlined, size: 16),
                 label: Text(l.studyTestViewInMaterial),
               ),
@@ -2223,8 +2433,9 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
     );
   }
 
-  Widget _optionTile(
+  Widget _optionCard(
     BuildContext context, {
+    required int index,
     required String text,
     required bool selected,
     bool? correct,
@@ -2232,45 +2443,70 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
     VoidCallback? onTap,
   }) {
     final scheme = context.colors;
+    final letter = String.fromCharCode(65 + index); // A, B, C, D…
     Color border = scheme.outlineVariant;
+    Color badgeBg = scheme.surfaceContainerHighest;
+    Color badgeFg = scheme.onSurfaceVariant;
     Color? bg;
+    var strong = false;
     if (readOnly) {
       if (correct ?? false) {
         border = Colors.green;
-        bg = Colors.green.withValues(alpha: 0.12);
+        bg = Colors.green.withValues(alpha: 0.10);
+        badgeBg = Colors.green;
+        badgeFg = Colors.white;
+        strong = true;
       } else if (selected) {
         border = scheme.error;
-        bg = scheme.error.withValues(alpha: 0.12);
+        bg = scheme.error.withValues(alpha: 0.10);
+        badgeBg = scheme.error;
+        badgeFg = scheme.onError;
+        strong = true;
       }
     } else if (selected) {
       border = scheme.primary;
       bg = scheme.primary.withValues(alpha: 0.10);
+      badgeBg = scheme.primary;
+      badgeFg = scheme.onPrimary;
+      strong = true;
     }
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
+          ),
           decoration: BoxDecoration(
             color: bg,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: border),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: border, width: strong ? 1.6 : 1),
           ),
           child: Row(
             children: [
-              Icon(
-                selected
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-                size: 18,
-                color: selected ? scheme.primary : scheme.onSurfaceVariant,
+              Container(
+                width: 30,
+                height: 30,
+                alignment: Alignment.center,
+                decoration:
+                    BoxDecoration(color: badgeBg, shape: BoxShape.circle),
+                child: Text(
+                  letter,
+                  style: context.textTheme.labelLarge
+                      ?.copyWith(fontWeight: FontWeight.w800, color: badgeFg),
+                ),
               ),
-              const SizedBox(width: AppSpacing.sm),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: Text(text, style: context.textTheme.bodyMedium),
+                child: Text(text, style: context.textTheme.bodyLarge),
               ),
+              if (readOnly && (correct ?? false))
+                const Icon(Icons.check_circle, size: 18, color: Colors.green),
+              if (readOnly && selected && !(correct ?? false))
+                Icon(Icons.cancel, size: 18, color: scheme.error),
             ],
           ),
         ),
