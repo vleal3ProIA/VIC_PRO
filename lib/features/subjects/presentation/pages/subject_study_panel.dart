@@ -32,6 +32,7 @@ import '../../application/subjects_providers.dart';
 import '../../data/subjects_datasource.dart';
 import '../../domain/subject.dart';
 import '../util/file_picker_web.dart';
+import '../util/study_export.dart';
 
 const double _kMinColWidth = 240;
 const double _kHandleWidth = 36;
@@ -1231,13 +1232,24 @@ class _NodeViewState extends ConsumerState<_NodeView> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () => _generate(force: true),
-                icon: const Icon(Icons.refresh, size: 16),
-                label: Text(l.studyRegenerate),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  tooltip: l.studyExport,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.download_outlined, size: 18),
+                  onPressed: () => downloadStudyText(
+                    filename: '${widget.kind}.md',
+                    text: content,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => _generate(force: true),
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: Text(l.studyRegenerate),
+                ),
+              ],
             ),
             Expanded(child: _scroll(context, content, markdown: true)),
           ],
@@ -1538,13 +1550,24 @@ class _GuideViewState extends ConsumerState<_GuideView> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: _generate,
-                icon: const Icon(Icons.refresh, size: 16),
-                label: Text(l.studyRegenerate),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  tooltip: l.studyExport,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.download_outlined, size: 18),
+                  onPressed: () => downloadStudyText(
+                    filename: 'guia-estudio.md',
+                    text: content,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _generate,
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: Text(l.studyRegenerate),
+                ),
+              ],
             ),
             Expanded(
               child: SingleChildScrollView(

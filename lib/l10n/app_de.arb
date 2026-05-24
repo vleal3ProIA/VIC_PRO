@@ -59,6 +59,7 @@
   "studyChatClear": "Leeren",
   "studyChatClearTitle": "Unterhaltung löschen?",
   "studyChatClearBody": "Dadurch wird der gesamte Chat dieses Lernsets gelöscht.",
+  "studyExport": "Exportieren (.md)",
 
   "homeSubjectsTitle": "Meine Lernsets",
   "homeSubjectsSubtitle": "Lade dein Material hoch und die KI macht Zusammenfassungen und Tests daraus.",

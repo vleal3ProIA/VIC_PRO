@@ -59,6 +59,7 @@
   "studyChatClear": "Clear",
   "studyChatClearTitle": "Clear conversation?",
   "studyChatClearBody": "This will delete the whole chat for this study set.",
+  "studyExport": "Export (.md)",
 
   "homeSubjectsTitle": "My study sets",
   "homeSubjectsSubtitle": "Upload your material and the AI turns it into summaries and tests.",

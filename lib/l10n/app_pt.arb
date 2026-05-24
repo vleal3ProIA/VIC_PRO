@@ -59,6 +59,7 @@
   "studyChatClear": "Limpar",
   "studyChatClearTitle": "Limpar a conversa?",
   "studyChatClearBody": "Isto vai apagar todo o chat deste tema.",
+  "studyExport": "Exportar (.md)",
 
   "homeSubjectsTitle": "Os meus temas",
   "homeSubjectsSubtitle": "Carrega o teu material e a IA transforma-o em resumos e testes.",

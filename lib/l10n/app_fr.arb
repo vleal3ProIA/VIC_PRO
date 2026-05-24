@@ -59,6 +59,7 @@
   "studyChatClear": "Effacer",
   "studyChatClearTitle": "Effacer la conversation ?",
   "studyChatClearBody": "Cela supprimera tout le chat de ce cours.",
+  "studyExport": "Exporter (.md)",
 
   "homeSubjectsTitle": "Mes cours",
   "homeSubjectsSubtitle": "Téléversez votre matériel et l'IA en fait des résumés et des tests.",

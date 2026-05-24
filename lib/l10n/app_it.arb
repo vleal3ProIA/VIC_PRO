@@ -59,6 +59,7 @@
   "studyChatClear": "Svuota",
   "studyChatClearTitle": "Svuotare la conversazione?",
   "studyChatClearBody": "Verrà eliminata tutta la chat di questo corso.",
+  "studyExport": "Esporta (.md)",
 
   "homeSubjectsTitle": "I miei corsi",
   "homeSubjectsSubtitle": "Carica il tuo materiale e l'IA lo trasforma in riassunti e test.",

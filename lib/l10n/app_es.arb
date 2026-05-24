@@ -59,6 +59,7 @@
   "studyChatClear": "Limpiar",
   "studyChatClearTitle": "¿Limpiar la conversación?",
   "studyChatClearBody": "Se borrará todo el chat de este temario.",
+  "studyExport": "Exportar (.md)",
 
   "homeSubjectsTitle": "Mis temarios",
   "homeSubjectsSubtitle": "Sube tu material y la IA lo convierte en resúmenes y tests.",

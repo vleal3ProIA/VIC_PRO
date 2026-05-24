@@ -59,6 +59,7 @@
   "studyChatClear": "Очистить",
   "studyChatClearTitle": "Очистить переписку?",
   "studyChatClearBody": "Будет удалён весь чат этого материала.",
+  "studyExport": "Экспорт (.md)",
 
   "homeSubjectsTitle": "Мои материалы",
   "homeSubjectsSubtitle": "Загрузите материал, и ИИ сделает из него конспекты и тесты.",
