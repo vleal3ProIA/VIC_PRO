@@ -55,6 +55,12 @@ final quizQuestionsProvider =
   return ref.watch(subjectsDataSourceProvider).listQuizQuestions(subjectId);
 });
 
+/// Guía de estudio cacheada de un temario (`null` si aún no se generó).
+final studyGuideProvider =
+    FutureProvider.family<String?, String>((ref, subjectId) {
+  return ref.watch(subjectsDataSourceProvider).getStudyGuide(subjectId);
+});
+
 /// Clave (nodo, tipo de vista) para cachear contenido de nodo.
 typedef NodeViewKey = ({String nodeId, String kind});
 

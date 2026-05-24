@@ -406,6 +406,41 @@ class SubjectsDataSource {
 
   // ─────────────────── Chat / preguntas a la IA (Fase 3) ───────────────────
 
+  // ─────────────────── Guía de estudio (Fase 3) ───────────────────
+
+  /// Genera (vía EF) la guía de estudio del temario y devuelve su contenido.
+  Future<String> generateStudyGuide(String subjectId) async {
+    try {
+      final res = await _client.functions.invoke(
+        'generate-study-guide',
+        body: {'subject_id': subjectId},
+      );
+      final data = res.data;
+      if (data is! Map) throw const SubjectsException('invalid_response');
+      final p = data.cast<String, dynamic>();
+      if (p['ok'] != true) {
+        throw SubjectsException(
+          (p['error'] as String?) ?? 'generation_failed',
+          detail: p['detail'] as String?,
+        );
+      }
+      return (p['content'] as String?) ?? '';
+    } on FunctionException catch (e) {
+      throw SubjectsException(_efError(e));
+    }
+  }
+
+  /// Guía de estudio cacheada del temario (`null` si aún no se generó).
+  Future<String?> getStudyGuide(String subjectId) async {
+    final data = await _client
+        .from('study_guides')
+        .select('content')
+        .eq('subject_id', subjectId)
+        .maybeSingle();
+    if (data == null) return null;
+    return data['content'] as String?;
+  }
+
   /// Historial del chat de un temario (cronológico).
   Future<List<({bool fromUser, String text})>> listChatMessages(
     String subjectId,

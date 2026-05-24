@@ -1261,7 +1261,7 @@ class _NodeViewState extends ConsumerState<_NodeView> {
 
 // ─────────────────────────────── Columna ESTUDIO ────────────────────────────
 
-enum _StudioTool { home, notes, flashcards, mindmap, quiz }
+enum _StudioTool { home, notes, flashcards, mindmap, quiz, guide }
 
 class _StudioColumn extends StatefulWidget {
   const _StudioColumn({
@@ -1288,6 +1288,7 @@ class _StudioColumnState extends State<_StudioColumn> {
     final inFlash = _tool == _StudioTool.flashcards;
     final inMind = _tool == _StudioTool.mindmap;
     final inQuiz = _tool == _StudioTool.quiz;
+    final inGuide = _tool == _StudioTool.guide;
 
     final String title;
     final IconData leading;
@@ -1303,6 +1304,9 @@ class _StudioColumnState extends State<_StudioColumn> {
     } else if (inQuiz) {
       title = l.studioQuiz;
       leading = Icons.quiz_outlined;
+    } else if (inGuide) {
+      title = l.studioGuide;
+      leading = Icons.menu_book_outlined;
     } else {
       title = l.studioTitle;
       leading = Icons.auto_awesome;
@@ -1321,6 +1325,8 @@ class _StudioColumnState extends State<_StudioColumn> {
       );
     } else if (inQuiz) {
       body = _QuizView(subjectId: widget.subjectId);
+    } else if (inGuide) {
+      body = _GuideView(subjectId: widget.subjectId);
     } else {
       body = _studioGrid(context);
     }
@@ -1329,7 +1335,7 @@ class _StudioColumnState extends State<_StudioColumn> {
       title: title,
       leading: leading,
       actions: [
-        if (inNotes || inFlash || inMind || inQuiz)
+        if (inNotes || inFlash || inMind || inQuiz || inGuide)
           IconButton(
             tooltip: l.actionCancel,
             visualDensity: VisualDensity.compact,
@@ -1367,6 +1373,11 @@ class _StudioColumnState extends State<_StudioColumn> {
         icon: Icons.hub_outlined,
         label: l.studioMindmap,
         onTap: () => setState(() => _tool = _StudioTool.mindmap),
+      ),
+      _StudioTile(
+        icon: Icons.menu_book_outlined,
+        label: l.studioGuide,
+        onTap: () => setState(() => _tool = _StudioTool.guide),
       ),
     ];
     return GridView.count(
@@ -1427,6 +1438,123 @@ class _StudioTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Guía de estudio: esquema estructurado (Markdown) del temario, generado por
+/// IA y cacheado. Se regenera bajo demanda.
+class _GuideView extends ConsumerStatefulWidget {
+  const _GuideView({required this.subjectId});
+
+  final String subjectId;
+
+  @override
+  ConsumerState<_GuideView> createState() => _GuideViewState();
+}
+
+class _GuideViewState extends ConsumerState<_GuideView> {
+  bool _busy = false;
+
+  Future<void> _generate() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final errBg = Theme.of(context).colorScheme.error;
+    try {
+      await ref
+          .read(subjectsDataSourceProvider)
+          .generateStudyGuide(widget.subjectId);
+      ref.invalidate(studyGuideProvider(widget.subjectId));
+    } on SubjectsException catch (e) {
+      final detail =
+          e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: errBg,
+          duration: const Duration(seconds: 8),
+          content: Text('${l.studyViewError} (${e.code})$detail'),
+        ),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    if (_busy) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: AppSpacing.sm),
+            Text(l.studyGenerating, style: context.textTheme.bodySmall),
+          ],
+        ),
+      );
+    }
+    final async = ref.watch(studyGuideProvider(widget.subjectId));
+    return async.when(
+      loading: () => const Center(child: AppLoadingState()),
+      error: (e, _) => AppErrorState(
+        message: l.studyViewError,
+        detail: e.toString(),
+        onRetry: () => ref.invalidate(studyGuideProvider(widget.subjectId)),
+        retryLabel: l.actionRetry,
+      ),
+      data: (content) {
+        if (content == null || content.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l.studioGuideEmpty,
+                    textAlign: TextAlign.center,
+                    style: context.textTheme.bodyMedium
+                        ?.copyWith(color: context.colors.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  PremiumButton(
+                    label: l.studioGuideGenerate,
+                    leadingIcon: Icons.auto_awesome_outlined,
+                    onPressed: _generate,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: _generate,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: Text(l.studyRegenerate),
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                child: MarkdownText(content),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
