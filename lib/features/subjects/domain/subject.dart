@@ -42,6 +42,7 @@ class Subject {
     this.language,
     this.indexStatus = IndexStatus.none,
     this.indexLocked = false,
+    this.indexError,
     this.examDate,
     this.createdAt,
   });
@@ -52,6 +53,7 @@ class Subject {
         language: m['language'] as String?,
         indexStatus: indexStatusFrom(m['index_status'] as String?),
         indexLocked: (m['index_locked'] as bool?) ?? false,
+        indexError: m['index_error'] as String?,
         examDate: _ts(m['exam_date']),
         createdAt: _ts(m['created_at']),
       );
@@ -60,6 +62,9 @@ class Subject {
   final String title;
   final String? language;
   final IndexStatus indexStatus;
+
+  /// Motivo del último fallo al generar el índice (`null` si no falló).
+  final String? indexError;
 
   /// `true` cuando el usuario ha validado el índice: ya no se puede regenerar.
   final bool indexLocked;

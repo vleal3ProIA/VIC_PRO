@@ -4,6 +4,7 @@
 
   "studyGenerateIndex": "Создать оглавление",
   "studySetupTitle": "Настройка предмета",
+  "studySetupUploading": "Загрузка файла…",
   "studySetupProcessing": "Обработка документа…",
   "studySetupReady": "Документ готов",
   "studySetupReview": "Это оглавление верное?",

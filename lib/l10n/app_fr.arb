@@ -4,6 +4,7 @@
 
   "studyGenerateIndex": "Générer l'index",
   "studySetupTitle": "Configurer le sujet",
+  "studySetupUploading": "Téléversement du fichier…",
   "studySetupProcessing": "Traitement du document…",
   "studySetupReady": "Document prêt",
   "studySetupReview": "Cet index est-il correct ?",

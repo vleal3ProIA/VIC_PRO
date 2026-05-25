@@ -67,20 +67,15 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
     if (result == null || result.title.trim().isEmpty) return;
     setState(() => _busy = true);
     String? createdId;
-    var uploaded = false;
     try {
       final created = await _ds.createSubject(result.title.trim());
       createdId = created.id;
-      if (result.file != null) {
-        await _ds.uploadDocument(subjectId: created.id, file: result.file!);
-        uploaded = true;
-      }
       ref.invalidate(subjectsListProvider);
     } on SubjectsException catch (e) {
       messenger.showSnackBar(
         SnackBar(
           backgroundColor: errBg,
-          content: Text('${l.subjectUploadError} (${e.code})'),
+          content: Text('${l.subjectsLoadError} (${e.code})'),
         ),
       );
     } catch (_) {
@@ -92,13 +87,15 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
     }
     if (!mounted || createdId == null) return;
     _select(createdId);
-    // Si se subió documento, abrimos el asistente guiado: procesando → generar
-    // índice → revisar → validar (o volver a generar).
-    if (uploaded) {
+    // Si hay archivo, abrimos el asistente guiado, que se encarga de TODO en
+    // un modal: subiendo (barra) → procesando → generar índice → revisar →
+    // validar (o volver a generar).
+    if (result.file != null) {
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => _SubjectSetupWizard(subjectId: createdId!),
+        builder: (_) =>
+            _SubjectSetupWizard(subjectId: createdId!, initialFile: result.file),
       );
     }
   }
@@ -424,9 +421,13 @@ class _CreateSubjectDialogState extends State<_CreateSubjectDialog> {
 /// Las fases se derivan del estado real (documento + índice) con sondeo cada
 /// 3 s, así avanza solo a medida que el backend progresa.
 class _SubjectSetupWizard extends ConsumerStatefulWidget {
-  const _SubjectSetupWizard({required this.subjectId});
+  const _SubjectSetupWizard({required this.subjectId, this.initialFile});
 
   final String subjectId;
+
+  /// Si se pasa, el asistente sube este archivo al abrirse (con barra de
+  /// progreso) antes de pasar a procesar/generar el índice.
+  final PickedFile? initialFile;
 
   @override
   ConsumerState<_SubjectSetupWizard> createState() =>
@@ -436,6 +437,34 @@ class _SubjectSetupWizard extends ConsumerStatefulWidget {
 class _SubjectSetupWizardState extends ConsumerState<_SubjectSetupWizard> {
   Timer? _poll;
   bool _busy = false;
+  bool _uploading = false;
+  String? _uploadError;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialFile != null) {
+      _uploading = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _doUpload());
+    }
+  }
+
+  Future<void> _doUpload() async {
+    final l = context.l10n;
+    try {
+      await ref.read(subjectsDataSourceProvider).uploadDocument(
+            subjectId: widget.subjectId,
+            file: widget.initialFile!,
+          );
+      ref.invalidate(subjectDocumentsProvider(widget.subjectId));
+    } on SubjectsException catch (e) {
+      _uploadError = '${l.subjectUploadError} (${e.code})';
+    } catch (_) {
+      _uploadError = l.subjectUploadError;
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -518,6 +547,33 @@ class _SubjectSetupWizardState extends ConsumerState<_SubjectSetupWizard> {
   Widget build(BuildContext context) {
     final l = context.l10n;
 
+    // Fase 0: subiendo el archivo (barra de progreso).
+    if (_uploading) {
+      return AlertDialog(
+        title: Text(l.studySetupTitle),
+        content: SizedBox(
+          width: 460,
+          child: _status(spinner: true, text: l.studySetupUploading),
+        ),
+        actions: const [],
+      );
+    }
+    if (_uploadError != null) {
+      return AlertDialog(
+        title: Text(l.studySetupTitle),
+        content: SizedBox(
+          width: 460,
+          child: _status(spinner: false, text: _uploadError!, error: true),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l.actionClose),
+          ),
+        ],
+      );
+    }
+
     final subjects =
         ref.watch(subjectsListProvider).valueOrNull ?? const <Subject>[];
     Subject? subject;
@@ -587,7 +643,14 @@ class _SubjectSetupWizardState extends ConsumerState<_SubjectSetupWizard> {
       ];
     } else if (indexStatus == IndexStatus.failed) {
       title = l.studySetupTitle;
-      body = _status(spinner: false, text: l.studyIndexFailed, error: true);
+      final detail = subject?.indexError;
+      body = _status(
+        spinner: false,
+        text: detail != null && detail.isNotEmpty
+            ? '${l.studyIndexFailed}\n\n$detail'
+            : l.studyIndexFailed,
+        error: true,
+      );
       actions = [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
@@ -635,7 +698,7 @@ class _SubjectSetupWizardState extends ConsumerState<_SubjectSetupWizard> {
         if (spinner)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-            child: CircularProgressIndicator(),
+            child: SizedBox(width: 320, child: LinearProgressIndicator()),
           )
         else
           Padding(

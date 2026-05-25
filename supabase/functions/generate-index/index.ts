@@ -117,7 +117,7 @@ Deno.serve(withSentry("generate-index", async (req) => {
   // node_content) y marcamos 'generating'.
   await admin.from("index_nodes").delete().eq("subject_id", subject.id);
   await admin.from("subjects")
-    .update({ index_status: "generating" })
+    .update({ index_status: "generating", index_error: null })
     .eq("id", subject.id);
 
   // deno-lint-ignore no-explicit-any
@@ -311,12 +311,12 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
     await insertTree(admin, subject, tree, rootRow.id as string, 1, fullText);
 
     await admin.from("subjects")
-      .update({ index_status: "ready" })
+      .update({ index_status: "ready", index_error: null })
       .eq("id", subject.id);
   } catch (e) {
     const msg = e instanceof AiGatewayError ? e.message : (e as Error).message;
     await admin.from("subjects")
-      .update({ index_status: "failed" })
+      .update({ index_status: "failed", index_error: msg.slice(0, 500) })
       .eq("id", subject.id);
     captureError(e, { fn: "generate-index", subject: subject.id, detail: msg });
   }
