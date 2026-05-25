@@ -252,10 +252,15 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
         fullTextChars: fullText.length,
       }),
     );
-    if (
-      !mat.textContext && mat.attachments.length === 0 &&
-      fullText.trim().length === 0
-    ) {
+    // Para el índice preferimos el TEXTO extraído (fullText / extracted_text):
+    // así lo puede generar CUALQUIER proveedor con fallback, no solo los de
+    // visión (Gemini/Anthropic), que pueden fallar por credenciales. Solo
+    // usamos visión (adjunto) si NO hay nada de texto.
+    const aiText = fullText.trim().length > 0
+      ? fullText.slice(0, 200000)
+      : mat.textContext;
+    const useVision = aiText.trim().length === 0 && mat.attachments.length > 0;
+    if (aiText.trim().length === 0 && !useVision) {
       throw new Error("no_ready_documents");
     }
 
@@ -264,11 +269,11 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       system,
       messages: [{
         role: "user",
-        content: mat.textContext
-          ? "Material:\n\n" + mat.textContext
+        content: aiText.trim().length > 0
+          ? "Material:\n\n" + aiText
           : "Build the index from the attached document(s).",
       }],
-      attachments: mat.attachments.length > 0 ? mat.attachments : undefined,
+      attachments: useVision ? mat.attachments : undefined,
       maxOutputTokens: 8192,
       temperature: 0.2,
       userId: subject.user_id,
