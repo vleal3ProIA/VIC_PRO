@@ -55,6 +55,10 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
   Timer? _poll;
   bool _busy = false;
   String? _selectedNodeId;
+  // Temario para el que ya hemos mostrado el modal de revisión del índice en
+  // esta sesión (evita reabrirlo en cada rebuild del polling).
+  String? _reviewPromptedFor;
+  bool _reviewing = false;
 
   @override
   void dispose() {
@@ -138,6 +142,98 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
     }
   }
 
+  /// Modal de revisión del índice recién generado: lo muestra y pide aceptarlo
+  /// (validar = bloquear, ya no se puede regenerar) o regenerarlo.
+  Future<void> _promptIndexReview(List<IndexNode> ordered) async {
+    if (_reviewing) return;
+    _reviewing = true;
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final errBg = Theme.of(context).colorScheme.error;
+    final action = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.studySetupReview),
+        content: SizedBox(
+          width: 460,
+          height: 380,
+          child: Scrollbar(
+            child: ListView(
+              children: [for (final n in ordered) _reviewRow(ctx, n, ordered)],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'later'),
+            child: Text(l.studySetupLater),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.pop(ctx, 'regen'),
+            icon: const Icon(Icons.refresh, size: 16),
+            label: Text(l.studySetupRegenerate),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, 'accept'),
+            icon: const Icon(Icons.check, size: 16),
+            label: Text(l.studyValidateIndex),
+          ),
+        ],
+      ),
+    );
+    _reviewing = false;
+    if (!mounted) return;
+    if (action == 'accept') {
+      try {
+        await ref
+            .read(subjectsDataSourceProvider)
+            .validateIndex(widget.subject.id);
+        ref.invalidate(subjectsListProvider);
+        messenger.showSnackBar(SnackBar(content: Text(l.studyIndexValidated)));
+      } catch (_) {
+        messenger.showSnackBar(
+          SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+        );
+      }
+    } else if (action == 'regen') {
+      // Permitir que vuelva a saltar el modal cuando esté listo de nuevo.
+      _reviewPromptedFor = null;
+      await _generateIndex();
+    }
+    // 'later' / null: queda sin validar; se puede validar desde el panel.
+  }
+
+  /// Fila del árbol del índice en el modal de revisión (carpeta amarilla en
+  /// negrita / hoja con punto).
+  Widget _reviewRow(BuildContext context, IndexNode n, List<IndexNode> all) {
+    final scheme = context.colors;
+    final isFolder = all.any((c) => c.parentId == n.id);
+    return Padding(
+      padding: EdgeInsets.only(left: 4 + n.depth * 14.0, top: 3, bottom: 3),
+      child: Row(
+        children: [
+          Icon(
+            isFolder ? Icons.folder_rounded : Icons.fiber_manual_record,
+            size: isFolder ? 15 : 8,
+            color: isFolder ? Colors.amber.shade700 : scheme.onSurface,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              n.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.textTheme.bodySmall?.copyWith(
+                fontWeight: isFolder ? FontWeight.w700 : FontWeight.w400,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Recorrido DFS para indentar el árbol del índice.
   List<IndexNode> _dfs(List<IndexNode> all) {
     final byParent = <String?, List<IndexNode>>{};
@@ -172,6 +268,20 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
     final selectedId = ordered.any((n) => n.id == _selectedNodeId)
         ? _selectedNodeId
         : (ordered.isNotEmpty ? ordered.first.id : null);
+
+    // Índice LISTO pero SIN VALIDAR → modal de revisión (aceptar = bloquear /
+    // regenerar) antes de dejar trabajar. Una sola vez por temario y sesión.
+    if (widget.subject.indexReady &&
+        !widget.subject.indexLocked &&
+        ordered.isNotEmpty &&
+        !_busy &&
+        _reviewPromptedFor != widget.subject.id) {
+      _reviewPromptedFor = widget.subject.id;
+      final toReview = ordered;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _promptIndexReview(toReview);
+      });
+    }
 
     final left = _IndexColumn(
       subject: widget.subject,
