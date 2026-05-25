@@ -19,7 +19,6 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/providers/preferences_provider.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
@@ -35,6 +34,7 @@ import '../../domain/subject.dart';
 import '../util/file_picker_web.dart';
 import '../util/study_export.dart';
 import '../util/study_tts.dart';
+import '../widgets/collapsible_index_tree.dart';
 
 const double _kMinColWidth = 240;
 const double _kHandleWidth = 36;
@@ -148,27 +148,23 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
     if (_reviewing) return;
     _reviewing = true;
     final l = context.l10n;
+    final scheme = context.colors;
     final messenger = ScaffoldMessenger.of(context);
     final errBg = Theme.of(context).colorScheme.error;
+    final h = (MediaQuery.sizeOf(context).height - 200).clamp(360.0, 900.0);
     final action = await showDialog<String>(
       context: context,
       barrierDismissible: false,
+      // Fondo OPACO: mientras se revisa, solo se ve este modal (lo demás no).
+      barrierColor: scheme.surface,
       builder: (ctx) => AlertDialog(
         title: Text(l.studySetupReview),
         content: SizedBox(
-          width: 460,
-          height: 380,
-          child: Scrollbar(
-            child: ListView(
-              children: [for (final n in ordered) _reviewRow(ctx, n, ordered)],
-            ),
-          ),
+          width: 480,
+          height: h,
+          child: CollapsibleIndexTree(nodes: ordered),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, 'later'),
-            child: Text(l.studySetupLater),
-          ),
           OutlinedButton.icon(
             onPressed: () => Navigator.pop(ctx, 'regen'),
             icon: const Icon(Icons.refresh, size: 16),
@@ -201,37 +197,6 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
       _reviewPromptedFor = null;
       await _generateIndex();
     }
-    // 'later' / null: queda sin validar; se puede validar desde el panel.
-  }
-
-  /// Fila del árbol del índice en el modal de revisión (carpeta amarilla en
-  /// negrita / hoja con punto).
-  Widget _reviewRow(BuildContext context, IndexNode n, List<IndexNode> all) {
-    final scheme = context.colors;
-    final isFolder = all.any((c) => c.parentId == n.id);
-    return Padding(
-      padding: EdgeInsets.only(left: 4 + n.depth * 14.0, top: 3, bottom: 3),
-      child: Row(
-        children: [
-          Icon(
-            isFolder ? Icons.folder_rounded : Icons.fiber_manual_record,
-            size: isFolder ? 15 : 8,
-            color: isFolder ? Colors.amber.shade700 : scheme.onSurface,
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              n.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: context.textTheme.bodySmall?.copyWith(
-                fontWeight: isFolder ? FontWeight.w700 : FontWeight.w400,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   /// Recorrido DFS para indentar el árbol del índice.

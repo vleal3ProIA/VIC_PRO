@@ -25,6 +25,7 @@ import '../../application/subjects_providers.dart';
 import '../../data/subjects_datasource.dart';
 import '../../domain/subject.dart';
 import '../util/file_picker_web.dart';
+import '../widgets/collapsible_index_tree.dart';
 import 'subject_study_panel.dart';
 
 const String _kPrefLastSubject = 'study_last_subject';
@@ -94,6 +95,8 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
+        // Fondo OPACO: durante subida/proceso/índice solo se ve el asistente.
+        barrierColor: Theme.of(context).colorScheme.surface,
         builder: (_) =>
             _SubjectSetupWizard(subjectId: createdId!, initialFile: result.file),
       );
@@ -607,12 +610,7 @@ class _SubjectSetupWizardState extends ConsumerState<_SubjectSetupWizard> {
     if (!docReady && !docFailed) {
       title = l.studySetupTitle;
       body = _status(spinner: true, text: l.studySetupProcessing);
-      actions = [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l.studySetupLater),
-        ),
-      ];
+      actions = const [];
     } else if (docFailed) {
       title = l.studySetupTitle;
       body = _status(spinner: false, text: l.subjectUploadError, error: true);
@@ -654,7 +652,7 @@ class _SubjectSetupWizardState extends ConsumerState<_SubjectSetupWizard> {
       actions = [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(l.studySetupLater),
+          child: Text(l.actionClose),
         ),
         FilledButton.icon(
           onPressed: _busy ? null : _generate,
@@ -667,10 +665,6 @@ class _SubjectSetupWizardState extends ConsumerState<_SubjectSetupWizard> {
       title = l.studySetupTitle;
       body = _status(spinner: false, text: l.studySetupReady);
       actions = [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l.studySetupLater),
-        ),
         FilledButton.icon(
           onPressed: _busy ? null : _generate,
           icon: const Icon(Icons.auto_awesome, size: 16),
@@ -718,56 +712,12 @@ class _SubjectSetupWizardState extends ConsumerState<_SubjectSetupWizard> {
     );
   }
 
-  /// Vista del índice generado (árbol indentado, solo lectura) para revisarlo.
+  /// Índice generado (árbol PLEGABLE, mismo aspecto que la card) para revisarlo.
   Widget _review(List<IndexNode> nodes) {
-    final scheme = context.colors;
-    final byParent = <String?, List<IndexNode>>{};
-    for (final n in nodes) {
-      byParent.putIfAbsent(n.parentId, () => []).add(n);
-    }
-    for (final list in byParent.values) {
-      list.sort((a, b) => a.position.compareTo(b.position));
-    }
-    final rows = <Widget>[];
-    void emit(IndexNode n) {
-      final children = byParent[n.id] ?? const <IndexNode>[];
-      final isFolder = children.isNotEmpty;
-      rows.add(
-        Padding(
-          padding: EdgeInsets.only(left: 4 + n.depth * 14.0, top: 3, bottom: 3),
-          child: Row(
-            children: [
-              Icon(
-                isFolder ? Icons.folder_rounded : Icons.fiber_manual_record,
-                size: isFolder ? 15 : 8,
-                color: isFolder ? Colors.amber.shade700 : scheme.onSurface,
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  n.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.textTheme.bodySmall?.copyWith(
-                    fontWeight: isFolder ? FontWeight.w700 : FontWeight.w400,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-      for (final c in children) {
-        emit(c);
-      }
-    }
-
-    for (final r in byParent[null] ?? const <IndexNode>[]) {
-      emit(r);
-    }
+    final h = (MediaQuery.sizeOf(context).height - 220).clamp(360.0, 900.0);
     return SizedBox(
-      height: 360,
-      child: Scrollbar(child: ListView(children: rows)),
+      height: h,
+      child: CollapsibleIndexTree(nodes: nodes),
     );
   }
 }
