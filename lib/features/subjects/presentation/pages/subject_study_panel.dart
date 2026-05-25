@@ -686,7 +686,12 @@ class _TreeTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = context.colors;
     return InkWell(
-      onTap: onSelect,
+      onTap: () {
+        onSelect();
+        // Pulsar el título también despliega la carpeta (no la colapsa: para
+        // cerrarla se usa el icono de la izquierda).
+        if (hasChildren && !expanded) onToggle?.call();
+      },
       child: ColoredBox(
         color: selected
             ? scheme.primary.withValues(alpha: 0.10)
@@ -715,9 +720,9 @@ class _TreeTile extends StatelessWidget {
                     : null,
               ),
               Icon(
-                hasChildren ? Icons.folder_outlined : Icons.fiber_manual_record,
-                size: hasChildren ? 16 : 8,
-                color: scheme.onSurfaceVariant,
+                hasChildren ? Icons.folder_rounded : Icons.fiber_manual_record,
+                size: hasChildren ? 17 : 10,
+                color: hasChildren ? Colors.amber.shade700 : scheme.onSurface,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -726,9 +731,10 @@ class _TreeTile extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: context.textTheme.bodySmall?.copyWith(
-                    fontWeight: (selected || node.parentId == null)
-                        ? FontWeight.w700
-                        : FontWeight.w500,
+                    // Las carpetas (con subapartados) siempre en negrita.
+                    fontWeight: hasChildren
+                        ? FontWeight.w800
+                        : (selected ? FontWeight.w700 : FontWeight.w500),
                     color: hasAi ? scheme.primary : null,
                   ),
                 ),
@@ -743,7 +749,7 @@ class _TreeTile extends StatelessWidget {
 
 // ─────────────────────────────── Columna CENTRO ─────────────────────────────
 
-class _ContentColumn extends StatelessWidget {
+class _ContentColumn extends ConsumerWidget {
   const _ContentColumn({
     required this.subjectId,
     required this.nodeId,
@@ -759,7 +765,7 @@ class _ContentColumn extends StatelessWidget {
   final ValueChanged<String> onSelectNode;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     if (nodeId == null) {
       return _ColumnCard(
@@ -779,6 +785,40 @@ class _ContentColumn extends StatelessWidget {
       );
     }
 
+    // Si el nodo es una CARPETA (tiene subapartados) y NO tiene contenido
+    // propio (original), mostramos su ESTRUCTURA en vez de las pestañas vacías.
+    final isFolder = nodes.any((n) => n.parentId == nodeId);
+    if (isFolder) {
+      final originalAsync =
+          ref.watch(nodeContentProvider((nodeId: nodeId!, kind: 'original')));
+      return originalAsync.when(
+        loading: () => _ColumnCard(
+          title: nodeTitle ?? '',
+          leading: Icons.folder_rounded,
+          body: const Center(child: AppLoadingState()),
+        ),
+        error: (_, __) => _tabbed(context),
+        data: (content) {
+          final hasOwnContent = content != null && content.trim().isNotEmpty;
+          if (hasOwnContent) return _tabbed(context);
+          return _ColumnCard(
+            title: nodeTitle ?? '',
+            leading: Icons.folder_rounded,
+            body: _FolderStructureView(
+              folderId: nodeId!,
+              nodes: nodes,
+              onSelectNode: onSelectNode,
+            ),
+          );
+        },
+      );
+    }
+
+    return _tabbed(context);
+  }
+
+  Widget _tabbed(BuildContext context) {
+    final l = context.l10n;
     return PremiumCard(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: DefaultTabController(
@@ -842,6 +882,113 @@ class _ContentColumn extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Vista de la ESTRUCTURA de una carpeta del índice: lista (indentada y
+/// clicable) de sus subapartados, para usar cuando la carpeta no tiene
+/// contenido propio. Pulsar un elemento navega a esa sección.
+class _FolderStructureView extends StatelessWidget {
+  const _FolderStructureView({
+    required this.folderId,
+    required this.nodes,
+    required this.onSelectNode,
+  });
+
+  final String folderId;
+  final List<IndexNode> nodes;
+  final ValueChanged<String> onSelectNode;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final byParent = <String?, List<IndexNode>>{};
+    for (final n in nodes) {
+      byParent.putIfAbsent(n.parentId, () => []).add(n);
+    }
+    for (final list in byParent.values) {
+      list.sort((a, b) => a.position.compareTo(b.position));
+    }
+    var baseDepth = 0;
+    for (final n in nodes) {
+      if (n.id == folderId) {
+        baseDepth = n.depth;
+        break;
+      }
+    }
+
+    final rows = <Widget>[];
+    void emit(IndexNode n) {
+      final children = byParent[n.id] ?? const <IndexNode>[];
+      final isFolder = children.isNotEmpty;
+      rows.add(
+        InkWell(
+          onTap: () => onSelectNode(n.id),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.sm + (n.depth - baseDepth - 1) * 16.0,
+              8,
+              AppSpacing.sm,
+              8,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isFolder ? Icons.folder_rounded : Icons.fiber_manual_record,
+                  size: isFolder ? 17 : 10,
+                  color:
+                      isFolder ? Colors.amber.shade700 : scheme.onSurface,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    n.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      fontWeight:
+                          isFolder ? FontWeight.w800 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Icon(Icons.chevron_right,
+                    size: 16, color: scheme.onSurfaceVariant,),
+              ],
+            ),
+          ),
+        ),
+      );
+      for (final c in children) {
+        emit(c);
+      }
+    }
+
+    for (final c in byParent[folderId] ?? const <IndexNode>[]) {
+      emit(c);
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.xs,
+            AppSpacing.md,
+            AppSpacing.xs,
+          ),
+          child: Text(
+            l.studyFolderStructure,
+            style: context.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        ...rows,
+      ],
     );
   }
 }
