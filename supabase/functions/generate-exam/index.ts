@@ -263,48 +263,66 @@ Deno.serve(withSentry("generate-exam", async (req) => {
 
   try {
     // Generamos por lotes acumulando preguntas distintas hasta alcanzar el
-    // objetivo. Si dos lotes seguidos no aportan nada, asumimos que el material
-    // no da para más y paramos (así el nº real queda acotado por el contenido).
-    // Con visión hacemos una sola llamada (reenviar el adjunto por lote sería
-    // caro y los proveedores con visión están limitados).
+    // objetivo. Cada lote va en SU PROPIO try: si un proveedor falla en un
+    // lote no se pierde lo ya generado. Paramos si dos lotes seguidos no
+    // aportan nada (el material no da para más) o si nos acercamos al límite
+    // de tiempo del Edge Function (devolvemos lo conseguido en vez de morir
+    // por timeout). Con visión hacemos una sola llamada (reenviar el adjunto
+    // por lote sería caro y los proveedores con visión están limitados).
     const collected: ParsedQ[] = [];
     const seen = new Set<string>();
-    const batchSize = 20;
+    const batchSize = 25;
     const maxBatches = usingAttachments ? 1 : 8;
-    let unproductive = 0;
+    const startedAt = Date.now();
+    const timeBudgetMs = 95_000;
+    let stalls = 0;
+    let lastError: string | null = null;
 
     for (let b = 0; b < maxBatches; b++) {
-      const remaining = target - collected.length;
-      if (remaining <= 0) break;
-      const n = Math.min(batchSize, remaining);
-      const result = await runCompletion(admin, {
-        task: "exam",
-        system: buildSystem(n, collected.map((q) => q.question)),
-        messages: [{ role: "user", content: userContent }],
-        attachments: usingAttachments ? attachments : undefined,
-        maxOutputTokens: 8192,
-        temperature: 0.4,
-        userId: subject.user_id,
-        subjectId: subject.id,
-      });
+      if (collected.length >= target) break;
+      if (Date.now() - startedAt > timeBudgetMs) break;
+      const n = Math.min(batchSize, target - collected.length);
       let added = 0;
-      for (const q of parseQuestions(result.text)) {
-        const key = normQ(q.question);
-        if (key.length === 0 || seen.has(key)) continue;
-        seen.add(key);
-        collected.push(q);
-        added++;
-        if (collected.length >= target) break;
+      try {
+        const result = await runCompletion(admin, {
+          task: "exam",
+          system: buildSystem(n, collected.map((q) => q.question)),
+          messages: [{ role: "user", content: userContent }],
+          attachments: usingAttachments ? attachments : undefined,
+          maxOutputTokens: 8192,
+          temperature: 0.4,
+          userId: subject.user_id,
+          subjectId: subject.id,
+        });
+        for (const q of parseQuestions(result.text)) {
+          const key = normQ(q.question);
+          if (key.length === 0 || seen.has(key)) continue;
+          seen.add(key);
+          collected.push(q);
+          added++;
+          if (collected.length >= target) break;
+        }
+      } catch (e) {
+        lastError = e instanceof AiGatewayError
+          ? e.message
+          : (e as Error).message;
       }
       if (added === 0) {
-        if (++unproductive >= 2) break;
+        if (++stalls >= 2) break;
       } else {
-        unproductive = 0;
+        stalls = 0;
       }
     }
 
     if (collected.length === 0) {
-      return json({ ok: false, error: "empty_result" }, 200);
+      return json(
+        {
+          ok: false,
+          error: "generation_failed",
+          detail: lastError ?? "empty_result",
+        },
+        200,
+      );
     }
 
     await admin.from("exam_questions").delete().eq("subject_id", subject.id);
