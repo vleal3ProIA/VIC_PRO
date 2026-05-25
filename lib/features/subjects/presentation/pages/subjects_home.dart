@@ -22,6 +22,7 @@ import 'package:myapp/core/widgets/premium/premium.dart';
 import '../../application/subjects_providers.dart';
 import '../../data/subjects_datasource.dart';
 import '../../domain/subject.dart';
+import '../util/file_picker_web.dart';
 import 'subject_study_panel.dart';
 
 const String _kPrefLastSubject = 'study_last_subject';
@@ -55,16 +56,33 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     final errBg = Theme.of(context).colorScheme.error;
-    final title = await showDialog<String>(
+    // El modal pide nombre (obligatorio) y, opcionalmente, el archivo del
+    // temario: así se crea y se sube de una vez.
+    final result = await showDialog<({String title, PickedFile? file})>(
       context: context,
       builder: (_) => const _CreateSubjectDialog(),
     );
-    if (title == null || title.trim().isEmpty) return;
+    if (result == null || result.title.trim().isEmpty) return;
     setState(() => _busy = true);
     try {
-      final created = await _ds.createSubject(title.trim());
+      final created = await _ds.createSubject(result.title.trim());
+      if (result.file != null) {
+        await _ds.uploadDocument(subjectId: created.id, file: result.file!);
+      }
       ref.invalidate(subjectsListProvider);
-      if (mounted) _select(created.id);
+      if (mounted) {
+        _select(created.id);
+        if (result.file != null) {
+          messenger.showSnackBar(SnackBar(content: Text(l.subjectUploaded)));
+        }
+      }
+    } on SubjectsException catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: errBg,
+          content: Text('${l.subjectUploadError} (${e.code})'),
+        ),
+      );
     } catch (_) {
       messenger.showSnackBar(
         SnackBar(backgroundColor: errBg, content: Text(l.subjectsLoadError)),
@@ -296,29 +314,85 @@ class _CreateSubjectDialog extends StatefulWidget {
 
 class _CreateSubjectDialogState extends State<_CreateSubjectDialog> {
   late final TextEditingController _name;
+  PickedFile? _file;
+  bool _picking = false;
 
   @override
   void initState() {
     super.initState();
-    _name = TextEditingController();
+    _name = TextEditingController()..addListener(_onChanged);
   }
+
+  void _onChanged() => setState(() {});
 
   @override
   void dispose() {
-    _name.dispose();
+    _name
+      ..removeListener(_onChanged)
+      ..dispose();
     super.dispose();
+  }
+
+  Future<void> _pick() async {
+    if (_picking) return;
+    setState(() => _picking = true);
+    try {
+      final f = await pickFile();
+      if (f != null && mounted) setState(() => _file = f);
+    } finally {
+      if (mounted) setState(() => _picking = false);
+    }
+  }
+
+  void _submit() {
+    final t = _name.text.trim();
+    if (t.isEmpty) return;
+    Navigator.of(context).pop((title: t, file: _file));
   }
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final scheme = context.colors;
+    final canSave = _name.text.trim().isNotEmpty;
     return AlertDialog(
       title: Text(l.subjectsNewTitle),
-      content: AppTextField(
-        controller: _name,
-        label: l.subjectsNameField,
-        prefixIcon: Icons.menu_book_outlined,
-        onSubmitted: (_) => _submit(),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppTextField(
+            controller: _name,
+            label: l.subjectsNameField,
+            prefixIcon: Icons.menu_book_outlined,
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          OutlinedButton.icon(
+            onPressed: _picking ? null : _pick,
+            icon: const Icon(Icons.upload_file_outlined, size: 18),
+            label: Text(l.subjectUpload),
+          ),
+          if (_file != null)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Row(
+                children: [
+                  Icon(Icons.description_outlined,
+                      size: 16, color: scheme.primary,),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _file!.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
       actions: [
         TextButton(
@@ -326,16 +400,10 @@ class _CreateSubjectDialogState extends State<_CreateSubjectDialog> {
           child: Text(l.actionCancel),
         ),
         FilledButton(
-          onPressed: _submit,
+          onPressed: canSave ? _submit : null,
           child: Text(l.actionSave),
         ),
       ],
     );
-  }
-
-  void _submit() {
-    final t = _name.text.trim();
-    if (t.isEmpty) return;
-    Navigator.of(context).pop(t);
   }
 }
