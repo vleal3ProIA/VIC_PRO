@@ -81,19 +81,20 @@ export async function runCompletion(
   admin: SupabaseClient,
   req: AiCompletionRequest,
 ): Promise<AiCompletionResult> {
-  const { data: provData, error: provErr } = await admin
-    .from("ai_providers")
-    .select("*")
-    .eq("enabled", true)
+  // En modo TEST (onlyProviderSlug) NO exigimos `enabled`: así se puede probar
+  // la clave de un proveedor ANTES de activarlo. En uso normal, solo enabled.
+  let provQuery = admin.from("ai_providers").select("*");
+  provQuery = req.onlyProviderSlug
+      ? provQuery.eq("slug", req.onlyProviderSlug)
+      : provQuery.eq("enabled", true);
+  const { data: provData, error: provErr } = await provQuery
     .order("priority", { ascending: true });
   if (provErr) {
     throw new AiGatewayError("providers_query_failed: " + provErr.message);
   }
 
   let providers = (provData ?? []) as AiProviderRow[];
-  if (req.onlyProviderSlug) {
-    providers = providers.filter((p) => p.slug === req.onlyProviderSlug);
-  } else if (req.preferTier === "paid") {
+  if (!req.onlyProviderSlug && req.preferTier === "paid") {
     providers = [...providers].sort((a, b) => {
       if (a.tier !== b.tier) return a.tier === "paid" ? -1 : 1;
       return a.priority - b.priority;
