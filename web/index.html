@@ -183,5 +183,32 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+
+  <!--
+    Auto-actualización tras un deploy. El service worker de Flutter descarga la
+    versión nueva en segundo plano y toma el control en la siguiente carga.
+    Este script detecta ese relevo (`controllerchange`) y recarga UNA sola vez,
+    para que el usuario vea los cambios sin tener que vaciar caché / hacer
+    hard-refresh a mano. Además fuerza una comprobación de actualización al
+    abrir y cada 60 s mientras la pestaña siga abierta, para que un deploy se
+    aplique pronto. El guard `hadController` evita una recarga innecesaria en la
+    PRIMERA visita (cuando aún no había service worker).
+  -->
+  <script>
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+      var hadController = !!navigator.serviceWorker.controller;
+      var reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (reloaded || !hadController) return;
+        reloaded = true;
+        window.location.reload();
+      });
+      navigator.serviceWorker.ready.then(function (reg) {
+        reg.update();
+        setInterval(function () { reg.update(); }, 60000);
+      }).catch(function () {});
+    })();
+  </script>
 </body>
 </html>
