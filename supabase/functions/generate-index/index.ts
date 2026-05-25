@@ -324,8 +324,9 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       }],
       attachments: useVision ? mat.attachments : undefined,
       // Tope alto para que quepa un índice grande (los modelos lo acotan a su
-      // máximo sin error). Si aun así se trunca, parseNodes lo rescata.
-      maxOutputTokens: 16384,
+      // máximo sin error; Gemini 2.5 admite hasta 65k). Si aun así se trunca,
+      // parseNodes lo rescata.
+      maxOutputTokens: 32768,
       temperature: 0.2,
       userId: subject.user_id,
       subjectId: subject.id,
