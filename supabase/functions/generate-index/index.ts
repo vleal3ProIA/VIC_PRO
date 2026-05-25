@@ -50,13 +50,62 @@ function parseNodes(text: string): IndexNode[] {
   if (fence) t = fence[1].trim();
   const start = t.indexOf("{");
   const end = t.lastIndexOf("}");
-  if (start >= 0 && end > start) t = t.slice(start, end + 1);
+  const candidate = start >= 0 && end > start ? t.slice(start, end + 1) : t;
+  // 1) Intento estricto.
   try {
-    const obj = JSON.parse(t) as { nodes?: unknown };
-    return Array.isArray(obj.nodes) ? obj.nodes as IndexNode[] : [];
+    const obj = JSON.parse(candidate) as { nodes?: unknown };
+    if (Array.isArray(obj.nodes)) return obj.nodes as IndexNode[];
   } catch {
-    return [];
+    // sigue al rescate
   }
+  // 2) Rescate de JSON TRUNCADO: si la respuesta se cortó (índice grande que
+  // supera el tope de salida), extraemos todos los objetos COMPLETOS del array
+  // "nodes" (con sus hijos) y descartamos el último a medias. Mejor un índice
+  // parcial que un fallo total.
+  return salvageNodes(t);
+}
+
+function salvageNodes(t: string): IndexNode[] {
+  const key = t.indexOf('"nodes"');
+  if (key < 0) return [];
+  const arrStart = t.indexOf("[", key);
+  if (arrStart < 0) return [];
+  const objects: string[] = [];
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  let objStart = -1;
+  for (let i = arrStart + 1; i < t.length; i++) {
+    const c = t[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === "{") {
+      if (depth === 0) objStart = i;
+      depth++;
+    } else if (c === "}") {
+      depth--;
+      if (depth === 0 && objStart >= 0) {
+        objects.push(t.slice(objStart, i + 1));
+        objStart = -1;
+      }
+    } else if (c === "]" && depth === 0) {
+      break;
+    }
+  }
+  const out: IndexNode[] = [];
+  for (const o of objects) {
+    try {
+      out.push(JSON.parse(o) as IndexNode);
+    } catch {
+      // objeto incompleto: ignorar
+    }
+  }
+  return out;
 }
 
 Deno.serve(withSentry("generate-index", async (req) => {
@@ -274,7 +323,9 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
           : "Build the index from the attached document(s).",
       }],
       attachments: useVision ? mat.attachments : undefined,
-      maxOutputTokens: 8192,
+      // Tope alto para que quepa un índice grande (los modelos lo acotan a su
+      // máximo sin error). Si aun así se trunca, parseNodes lo rescata.
+      maxOutputTokens: 16384,
       temperature: 0.2,
       userId: subject.user_id,
       subjectId: subject.id,
