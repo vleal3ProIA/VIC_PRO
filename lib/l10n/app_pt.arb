@@ -3,6 +3,12 @@
   "studyOpenOriginal": "Abrir documento original",
 
   "studyGenerateIndex": "Gerar índice",
+  "studySetupTitle": "Preparar tema",
+  "studySetupProcessing": "A processar o documento…",
+  "studySetupReady": "Documento pronto",
+  "studySetupReview": "Este índice está correto?",
+  "studySetupRegenerate": "Gerar de novo",
+  "studySetupLater": "Mais tarde",
   "studyIndexGenerating": "A gerar índice…",
   "studyIndexFailed": "Falha ao gerar o índice. Tenta de novo.",
   "studyIndexNeedsDoc": "Primeiro carrega e processa um documento.",

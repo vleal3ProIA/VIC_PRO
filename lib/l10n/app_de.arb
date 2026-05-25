@@ -3,6 +3,12 @@
   "studyOpenOriginal": "Originaldokument öffnen",
 
   "studyGenerateIndex": "Index erstellen",
+  "studySetupTitle": "Thema einrichten",
+  "studySetupProcessing": "Dokument wird verarbeitet…",
+  "studySetupReady": "Dokument bereit",
+  "studySetupReview": "Ist dieses Inhaltsverzeichnis korrekt?",
+  "studySetupRegenerate": "Neu generieren",
+  "studySetupLater": "Später",
   "studyIndexGenerating": "Index wird erstellt…",
   "studyIndexFailed": "Index-Erstellung fehlgeschlagen. Erneut versuchen.",
   "studyIndexNeedsDoc": "Lade zuerst ein Dokument hoch und verarbeite es.",

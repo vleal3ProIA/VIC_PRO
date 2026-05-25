@@ -3,6 +3,12 @@
   "studyOpenOriginal": "Открыть оригинал документа",
 
   "studyGenerateIndex": "Создать оглавление",
+  "studySetupTitle": "Настройка предмета",
+  "studySetupProcessing": "Обработка документа…",
+  "studySetupReady": "Документ готов",
+  "studySetupReview": "Это оглавление верное?",
+  "studySetupRegenerate": "Сгенерировать заново",
+  "studySetupLater": "Позже",
   "studyIndexGenerating": "Создание оглавления…",
   "studyIndexFailed": "Не удалось создать оглавление. Попробуйте снова.",
   "studyIndexNeedsDoc": "Сначала загрузите и обработайте документ.",

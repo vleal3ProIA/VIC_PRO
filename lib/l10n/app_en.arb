@@ -3,6 +3,12 @@
   "studyOpenOriginal": "Open original document",
 
   "studyGenerateIndex": "Generate index",
+  "studySetupTitle": "Set up subject",
+  "studySetupProcessing": "Processing the document…",
+  "studySetupReady": "Document ready",
+  "studySetupReview": "Is this index correct?",
+  "studySetupRegenerate": "Regenerate",
+  "studySetupLater": "Later",
   "studyIndexGenerating": "Generating index…",
   "studyIndexFailed": "Index generation failed. Try again.",
   "studyIndexNeedsDoc": "Upload and process a document first.",

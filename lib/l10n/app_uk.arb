@@ -3,6 +3,12 @@
   "studyOpenOriginal": "Відкрити оригінал документа",
 
   "studyGenerateIndex": "Створити зміст",
+  "studySetupTitle": "Налаштування предмета",
+  "studySetupProcessing": "Обробка документа…",
+  "studySetupReady": "Документ готовий",
+  "studySetupReview": "Цей зміст правильний?",
+  "studySetupRegenerate": "Згенерувати заново",
+  "studySetupLater": "Пізніше",
   "studyIndexGenerating": "Створення змісту…",
   "studyIndexFailed": "Не вдалося створити зміст. Спробуйте ще раз.",
   "studyIndexNeedsDoc": "Спочатку завантажте та обробіть документ.",

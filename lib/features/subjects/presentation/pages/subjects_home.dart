@@ -6,6 +6,8 @@
 // (índice · contenido · estudio) en `SubjectStudyPanel`.
 // ============================================================================
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -64,18 +66,16 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
     );
     if (result == null || result.title.trim().isEmpty) return;
     setState(() => _busy = true);
+    String? createdId;
+    var uploaded = false;
     try {
       final created = await _ds.createSubject(result.title.trim());
+      createdId = created.id;
       if (result.file != null) {
         await _ds.uploadDocument(subjectId: created.id, file: result.file!);
+        uploaded = true;
       }
       ref.invalidate(subjectsListProvider);
-      if (mounted) {
-        _select(created.id);
-        if (result.file != null) {
-          messenger.showSnackBar(SnackBar(content: Text(l.subjectUploaded)));
-        }
-      }
     } on SubjectsException catch (e) {
       messenger.showSnackBar(
         SnackBar(
@@ -89,6 +89,17 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
       );
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+    if (!mounted || createdId == null) return;
+    _select(createdId);
+    // Si se subió documento, abrimos el asistente guiado: procesando → generar
+    // índice → revisar → validar (o volver a generar).
+    if (uploaded) {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => _SubjectSetupWizard(subjectId: createdId!),
+      );
     }
   }
 
@@ -404,6 +415,296 @@ class _CreateSubjectDialogState extends State<_CreateSubjectDialog> {
           child: Text(l.actionSave),
         ),
       ],
+    );
+  }
+}
+
+/// Asistente guiado tras subir un temario: procesa el documento → genera el
+/// índice → lo muestra para que el usuario lo valide o lo vuelva a generar.
+/// Las fases se derivan del estado real (documento + índice) con sondeo cada
+/// 3 s, así avanza solo a medida que el backend progresa.
+class _SubjectSetupWizard extends ConsumerStatefulWidget {
+  const _SubjectSetupWizard({required this.subjectId});
+
+  final String subjectId;
+
+  @override
+  ConsumerState<_SubjectSetupWizard> createState() =>
+      _SubjectSetupWizardState();
+}
+
+class _SubjectSetupWizardState extends ConsumerState<_SubjectSetupWizard> {
+  Timer? _poll;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  void _syncPoll(bool active) {
+    if (active) {
+      _poll ??= Timer.periodic(const Duration(seconds: 3), (_) {
+        if (!mounted) {
+          _poll?.cancel();
+          _poll = null;
+          return;
+        }
+        ref
+          ..invalidate(subjectDocumentsProvider(widget.subjectId))
+          ..invalidate(subjectsListProvider)
+          ..invalidate(indexNodesProvider(widget.subjectId));
+      });
+    } else if (_poll != null) {
+      _poll!.cancel();
+      _poll = null;
+    }
+  }
+
+  Future<void> _generate() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final errBg = Theme.of(context).colorScheme.error;
+    try {
+      await ref
+          .read(subjectsDataSourceProvider)
+          .generateIndex(widget.subjectId);
+      ref.invalidate(subjectsListProvider);
+    } on SubjectsException catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: errBg,
+          content: Text('${l.studyIndexFailed} (${e.code})'),
+        ),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(backgroundColor: errBg, content: Text(l.studyIndexFailed)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _validate() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final errBg = Theme.of(context).colorScheme.error;
+    final nav = Navigator.of(context);
+    try {
+      await ref
+          .read(subjectsDataSourceProvider)
+          .validateIndex(widget.subjectId);
+      ref.invalidate(subjectsListProvider);
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text(l.studyIndexValidated)));
+        nav.pop();
+      }
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+
+    final subjects =
+        ref.watch(subjectsListProvider).valueOrNull ?? const <Subject>[];
+    Subject? subject;
+    for (final s in subjects) {
+      if (s.id == widget.subjectId) {
+        subject = s;
+        break;
+      }
+    }
+    final docs =
+        ref.watch(subjectDocumentsProvider(widget.subjectId)).valueOrNull ??
+            const <SubjectDocument>[];
+    final nodes =
+        ref.watch(indexNodesProvider(widget.subjectId)).valueOrNull ??
+            const <IndexNode>[];
+
+    final docInProgress = docs.any((d) => d.inProgress);
+    final docReady = docs.any((d) => d.status == DocStatus.ready);
+    final docFailed = !docReady && !docInProgress && docs.isNotEmpty;
+    final indexStatus = subject?.indexStatus ?? IndexStatus.none;
+    final generating = indexStatus == IndexStatus.generating;
+    final reviewable = indexStatus == IndexStatus.ready && nodes.isNotEmpty;
+
+    // Sondeo activo mientras procesa el documento o genera el índice.
+    _syncPoll((docInProgress || generating) && !reviewable);
+
+    final Widget body;
+    final List<Widget> actions;
+    final String title;
+
+    if (!docReady && !docFailed) {
+      title = l.studySetupTitle;
+      body = _status(spinner: true, text: l.studySetupProcessing);
+      actions = [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l.studySetupLater),
+        ),
+      ];
+    } else if (docFailed) {
+      title = l.studySetupTitle;
+      body = _status(spinner: false, text: l.subjectUploadError, error: true);
+      actions = [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l.actionClose),
+        ),
+      ];
+    } else if (generating || (_busy && !reviewable)) {
+      title = l.studySetupTitle;
+      body = _status(spinner: true, text: l.studyIndexGenerating);
+      actions = const [];
+    } else if (reviewable) {
+      title = l.studySetupReview;
+      body = _review(nodes);
+      actions = [
+        OutlinedButton.icon(
+          onPressed: _busy ? null : _generate,
+          icon: const Icon(Icons.refresh, size: 16),
+          label: Text(l.studySetupRegenerate),
+        ),
+        FilledButton.icon(
+          onPressed: _busy ? null : _validate,
+          icon: const Icon(Icons.check, size: 16),
+          label: Text(l.studyValidateIndex),
+        ),
+      ];
+    } else if (indexStatus == IndexStatus.failed) {
+      title = l.studySetupTitle;
+      body = _status(spinner: false, text: l.studyIndexFailed, error: true);
+      actions = [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l.studySetupLater),
+        ),
+        FilledButton.icon(
+          onPressed: _busy ? null : _generate,
+          icon: const Icon(Icons.refresh, size: 16),
+          label: Text(l.studySetupRegenerate),
+        ),
+      ];
+    } else {
+      // Documento listo, sin índice todavía.
+      title = l.studySetupTitle;
+      body = _status(spinner: false, text: l.studySetupReady);
+      actions = [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l.studySetupLater),
+        ),
+        FilledButton.icon(
+          onPressed: _busy ? null : _generate,
+          icon: const Icon(Icons.auto_awesome, size: 16),
+          label: Text(l.studyGenerateIndex),
+        ),
+      ];
+    }
+
+    return AlertDialog(
+      title: Text(title),
+      content: SizedBox(width: 460, child: body),
+      actions: actions,
+    );
+  }
+
+  Widget _status({
+    required bool spinner,
+    required String text,
+    bool error = false,
+  }) {
+    final scheme = context.colors;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (spinner)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: CircularProgressIndicator(),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: Icon(
+              error ? Icons.error_outline : Icons.check_circle_outline,
+              size: 40,
+              color: error ? scheme.error : Colors.green,
+            ),
+          ),
+        Text(
+          text,
+          textAlign: TextAlign.center,
+          style: context.textTheme.bodyMedium,
+        ),
+      ],
+    );
+  }
+
+  /// Vista del índice generado (árbol indentado, solo lectura) para revisarlo.
+  Widget _review(List<IndexNode> nodes) {
+    final scheme = context.colors;
+    final byParent = <String?, List<IndexNode>>{};
+    for (final n in nodes) {
+      byParent.putIfAbsent(n.parentId, () => []).add(n);
+    }
+    for (final list in byParent.values) {
+      list.sort((a, b) => a.position.compareTo(b.position));
+    }
+    final rows = <Widget>[];
+    void emit(IndexNode n) {
+      final children = byParent[n.id] ?? const <IndexNode>[];
+      final isFolder = children.isNotEmpty;
+      rows.add(
+        Padding(
+          padding: EdgeInsets.only(left: 4 + n.depth * 14.0, top: 3, bottom: 3),
+          child: Row(
+            children: [
+              Icon(
+                isFolder ? Icons.folder_rounded : Icons.fiber_manual_record,
+                size: isFolder ? 15 : 8,
+                color: isFolder ? Colors.amber.shade700 : scheme.onSurface,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  n.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.textTheme.bodySmall?.copyWith(
+                    fontWeight: isFolder ? FontWeight.w700 : FontWeight.w400,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      for (final c in children) {
+        emit(c);
+      }
+    }
+
+    for (final r in byParent[null] ?? const <IndexNode>[]) {
+      emit(r);
+    }
+    return SizedBox(
+      height: 360,
+      child: Scrollbar(child: ListView(children: rows)),
     );
   }
 }
