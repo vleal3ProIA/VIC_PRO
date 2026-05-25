@@ -785,8 +785,10 @@ class _ContentColumn extends ConsumerWidget {
       );
     }
 
-    // Si el nodo es una CARPETA (tiene subapartados) y NO tiene contenido
-    // propio (original), mostramos su ESTRUCTURA en vez de las pestañas vacías.
+    // Si el nodo es una CARPETA (tiene subapartados): NUNCA mostramos
+    // Explicado/Resumen/Chat (eso se trabaja en cada subíndice). Si la carpeta
+    // tiene contenido propio (original), mostramos SOLO el original; si no,
+    // mostramos su ESTRUCTURA (los títulos de sus subíndices).
     final isFolder = nodes.any((n) => n.parentId == nodeId);
     if (isFolder) {
       final originalAsync =
@@ -797,10 +799,10 @@ class _ContentColumn extends ConsumerWidget {
           leading: Icons.folder_rounded,
           body: const Center(child: AppLoadingState()),
         ),
-        error: (_, __) => _tabbed(context),
+        error: (_, __) => _originalOnly(context),
         data: (content) {
           final hasOwnContent = content != null && content.trim().isNotEmpty;
-          if (hasOwnContent) return _tabbed(context);
+          if (hasOwnContent) return _originalOnly(context);
           return _ColumnCard(
             title: nodeTitle ?? '',
             leading: Icons.folder_rounded,
@@ -815,6 +817,20 @@ class _ContentColumn extends ConsumerWidget {
     }
 
     return _tabbed(context);
+  }
+
+  /// Vista de SOLO el original (para carpetas/títulos con contenido propio):
+  /// sin Explicado, Resumen ni Chat.
+  Widget _originalOnly(BuildContext context) {
+    return _ColumnCard(
+      title: nodeTitle ?? '',
+      leading: Icons.menu_book_outlined,
+      body: _NodeView(
+        nodeId: nodeId!,
+        kind: 'original',
+        subjectId: subjectId,
+      ),
+    );
   }
 
   Widget _tabbed(BuildContext context) {
