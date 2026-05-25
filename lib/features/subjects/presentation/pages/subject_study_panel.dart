@@ -2271,6 +2271,7 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
   Timer? _timer;
   bool _done = false;
   bool _review = false;
+  int _reviewCur = 0;
   final Set<int> _expanded = {};
 
   int get _totalSecs => widget.minutes * 60;
@@ -2373,7 +2374,9 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
       child: SizedBox(
         width: w,
         height: h,
-        child: _done ? _results(context) : _running(context),
+        child: _done
+            ? (_review ? _reviewPaged(context) : _results(context))
+            : _running(context),
       ),
     );
   }
@@ -2625,8 +2628,10 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
                         alignment: WrapAlignment.center,
                         children: [
                           OutlinedButton.icon(
-                            onPressed: () =>
-                                setState(() => _review = !_review),
+                            onPressed: () => setState(() {
+                              _review = true;
+                              _reviewCur = 0;
+                            }),
                             icon: const Icon(Icons.fact_check_outlined,
                                 size: 16,),
                             label: Text(l.studyMockReview),
@@ -2642,21 +2647,65 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
                   ),
                 ),
               ),
-              if (_review) ...[
-                const Divider(height: AppSpacing.xl),
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 760),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (var i = 0; i < total; i++)
-                          _reviewItem(context, i),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Repaso PAGINADO: una pregunta a la vez (igual que al hacer el test) con
+  /// Anterior/Siguiente y un botón de Finalizar siempre visible para salir.
+  Widget _reviewPaged(BuildContext context) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final total = widget.questions.length;
+    final last = _reviewCur >= total - 1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _header(
+          context,
+          trailing: FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.flag_outlined, size: 16),
+            label: Text(l.studyMockFinish),
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: _reviewItem(context, _reviewCur),
+              ),
+            ),
+          ),
+        ),
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              IconButton.filledTonal(
+                onPressed: _reviewCur > 0
+                    ? () => setState(() => _reviewCur--)
+                    : null,
+                icon: const Icon(Icons.chevron_left),
+              ),
+              const Spacer(),
+              Text(
+                '${_reviewCur + 1}/$total',
+                style: context.textTheme.titleSmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+              const Spacer(),
+              IconButton.filledTonal(
+                onPressed: !last ? () => setState(() => _reviewCur++) : null,
+                icon: const Icon(Icons.chevron_right),
+              ),
             ],
           ),
         ),
@@ -2736,8 +2785,7 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
   }
 
   /// Panel que se despliega bajo una pregunta: el temario ORIGINAL de su
-  /// sección y el EXPLICADO generado por la IA, más un enlace para abrir la
-  /// sección completa en el centro.
+  /// sección y el EXPLICADO generado por la IA.
   Widget _reviewDetail(BuildContext context, String nodeId) {
     final l = context.l10n;
     final scheme = context.colors;
@@ -2755,17 +2803,6 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
         children: [
           _detailBlock(context, nodeId, 'original', l.studyTabOriginal),
           _detailBlock(context, nodeId, 'explained', l.studyTabExplained),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () {
-                Navigator.of(context).pop();
-                widget.onSelectNode(nodeId);
-              },
-              icon: const Icon(Icons.open_in_new, size: 16),
-              label: Text(l.studyTestViewInMaterial),
-            ),
-          ),
         ],
       ),
     );
@@ -2892,8 +2929,17 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
               ),
               if (readOnly && (correct ?? false))
                 const Icon(Icons.check_circle, size: 18, color: Colors.green),
-              if (readOnly && selected && !(correct ?? false))
+              if (readOnly && selected && !(correct ?? false)) ...[
+                Text(
+                  context.l10n.studyTestYourAnswer,
+                  style: context.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: scheme.error,
+                  ),
+                ),
+                const SizedBox(width: 4),
                 Icon(Icons.cancel, size: 18, color: scheme.error),
+              ],
               if (trailing != null) trailing,
             ],
           ),
