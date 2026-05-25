@@ -287,7 +287,10 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       "(folders AND leaves) MUST include `anchor`: the exact verbatim text of " +
       "the first line/heading of that section/chapter/article, copied literally " +
       "from the material (max ~80 chars), so it can be located in the text. " +
-      "Titles concise and in the SAME language as the material. No commentary.";
+      "Do NOT wrap everything under a single root node named after the whole " +
+      "document/law; list the top-level sections (e.g. títulos) DIRECTLY in " +
+      "`nodes`. Titles concise and in the SAME language as the material. " +
+      "No commentary.";
 
     // El índice SIEMPRE se construye leyendo el documento (visión del PDF +
     // texto de .txt) para que salga COMPLETO. El troceo del original usa el
@@ -338,7 +341,16 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
     // Troceo (best-effort) con el texto guardado, si lo hay. Cada nodo recibe
     // SOLO su texto propio: las hojas su sección, las carpetas su intro.
     const hasFullText = fullText.trim().length > 0;
-    const tree = toPTree(raw);
+    let tree = toPTree(raw);
+    // Si la IA envolvió TODO bajo un único nodo con el nombre del temario
+    // (raíz duplicada), lo desempaquetamos: sus hijos pasan al primer nivel.
+    if (tree.length === 1 && tree[0].children.length > 0) {
+      const wrapper = normText(tree[0].title);
+      const subj = normText(subject.title);
+      if (wrapper === subj || wrapper.includes(subj) || subj.includes(wrapper)) {
+        tree = tree[0].children;
+      }
+    }
     const flat: PNode[] = [];
     if (hasFullText) {
       flattenPreOrder(tree, flat);
