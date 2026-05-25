@@ -49,6 +49,7 @@ const ADAPTERS: Record<string, ProviderAdapter> = {
   openrouter: openAiCompatibleAdapter,
   deepseek: openAiCompatibleAdapter,
   groq: openAiCompatibleAdapter,
+  mistral: openAiCompatibleAdapter,
 };
 
 /// Proveedores que aceptan adjuntos (PDF/imagen) por visión nativa. Cuando la
@@ -63,6 +64,7 @@ const DEFAULT_BASE_URL: Record<string, string> = {
   groq: "https://api.groq.com/openai/v1",
   openrouter: "https://openrouter.ai/api/v1",
   deepseek: "https://api.deepseek.com",
+  mistral: "https://api.mistral.ai/v1",
 };
 
 /// Coste aproximado en USD por 1M tokens (input/output). Editable; 0 si se
