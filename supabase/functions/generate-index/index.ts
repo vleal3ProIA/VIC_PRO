@@ -135,12 +135,15 @@ Deno.serve(withSentry("generate-index", async (req) => {
 }));
 
 /// Nodo del árbol interno con su rango [start,end) dentro del texto completo.
+/// `start` = posición de su cabecera; `end` = posición de la siguiente cabecera
+/// en orden de documento (pre-orden). `found` = si se localizó su anchor.
 interface PNode {
   title: string;
   anchor: string | null;
   children: PNode[];
   start: number;
   end: number;
+  found: boolean;
 }
 
 function toPTree(raw: IndexNode[]): PNode[] {
@@ -158,63 +161,50 @@ function toPTree(raw: IndexNode[]): PNode[] {
       children,
       start: 0,
       end: 0,
+      found: false,
     });
   }
   return out;
 }
 
-function collectLeaves(nodes: PNode[], acc: PNode[]): void {
+/// Aplana el árbol en PRE-ORDEN (cada carpeta antes que sus hijos), que es el
+/// orden en que aparecen las cabeceras en el documento.
+function flattenPreOrder(nodes: PNode[], acc: PNode[]): void {
   for (const n of nodes) {
-    if (n.children.length === 0) {
-      acc.push(n);
-    } else {
-      collectLeaves(n.children, acc);
-    }
+    acc.push(n);
+    flattenPreOrder(n.children, acc);
   }
 }
 
-/// Localiza cada hoja por su anchor (texto verbatim de su cabecera) dentro del
-/// texto completo, con cursor monótono. Cada hoja va desde su posición hasta la
-/// de la siguiente.
-function assignLeafRanges(leaves: PNode[], fullText: string): void {
+/// Localiza la cabecera de CADA nodo por su anchor (texto verbatim), con cursor
+/// monótono, y fija su rango PROPIO [start, end): desde su cabecera hasta la
+/// cabecera del siguiente nodo en el documento. Así el texto propio de una HOJA
+/// es su sección completa, y el de una CARPETA es solo su intro (lo que hay
+/// entre su cabecera y su primer subapartado).
+function assignRanges(flat: PNode[], fullText: string): void {
   let cursor = 0;
-  for (const leaf of leaves) {
-    const probe = (leaf.anchor ?? leaf.title).trim();
+  for (const n of flat) {
+    const probe = (n.anchor ?? n.title).trim();
     let pos = -1;
     if (probe.length >= 3) {
       pos = fullText.indexOf(probe, cursor);
       if (pos < 0) pos = fullText.indexOf(probe.slice(0, 40), cursor);
     }
-    leaf.start = pos < 0 ? cursor : pos;
-    cursor = leaf.start + 1;
+    n.found = pos >= 0;
+    n.start = pos < 0 ? cursor : pos;
+    cursor = n.start + 1;
   }
-  for (let i = 0; i < leaves.length; i++) {
-    leaves[i].end = i + 1 < leaves.length
-      ? leaves[i + 1].start
-      : fullText.length;
-  }
-}
-
-/// Rango de una carpeta = abarca a todas sus hojas descendientes.
-function rollupFolders(nodes: PNode[]): void {
-  for (const n of nodes) {
-    if (n.children.length > 0) {
-      rollupFolders(n.children);
-      const acc: PNode[] = [];
-      collectLeaves([n], acc);
-      if (acc.length > 0) {
-        n.start = Math.min(...acc.map((l) => l.start));
-        n.end = Math.max(...acc.map((l) => l.end));
-      }
-    }
+  for (let i = 0; i < flat.length; i++) {
+    flat[i].end = i + 1 < flat.length ? flat[i + 1].start : fullText.length;
   }
 }
 
 // deno-lint-ignore no-explicit-any
-async function storeOriginal(
+async function storeContent(
   admin: any,
   subject: SubjectRow,
   nodeId: string,
+  kind: string,
   text: string,
 ): Promise<void> {
   const content = text.trim();
@@ -222,7 +212,7 @@ async function storeOriginal(
   await admin.from("node_content").insert({
     node_id: nodeId,
     user_id: subject.user_id,
-    kind: "original",
+    kind,
     content,
   });
 }
@@ -244,10 +234,10 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       "Cover it from start to end: every chapter/topic and the FINEST unit as " +
       "the deepest leaves (e.g. for laws: título > capítulo > ARTÍCULO). " +
       "Return ONLY minified JSON: " +
-      '{"nodes":[{"title":"...","anchor":"...","children":[...]}]}. For LEAF ' +
-      "nodes (no children), `anchor` MUST be the exact verbatim text of the " +
-      "first line/heading of that section, copied literally from the material " +
-      "(max ~80 chars), so it can be located. Folders need only `title`. " +
+      '{"nodes":[{"title":"...","anchor":"...","children":[...]}]}. EVERY node ' +
+      "(folders AND leaves) MUST include `anchor`: the exact verbatim text of " +
+      "the first line/heading of that section/chapter/article, copied literally " +
+      "from the material (max ~80 chars), so it can be located in the text. " +
       "Titles concise and in the SAME language as the material. No commentary.";
 
     // El índice SIEMPRE se construye leyendo el documento (visión del PDF +
@@ -280,14 +270,14 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
     const raw = parseNodes(result.text);
     if (raw.length === 0) throw new Error("empty_index");
 
-    // Troceo del original (best-effort) con el texto guardado, si lo hay.
+    // Troceo (best-effort) con el texto guardado, si lo hay. Cada nodo recibe
+    // SOLO su texto propio: las hojas su sección, las carpetas su intro.
     const hasFullText = fullText.trim().length > 0;
     const tree = toPTree(raw);
+    const flat: PNode[] = [];
     if (hasFullText) {
-      const leaves: PNode[] = [];
-      collectLeaves(tree, leaves);
-      assignLeafRanges(leaves, fullText);
-      rollupFolders(tree);
+      flattenPreOrder(tree, flat);
+      assignRanges(flat, fullText);
     }
 
     // Nodo raíz = nombre del temario, con el ORIGINAL completo.
@@ -304,8 +294,19 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       .select("id")
       .single();
     if (rootErr || !rootRow) throw new Error("root_insert_failed");
-    if (hasFullText) {
-      await storeOriginal(admin, subject, rootRow.id as string, fullText);
+    // "Intro" del raíz = preámbulo del documento (lo que haya antes del primer
+    // apartado). No guardamos el texto completo como 'original' del raíz.
+    if (hasFullText && flat.length > 0) {
+      const preamble = fullText.slice(0, flat[0].start).trim();
+      if (preamble.length >= 40) {
+        await storeContent(
+          admin,
+          subject,
+          rootRow.id as string,
+          "intro",
+          preamble,
+        );
+      }
     }
     await insertTree(admin, subject, tree, rootRow.id as string, 1, fullText);
 
@@ -346,8 +347,27 @@ async function insertTree(
       .single();
     if (error || !row) continue;
     const nodeId = row.id as string;
-    if (n.end > n.start) {
-      await storeOriginal(admin, subject, nodeId, fullText.slice(n.start, n.end));
+    const isLeaf = n.children.length === 0;
+    if (isLeaf) {
+      // Hoja: su sección COMPLETA como 'original'.
+      if (n.end > n.start) {
+        await storeContent(
+          admin,
+          subject,
+          nodeId,
+          "original",
+          fullText.slice(n.start, n.end),
+        );
+      }
+    } else if (n.found && n.end > n.start) {
+      // Carpeta: SOLO su intro (lo que hay entre su cabecera y el primer
+      // subapartado), quitando la línea de la cabecera. Solo si hay intro real.
+      const own = fullText.slice(n.start, n.end);
+      const nl = own.indexOf("\n");
+      const body = (nl >= 0 ? own.slice(nl + 1) : "").trim();
+      if (body.length >= 40) {
+        await storeContent(admin, subject, nodeId, "intro", body);
+      }
     }
     if (n.children.length > 0 && depth < 6) {
       await insertTree(admin, subject, n.children, nodeId, depth + 1, fullText);

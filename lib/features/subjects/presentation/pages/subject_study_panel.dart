@@ -785,25 +785,51 @@ class _ContentColumn extends ConsumerWidget {
       );
     }
 
-    // Una CARPETA (nodo con subapartados) NUNCA vuelca su contenido: solo
-    // muestra su ESTRUCTURA (los títulos de sus subíndices, clicables). El
-    // contenido de cada parte se ve al pulsar el subíndice correspondiente.
-    // (El `original` de una carpeta es la agregación del texto de sus hijos,
-    // no una intro propia; mostrarlo duplicaría el contenido de los subíndices.)
+    // CARPETA (nodo con subapartados): si tiene una INTRO propia (texto entre
+    // su título y el primer subíndice) la mostramos SOLA; si no, mostramos solo
+    // su ESTRUCTURA (los títulos de sus subíndices, clicables). Nunca volcamos
+    // el contenido de los subíndices ni Explicado/Resumen/Chat.
     final isFolder = nodes.any((n) => n.parentId == nodeId);
     if (isFolder) {
-      return _ColumnCard(
-        title: nodeTitle ?? '',
-        leading: Icons.folder_rounded,
-        body: _FolderStructureView(
-          folderId: nodeId!,
-          nodes: nodes,
-          onSelectNode: onSelectNode,
+      final introAsync =
+          ref.watch(nodeContentProvider((nodeId: nodeId!, kind: 'intro')));
+      return introAsync.when(
+        loading: () => _ColumnCard(
+          title: nodeTitle ?? '',
+          leading: Icons.folder_rounded,
+          body: const Center(child: AppLoadingState()),
         ),
+        error: (_, __) => _folderStructure(context),
+        data: (intro) {
+          if (intro != null && intro.trim().isNotEmpty) {
+            return _ColumnCard(
+              title: nodeTitle ?? '',
+              leading: Icons.menu_book_outlined,
+              body: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: MarkdownText(intro),
+              ),
+            );
+          }
+          return _folderStructure(context);
+        },
       );
     }
 
     return _tabbed(context);
+  }
+
+  /// Card con la ESTRUCTURA de la carpeta (títulos de sus subíndices).
+  Widget _folderStructure(BuildContext context) {
+    return _ColumnCard(
+      title: nodeTitle ?? '',
+      leading: Icons.folder_rounded,
+      body: _FolderStructureView(
+        folderId: nodeId!,
+        nodes: nodes,
+        onSelectNode: onSelectNode,
+      ),
+    );
   }
 
   Widget _tabbed(BuildContext context) {
