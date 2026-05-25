@@ -1,17 +1,27 @@
 // ============================================================================
-// Edge Function: generate-exam · Banco de preguntas de examen (Fase 4)
+// Edge Function: generate-exam · Banco de preguntas GLOBAL por contenido
 // ----------------------------------------------------------------------------
-// Genera N preguntas MCQ de las SECCIONES elegidas del índice (o de todo el
-// temario), etiquetando cada una con la sección a la que pertenece (node_id),
-// con explicación. Reemplaza el banco `exam_questions` del temario.
+// Genera preguntas tipo test POR SECCIÓN (para maximizar el número y repartir
+// bien) y las guarda en un banco COMPARTIDO (`question_bank`) indexado por el
+// HASH del texto de la sección. Así, secciones idénticas —aunque sean de otro
+// temario u otro usuario— REUTILIZAN las mismas preguntas sin volver a gastar
+// IA.
+//
+// Para cada sección con texto original:
+//   1. calcula el hash de su texto y lo guarda en index_nodes.content_hash
+//   2. si ya hay suficientes preguntas en el banco para ese hash y no se fuerza
+//      -> se reutilizan (0 coste de IA)
+//   3. si no, genera hasta ~N (según longitud) preguntas NUEVAS y las añade
+//
+// Respeta un presupuesto de tiempo: si se acerca al límite del Edge Function,
+// para y devuelve el progreso (las secciones pendientes se completan al volver
+// a pulsar "Generar", que salta las ya hechas).
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
-import { gatherMaterial } from "../_shared/ai/material.ts";
-import type { AiAttachment } from "../_shared/ai/types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,7 +42,6 @@ interface RawQ {
   options?: unknown;
   correct_index?: unknown;
   explanation?: unknown;
-  section?: unknown;
 }
 
 interface ParsedQ {
@@ -40,7 +49,6 @@ interface ParsedQ {
   options: string[];
   correct_index: number;
   explanation: string | null;
-  section: string | null;
 }
 
 function parseQuestions(text: string): ParsedQ[] {
@@ -58,7 +66,9 @@ function parseQuestions(text: string): ParsedQ[] {
       if (!q || typeof q.question !== "string") continue;
       const opts = Array.isArray(q.options)
         ? (q.options as unknown[])
-          .filter((o): o is string => typeof o === "string" && o.trim().length > 0)
+          .filter((o): o is string =>
+            typeof o === "string" && o.trim().length > 0
+          )
           .map((o) => o.slice(0, 300).trim())
         : [];
       if (opts.length < 2 || opts.length > 6) continue;
@@ -73,15 +83,26 @@ function parseQuestions(text: string): ParsedQ[] {
         explanation: typeof q.explanation === "string"
           ? (q.explanation as string).slice(0, 800).trim()
           : null,
-        section: typeof q.section === "string"
-          ? (q.section as string).trim()
-          : null,
       });
     }
     return out;
   } catch {
     return [];
   }
+}
+
+function normText(s: string): string {
+  return s.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+async function sha256Hex(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(s),
+  );
+  return [...new Uint8Array(buf)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 interface NodeRow {
@@ -118,13 +139,7 @@ Deno.serve(withSentry("generate-exam", async (req) => {
       typeof x === "string"
     )
     : [];
-  // `count` <= 0 significa "TODAS": generamos tantas como el material permita,
-  // hasta un tope duro. Si no, lo acotamos a [3, 100].
-  const rawCount = typeof body?.count === "number" ? body.count : 10;
-  const allMode = rawCount <= 0;
-  const target = allMode
-    ? 100
-    : Math.max(3, Math.min(100, Math.trunc(rawCount)));
+  const force = body?.force === true;
   if (typeof subjectId !== "string") {
     return json({ error: "missing_subject_id" }, 400);
   }
@@ -149,199 +164,168 @@ Deno.serve(withSentry("generate-exam", async (req) => {
   });
   if (!rateOk) return json({ error: "rate_limited" }, 429);
 
-  // Secciones (para etiquetar y para el texto): si hay node_ids, esas; si no,
-  // el índice del temario (acotado).
-  let sections: NodeRow[] = [];
-  if (nodeIds.length > 0) {
-    const { data } = await admin
-      .from("index_nodes")
-      .select("id, title")
-      .eq("subject_id", subjectId)
-      .in("id", nodeIds);
-    sections = ((data ?? []) as NodeRow[]);
-  } else {
+  // Secciones objetivo: las elegidas (node_ids) o todas las del temario.
+  let nodes: NodeRow[] = [];
+  {
     const { data } = await admin
       .from("index_nodes")
       .select("id, title")
       .eq("subject_id", subjectId)
       .order("depth")
       .order("position")
-      .limit(150);
-    sections = ((data ?? []) as NodeRow[]);
+      .limit(400);
+    nodes = (data ?? []) as NodeRow[];
   }
+  if (nodeIds.length > 0) {
+    const set = new Set(nodeIds);
+    nodes = nodes.filter((n) => set.has(n.id));
+  }
+  if (nodes.length === 0) return json({ error: "no_sections" }, 409);
 
-  // Material: SIEMPRE preferimos el texto 'original' ya guardado de las
-  // secciones implicadas (las elegidas, o todas las del índice cuando es "todo
-  // el temario"). Al ser TEXTO, el gateway puede usar cualquier proveedor con
-  // fallback (gratis→pago); si tirásemos del documento como adjunto de visión
-  // quedaríamos atados a Gemini/Anthropic y fallaría al saturarse.
-  let textContext = "";
-  let attachments: AiAttachment[] = [];
-  const sectionIds = sections.map((s) => s.id);
-  if (sectionIds.length > 0) {
+  // Texto original de cada sección (solo las que tienen contenido propio).
+  const ids = nodes.map((n) => n.id);
+  const textByNode = new Map<string, string>();
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100);
     const { data: contents } = await admin
       .from("node_content")
       .select("node_id, content")
       .eq("kind", "original")
-      .in("node_id", sectionIds);
-    const byNode = new Map<string, string>();
-    for (const c of ((contents ?? []) as Array<{ node_id: string; content: string | null }>)) {
-      if (c.content) byNode.set(c.node_id, c.content);
-    }
-    const parts: string[] = [];
-    for (const s of sections) {
-      const txt = byNode.get(s.id);
-      if (txt && txt.trim().length > 0) parts.push(`## ${s.title}\n${txt}`);
-    }
-    textContext = parts.join("\n\n").slice(0, 200000);
-  }
-  // Respaldo: si las secciones no tienen 'original' guardado, recurrimos al
-  // material completo del temario (texto extraído o, en último caso, visión).
-  if (textContext.length < 50) {
-    const mat = await gatherMaterial(admin, subjectId);
-    if (mat.textContext.trim().length > 0) {
-      textContext = mat.textContext;
-    } else {
-      textContext = "";
-      attachments = mat.attachments;
+      .in("node_id", chunk);
+    for (
+      const c of ((contents ?? []) as Array<
+        { node_id: string; content: string | null }
+      >)
+    ) {
+      if (c.content && c.content.trim().length >= 40) {
+        textByNode.set(c.node_id, c.content);
+      }
     }
   }
-  if (textContext.length === 0 && attachments.length === 0) {
-    return json({ error: "no_ready_documents" }, 409);
-  }
+  const sections = nodes.filter((n) => textByNode.has(n.id));
+  if (sections.length === 0) return json({ error: "no_ready_documents" }, 409);
 
-  const titles = sections.map((s) => s.title).filter((t) => t && t.length > 0);
-  const sectionsBlock = titles.length > 0
-    ? "\n\nSections (use one EXACT title from this list as `section`):\n" +
-      titles.map((t) => `- ${t}`).join("\n")
-    : "";
   const lang = subject.language && subject.language.length > 0
     ? `Write in this language (ISO code): ${subject.language}.`
-    : "Write in the SAME language as the material.";
+    : "Write in the SAME language as the section.";
 
-  // System prompt de una tanda de `n` preguntas NUEVAS, evitando repetir las
-  // ya generadas (para poder acumular hasta el objetivo en varias llamadas).
-  function buildSystem(n: number, existing: string[]): string {
+  const startedAt = Date.now();
+  const timeBudgetMs = 95_000;
+  let generated = 0;
+  let reused = 0;
+  let pending = 0;
+  let total = 0;
+  let lastError: string | null = null;
+
+  for (const sec of sections) {
+    const text = textByNode.get(sec.id)!;
+    const hash = await sha256Hex(normText(text).slice(0, 100_000));
+
+    // Guarda el hash en el nodo (para que el cliente mapee nodo -> preguntas).
+    await admin
+      .from("index_nodes")
+      .update({ content_hash: hash })
+      .eq("id", sec.id);
+
+    // ¿Ya hay preguntas para este contenido (de cualquiera)?
+    const { data: ex } = await admin
+      .from("question_bank")
+      .select("question")
+      .eq("content_hash", hash);
+    const existing = ((ex ?? []) as Array<{ question: string }>)
+      .map((r) => r.question);
+    total += existing.length;
+
+    // Cuántas queremos para esta sección, según su longitud (más texto => más
+    // preguntas), acotado a [8, 25].
+    const targetForSection = Math.min(
+      25,
+      Math.max(8, Math.round(text.length / 500)),
+    );
+    if (!force && existing.length >= targetForSection) {
+      reused++;
+      continue;
+    }
+    if (Date.now() - startedAt > timeBudgetMs) {
+      pending++;
+      continue;
+    }
+    const need = force
+      ? targetForSection
+      : (targetForSection - existing.length);
+
     const avoid = existing.length > 0
-      ? "\n\nDo NOT repeat or rephrase any of these already-created questions:\n" +
-        existing.slice(-120).map((q) => `- ${q}`).join("\n")
+      ? "\n\nDo NOT repeat or rephrase any of these existing questions:\n" +
+        existing.slice(-40).map((q) => `- ${q}`).join("\n")
       : "";
-    return "You create a multiple-choice EXAM from the material. Return ONLY " +
-      'minified JSON: {"questions":[{"question":"...","options":["...","...",' +
-      '"...","..."],"correct_index":0,"explanation":"...","section":"..."}]}. ' +
-      "Exactly 4 plausible options, ONLY ONE correct, grounded ONLY in the " +
-      "material (do not invent). `correct_index` is the 0-based index of the " +
-      "right option. `explanation` briefly says why it is correct. `section` " +
-      "is the EXACT title of the section the question belongs to (copied from " +
-      `the list). Produce up to ${n} NEW distinct questions, spread across the ` +
-      "sections. If the material does not support more distinct, grounded " +
-      'questions, return {"questions":[]}. ' + lang + sectionsBlock + avoid +
-      " No commentary.";
-  }
+    const system =
+      "You create multiple-choice EXAM questions from ONE section of study " +
+      'material. Return ONLY minified JSON: {"questions":[{"question":"...",' +
+      '"options":["...","...","...","..."],"correct_index":0,"explanation":' +
+      '"..."}]}. Exactly 4 plausible options, ONLY ONE correct, grounded ONLY ' +
+      "in the section text (do not invent). `correct_index` is the 0-based " +
+      "index of the right option. `explanation` briefly says why it is " +
+      `correct. Produce up to ${need} distinct, NON-overlapping questions ` +
+      "covering this section as thoroughly as possible; if the section is too " +
+      `short for that many, return fewer. ${lang}${avoid} No commentary.`;
 
-  const userContent = textContext
-    ? "Material:\n\n" + textContext
-    : "Use the attached document(s).";
-  const usingAttachments = attachments.length > 0;
-
-  function normQ(q: string): string {
-    return q.trim().toLowerCase().replace(/\s+/g, " ");
-  }
-
-  // Resuelve section -> node_id (igualdad/contiene, sin mayúsculas).
-  function resolveNode(section: string | null): string | null {
-    if (!section) return null;
-    const s = section.trim().toLowerCase();
-    for (const n of sections) {
-      const t = n.title.trim().toLowerCase();
-      if (t.length > 0 && (t === s || t.includes(s) || s.includes(t))) {
-        return n.id;
-      }
-    }
-    return null;
-  }
-
-  try {
-    // Generamos por lotes acumulando preguntas distintas hasta alcanzar el
-    // objetivo. Cada lote va en SU PROPIO try: si un proveedor falla en un
-    // lote no se pierde lo ya generado. Paramos si dos lotes seguidos no
-    // aportan nada (el material no da para más) o si nos acercamos al límite
-    // de tiempo del Edge Function (devolvemos lo conseguido en vez de morir
-    // por timeout). Con visión hacemos una sola llamada (reenviar el adjunto
-    // por lote sería caro y los proveedores con visión están limitados).
-    const collected: ParsedQ[] = [];
-    const seen = new Set<string>();
-    const batchSize = 25;
-    const maxBatches = usingAttachments ? 1 : 8;
-    const startedAt = Date.now();
-    const timeBudgetMs = 95_000;
-    let stalls = 0;
-    let lastError: string | null = null;
-
-    for (let b = 0; b < maxBatches; b++) {
-      if (collected.length >= target) break;
-      if (Date.now() - startedAt > timeBudgetMs) break;
-      const n = Math.min(batchSize, target - collected.length);
-      let added = 0;
-      try {
-        const result = await runCompletion(admin, {
-          task: "exam",
-          system: buildSystem(n, collected.map((q) => q.question)),
-          messages: [{ role: "user", content: userContent }],
-          attachments: usingAttachments ? attachments : undefined,
-          maxOutputTokens: 8192,
-          temperature: 0.4,
-          userId: subject.user_id,
-          subjectId: subject.id,
+    try {
+      const result = await runCompletion(admin, {
+        task: "exam",
+        system,
+        messages: [{
+          role: "user",
+          content: `Section: ${sec.title}\n\n${text.slice(0, 60_000)}`,
+        }],
+        maxOutputTokens: 8192,
+        temperature: 0.5,
+        userId: subject.user_id,
+        subjectId: subject.id,
+      });
+      const seen = new Set(existing.map(normText));
+      const rows: Array<Record<string, unknown>> = [];
+      for (const q of parseQuestions(result.text)) {
+        const key = normText(q.question);
+        if (key.length === 0 || seen.has(key)) continue;
+        seen.add(key);
+        rows.push({
+          content_hash: hash,
+          question: q.question,
+          options: q.options,
+          correct_index: q.correct_index,
+          explanation: q.explanation,
+          lang: subject.language,
         });
-        for (const q of parseQuestions(result.text)) {
-          const key = normQ(q.question);
-          if (key.length === 0 || seen.has(key)) continue;
-          seen.add(key);
-          collected.push(q);
-          added++;
-          if (collected.length >= target) break;
-        }
-      } catch (e) {
-        lastError = e instanceof AiGatewayError
-          ? e.message
-          : (e as Error).message;
       }
-      if (added === 0) {
-        if (++stalls >= 2) break;
-      } else {
-        stalls = 0;
+      if (rows.length > 0) {
+        await admin.from("question_bank").insert(rows);
+        generated += rows.length;
+        total += rows.length;
       }
+    } catch (e) {
+      lastError = e instanceof AiGatewayError
+        ? e.message
+        : (e as Error).message;
     }
-
-    if (collected.length === 0) {
-      return json(
-        {
-          ok: false,
-          error: "generation_failed",
-          detail: lastError ?? "empty_result",
-        },
-        200,
-      );
-    }
-
-    await admin.from("exam_questions").delete().eq("subject_id", subject.id);
-    const rows = collected.map((q) => ({
-      subject_id: subject.id,
-      user_id: subject.user_id,
-      node_id: resolveNode(q.section),
-      question: q.question,
-      options: q.options,
-      correct_index: q.correct_index,
-      explanation: q.explanation,
-    }));
-    await admin.from("exam_questions").insert(rows);
-
-    return json({ ok: true, count: rows.length }, 200);
-  } catch (e) {
-    const detail = e instanceof AiGatewayError
-      ? e.message
-      : (e as Error).message;
-    return json({ ok: false, error: "generation_failed", detail }, 200);
   }
+
+  if (total === 0) {
+    return json(
+      {
+        ok: false,
+        error: "generation_failed",
+        detail: lastError ?? "empty_result",
+      },
+      200,
+    );
+  }
+
+  return json({
+    ok: true,
+    generated,
+    reused,
+    pending,
+    total,
+    sections: sections.length,
+  }, 200);
 }));

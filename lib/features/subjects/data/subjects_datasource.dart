@@ -445,12 +445,14 @@ class SubjectsDataSource {
 
   // ─────────────────── Test/examen configurable (Fase 4) ───────────────────
 
-  /// Genera (vía EF) un banco de preguntas de examen de las secciones [nodeIds]
-  /// (vacío = todo el temario). Reemplaza el banco anterior. Devuelve cuántas.
-  Future<int> generateExam({
+  /// Construye/extiende (vía EF) el banco de preguntas de las secciones
+  /// [nodeIds] (vacío = todo el temario). Reutiliza lo ya guardado por
+  /// contenido; solo llama a la IA para las secciones sin preguntas (o todas si
+  /// [force]). Devuelve el progreso para informar al usuario.
+  Future<({int generated, int reused, int pending, int total})> generateExam({
     required String subjectId,
     List<String> nodeIds = const [],
-    int count = 10,
+    bool force = false,
   }) async {
     try {
       final res = await _client.functions.invoke(
@@ -458,7 +460,7 @@ class SubjectsDataSource {
         body: {
           'subject_id': subjectId,
           'node_ids': nodeIds,
-          'count': count,
+          'force': force,
         },
       );
       final data = res.data;
@@ -470,23 +472,61 @@ class SubjectsDataSource {
           detail: p['detail'] as String?,
         );
       }
-      return (p['count'] as num?)?.toInt() ?? 0;
+      return (
+        generated: (p['generated'] as num?)?.toInt() ?? 0,
+        reused: (p['reused'] as num?)?.toInt() ?? 0,
+        pending: (p['pending'] as num?)?.toInt() ?? 0,
+        total: (p['total'] as num?)?.toInt() ?? 0,
+      );
     } on FunctionException catch (e) {
       throw SubjectsException(_efError(e));
     }
   }
 
-  /// Banco de preguntas de examen del temario.
+  /// Banco de preguntas disponible para el temario: las del banco GLOBAL
+  /// (`question_bank`) cuyo `content_hash` coincide con el de alguna sección del
+  /// índice de este temario. Cada pregunta queda mapeada a su nodo.
   Future<List<QuizQuestion>> listExamQuestions(String subjectId) async {
-    final data = await _client
-        .from('exam_questions')
-        .select()
-        .eq('subject_id', subjectId)
-        .order('created_at');
-    return (data as List)
-        .cast<Map<String, dynamic>>()
-        .map(QuizQuestion.fromMap)
-        .toList(growable: false);
+    final nodesData = await _client
+        .from('index_nodes')
+        .select('id, content_hash')
+        .eq('subject_id', subjectId);
+    final hashToNode = <String, String>{};
+    for (final n in (nodesData as List).cast<Map<String, dynamic>>()) {
+      final h = n['content_hash'] as String?;
+      if (h != null && h.isNotEmpty) {
+        hashToNode.putIfAbsent(h, () => n['id'] as String);
+      }
+    }
+    if (hashToNode.isEmpty) return const [];
+    final hashes = hashToNode.keys.toList();
+    final out = <QuizQuestion>[];
+    for (var i = 0; i < hashes.length; i += 100) {
+      final end = (i + 100) < hashes.length ? i + 100 : hashes.length;
+      final chunk = hashes.sublist(i, end);
+      final data = await _client
+          .from('question_bank')
+          .select()
+          .inFilter('content_hash', chunk);
+      for (final m in (data as List).cast<Map<String, dynamic>>()) {
+        final h = m['content_hash'] as String?;
+        final rawOpts = m['options'];
+        out.add(
+          QuizQuestion(
+            id: m['id'] as String,
+            subjectId: subjectId,
+            question: (m['question'] as String?) ?? '',
+            options: rawOpts is List
+                ? rawOpts.map((e) => e.toString()).toList(growable: false)
+                : const <String>[],
+            correctIndex: (m['correct_index'] as num?)?.toInt() ?? 0,
+            nodeId: h != null ? hashToNode[h] : null,
+            explanation: m['explanation'] as String?,
+          ),
+        );
+      }
+    }
+    return out;
   }
 
   /// Guarda en el historial un test COMPLETADO (snapshot de preguntas +

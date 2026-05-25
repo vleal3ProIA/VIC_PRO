@@ -100,6 +100,8 @@
   "studyHistoryRepeat": "Повторити",
   "studyTestAnswered": "Відповіли: {answered} з {total}",
   "studyTestAllQuestions": "Усі",
+  "studyBankProgress": "Банк: {total} запитань (+{added} нових)",
+  "studyBankPending": "Залишилось {pending} розділів — натисніть «Згенерувати» ще раз.",
   "studyTestFinishTitle": "Завершити тест?",
   "studyTestFinishBody": "Ви відповіли на {answered} з {total} запитань. Змінити відповіді буде неможливо.",
   "studioProgress": "Прогрес",

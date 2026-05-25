@@ -100,6 +100,8 @@
   "studyHistoryRepeat": "Refaire",
   "studyTestAnswered": "Répondues : {answered} sur {total}",
   "studyTestAllQuestions": "Toutes",
+  "studyBankProgress": "Banque : {total} questions (+{added} nouvelles)",
+  "studyBankPending": "{pending} sections restantes — appuyez à nouveau sur Générer.",
   "studyTestFinishTitle": "Terminer le test ?",
   "studyTestFinishBody": "Vous avez répondu à {answered} sur {total} questions. Vous ne pourrez plus modifier vos réponses.",
   "studioProgress": "Progression",

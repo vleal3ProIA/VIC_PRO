@@ -1963,39 +1963,81 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
   int _minutes = 20;
   bool _penalty = true;
 
-  /// Abre el test en un modal casi a pantalla completa, con una copia
-  /// barajada del banco de preguntas (para variar el orden al repetir). El
-  /// resto de la app queda difuminada y atenuada con el color de fondo del
-  /// proyecto para que el usuario no se distraiga.
-  Future<void> _open(List<QuizQuestion> bank) async {
-    final qs = List.of(bank)..shuffle();
+  /// Ids del ámbito elegido: si es "todo", todos los nodos; si no, las
+  /// secciones marcadas MÁS sus descendientes (las preguntas se etiquetan al
+  /// nodo hoja cuyo texto se usó).
+  Set<String> _scopeNodeIds() {
+    if (_all) return widget.nodes.map((n) => n.id).toSet();
+    final byParent = <String?, List<IndexNode>>{};
+    for (final n in widget.nodes) {
+      byParent.putIfAbsent(n.parentId, () => []).add(n);
+    }
+    final out = <String>{};
+    void add(String id) {
+      if (!out.add(id)) return;
+      for (final c in byParent[id] ?? const <IndexNode>[]) {
+        add(c.id);
+      }
+    }
+    for (final id in _selected) {
+      add(id);
+    }
+    return out;
+  }
+
+  /// Preguntas del banco que caen dentro del ámbito elegido.
+  List<QuizQuestion> _pool(List<QuizQuestion> bank) {
+    if (_all) return bank;
+    final scope = _scopeNodeIds();
+    return bank
+        .where((q) => q.nodeId != null && scope.contains(q.nodeId))
+        .toList();
+  }
+
+  /// Abre el test: muestrea `count` preguntas del banco (del ámbito elegido),
+  /// barajadas. "TODAS" (count 0) usa todas las disponibles. El resto de la app
+  /// queda difuminada para no distraer.
+  Future<void> _open(List<QuizQuestion> pool, List<String> scopeIds) async {
+    final qs = List.of(pool)..shuffle();
+    final take = _count <= 0 || _count >= qs.length ? qs.length : _count;
     await showTestModal(
       context,
       _TestRunnerDialog(
         subjectId: widget.subjectId,
-        questions: qs,
+        questions: qs.sublist(0, take),
         timed: _timed,
         minutes: _minutes,
         penalty: _penalty,
-        nodeIds: _all ? const [] : _selected.toList(),
+        nodeIds: scopeIds,
         onSelectNode: widget.onSelectNode,
       ),
     );
   }
 
-  Future<void> _generate() async {
+  /// Construye/extiende el banco. Reutiliza lo guardado; solo gasta IA en las
+  /// secciones sin preguntas (o en todas si [force]).
+  Future<void> _generate({bool force = false}) async {
     if (_busy) return;
     setState(() => _busy = true);
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     final errBg = Theme.of(context).colorScheme.error;
     try {
-      await ref.read(subjectsDataSourceProvider).generateExam(
+      final r = await ref.read(subjectsDataSourceProvider).generateExam(
             subjectId: widget.subjectId,
-            nodeIds: _all ? const [] : _selected.toList(),
-            count: _count,
+            nodeIds: _all ? const [] : _scopeNodeIds().toList(),
+            force: force,
           );
       ref.invalidate(examQuestionsProvider(widget.subjectId));
+      if (mounted) {
+        final msg = r.pending > 0
+            ? '${l.studyBankProgress(r.total, r.generated)} · '
+                '${l.studyBankPending(r.pending)}'
+            : l.studyBankProgress(r.total, r.generated);
+        messenger.showSnackBar(
+          SnackBar(duration: const Duration(seconds: 6), content: Text(msg)),
+        );
+      }
     } on SubjectsException catch (e) {
       final detail =
           e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
@@ -2041,6 +2083,7 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
             const <QuizQuestion>[];
     final sections = widget.nodes.where((n) => n.parentId != null).toList();
     final canGenerate = _all || _selected.isNotEmpty;
+    final pool = _pool(bank);
 
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -2120,9 +2163,9 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
           onChanged: (v) => setState(() => _penalty = v),
         ),
         const SizedBox(height: AppSpacing.sm),
-        if (bank.isNotEmpty)
+        if (pool.isNotEmpty)
           Text(
-            l.studyTestBank(bank.length),
+            l.studyTestBank(pool.length),
             style: context.textTheme.bodySmall
                 ?.copyWith(color: scheme.onSurfaceVariant),
           ),
@@ -2131,23 +2174,28 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
           spacing: AppSpacing.sm,
           runSpacing: AppSpacing.sm,
           children: [
+            if (pool.isNotEmpty)
+              FilledButton.icon(
+                onPressed: () => _open(pool, _scopeNodeIds().toList()),
+                icon: const Icon(Icons.play_arrow, size: 16),
+                label: Text(l.studyTestStart),
+              ),
             PremiumButton(
-              label: bank.isEmpty ? l.studyTestGenerate : l.studyTestRegenerate,
+              label: l.studyTestGenerate,
               leadingIcon: Icons.auto_awesome_outlined,
               onPressed: canGenerate ? _generate : null,
             ),
-            if (bank.isNotEmpty)
-              FilledButton.icon(
-                onPressed: () => _open(bank),
-                icon: const Icon(Icons.play_arrow, size: 16),
-                label: Text(l.studyTestStart),
+            if (pool.isNotEmpty)
+              OutlinedButton.icon(
+                onPressed: canGenerate ? () => _generate(force: true) : null,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: Text(l.studyTestRegenerate),
               ),
           ],
         ),
       ],
     );
   }
-
 }
 
 /// Abre un test en un modal casi a pantalla completa, con el resto de la app

@@ -100,6 +100,8 @@
   "studyHistoryRepeat": "Wiederholen",
   "studyTestAnswered": "Beantwortet: {answered} von {total}",
   "studyTestAllQuestions": "Alle",
+  "studyBankProgress": "Bank: {total} Fragen (+{added} neu)",
+  "studyBankPending": "Noch {pending} Abschnitte — erneut auf Generieren tippen.",
   "studyTestFinishTitle": "Test beenden?",
   "studyTestFinishBody": "Du hast {answered} von {total} Fragen beantwortet. Die Antworten können danach nicht mehr geändert werden.",
   "studioProgress": "Fortschritt",
