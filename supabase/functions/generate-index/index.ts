@@ -244,6 +244,14 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
     // texto de .txt) para que salga COMPLETO. El troceo del original usa el
     // texto guardado (unpdf) si lo hay.
     const mat = await gatherMaterial(admin, subject.id);
+    console.log(
+      "[generate-index] material:",
+      JSON.stringify({
+        textChars: mat.textContext.length,
+        attachments: mat.attachments.length,
+        fullTextChars: fullText.length,
+      }),
+    );
     if (
       !mat.textContext && mat.attachments.length === 0 &&
       fullText.trim().length === 0
@@ -315,6 +323,9 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       .eq("id", subject.id);
   } catch (e) {
     const msg = e instanceof AiGatewayError ? e.message : (e as Error).message;
+    // Log explícito para que el motivo salga en los logs de la Edge Function
+    // (captureError va a Sentry y NO aparece en estos logs).
+    console.error("[generate-index] failed:", msg);
     await admin.from("subjects")
       .update({ index_status: "failed", index_error: msg.slice(0, 500) })
       .eq("id", subject.id);
