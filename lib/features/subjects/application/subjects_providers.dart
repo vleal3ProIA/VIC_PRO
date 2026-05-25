@@ -61,6 +61,12 @@ final examQuestionsProvider =
   return ref.watch(subjectsDataSourceProvider).listExamQuestions(subjectId);
 });
 
+/// Historial de tests realizados de un temario (recientes primero).
+final examAttemptsProvider =
+    FutureProvider.family<List<ExamAttempt>, String>((ref, subjectId) {
+  return ref.watch(subjectsDataSourceProvider).listExamAttempts(subjectId);
+});
+
 /// Guía de estudio cacheada de un temario (`null` si aún no se generó).
 final studyGuideProvider =
     FutureProvider.family<String?, String>((ref, subjectId) {

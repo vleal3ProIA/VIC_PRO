@@ -489,6 +489,82 @@ class SubjectsDataSource {
         .toList(growable: false);
   }
 
+  /// Guarda en el historial un test COMPLETADO (snapshot de preguntas +
+  /// respuestas marcadas + desglose). Best-effort: no rompe el flujo del test.
+  Future<void> recordExamAttempt({
+    required String subjectId,
+    required List<QuizQuestion> questions,
+    required List<int?> answers,
+    required double grade,
+    required bool penalty,
+    required bool timed,
+    required int minutes,
+    required int elapsedSeconds,
+    required List<String> nodeIds,
+  }) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return;
+    var correct = 0;
+    var wrong = 0;
+    var blank = 0;
+    final snapshot = <Map<String, dynamic>>[];
+    for (var i = 0; i < questions.length; i++) {
+      final q = questions[i];
+      final a = i < answers.length ? answers[i] : null;
+      if (a == null) {
+        blank++;
+      } else if (a == q.correctIndex) {
+        correct++;
+      } else {
+        wrong++;
+      }
+      snapshot.add({
+        'id': q.id,
+        'question': q.question,
+        'options': q.options,
+        'correct_index': q.correctIndex,
+        'explanation': q.explanation,
+        'node_id': q.nodeId,
+        'answer': a,
+      });
+    }
+    final total = questions.length;
+    try {
+      await _client.from('exam_attempts').insert({
+        'subject_id': subjectId,
+        'user_id': uid,
+        'total': total,
+        'answered': total - blank,
+        'correct': correct,
+        'wrong': wrong,
+        'blank': blank,
+        'grade': grade,
+        'penalty': penalty,
+        'timed': timed,
+        'minutes': minutes,
+        'elapsed_seconds': elapsedSeconds,
+        'node_ids': nodeIds,
+        'questions': snapshot,
+      });
+    } catch (_) {
+      // best-effort
+    }
+  }
+
+  /// Historial de tests del temario (recientes primero, máx 100).
+  Future<List<ExamAttempt>> listExamAttempts(String subjectId) async {
+    final data = await _client
+        .from('exam_attempts')
+        .select()
+        .eq('subject_id', subjectId)
+        .order('created_at', ascending: false)
+        .limit(100);
+    return (data as List)
+        .cast<Map<String, dynamic>>()
+        .map(ExamAttempt.fromMap)
+        .toList(growable: false);
+  }
+
   // ─────────────────── Chat / preguntas a la IA (Fase 3) ───────────────────
 
   // ─────────────────── Examen: fecha + modo pánico (Fase 3) ───────────────────

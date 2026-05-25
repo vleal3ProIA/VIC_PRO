@@ -230,6 +230,98 @@ class QuizQuestion {
   final int timesCorrect;
 }
 
+/// Un test COMPLETADO (historial). Guarda nota, desglose, configuración y un
+/// SNAPSHOT de las preguntas con la respuesta que marcó el usuario, para poder
+/// revisarlo o repetirlo con las mismas preguntas y comparar la evolución.
+class ExamAttempt {
+  const ExamAttempt({
+    required this.id,
+    required this.subjectId,
+    required this.total,
+    required this.answered,
+    required this.correct,
+    required this.wrong,
+    required this.blank,
+    required this.grade,
+    required this.penalty,
+    required this.timed,
+    required this.minutes,
+    required this.elapsedSeconds,
+    required this.nodeIds,
+    required this.questions,
+    required this.answers,
+    required this.createdAt,
+  });
+
+  factory ExamAttempt.fromMap(Map<String, dynamic> m) {
+    final subjectId = (m['subject_id'] as String?) ?? '';
+    final rawNodes = m['node_ids'];
+    final nodeIds = rawNodes is List
+        ? rawNodes.map((e) => e.toString()).toList(growable: false)
+        : const <String>[];
+    final rawQs = m['questions'];
+    final questions = <QuizQuestion>[];
+    final answers = <int?>[];
+    if (rawQs is List) {
+      for (final e in rawQs) {
+        if (e is! Map) continue;
+        final qm = e.cast<String, dynamic>();
+        questions.add(QuizQuestion(
+          id: (qm['id'] as String?) ?? '',
+          subjectId: subjectId,
+          question: (qm['question'] as String?) ?? '',
+          options: qm['options'] is List
+              ? (qm['options'] as List)
+                  .map((o) => o.toString())
+                  .toList(growable: false)
+              : const <String>[],
+          correctIndex: (qm['correct_index'] as num?)?.toInt() ?? 0,
+          nodeId: qm['node_id'] as String?,
+          explanation: qm['explanation'] as String?,
+        ),);
+        answers.add((qm['answer'] as num?)?.toInt());
+      }
+    }
+    return ExamAttempt(
+      id: m['id'] as String,
+      subjectId: subjectId,
+      total: (m['total'] as num?)?.toInt() ?? 0,
+      answered: (m['answered'] as num?)?.toInt() ?? 0,
+      correct: (m['correct'] as num?)?.toInt() ?? 0,
+      wrong: (m['wrong'] as num?)?.toInt() ?? 0,
+      blank: (m['blank'] as num?)?.toInt() ?? 0,
+      grade: (m['grade'] as num?)?.toDouble() ?? 0,
+      penalty: (m['penalty'] as bool?) ?? true,
+      timed: (m['timed'] as bool?) ?? false,
+      minutes: (m['minutes'] as num?)?.toInt() ?? 0,
+      elapsedSeconds: (m['elapsed_seconds'] as num?)?.toInt() ?? 0,
+      nodeIds: nodeIds,
+      questions: questions,
+      answers: answers,
+      createdAt:
+          DateTime.tryParse(m['created_at']?.toString() ?? '')?.toLocal() ??
+              DateTime.now(),
+    );
+  }
+
+  final String id;
+  final String subjectId;
+  final int total;
+  final int answered;
+  final int correct;
+  final int wrong;
+  final int blank;
+  final double grade;
+  final bool penalty;
+  final bool timed;
+  final int minutes;
+  final int elapsedSeconds;
+  final List<String> nodeIds;
+  final List<QuizQuestion> questions;
+  final List<int?> answers;
+  final DateTime createdAt;
+}
+
 class SubjectDocument {
   const SubjectDocument({
     required this.id,

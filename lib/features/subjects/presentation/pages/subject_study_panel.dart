@@ -1391,6 +1391,7 @@ enum _StudioTool {
   exam,
   mock,
   progress,
+  history,
 }
 
 class _StudioColumn extends StatefulWidget {
@@ -1428,6 +1429,7 @@ class _StudioColumnState extends State<_StudioColumn> {
     final inExam = _tool == _StudioTool.exam;
     final inMock = _tool == _StudioTool.mock;
     final inProgress = _tool == _StudioTool.progress;
+    final inHistory = _tool == _StudioTool.history;
 
     final String title;
     final IconData leading;
@@ -1455,6 +1457,9 @@ class _StudioColumnState extends State<_StudioColumn> {
     } else if (inProgress) {
       title = l.studioProgress;
       leading = Icons.insights_outlined;
+    } else if (inHistory) {
+      title = l.studioHistory;
+      leading = Icons.history;
     } else {
       title = l.studioTitle;
       leading = Icons.auto_awesome;
@@ -1489,6 +1494,11 @@ class _StudioColumnState extends State<_StudioColumn> {
       );
     } else if (inProgress) {
       body = _ProgressView(subjectId: widget.subjectId);
+    } else if (inHistory) {
+      body = _HistoryView(
+        subjectId: widget.subjectId,
+        onSelectNode: widget.onSelectNode,
+      );
     } else {
       body = _studioGrid(context);
     }
@@ -1504,7 +1514,8 @@ class _StudioColumnState extends State<_StudioColumn> {
             inGuide ||
             inExam ||
             inMock ||
-            inProgress)
+            inProgress ||
+            inHistory)
           IconButton(
             tooltip: l.actionCancel,
             visualDensity: VisualDensity.compact,
@@ -1570,6 +1581,12 @@ class _StudioColumnState extends State<_StudioColumn> {
         label: l.studioProgress,
         color: Colors.pink.shade400,
         onTap: () => setState(() => _tool = _StudioTool.progress),
+      ),
+      _StudioTile(
+        icon: Icons.history,
+        label: l.studioHistory,
+        color: Colors.brown.shade400,
+        onTap: () => setState(() => _tool = _StudioTool.history),
       ),
     ];
     return GridView.count(
@@ -1805,38 +1822,17 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
   /// proyecto para que el usuario no se distraiga.
   Future<void> _open(List<QuizQuestion> bank) async {
     final qs = List.of(bank)..shuffle();
-    final scheme = context.colors;
-    await showGeneralDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-      barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 180),
-      pageBuilder: (_, __, ___) => _TestRunnerDialog(
+    await showTestModal(
+      context,
+      _TestRunnerDialog(
         subjectId: widget.subjectId,
         questions: qs,
         timed: _timed,
         minutes: _minutes,
         penalty: _penalty,
+        nodeIds: _all ? const [] : _selected.toList(),
         onSelectNode: widget.onSelectNode,
       ),
-      transitionBuilder: (_, anim, __, child) {
-        final t = Curves.easeOut.transform(anim.value);
-        return Stack(
-          children: [
-            // Fondo difuminado + atenuado con el color del proyecto.
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 8 * t, sigmaY: 8 * t),
-                child: ColoredBox(
-                  color: scheme.surface.withValues(alpha: 0.72 * t),
-                ),
-              ),
-            ),
-            Opacity(opacity: t, child: child),
-          ],
-        );
-      },
     );
   }
 
@@ -2007,12 +2003,43 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
 
 }
 
+/// Abre un test en un modal casi a pantalla completa, con el resto de la app
+/// difuminada y atenuada con el color del proyecto para no distraer.
+Future<void> showTestModal(BuildContext context, Widget dialog) {
+  final scheme = Theme.of(context).colorScheme;
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.transparent,
+    transitionDuration: const Duration(milliseconds: 180),
+    pageBuilder: (_, __, ___) => dialog,
+    transitionBuilder: (_, anim, __, child) {
+      final t = Curves.easeOut.transform(anim.value);
+      return Stack(
+        children: [
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 8 * t, sigmaY: 8 * t),
+              child: ColoredBox(
+                color: scheme.surface.withValues(alpha: 0.72 * t),
+              ),
+            ),
+          ),
+          Opacity(opacity: t, child: child),
+        ],
+      );
+    },
+  );
+}
+
 /// Test en marcha dentro de un modal casi a pantalla completa: la pregunta va
 /// sobre fondo azul claro con su número (1/50), las respuestas A/B/C/D en
 /// tarjetas, navegación adelante/atrás, "Finalizar" siempre visible (con
 /// confirmación) y, sin cerrar el modal, los resultados (nota /10 + desglose)
 /// y el repaso pregunta a pregunta (respuesta correcta + explicación + salto al
-/// temario).
+/// temario). También sirve para revisar un intento pasado del historial
+/// ([startInReview] + [initialAnswers], sin volver a registrarlo).
 class _TestRunnerDialog extends ConsumerStatefulWidget {
   const _TestRunnerDialog({
     required this.subjectId,
@@ -2021,6 +2048,10 @@ class _TestRunnerDialog extends ConsumerStatefulWidget {
     required this.minutes,
     required this.penalty,
     required this.onSelectNode,
+    this.nodeIds = const [],
+    this.initialAnswers,
+    this.startInReview = false,
+    this.record = true,
   });
 
   final String subjectId;
@@ -2029,14 +2060,17 @@ class _TestRunnerDialog extends ConsumerStatefulWidget {
   final int minutes;
   final bool penalty;
   final ValueChanged<String> onSelectNode;
+  final List<String> nodeIds;
+  final List<int?>? initialAnswers;
+  final bool startInReview;
+  final bool record;
 
   @override
   ConsumerState<_TestRunnerDialog> createState() => _TestRunnerDialogState();
 }
 
 class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
-  late final List<int?> _answers =
-      List<int?>.filled(widget.questions.length, null);
+  late List<int?> _answers;
   int _cur = 0;
   int _elapsed = 0;
   Timer? _timer;
@@ -2050,7 +2084,14 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
   @override
   void initState() {
     super.initState();
-    if (widget.timed) {
+    final init = widget.initialAnswers;
+    _answers = (init != null && init.length == widget.questions.length)
+        ? List<int?>.of(init)
+        : List<int?>.filled(widget.questions.length, null);
+    if (widget.startInReview) {
+      _done = true;
+      _review = true;
+    } else if (widget.timed) {
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (!mounted) {
           _timer?.cancel();
@@ -2074,6 +2115,27 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
     return '$m:$s';
   }
 
+  /// Calcula aciertos/fallos/en blanco y la nota /10 (con o sin penalización).
+  ({int correct, int wrong, int blank, double grade}) _score() {
+    final total = widget.questions.length;
+    var correct = 0;
+    var wrong = 0;
+    var blank = 0;
+    for (var i = 0; i < total; i++) {
+      final a = _answers[i];
+      if (a == null) {
+        blank++;
+      } else if (a == widget.questions[i].correctIndex) {
+        correct++;
+      } else {
+        wrong++;
+      }
+    }
+    final raw = widget.penalty ? correct - wrong / 3 : correct.toDouble();
+    final grade = total == 0 ? 0.0 : (raw < 0 ? 0.0 : raw / total * 10);
+    return (correct: correct, wrong: wrong, blank: blank, grade: grade);
+  }
+
   Future<void> _finish({bool confirm = true}) async {
     if (confirm) {
       final l = context.l10n;
@@ -2086,7 +2148,22 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
       if (ok != true) return;
     }
     _timer?.cancel();
-    unawaited(ref.read(subjectsDataSourceProvider).recordStudyToday());
+    if (widget.record) {
+      final ds = ref.read(subjectsDataSourceProvider);
+      unawaited(ds.recordStudyToday());
+      unawaited(ds.recordExamAttempt(
+        subjectId: widget.subjectId,
+        questions: widget.questions,
+        answers: _answers,
+        grade: _score().grade,
+        penalty: widget.penalty,
+        timed: widget.timed,
+        minutes: widget.minutes,
+        elapsedSeconds: _elapsed,
+        nodeIds: widget.nodeIds,
+      ),);
+      ref.invalidate(examAttemptsProvider(widget.subjectId));
+    }
     if (mounted) setState(() => _done = true);
   }
 
@@ -2278,21 +2355,11 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
     final l = context.l10n;
     final scheme = context.colors;
     final total = widget.questions.length;
-    var correct = 0;
-    var wrong = 0;
-    var blank = 0;
-    for (var i = 0; i < total; i++) {
-      final a = _answers[i];
-      if (a == null) {
-        blank++;
-      } else if (a == widget.questions[i].correctIndex) {
-        correct++;
-      } else {
-        wrong++;
-      }
-    }
-    final raw = widget.penalty ? correct - wrong / 3 : correct.toDouble();
-    final grade = total == 0 ? 0.0 : (raw < 0 ? 0.0 : raw / total * 10);
+    final s = _score();
+    final correct = s.correct;
+    final wrong = s.wrong;
+    final blank = s.blank;
+    final grade = s.grade;
     final gradeColor = grade >= 5 ? Colors.green.shade600 : scheme.error;
 
     return Column(
@@ -2636,6 +2703,243 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Historial de tests: gráfica de evolución de notas + lista de intentos con
+/// fecha/hora, desglose y acciones para revisarlos o repetirlos (mismas
+/// preguntas) y comparar la evolución.
+class _HistoryView extends ConsumerWidget {
+  const _HistoryView({required this.subjectId, required this.onSelectNode});
+
+  final String subjectId;
+  final ValueChanged<String> onSelectNode;
+
+  static String _fmtDateTime(DateTime d) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(d.day)}/${two(d.month)}/${d.year}  ${two(d.hour)}:${two(d.minute)}';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final async = ref.watch(examAttemptsProvider(subjectId));
+    return async.when(
+      loading: () => const Center(child: AppLoadingState()),
+      error: (_, __) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Text(l.studyViewError, textAlign: TextAlign.center),
+        ),
+      ),
+      data: (attempts) {
+        if (attempts.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Text(
+                l.studyHistoryEmpty,
+                textAlign: TextAlign.center,
+                style: context.textTheme.bodyMedium
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ),
+          );
+        }
+        final chrono = attempts.reversed.toList(); // antiguos → recientes
+        return ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            if (attempts.length >= 2) ...[
+              _chart(context, chrono),
+              const Divider(height: AppSpacing.lg),
+            ],
+            for (final a in attempts) _tile(context, ref, a),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Gráfica de barras de las notas (últimos 24 intentos, izq→der).
+  Widget _chart(BuildContext context, List<ExamAttempt> chrono) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    const chartH = 86.0;
+    final data =
+        chrono.length > 24 ? chrono.sublist(chrono.length - 24) : chrono;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l.studyHistoryEvolution,
+          style:
+              context.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          height: chartH,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              for (final a in data)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: Tooltip(
+                      message:
+                          '${_fmtDateTime(a.createdAt)} · ${a.grade.toStringAsFixed(2)}/10',
+                      child: Container(
+                        height: (a.grade / 10 * chartH).clamp(4.0, chartH),
+                        decoration: BoxDecoration(
+                          color: a.grade >= 5
+                              ? Colors.green.shade400
+                              : scheme.error,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(4),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _tile(BuildContext context, WidgetRef ref, ExamAttempt a) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final gradeColor = a.grade >= 5 ? Colors.green.shade600 : scheme.error;
+    final hasSnapshot = a.questions.isNotEmpty;
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _fmtDateTime(a.createdAt),
+                    style: context.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Text(
+                  '${a.grade.toStringAsFixed(2)}/10',
+                  style: context.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: gradeColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _miniChip(
+                  context,
+                  Icons.check,
+                  Colors.green,
+                  '${l.studyMockCorrect}: ${a.correct}',
+                ),
+                _miniChip(
+                  context,
+                  Icons.close,
+                  scheme.error,
+                  '${l.studyMockWrong}: ${a.wrong}',
+                ),
+                _miniChip(
+                  context,
+                  Icons.remove,
+                  scheme.onSurfaceVariant,
+                  '${l.studyMockBlank}: ${a.blank}',
+                ),
+              ],
+            ),
+            if (hasSnapshot) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _review(context, a),
+                    icon: const Icon(Icons.fact_check_outlined, size: 16),
+                    label: Text(l.studyHistoryReview),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  FilledButton.tonalIcon(
+                    onPressed: () => _repeat(context, ref, a),
+                    icon: const Icon(Icons.replay, size: 16),
+                    label: Text(l.studyHistoryRepeat),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _miniChip(
+    BuildContext context,
+    IconData icon,
+    Color color,
+    String text,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 3),
+        Text(text, style: context.textTheme.labelMedium),
+      ],
+    );
+  }
+
+  /// Revisa un intento pasado (solo lectura, sin volver a guardarlo).
+  void _review(BuildContext context, ExamAttempt a) {
+    showTestModal(
+      context,
+      _TestRunnerDialog(
+        subjectId: subjectId,
+        questions: a.questions,
+        timed: false,
+        minutes: 0,
+        penalty: a.penalty,
+        onSelectNode: onSelectNode,
+        initialAnswers: a.answers,
+        startInReview: true,
+        record: false,
+      ),
+    );
+  }
+
+  /// Repite el test con las MISMAS preguntas (orden barajado) para comparar la
+  /// evolución; al terminar se guarda como un intento nuevo.
+  void _repeat(BuildContext context, WidgetRef ref, ExamAttempt a) {
+    final qs = List.of(a.questions)..shuffle();
+    showTestModal(
+      context,
+      _TestRunnerDialog(
+        subjectId: subjectId,
+        questions: qs,
+        timed: a.timed,
+        minutes: a.minutes,
+        penalty: a.penalty,
+        nodeIds: a.nodeIds,
+        onSelectNode: onSelectNode,
       ),
     );
   }
