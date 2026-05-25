@@ -93,6 +93,7 @@
   "studyTestStart": "Empezar",
   "studyTestViewInMaterial": "Ver en el temario",
   "studyTestAnswered": "Respondidas: {answered} de {total}",
+  "studyTestAllQuestions": "TODAS",
   "studyTestFinishTitle": "¿Finalizar el test?",
   "studyTestFinishBody": "Has respondido {answered} de {total} preguntas. No podrás cambiar las respuestas.",
   "studioProgress": "Progreso",

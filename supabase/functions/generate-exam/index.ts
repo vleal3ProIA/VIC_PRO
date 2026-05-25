@@ -118,10 +118,13 @@ Deno.serve(withSentry("generate-exam", async (req) => {
       typeof x === "string"
     )
     : [];
-  const count = Math.max(
-    3,
-    Math.min(40, typeof body?.count === "number" ? body.count : 10),
-  );
+  // `count` <= 0 significa "TODAS": generamos tantas como el material permita,
+  // hasta un tope duro. Si no, lo acotamos a [3, 100].
+  const rawCount = typeof body?.count === "number" ? body.count : 10;
+  const allMode = rawCount <= 0;
+  const target = allMode
+    ? 100
+    : Math.max(3, Math.min(100, Math.trunc(rawCount)));
   if (typeof subjectId !== "string") {
     return json({ error: "missing_subject_id" }, 400);
   }
@@ -215,53 +218,97 @@ Deno.serve(withSentry("generate-exam", async (req) => {
   const lang = subject.language && subject.language.length > 0
     ? `Write in this language (ISO code): ${subject.language}.`
     : "Write in the SAME language as the material.";
-  const system =
-    "You create a multiple-choice EXAM from the material. Return ONLY minified " +
-    'JSON: {"questions":[{"question":"...","options":["...","...","...","..."],' +
-    '"correct_index":0,"explanation":"...","section":"..."}]}. Exactly 4 ' +
-    "plausible options, ONLY ONE correct, grounded ONLY in the material (do not " +
-    "invent). `correct_index` is the 0-based index of the right option. " +
-    "`explanation` briefly says why it is correct. `section` is the EXACT title " +
-    "of the section the question belongs to (copied from the list). Produce " +
-    `about ${count} questions, spread across the sections. ${lang}` +
-    sectionsBlock +
-    " No commentary.";
+
+  // System prompt de una tanda de `n` preguntas NUEVAS, evitando repetir las
+  // ya generadas (para poder acumular hasta el objetivo en varias llamadas).
+  function buildSystem(n: number, existing: string[]): string {
+    const avoid = existing.length > 0
+      ? "\n\nDo NOT repeat or rephrase any of these already-created questions:\n" +
+        existing.slice(-120).map((q) => `- ${q}`).join("\n")
+      : "";
+    return "You create a multiple-choice EXAM from the material. Return ONLY " +
+      'minified JSON: {"questions":[{"question":"...","options":["...","...",' +
+      '"...","..."],"correct_index":0,"explanation":"...","section":"..."}]}. ' +
+      "Exactly 4 plausible options, ONLY ONE correct, grounded ONLY in the " +
+      "material (do not invent). `correct_index` is the 0-based index of the " +
+      "right option. `explanation` briefly says why it is correct. `section` " +
+      "is the EXACT title of the section the question belongs to (copied from " +
+      `the list). Produce up to ${n} NEW distinct questions, spread across the ` +
+      "sections. If the material does not support more distinct, grounded " +
+      'questions, return {"questions":[]}. ' + lang + sectionsBlock + avoid +
+      " No commentary.";
+  }
+
+  const userContent = textContext
+    ? "Material:\n\n" + textContext
+    : "Use the attached document(s).";
+  const usingAttachments = attachments.length > 0;
+
+  function normQ(q: string): string {
+    return q.trim().toLowerCase().replace(/\s+/g, " ");
+  }
+
+  // Resuelve section -> node_id (igualdad/contiene, sin mayúsculas).
+  function resolveNode(section: string | null): string | null {
+    if (!section) return null;
+    const s = section.trim().toLowerCase();
+    for (const n of sections) {
+      const t = n.title.trim().toLowerCase();
+      if (t.length > 0 && (t === s || t.includes(s) || s.includes(t))) {
+        return n.id;
+      }
+    }
+    return null;
+  }
 
   try {
-    const result = await runCompletion(admin, {
-      task: "exam",
-      system,
-      messages: [{
-        role: "user",
-        content: textContext ? "Material:\n\n" + textContext : "Use the attached document(s).",
-      }],
-      attachments: attachments.length > 0 ? attachments : undefined,
-      maxOutputTokens: 8192,
-      temperature: 0.3,
-      userId: subject.user_id,
-      subjectId: subject.id,
-    });
+    // Generamos por lotes acumulando preguntas distintas hasta alcanzar el
+    // objetivo. Si dos lotes seguidos no aportan nada, asumimos que el material
+    // no da para más y paramos (así el nº real queda acotado por el contenido).
+    // Con visión hacemos una sola llamada (reenviar el adjunto por lote sería
+    // caro y los proveedores con visión están limitados).
+    const collected: ParsedQ[] = [];
+    const seen = new Set<string>();
+    const batchSize = 20;
+    const maxBatches = usingAttachments ? 1 : 8;
+    let unproductive = 0;
 
-    const questions = parseQuestions(result.text);
-    if (questions.length === 0) {
+    for (let b = 0; b < maxBatches; b++) {
+      const remaining = target - collected.length;
+      if (remaining <= 0) break;
+      const n = Math.min(batchSize, remaining);
+      const result = await runCompletion(admin, {
+        task: "exam",
+        system: buildSystem(n, collected.map((q) => q.question)),
+        messages: [{ role: "user", content: userContent }],
+        attachments: usingAttachments ? attachments : undefined,
+        maxOutputTokens: 8192,
+        temperature: 0.4,
+        userId: subject.user_id,
+        subjectId: subject.id,
+      });
+      let added = 0;
+      for (const q of parseQuestions(result.text)) {
+        const key = normQ(q.question);
+        if (key.length === 0 || seen.has(key)) continue;
+        seen.add(key);
+        collected.push(q);
+        added++;
+        if (collected.length >= target) break;
+      }
+      if (added === 0) {
+        if (++unproductive >= 2) break;
+      } else {
+        unproductive = 0;
+      }
+    }
+
+    if (collected.length === 0) {
       return json({ ok: false, error: "empty_result" }, 200);
     }
 
-    // Resuelve section -> node_id (igualdad/contiene, sin mayúsculas).
-    function resolveNode(section: string | null): string | null {
-      if (!section) return null;
-      const s = section.trim().toLowerCase();
-      for (const n of sections) {
-        const t = n.title.trim().toLowerCase();
-        if (t.length > 0 && (t === s || t.includes(s) || s.includes(t))) {
-          return n.id;
-        }
-      }
-      return null;
-    }
-
     await admin.from("exam_questions").delete().eq("subject_id", subject.id);
-    const rows = questions.map((q) => ({
+    const rows = collected.map((q) => ({
       subject_id: subject.id,
       user_id: subject.user_id,
       node_id: resolveNode(q.section),

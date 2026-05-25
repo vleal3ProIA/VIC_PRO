@@ -93,6 +93,7 @@
   "studyTestStart": "Начать",
   "studyTestViewInMaterial": "Открыть в материале",
   "studyTestAnswered": "Отвечено: {answered} из {total}",
+  "studyTestAllQuestions": "Все",
   "studyTestFinishTitle": "Завершить тест?",
   "studyTestFinishBody": "Вы ответили на {answered} из {total} вопросов. Изменить ответы будет нельзя.",
   "studioProgress": "Прогресс",

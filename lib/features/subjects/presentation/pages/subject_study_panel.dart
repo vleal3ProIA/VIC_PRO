@@ -15,6 +15,7 @@
 // ============================================================================
 
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1799,14 +1800,19 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
   bool _penalty = true;
 
   /// Abre el test en un modal casi a pantalla completa, con una copia
-  /// barajada del banco de preguntas (para variar el orden al repetir).
+  /// barajada del banco de preguntas (para variar el orden al repetir). El
+  /// resto de la app queda difuminada y atenuada con el color de fondo del
+  /// proyecto para que el usuario no se distraiga.
   Future<void> _open(List<QuizQuestion> bank) async {
     final qs = List.of(bank)..shuffle();
-    await showDialog<void>(
+    final scheme = context.colors;
+    await showGeneralDialog<void>(
       context: context,
       barrierDismissible: false,
-      useSafeArea: false,
-      builder: (_) => _TestRunnerDialog(
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (_, __, ___) => _TestRunnerDialog(
         subjectId: widget.subjectId,
         questions: qs,
         timed: _timed,
@@ -1814,6 +1820,23 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
         penalty: _penalty,
         onSelectNode: widget.onSelectNode,
       ),
+      transitionBuilder: (_, anim, __, child) {
+        final t = Curves.easeOut.transform(anim.value);
+        return Stack(
+          children: [
+            // Fondo difuminado + atenuado con el color del proyecto.
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 8 * t, sigmaY: 8 * t),
+                child: ColoredBox(
+                  color: scheme.surface.withValues(alpha: 0.72 * t),
+                ),
+              ),
+            ),
+            Opacity(opacity: t, child: child),
+          ],
+        );
+      },
     );
   }
 
@@ -1916,8 +1939,11 @@ class _MockExamViewState extends ConsumerState<_MockExamView> {
             Expanded(child: Text(l.studyTestCount)),
             DropdownButton<int>(
               value: _count,
-              items: [5, 10, 20, 30, 40]
-                  .map((n) => DropdownMenuItem(value: n, child: Text('$n')))
+              items: [10, 25, 50, 75, 100, 0]
+                  .map((n) => DropdownMenuItem(
+                        value: n,
+                        child: Text(n == 0 ? l.studyTestAllQuestions : '$n'),
+                      ),)
                   .toList(),
               onChanged: (v) => setState(() => _count = v ?? 10),
             ),
@@ -2016,6 +2042,7 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
   Timer? _timer;
   bool _done = false;
   bool _review = false;
+  final Set<int> _expanded = {};
 
   int get _totalSecs => widget.minutes * 60;
   int get _answered => _answers.where((a) => a != null).length;
@@ -2380,6 +2407,8 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
     final scheme = context.colors;
     final q = widget.questions[i];
     final mine = _answers[i];
+    final hasSection = q.nodeId != null;
+    final open = _expanded.contains(i);
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Column(
@@ -2399,6 +2428,28 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
               selected: mine == j,
               correct: j == q.correctIndex,
               readOnly: true,
+              // Icono "ver" junto a la respuesta correcta: despliega aquí mismo
+              // el temario original + la explicación de la IA de esa sección.
+              trailing: (hasSection && j == q.correctIndex)
+                  ? IconButton(
+                      visualDensity: VisualDensity.compact,
+                      tooltip: l.studyTestViewInMaterial,
+                      icon: Icon(
+                        open
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        size: 18,
+                        color: Colors.green.shade700,
+                      ),
+                      onPressed: () => setState(() {
+                        if (open) {
+                          _expanded.remove(i);
+                        } else {
+                          _expanded.add(i);
+                        }
+                      }),
+                    )
+                  : null,
             ),
           if (q.explanation?.isNotEmpty ?? false)
             Padding(
@@ -2416,20 +2467,93 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
                 ),
               ),
             ),
-          if (q.nodeId != null)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  widget.onSelectNode(q.nodeId!);
-                },
-                icon: const Icon(Icons.menu_book_outlined, size: 16),
-                label: Text(l.studyTestViewInMaterial),
-              ),
-            ),
+          if (open && hasSection) _reviewDetail(context, q.nodeId!),
         ],
       ),
+    );
+  }
+
+  /// Panel que se despliega bajo una pregunta: el temario ORIGINAL de su
+  /// sección y el EXPLICADO generado por la IA, más un enlace para abrir la
+  /// sección completa en el centro.
+  Widget _reviewDetail(BuildContext context, String nodeId) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _detailBlock(context, nodeId, 'original', l.studyTabOriginal),
+          _detailBlock(context, nodeId, 'explained', l.studyTabExplained),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                widget.onSelectNode(nodeId);
+              },
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: Text(l.studyTestViewInMaterial),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Un bloque (Original o Explicado) del contenido de la sección, leído del
+  /// provider de contenido de nodos. Se omite si está vacío.
+  Widget _detailBlock(
+    BuildContext context,
+    String nodeId,
+    String kind,
+    String label,
+  ) {
+    final scheme = context.colors;
+    final async = ref.watch(
+      nodeContentProvider((nodeId: nodeId, kind: kind)),
+    );
+    return async.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        child: SizedBox(
+          height: 18,
+          width: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (content) {
+        if (content == null || content.trim().isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label.toUpperCase(),
+                style: context.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: scheme.primary,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              MarkdownText(content),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -2441,6 +2565,7 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
     bool? correct,
     bool readOnly = false,
     VoidCallback? onTap,
+    Widget? trailing,
   }) {
     final scheme = context.colors;
     final letter = String.fromCharCode(65 + index); // A, B, C, D…
@@ -2507,6 +2632,7 @@ class _TestRunnerDialogState extends ConsumerState<_TestRunnerDialog> {
                 const Icon(Icons.check_circle, size: 18, color: Colors.green),
               if (readOnly && selected && !(correct ?? false))
                 Icon(Icons.cancel, size: 18, color: scheme.error),
+              if (trailing != null) trailing,
             ],
           ),
         ),

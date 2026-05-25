@@ -98,6 +98,7 @@
   "studyTestViewInMaterial": "View in material",
   "studyTestAnswered": "Answered: {answered} of {total}",
   "@studyTestAnswered": { "placeholders": { "answered": { "type": "int" }, "total": { "type": "int" } } },
+  "studyTestAllQuestions": "All",
   "studyTestFinishTitle": "Finish the test?",
   "studyTestFinishBody": "You answered {answered} of {total} questions. You won't be able to change your answers.",
   "@studyTestFinishBody": { "placeholders": { "answered": { "type": "int" }, "total": { "type": "int" } } },
