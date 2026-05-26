@@ -205,41 +205,44 @@ jobs:
           "
           echo "✓ /public_html + sync-state + icons borrados (fuerza first-publish limpio)"
 
-      # ─── FTPS upload a Dondominio ───
-      # Usamos SamKirkland/FTP-Deploy-Action: estable, soporta FTPS, y
-      # solo sube los archivos que cambiaron (compara timestamps).
-      - name: Upload to Dondominio via FTPS
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./build/web/
-          # Docroot real del dominio. En este hosting Dondominio es /public/
-          # (NO /public_html/, que no se sirve). El valor real viene del secret
-          # FTP_DIR; el fallback queda en /public/ por seguridad.
-          server-dir: ${{ secrets.FTP_DIR || '/public/' }}
-          # FTPS implicito por defecto en Dondominio (puerto 990) o
-          # explicito (puerto 21 con STARTTLS). Si el host no soporta
-          # FTPS, baja a `ftp` (no recomendado — credenciales en claro).
-          protocol: ftps
-          # `loose`: cifra el canal con TLS (FTPS) pero NO valida el hostname
-          # del certificado. Dondominio presenta un cert wildcard para
-          # `*.dondominio.com` / `dondominio.com`, que NUNCA coincidira con el
-          # FTP_HOST de tu dominio propio -> con `strict` el deploy fallaba con
-          # ERR_TLS_CERT_ALTNAME_INVALID. La alternativa (`protocol: ftp`) seria
-          # texto plano, mucho peor. Con `loose` los datos siguen viajando
-          # cifrados; solo se omite la verificacion del nombre del cert.
-          security: loose
-          # Borra archivos en el servidor que ya no estan en el build
-          # (clean deploy). Excluye archivos que el usuario subio
-          # manualmente al hosting (avatares, uploads, etc).
-          dangerous-clean-slate: false
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            uploads/**
+      # ─── FTPS upload a Dondominio (lftp) ───
+      # NO usamos SamKirkland/FTP-Deploy-Action: en este hosting su conexion de
+      # DATOS FTPS (modo pasivo) hace timeout ("Timeout when trying to open data
+      # connection") y aborta el deploy. lftp SI abre conexiones de datos aqui
+      # (el paso de limpieza lo demuestra con `cls`), soporta FTPS + modo pasivo
+      # + reintentos, y es mucho mas robusto en hosting compartido.
+      #
+      # `mirror -R` = subida (reverse mirror) incremental: solo sube los ficheros
+      # nuevos/cambiados, comparando tamanyo+fecha. NO usamos `--delete`: la
+      # salida de Flutter web tiene nombres estables (se sobrescriben in situ) y
+      # asi NUNCA tocamos `uploads/` ni otros ficheros del usuario en el server.
+      # `ssl:verify-certificate no` = mismo motivo que `security: loose` antes
+      # (Dondominio presenta un cert wildcard que no casa con el FTP_HOST).
+      - name: Upload to Dondominio via FTPS (lftp)
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_DIR: ${{ secrets.FTP_DIR }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          DIR="${FTP_DIR:-/public/}"
+          lftp -c "
+            set cmd:fail-exit yes;
+            set ssl:verify-certificate no;
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set ftp:passive-mode on;
+            set net:timeout 20;
+            set net:max-retries 3;
+            set net:reconnect-interval-base 5;
+            set net:reconnect-interval-multiplier 1;
+            set mirror:parallel-transfer-count 2;
+            open -u \"$FTP_USERNAME\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+            mirror -R --verbose --exclude-glob .git* ./build/web/ \"$DIR\";
+            bye
+          "
+          echo "✓ Subida a $DIR completada (lftp mirror -R)"
 
       - name: Notify success
         if: success()
