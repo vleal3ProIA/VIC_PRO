@@ -46,10 +46,10 @@ class SubjectsDataSource {
         .toList(growable: false);
   }
 
-  Future<Subject> createSubject(String title) async {
+  Future<Subject> createSubject(String title, {bool shareable = false}) async {
     final data = await _client
         .from('subjects')
-        .insert({'user_id': _uid, 'title': title})
+        .insert({'user_id': _uid, 'title': title, 'shareable': shareable})
         .select()
         .single();
     return Subject.fromMap(data);
@@ -57,6 +57,12 @@ class SubjectsDataSource {
 
   Future<void> deleteSubject(String id) async {
     await _client.from('subjects').delete().eq('id', id);
+  }
+
+  /// Renombra un temario (RLS de propietario permite el UPDATE desde el
+  /// cliente). El [title] ya debe venir saneado/limitado desde la UI.
+  Future<void> renameSubject(String id, String title) async {
+    await _client.from('subjects').update({'title': title}).eq('id', id);
   }
 
   Future<List<SubjectDocument>> listDocuments(String subjectId) async {
@@ -162,6 +168,69 @@ class SubjectsDataSource {
         .cast<Map<String, dynamic>>()
         .map(IndexNode.fromMap)
         .toList(growable: false);
+  }
+
+  /// Resumen del material REUTILIZABLE del temario contra la biblioteca global
+  /// (por `content_hash`, sin IA): secciones idénticas ya catalogadas, preguntas
+  /// disponibles y explicaciones/resúmenes ya generados. Se reutiliza solo al
+  /// abrir secciones o generar tests; aquí solo informamos.
+  Future<
+      ({
+        int totalSections,
+        int exact,
+        int similar,
+        int questions,
+        int flashcards,
+        int views,
+        bool poor,
+      })> matchSubject(String subjectId, {bool deep = false}) async {
+    try {
+      final res = await _client.functions.invoke(
+        'match-subject',
+        body: {'subject_id': subjectId, 'deep': deep},
+      );
+      final data = res.data;
+      if (data is! Map) throw const SubjectsException('invalid_response');
+      final p = data.cast<String, dynamic>();
+      if (p['ok'] != true) {
+        throw SubjectsException((p['error'] as String?) ?? 'match_failed');
+      }
+      return (
+        totalSections: (p['totalSections'] as num?)?.toInt() ?? 0,
+        exact: (p['exact'] as num?)?.toInt() ?? 0,
+        similar: (p['similar'] as num?)?.toInt() ?? 0,
+        questions: (p['questions'] as num?)?.toInt() ?? 0,
+        flashcards: (p['flashcards'] as num?)?.toInt() ?? 0,
+        views: (p['views'] as num?)?.toInt() ?? 0,
+        poor: (p['poor'] as bool?) ?? false,
+      );
+    } on FunctionException catch (e) {
+      throw SubjectsException(_efError(e));
+    }
+  }
+
+  /// Amplía un temario escaso con secciones de un temario similar más completo
+  /// de la biblioteca global (vía EF `expand-subject`). Devuelve cuántas
+  /// secciones se añadieron (0 si no había material adecuado).
+  Future<int> expandSubject(String subjectId, {String? folderTitle}) async {
+    try {
+      final res = await _client.functions.invoke(
+        'expand-subject',
+        body: {
+          'subject_id': subjectId,
+          if (folderTitle != null) 'folder_title': folderTitle,
+        },
+      );
+      final data = res.data;
+      if (data is! Map) throw const SubjectsException('invalid_response');
+      final p = data.cast<String, dynamic>();
+      if (p['ok'] != true) {
+        throw SubjectsException((p['error'] as String?) ?? 'expand_failed');
+      }
+      return (p['added'] as num?)?.toInt() ?? 0;
+    } on FunctionException catch (e) {
+      throw SubjectsException(_efError(e));
+    }
   }
 
   /// Valida (bloquea) el índice: una vez validado ya no se puede regenerar.

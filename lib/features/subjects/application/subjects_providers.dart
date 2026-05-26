@@ -67,6 +67,22 @@ final examAttemptsProvider =
   return ref.watch(subjectsDataSourceProvider).listExamAttempts(subjectId);
 });
 
+/// Material reutilizable del temario contra la biblioteca global (por hash).
+typedef SubjectMatch = ({
+  int totalSections,
+  int exact,
+  int similar,
+  int questions,
+  int flashcards,
+  int views,
+  bool poor,
+});
+
+final subjectMatchProvider =
+    FutureProvider.family<SubjectMatch, String>((ref, subjectId) {
+  return ref.watch(subjectsDataSourceProvider).matchSubject(subjectId);
+});
+
 /// Guía de estudio cacheada de un temario (`null` si aún no se generó).
 final studyGuideProvider =
     FutureProvider.family<String?, String>((ref, subjectId) {

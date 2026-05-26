@@ -25,6 +25,7 @@ import '../../application/subjects_providers.dart';
 import '../../data/subjects_datasource.dart';
 import '../../domain/subject.dart';
 import '../util/file_picker_web.dart';
+import '../util/subject_name.dart';
 import '../widgets/collapsible_index_tree.dart';
 import 'subject_study_panel.dart';
 
@@ -61,7 +62,8 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
     final errBg = Theme.of(context).colorScheme.error;
     // El modal pide nombre (obligatorio) y, opcionalmente, el archivo del
     // temario: así se crea y se sube de una vez.
-    final result = await showDialog<({String title, PickedFile? file})>(
+    final result =
+        await showDialog<({String title, PickedFile? file, bool shareable})>(
       context: context,
       builder: (_) => const _CreateSubjectDialog(),
     );
@@ -69,7 +71,10 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
     setState(() => _busy = true);
     String? createdId;
     try {
-      final created = await _ds.createSubject(result.title.trim());
+      final created = await _ds.createSubject(
+        result.title.trim(),
+        shareable: result.shareable,
+      );
       createdId = created.id;
       ref.invalidate(subjectsListProvider);
     } on SubjectsException catch (e) {
@@ -108,8 +113,9 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
     final ok = await AppConfirmDialog.show(
       context,
       title: l.subjectsDeleteTitle,
-      body: l.subjectsDeleteBody,
+      body: l.subjectsDeleteNamed(s.title),
       confirmLabel: l.aiDeleteCta,
+      cancelLabel: l.actionCancel,
       danger: true,
     );
     if (ok != true) return;
@@ -118,6 +124,37 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
       await _ds.deleteSubject(s.id);
       ref.invalidate(subjectsListProvider);
       if (mounted && _selectedId == s.id) setState(() => _selectedId = null);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Renombra el temario: abre un modal con el nombre actual editable. El
+  /// nombre se sanea (anti-código, límite de caracteres) antes de guardar.
+  Future<void> _renameSubject(Subject s) async {
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final errBg = Theme.of(context).colorScheme.error;
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (_) => _RenameSubjectDialog(initialName: s.title),
+    );
+    if (newName == null || newName.isEmpty || newName == s.title) return;
+    setState(() => _busy = true);
+    try {
+      await _ds.renameSubject(s.id, newName);
+      ref.invalidate(subjectsListProvider);
+    } on SubjectsException catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: errBg,
+          content: Text('${l.subjectsLoadError} (${e.code})'),
+        ),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(backgroundColor: errBg, content: Text(l.subjectsLoadError)),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -171,6 +208,7 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
                 busy: _busy,
                 onSelect: _select,
                 onAdd: _busy ? null : _createSubject,
+                onEdit: null,
                 onDelete: null,
                 onSetExamDate: null,
               ),
@@ -198,7 +236,8 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
               busy: _busy,
               onSelect: _select,
               onAdd: _busy ? null : _createSubject,
-              onDelete: _busy ? null : () => _deleteSubject(selected),
+              onEdit: _busy ? null : _renameSubject,
+              onDelete: _busy ? null : _deleteSubject,
               onSetExamDate: _busy ? null : () => _setExamDate(selected),
             ),
             workspace(
@@ -214,7 +253,8 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
   }
 }
 
-/// Barra superior: selector de temario + añadir + borrar.
+/// Barra superior: selector de temario (desplegable con buscar/editar/borrar)
+/// + chip de fecha de examen + añadir.
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.subjects,
@@ -222,6 +262,7 @@ class _TopBar extends StatelessWidget {
     required this.busy,
     required this.onSelect,
     required this.onAdd,
+    required this.onEdit,
     required this.onDelete,
     required this.onSetExamDate,
   });
@@ -231,7 +272,8 @@ class _TopBar extends StatelessWidget {
   final bool busy;
   final ValueChanged<String> onSelect;
   final VoidCallback? onAdd;
-  final VoidCallback? onDelete;
+  final ValueChanged<Subject>? onEdit;
+  final ValueChanged<Subject>? onDelete;
   final VoidCallback? onSetExamDate;
 
   String _examLabel(BuildContext context) {
@@ -259,27 +301,13 @@ class _TopBar extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           if (selected != null)
             Flexible(
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: selected!.id,
-                  isDense: true,
-                  borderRadius: BorderRadius.circular(12),
-                  items: [
-                    for (final s in subjects)
-                      DropdownMenuItem(
-                        value: s.id,
-                        child: Text(
-                          s.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: context.textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                  ],
-                  onChanged:
-                      busy ? null : (v) => v != null ? onSelect(v) : null,
-                ),
+              child: _SubjectSelector(
+                subjects: subjects,
+                selected: selected!,
+                busy: busy,
+                onSelect: onSelect,
+                onEdit: onEdit,
+                onDelete: onDelete,
               ),
             )
           else
@@ -287,12 +315,6 @@ class _TopBar extends StatelessWidget {
               l.homeSubjectsTitle,
               style: context.textTheme.titleMedium
                   ?.copyWith(fontWeight: FontWeight.w700),
-            ),
-          if (selected != null)
-            IconButton(
-              tooltip: l.aiDeleteCta,
-              icon: const Icon(Icons.delete_outline),
-              onPressed: onDelete,
             ),
           const Spacer(),
           if (selected != null) ...[
@@ -316,6 +338,265 @@ class _TopBar extends StatelessWidget {
   }
 }
 
+/// Selector de temario en forma de desplegable anclado bajo el nombre. Al
+/// pulsar el nombre se abre hacia abajo el listado de temarios del usuario
+/// (orden alfabético), mostrando hasta ~10 a la vez; si hay más de 10 se puede
+/// hacer scroll y aparece un buscador que filtra SOLO entre los temarios del
+/// usuario. Cada fila lleva a la derecha el icono de editar (renombrar) y el de
+/// borrar.
+class _SubjectSelector extends StatefulWidget {
+  const _SubjectSelector({
+    required this.subjects,
+    required this.selected,
+    required this.busy,
+    required this.onSelect,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final List<Subject> subjects;
+  final Subject selected;
+  final bool busy;
+  final ValueChanged<String> onSelect;
+  final ValueChanged<Subject>? onEdit;
+  final ValueChanged<Subject>? onDelete;
+
+  @override
+  State<_SubjectSelector> createState() => _SubjectSelectorState();
+}
+
+class _SubjectSelectorState extends State<_SubjectSelector> {
+  final OverlayPortalController _portal = OverlayPortalController();
+  final LayerLink _link = LayerLink();
+  final TextEditingController _search = TextEditingController();
+  String _query = '';
+
+  static const double _rowHeight = 48;
+  static const int _visibleRows = 10;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    if (_portal.isShowing) {
+      _close();
+    } else {
+      _portal.show();
+    }
+  }
+
+  void _close() {
+    if (!_portal.isShowing) return;
+    _portal.hide();
+    _query = '';
+    _search.clear();
+  }
+
+  List<Subject> _sorted() {
+    final list = [...widget.subjects]..sort(
+        (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+      );
+    return list;
+  }
+
+  List<Subject> _filtered() {
+    final q = _query.trim().toLowerCase();
+    final base = _sorted();
+    if (q.isEmpty) return base;
+    return base
+        .where((s) => s.title.toLowerCase().contains(q))
+        .toList(growable: false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+    return CompositedTransformTarget(
+      link: _link,
+      child: OverlayPortal(
+        controller: _portal,
+        overlayChildBuilder: _buildOverlay,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: widget.busy ? null : _toggle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    widget.selected.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Icon(Icons.arrow_drop_down, color: scheme.onSurfaceVariant),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverlay(BuildContext context) {
+    final l = context.l10n;
+    final showSearch = widget.subjects.length > _visibleRows;
+    return Stack(
+      children: [
+        // Capa invisible a pantalla completa: tocar fuera cierra el desplegable.
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: _close,
+          ),
+        ),
+        CompositedTransformFollower(
+          link: _link,
+          showWhenUnlinked: false,
+          targetAnchor: Alignment.bottomLeft,
+          followerAnchor: Alignment.topLeft,
+          offset: const Offset(0, 6),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(12),
+              clipBehavior: Clip.antiAlias,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 280, maxWidth: 380),
+                child: StatefulBuilder(
+                  builder: (context, setLocal) {
+                    final filtered = _filtered();
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (showSearch)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                            child: TextField(
+                              controller: _search,
+                              autofocus: true,
+                              maxLength: kSubjectSearchMaxLength,
+                              inputFormatters: subjectNameFormatters(),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                counterText: '',
+                                prefixIcon: const Icon(Icons.search, size: 18),
+                                hintText: l.subjectsSearchHint,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              onChanged: (v) => setLocal(() => _query = v),
+                            ),
+                          ),
+                        if (filtered.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 20,
+                            ),
+                            child: Text(
+                              l.subjectsSearchEmpty,
+                              style: context.textTheme.bodySmall?.copyWith(
+                                color: context.colors.onSurfaceVariant,
+                              ),
+                            ),
+                          )
+                        else
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxHeight: _rowHeight * _visibleRows,
+                            ),
+                            child: Scrollbar(
+                              child: ListView.builder(
+                                shrinkWrap: true,
+                                padding: EdgeInsets.zero,
+                                itemCount: filtered.length,
+                                itemBuilder: (context, i) => _row(filtered[i]),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _row(Subject s) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final isSelected = s.id == widget.selected.id;
+    return InkWell(
+      onTap: () {
+        _close();
+        if (s.id != widget.selected.id) widget.onSelect(s.id);
+      },
+      child: SizedBox(
+        height: _rowHeight,
+        child: Padding(
+          padding: const EdgeInsets.only(left: 12, right: 4),
+          child: Row(
+            children: [
+              if (isSelected)
+                Icon(Icons.check, size: 16, color: scheme.primary)
+              else
+                const SizedBox(width: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  s.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.textTheme.bodyMedium?.copyWith(
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: l.subjectsRename,
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                onPressed: widget.onEdit == null
+                    ? null
+                    : () {
+                        _close();
+                        widget.onEdit!(s);
+                      },
+              ),
+              IconButton(
+                tooltip: l.aiDeleteCta,
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.delete_outline, size: 18),
+                onPressed: widget.onDelete == null
+                    ? null
+                    : () {
+                        _close();
+                        widget.onDelete!(s);
+                      },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CreateSubjectDialog extends StatefulWidget {
   const _CreateSubjectDialog();
 
@@ -327,6 +608,7 @@ class _CreateSubjectDialogState extends State<_CreateSubjectDialog> {
   late final TextEditingController _name;
   PickedFile? _file;
   bool _picking = false;
+  bool _shareable = false;
 
   @override
   void initState() {
@@ -356,16 +638,16 @@ class _CreateSubjectDialogState extends State<_CreateSubjectDialog> {
   }
 
   void _submit() {
-    final t = _name.text.trim();
+    final t = sanitizeSubjectName(_name.text);
     if (t.isEmpty) return;
-    Navigator.of(context).pop((title: t, file: _file));
+    Navigator.of(context).pop((title: t, file: _file, shareable: _shareable));
   }
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     final scheme = context.colors;
-    final canSave = _name.text.trim().isNotEmpty;
+    final canSave = sanitizeSubjectName(_name.text).isNotEmpty;
     return AlertDialog(
       title: Text(l.subjectsNewTitle),
       content: Column(
@@ -376,6 +658,8 @@ class _CreateSubjectDialogState extends State<_CreateSubjectDialog> {
             controller: _name,
             label: l.subjectsNameField,
             prefixIcon: Icons.menu_book_outlined,
+            maxLength: kSubjectNameMaxLength,
+            inputFormatters: subjectNameFormatters(),
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -403,6 +687,98 @@ class _CreateSubjectDialogState extends State<_CreateSubjectDialog> {
                 ],
               ),
             ),
+          const SizedBox(height: AppSpacing.sm),
+          // Declaración de material libre: solo así el contenido generado entra
+          // en la biblioteca global del proyecto y puede reutilizarse.
+          CheckboxListTile(
+            value: _shareable,
+            onChanged: (v) => setState(() => _shareable = v ?? false),
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            dense: true,
+            title: Text(
+              l.subjectShareableLabel,
+              style: context.textTheme.bodySmall,
+            ),
+            subtitle: Text(
+              l.subjectShareableHint,
+              style: context.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l.actionCancel),
+        ),
+        FilledButton(
+          onPressed: canSave ? _submit : null,
+          child: Text(l.actionSave),
+        ),
+      ],
+    );
+  }
+}
+
+/// Modal para renombrar un temario: muestra el nombre actual editable. El
+/// nombre se sanea (anti-código) y se limita en longitud, igual que en el
+/// formulario de creación. Devuelve el nuevo nombre (saneado) o `null`.
+class _RenameSubjectDialog extends StatefulWidget {
+  const _RenameSubjectDialog({required this.initialName});
+
+  final String initialName;
+
+  @override
+  State<_RenameSubjectDialog> createState() => _RenameSubjectDialogState();
+}
+
+class _RenameSubjectDialogState extends State<_RenameSubjectDialog> {
+  late final TextEditingController _name;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = TextEditingController(text: widget.initialName)
+      ..addListener(_onChanged);
+  }
+
+  void _onChanged() => setState(() {});
+
+  @override
+  void dispose() {
+    _name
+      ..removeListener(_onChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final t = sanitizeSubjectName(_name.text);
+    if (t.isEmpty) return;
+    Navigator.of(context).pop(t);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final canSave = sanitizeSubjectName(_name.text).isNotEmpty;
+    return AlertDialog(
+      title: Text(l.subjectsRenameTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppTextField(
+            controller: _name,
+            label: l.subjectsNameField,
+            prefixIcon: Icons.menu_book_outlined,
+            maxLength: kSubjectNameMaxLength,
+            inputFormatters: subjectNameFormatters(),
+            onSubmitted: (_) => _submit(),
+          ),
         ],
       ),
       actions: [
@@ -442,6 +818,15 @@ class _SubjectSetupWizardState extends ConsumerState<_SubjectSetupWizard> {
   bool _busy = false;
   bool _uploading = false;
   String? _uploadError;
+
+  /// Análisis (profundo) de material reutilizable; se calcula una sola vez al
+  /// llegar a la revisión del índice.
+  Future<SubjectMatch>? _matchFuture;
+
+  // Oferta de ampliación (temario escaso).
+  bool _expandDismissed = false;
+  bool _expanding = false;
+  int? _expandedCount;
 
   @override
   void initState() {
@@ -712,12 +1097,155 @@ class _SubjectSetupWizardState extends ConsumerState<_SubjectSetupWizard> {
     );
   }
 
-  /// Índice generado (árbol PLEGABLE, mismo aspecto que la card) para revisarlo.
+  /// Índice generado (árbol PLEGABLE) + aviso de material reutilizable detectado
+  /// en la biblioteca del proyecto, para revisarlo antes de validar.
   Widget _review(List<IndexNode> nodes) {
-    final h = (MediaQuery.sizeOf(context).height - 220).clamp(360.0, 900.0);
-    return SizedBox(
-      height: h,
-      child: CollapsibleIndexTree(nodes: nodes),
+    final h = (MediaQuery.sizeOf(context).height - 300).clamp(300.0, 820.0);
+    _matchFuture ??= ref
+        .read(subjectsDataSourceProvider)
+        .matchSubject(widget.subjectId, deep: true);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        FutureBuilder<SubjectMatch>(
+          future: _matchFuture,
+          builder: (context, snap) {
+            final m = snap.data;
+            if (m == null) return const SizedBox.shrink();
+            final useful = m.exact > 0 ||
+                m.questions > 0 ||
+                m.views > 0 ||
+                m.flashcards > 0;
+            if (!useful && !m.poor) return const SizedBox.shrink();
+            return _matchBox(m, useful: useful);
+          },
+        ),
+        SizedBox(height: h, child: CollapsibleIndexTree(nodes: nodes)),
+      ],
+    );
+  }
+
+  /// Acepta la oferta: pide al backend ampliar el temario con material del pool
+  /// y refresca el índice para que aparezcan las secciones nuevas.
+  Future<void> _expand() async {
+    if (_expanding) return;
+    setState(() => _expanding = true);
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final errBg = Theme.of(context).colorScheme.error;
+    try {
+      final added = await ref.read(subjectsDataSourceProvider).expandSubject(
+            widget.subjectId,
+            folderTitle: l.studyExpandFolderTitle,
+          );
+      ref.invalidate(indexNodesProvider(widget.subjectId));
+      if (mounted) setState(() => _expandedCount = added);
+    } catch (_) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _expanding = false);
+    }
+  }
+
+  Widget _matchBox(SubjectMatch m, {required bool useful}) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.auto_awesome, size: 16, color: scheme.primary),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.studyLibraryTitle,
+                  style: context.textTheme.labelLarge
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                if (useful) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    l.studyLibraryBody(m.exact, m.questions, m.views),
+                    style: context.textTheme.bodySmall
+                        ?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                ],
+                if (m.poor) _expandOffer(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Oferta de ampliación: pregunta + Aceptar/Cancelar; tras aceptar muestra el
+  /// resultado (cuántas secciones se añadieron, o que no había material).
+  Widget _expandOffer() {
+    final l = context.l10n;
+    final scheme = context.colors;
+    if (_expandedCount != null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Text(
+          _expandedCount! > 0
+              ? l.studyExpandDone(_expandedCount!)
+              : l.studyExpandNone,
+          style: context.textTheme.bodySmall
+              ?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      );
+    }
+    if (_expanding) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 8),
+        child: SizedBox(
+          height: 18,
+          width: 18,
+          child: CircularProgressIndicator(strokeWidth: 2.2),
+        ),
+      );
+    }
+    if (_expandDismissed) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 6),
+        Text(
+          l.studyExpandOffer,
+          style: context.textTheme.bodySmall
+              ?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 8,
+          children: [
+            TextButton(
+              onPressed: () => setState(() => _expandDismissed = true),
+              child: Text(l.actionCancel),
+            ),
+            FilledButton.icon(
+              onPressed: _expand,
+              icon: const Icon(Icons.add, size: 16),
+              label: Text(l.studyExpandCta),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

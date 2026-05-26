@@ -45,6 +45,7 @@ class Subject {
     this.indexError,
     this.examDate,
     this.createdAt,
+    this.shareable = false,
   });
 
   factory Subject.fromMap(Map<String, dynamic> m) => Subject(
@@ -56,12 +57,17 @@ class Subject {
         indexError: m['index_error'] as String?,
         examDate: _ts(m['exam_date']),
         createdAt: _ts(m['created_at']),
+        shareable: (m['shareable'] as bool?) ?? false,
       );
 
   final String id;
   final String title;
   final String? language;
   final IndexStatus indexStatus;
+
+  /// `true` si el usuario declaró que este material es de fuente libre/pública
+  /// y por tanto puede contribuir a la biblioteca global del proyecto.
+  final bool shareable;
 
   /// Motivo del último fallo al generar el índice (`null` si no falló).
   final String? indexError;

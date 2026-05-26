@@ -14,6 +14,26 @@
   "studyIndexFailed": "Index generation failed. Try again.",
   "studyIndexNeedsDoc": "Upload and process a document first.",
   "studyIndexTitle": "Index",
+  "studyLibraryTitle": "Reusable material available",
+  "studyLibraryBody": "{exact} identical sections · {questions} questions · {views} explanations already generated. Reused with no extra tokens.",
+  "@studyLibraryBody": {
+    "placeholders": {
+      "exact": { "type": "int" },
+      "questions": { "type": "int" },
+      "views": { "type": "int" }
+    }
+  },
+  "studyLibraryExpandHint": "Your study set looks small. When a more complete similar one is available, we'll offer to expand it.",
+  "studyExpandFolderTitle": "Additional material",
+  "studyExpandOffer": "Your study set looks small. We can expand it to improve your knowledge. Do you agree?",
+  "studyExpandCta": "Expand",
+  "studyExpandDone": "Added {count} new sections.",
+  "@studyExpandDone": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "studyExpandNone": "We don't have material to expand this study set yet.",
   "studySelectNode": "Select a section from the index to read it.",
   "studyTabOriginal": "Original",
   "studyTabExplained": "Explained",
@@ -135,10 +155,22 @@
   "subjectsLoadError": "Could not load your study sets",
   "subjectsDeleteTitle": "Delete study set?",
   "subjectsDeleteBody": "This deletes the study set and all its documents. This cannot be undone.",
+  "subjectsDeleteNamed": "This action is permanent. Are you sure you want to delete the study set \"{name}\" and all its documents?",
+  "@subjectsDeleteNamed": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "subjectsRenameTitle": "Rename study set",
+  "subjectsRename": "Rename",
+  "subjectsSearchHint": "Search your study sets…",
+  "subjectsSearchEmpty": "No matches",
   "subjectsEmptyTitle": "No study sets yet",
   "subjectsEmptyBody": "Create your first study set and upload a PDF, image or text file.",
   "subjectsNewTitle": "New study set",
   "subjectsNameField": "Name",
+  "subjectShareableLabel": "Free/public material (shareable)",
+  "subjectShareableHint": "Tick only if this is free or public-domain material (e.g. legislation). It lets the AI content we generate be reused to help other users and save tokens.",
   "subjectDocsTitle": "Documents",
   "subjectUpload": "Upload file",
   "subjectNoDocs": "No documents yet — upload your material.",

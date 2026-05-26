@@ -15,6 +15,8 @@ import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
 import { gatherMaterial } from "../_shared/ai/material.ts";
+import { contentHash } from "../_shared/ai/hash.ts";
+import { findSimilarHash } from "../_shared/ai/pool.ts";
 import type { AiAttachment } from "../_shared/ai/types.ts";
 
 const corsHeaders = {
@@ -132,13 +134,17 @@ Deno.serve(withSentry("generate-views", async (req) => {
   });
   if (!rateOk) return json({ error: "rate_limited" }, 429);
 
-  // Idioma del temario.
+  // Idioma del temario + si es material libre (para aportar a la biblioteca).
   const { data: subj } = await admin
     .from("subjects")
-    .select("language")
+    .select("language, shareable")
     .eq("id", node.subject_id)
     .maybeSingle();
-  const language = (subj as { language: string | null } | null)?.language ?? null;
+  const subjRow = subj as
+    | { language: string | null; shareable: boolean | null }
+    | null;
+  const language = subjRow?.language ?? null;
+  const shareable = subjRow?.shareable === true;
 
   // Material para la vista. Preferimos el TEXTO de la sección (el 'original'
   // guardado al construir el índice): así CUALQUIER proveedor (incluido Groq)
@@ -151,8 +157,14 @@ Deno.serve(withSentry("generate-views", async (req) => {
     .eq("node_id", node.id)
     .eq("kind", "original")
     .maybeSingle();
-  let textContext =
+  const origContent =
     ((orig as { content: string | null } | null)?.content ?? "").trim();
+  // Hash de la sección (solo si tiene texto propio): clave para reutilizar las
+  // vistas ya generadas de la biblioteca global (mismo texto -> misma vista).
+  const sectionHash = origContent.length >= 40
+    ? await contentHash(origContent)
+    : null;
+  let textContext = origContent;
   let attachments: AiAttachment[] = [];
   if (textContext.length < 20) {
     const mat = await gatherMaterial(admin, node.subject_id);
@@ -167,8 +179,55 @@ Deno.serve(withSentry("generate-views", async (req) => {
     return json({ error: "no_ready_documents" }, 409);
   }
 
-  // Genera una vista concreta y la cachea; devuelve el texto.
+  // Genera una vista concreta y la cachea; devuelve el texto. Para 'explained'
+  // y 'summary' intenta primero REUTILIZAR de la biblioteca global por hash
+  // (0 tokens) y, si genera una nueva con material libre, la aporta al pool.
   const genOne = async (k: string): Promise<string> => {
+    // 1) Reutilización por content_hash (solo vistas didácticas, no 'original').
+    if (sectionHash && k !== "original") {
+      const { data: shared } = await admin
+        .from("shared_node_content")
+        .select("content")
+        .eq("content_hash", sectionHash)
+        .eq("kind", k)
+        .maybeSingle();
+      const sc = (shared as { content: string | null } | null)?.content;
+      if (sc && sc.trim().length > 0) {
+        await admin.from("node_content").upsert({
+          node_id: node.id,
+          user_id: node.user_id,
+          kind: k,
+          content: sc,
+        }, { onConflict: "node_id,kind" });
+        return sc;
+      }
+    }
+
+    // 1b) Reutilización por SIMILITUD: sección casi idéntica (otro hash) ya con
+    // esta vista en la biblioteca -> la copiamos sin gastar IA.
+    if (sectionHash && k !== "original" && origContent.length >= 40) {
+      const sim = await findSimilarHash(admin, origContent);
+      if (sim && sim.hash !== sectionHash) {
+        const { data: shared2 } = await admin
+          .from("shared_node_content")
+          .select("content")
+          .eq("content_hash", sim.hash)
+          .eq("kind", k)
+          .maybeSingle();
+        const sc2 = (shared2 as { content: string | null } | null)?.content;
+        if (sc2 && sc2.trim().length > 0) {
+          await admin.from("node_content").upsert({
+            node_id: node.id,
+            user_id: node.user_id,
+            kind: k,
+            content: sc2,
+          }, { onConflict: "node_id,kind" });
+          return sc2;
+        }
+      }
+    }
+
+    // 2) Generación con IA.
     const result = await runCompletion(admin, {
       task: `view:${k}`,
       system: systemFor(k, language),
@@ -190,6 +249,17 @@ Deno.serve(withSentry("generate-views", async (req) => {
       kind: k,
       content: result.text,
     }, { onConflict: "node_id,kind" });
+
+    // 3) Aportar a la biblioteca global si el material es libre.
+    if (sectionHash && shareable && k !== "original" &&
+        result.text.trim().length > 0) {
+      await admin.from("shared_node_content").upsert({
+        content_hash: sectionHash,
+        kind: k,
+        content: result.text,
+        lang: language,
+      }, { onConflict: "content_hash,kind" });
+    }
     return result.text;
   };
 

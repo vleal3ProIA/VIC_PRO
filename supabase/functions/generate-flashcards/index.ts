@@ -15,6 +15,8 @@ import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
 import { gatherMaterial } from "../_shared/ai/material.ts";
+import { contentHash } from "../_shared/ai/hash.ts";
+import { findSimilarHash } from "../_shared/ai/pool.ts";
 import type { AiAttachment } from "../_shared/ai/types.ts";
 
 const corsHeaders = {
@@ -107,11 +109,16 @@ Deno.serve(withSentry("generate-flashcards", async (req) => {
   // Propiedad del temario.
   const { data: subj } = await admin
     .from("subjects")
-    .select("id, user_id, language")
+    .select("id, user_id, language, shareable")
     .eq("id", subjectId)
     .maybeSingle();
   if (!subj) return json({ error: "subject_not_found" }, 404);
-  const subject = subj as { id: string; user_id: string; language: string | null };
+  const subject = subj as {
+    id: string;
+    user_id: string;
+    language: string | null;
+    shareable: boolean | null;
+  };
   if (subject.user_id !== user.id) return json({ error: "forbidden" }, 403);
 
   const rateOk = await checkRateLimit(admin, {
@@ -143,6 +150,12 @@ Deno.serve(withSentry("generate-flashcards", async (req) => {
         ((orig as { content: string | null } | null)?.content ?? "").trim();
     }
   }
+  // Texto propio de la sección (antes del posible fallback al temario entero):
+  // base para el hash de reutilización de flashcards.
+  const nodeOriginal = nodeId ? textContext : "";
+  const sectionHash = nodeOriginal.length >= 40
+    ? await contentHash(nodeOriginal)
+    : null;
   if (textContext.length < 20) {
     const mat = await gatherMaterial(admin, subjectId);
     if (mat.textContext.trim().length > 0) {
@@ -166,6 +179,39 @@ Deno.serve(withSentry("generate-flashcards", async (req) => {
     "answer/definition grounded ONLY in the material (do not invent). Cover the " +
     `most important facts, definitions and rules. Produce about ${count} cards. ` +
     `${lang} No commentary.`;
+
+  // Reutilización por hash (solo ámbito de sección con texto propio): si la
+  // biblioteca ya tiene flashcards de esta sección (idéntica o muy parecida),
+  // las usamos sin gastar IA.
+  if (sectionHash) {
+    const fetchShared = async (h: string) => {
+      const { data } = await admin
+        .from("shared_flashcards")
+        .select("front, back")
+        .eq("content_hash", h)
+        .limit(count);
+      return (data ?? []) as Array<{ front: string; back: string }>;
+    };
+    let cached = await fetchShared(sectionHash);
+    if (cached.length < 4) {
+      const sim = await findSimilarHash(admin, nodeOriginal);
+      if (sim && sim.hash !== sectionHash) cached = await fetchShared(sim.hash);
+    }
+    if (cached.length >= 4) {
+      let del = admin.from("flashcards").delete().eq("subject_id", subject.id);
+      del = nodeId ? del.eq("node_id", nodeId) : del.is("node_id", null);
+      await del;
+      const rows = cached.slice(0, count).map((c) => ({
+        subject_id: subject.id,
+        user_id: subject.user_id,
+        node_id: nodeId,
+        front: c.front,
+        back: c.back,
+      }));
+      await admin.from("flashcards").insert(rows);
+      return json({ ok: true, count: rows.length, reused: true }, 200);
+    }
+  }
 
   try {
     const result = await runCompletion(admin, {
@@ -202,6 +248,18 @@ Deno.serve(withSentry("generate-flashcards", async (req) => {
       back: c.back,
     }));
     await admin.from("flashcards").insert(rows);
+
+    // Material libre + ámbito de sección: aportamos las flashcards al pool.
+    if (subject.shareable === true && sectionHash) {
+      await admin.from("shared_flashcards").insert(
+        cards.map((c) => ({
+          content_hash: sectionHash,
+          front: c.front,
+          back: c.back,
+          lang: subject.language,
+        })),
+      );
+    }
 
     return json({ ok: true, count: rows.length }, 200);
   } catch (e) {

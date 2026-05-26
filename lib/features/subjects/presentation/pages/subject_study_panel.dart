@@ -519,21 +519,6 @@ class _IndexColumn extends ConsumerWidget {
   final VoidCallback onGenerate;
   final VoidCallback onValidate;
 
-  void _openSources(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => Dialog(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560, maxHeight: 640),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            child: _DocumentsPanel(subjectId: subject.id),
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
@@ -541,12 +526,6 @@ class _IndexColumn extends ConsumerWidget {
     final ready = subject.indexReady && orderedNodes.isNotEmpty;
 
     final actions = <Widget>[
-      IconButton(
-        tooltip: l.subjectDocsTitle,
-        visualDensity: VisualDensity.compact,
-        icon: const Icon(Icons.source_outlined, size: 18),
-        onPressed: () => _openSources(context),
-      ),
       if (ready)
         if (locked)
           Tooltip(
@@ -643,11 +622,85 @@ class _IndexColumn extends ConsumerWidget {
       );
     }
 
-    return _IndexTree(
-      nodes: orderedNodes,
-      selectedId: selectedId,
-      aiNodeIds: aiNodeIds,
-      onSelect: onSelect,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ReuseBanner(subjectId: subject.id),
+        Expanded(
+          child: _IndexTree(
+            nodes: orderedNodes,
+            selectedId: selectedId,
+            aiNodeIds: aiNodeIds,
+            onSelect: onSelect,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Aviso compacto: cuánto material reutilizable hay en la biblioteca global del
+/// proyecto para este temario (secciones idénticas, preguntas, explicaciones).
+/// Se reutiliza solo al abrir secciones o generar tests, sin gastar tokens. Si
+/// no hay nada reutilizable (o aún carga / falla), no muestra nada.
+class _ReuseBanner extends ConsumerWidget {
+  const _ReuseBanner({required this.subjectId});
+
+  final String subjectId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final match = ref.watch(subjectMatchProvider(subjectId)).valueOrNull;
+    if (match == null) return const SizedBox.shrink();
+    final useful = match.exact > 0 ||
+        match.questions > 0 ||
+        match.views > 0 ||
+        match.flashcards > 0;
+    if (!useful) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        AppSpacing.sm,
+        AppSpacing.xs,
+        AppSpacing.sm,
+        AppSpacing.sm,
+      ),
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.auto_awesome, size: 16, color: scheme.primary),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.studyLibraryTitle,
+                  style: context.textTheme.labelLarge
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  l.studyLibraryBody(
+                    match.exact,
+                    match.questions,
+                    match.views,
+                  ),
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -4721,262 +4774,5 @@ class _NotesViewState extends ConsumerState<_NotesView> {
               ],
             ),
     );
-  }
-}
-
-// ─────────────────────────── Documentos / fuentes ───────────────────────────
-
-/// Panel de documentos de un temario: lista con estado + subir archivo.
-/// Hace polling mientras algún documento esté en proceso.
-class _DocumentsPanel extends ConsumerStatefulWidget {
-  const _DocumentsPanel({required this.subjectId});
-
-  final String subjectId;
-
-  @override
-  ConsumerState<_DocumentsPanel> createState() => _DocumentsPanelState();
-}
-
-class _DocumentsPanelState extends ConsumerState<_DocumentsPanel> {
-  Timer? _poll;
-  bool _uploading = false;
-
-  @override
-  void dispose() {
-    _poll?.cancel();
-    super.dispose();
-  }
-
-  void _syncPolling(List<SubjectDocument> docs) {
-    final anyInProgress = docs.any((d) => d.inProgress);
-    if (anyInProgress) {
-      if (_poll == null || !_poll!.isActive) {
-        _poll = Timer.periodic(const Duration(seconds: 4), (_) {
-          if (!mounted) {
-            _poll?.cancel();
-            return;
-          }
-          ref.invalidate(subjectDocumentsProvider(widget.subjectId));
-        });
-      }
-    } else {
-      _poll?.cancel();
-      _poll = null;
-    }
-  }
-
-  Future<void> _upload() async {
-    if (_uploading) return;
-    final l = context.l10n;
-    final messenger = ScaffoldMessenger.of(context);
-    final errBg = Theme.of(context).colorScheme.error;
-    final picked = await pickFile();
-    if (picked == null) return;
-    setState(() => _uploading = true);
-    try {
-      await ref.read(subjectsDataSourceProvider).uploadDocument(
-            subjectId: widget.subjectId,
-            file: picked,
-          );
-      ref.invalidate(subjectDocumentsProvider(widget.subjectId));
-      messenger.showSnackBar(SnackBar(content: Text(l.subjectUploaded)));
-    } on SubjectsException catch (e) {
-      messenger.showSnackBar(
-        SnackBar(
-          backgroundColor: errBg,
-          content: Text('${l.subjectUploadError} (${e.code})'),
-        ),
-      );
-    } catch (_) {
-      messenger.showSnackBar(
-        SnackBar(backgroundColor: errBg, content: Text(l.subjectUploadError)),
-      );
-    } finally {
-      if (mounted) setState(() => _uploading = false);
-    }
-  }
-
-  Future<void> _deleteDoc(SubjectDocument doc) async {
-    final l = context.l10n;
-    final messenger = ScaffoldMessenger.of(context);
-    await ref.read(subjectsDataSourceProvider).deleteDocument(doc);
-    ref.invalidate(subjectDocumentsProvider(widget.subjectId));
-    if (mounted) {
-      messenger.showSnackBar(SnackBar(content: Text(l.subjectDocDeleted)));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l = context.l10n;
-    final async = ref.watch(subjectDocumentsProvider(widget.subjectId));
-    async.whenData(_syncPolling);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                l.subjectDocsTitle,
-                style: context.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
-            FilledButton.tonalIcon(
-              onPressed: _uploading ? null : _upload,
-              icon: _uploading
-                  ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2.2),
-                    )
-                  : const Icon(Icons.upload_file_outlined, size: 18),
-              label: Text(l.subjectUpload),
-            ),
-          ],
-        ),
-        if (_uploading)
-          const Padding(
-            padding: EdgeInsets.only(top: AppSpacing.sm),
-            child: ClipRRect(
-              borderRadius: BorderRadius.all(Radius.circular(6)),
-              child: LinearProgressIndicator(minHeight: 4),
-            ),
-          ),
-        const Divider(height: AppSpacing.lg),
-        Flexible(
-          child: async.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: AppLoadingState(),
-            ),
-            error: (e, _) => AppErrorState(
-              message: l.subjectsLoadError,
-              detail: e.toString(),
-              onRetry: () =>
-                  ref.invalidate(subjectDocumentsProvider(widget.subjectId)),
-              retryLabel: l.actionRetry,
-            ),
-            data: (docs) {
-              if (docs.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: Text(
-                    l.subjectNoDocs,
-                    style: context.textTheme.bodyMedium?.copyWith(
-                      color: context.colors.onSurfaceVariant,
-                    ),
-                  ),
-                );
-              }
-              return ListView(
-                shrinkWrap: true,
-                children: [
-                  for (final d in docs) _DocRow(doc: d, onDelete: _deleteDoc),
-                ],
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DocRow extends StatelessWidget {
-  const _DocRow({required this.doc, required this.onDelete});
-
-  final SubjectDocument doc;
-  final Future<void> Function(SubjectDocument) onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = context.l10n;
-    final scheme = context.colors;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Icon(Icons.description_outlined, size: 18, color: scheme.onSurfaceVariant),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  doc.fileName ?? doc.storagePath,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.textTheme.bodyMedium,
-                ),
-                if (doc.inProgress)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 6),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.all(Radius.circular(6)),
-                      child: LinearProgressIndicator(minHeight: 3),
-                    ),
-                  ),
-                if (doc.status == DocStatus.failed && doc.error != null)
-                  Text(
-                    doc.error!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.textTheme.bodySmall
-                        ?.copyWith(color: scheme.error),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          _StatusChip(status: doc.status),
-          IconButton(
-            tooltip: l.aiDeleteCta,
-            icon: const Icon(Icons.delete_outline, size: 18),
-            onPressed: () => onDelete(doc),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-
-  final DocStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = context.l10n;
-    switch (status) {
-      case DocStatus.queued:
-        return PremiumBadge(
-          label: l.docStatusQueued,
-          variant: PremiumBadgeVariant.neutral,
-          dense: true,
-        );
-      case DocStatus.processing:
-        return PremiumBadge(
-          label: l.docStatusProcessing,
-          variant: PremiumBadgeVariant.info,
-          dense: true,
-        );
-      case DocStatus.ready:
-        return PremiumBadge(
-          label: l.docStatusReady,
-          variant: PremiumBadgeVariant.success,
-          dense: true,
-        );
-      case DocStatus.failed:
-        return PremiumBadge(
-          label: l.docStatusFailed,
-          variant: PremiumBadgeVariant.error,
-          dense: true,
-        );
-    }
   }
 }

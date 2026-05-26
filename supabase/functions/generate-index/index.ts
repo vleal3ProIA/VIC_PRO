@@ -16,6 +16,13 @@ import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { captureError, withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
 import { gatherMaterial } from "../_shared/ai/material.ts";
+import {
+  cloneIndexFromPool,
+  recordContribution,
+  writeSharedIndex,
+  writeSubjectToPool,
+} from "../_shared/ai/pool.ts";
+import { docFingerprint } from "../_shared/ai/hash.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,6 +43,8 @@ interface SubjectRow {
   user_id: string;
   title: string;
   index_locked?: boolean;
+  shareable?: boolean;
+  language?: string | null;
 }
 
 interface IndexNode {
@@ -140,7 +149,7 @@ Deno.serve(withSentry("generate-index", async (req) => {
 
   const { data: subj, error: sErr } = await admin
     .from("subjects")
-    .select("id, user_id, title, index_locked")
+    .select("id, user_id, title, index_locked, shareable, language")
     .eq("id", subjectId)
     .maybeSingle();
   if (sErr) return json({ error: "db_error", detail: sErr.message }, 500);
@@ -278,6 +287,37 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       .map((d) => d.extracted_text ?? "")
       .filter((t) => t.length > 0)
       .join("\n\n");
+
+    // Reutilización: si ya existe el índice de un documento IDÉNTICO (misma
+    // huella), lo clonamos del pool sin gastar IA y terminamos.
+    const fingerprint = fullText.trim().length > 0
+      ? await docFingerprint(fullText)
+      : null;
+    if (fingerprint) {
+      const cloned = await cloneIndexFromPool(admin, {
+        subjectId: subject.id,
+        userId: subject.user_id,
+        fingerprint,
+      });
+      if (cloned) {
+        await admin.from("subjects")
+          .update({ index_status: "ready", index_error: null })
+          .eq("id", subject.id);
+        // Aunque clonemos, si el usuario declaró ESTE temario como libre dejamos
+        // su registro de cesión (email + fecha/hora) para compliance.
+        if (subject.shareable === true) {
+          await recordContribution(admin, {
+            subjectId: subject.id,
+            userId: subject.user_id,
+            title: subject.title,
+            sectionsCount: 0,
+          });
+        }
+        console.log("[generate-index] reused index from pool (identical doc)");
+        return;
+      }
+    }
+
     const system =
       "You build a hierarchical table of contents (index) for study material. " +
       "Cover it from start to end: every chapter/topic and the FINEST unit as " +
@@ -390,6 +430,30 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
     await admin.from("subjects")
       .update({ index_status: "ready", index_error: null })
       .eq("id", subject.id);
+
+    // Si el material es libre, volcamos sus secciones a la biblioteca global
+    // (best-effort: no debe afectar al estado del índice ya marcado 'ready').
+    await writeSubjectToPool(admin, {
+      id: subject.id,
+      shareable: subject.shareable,
+      language: subject.language,
+    });
+    // Material libre: árbol clonable (para subidas idénticas) + registro legal
+    // de cesión (email + fecha/hora, permanente).
+    if (subject.shareable === true && fingerprint) {
+      await writeSharedIndex(admin, {
+        subjectId: subject.id,
+        fingerprint,
+        title: subject.title,
+        lang: subject.language ?? null,
+      });
+      await recordContribution(admin, {
+        subjectId: subject.id,
+        userId: subject.user_id,
+        title: subject.title,
+        sectionsCount: 0,
+      });
+    }
   } catch (e) {
     const msg = e instanceof AiGatewayError ? e.message : (e as Error).message;
     // Log explícito para que el motivo salga en los logs de la Edge Function
