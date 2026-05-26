@@ -227,21 +227,40 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq lftp
           DIR="${FTP_DIR:-/public/}"
-          lftp -c "
-            set cmd:fail-exit yes;
-            set ssl:verify-certificate no;
-            set ftp:ssl-force true;
-            set ftp:ssl-protect-data true;
-            set ftp:passive-mode on;
-            set net:timeout 20;
-            set net:max-retries 3;
-            set net:reconnect-interval-base 5;
-            set net:reconnect-interval-multiplier 1;
-            set mirror:parallel-transfer-count 2;
-            open -u \"$FTP_USERNAME\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
-            mirror -R --verbose --exclude-glob .git* ./build/web/ \"$DIR\";
-            bye
-          "
+          # La conexion de datos FTPS pasiva de Dondominio es intermitente: a
+          # veces un archivo agota los reintentos. Mitigacion:
+          #  - transferencias en SERIE (parallel=1): no competir por puertos
+          #    pasivos (la causa de los timeouts).
+          #  - muchos reintentos por archivo (net:max-retries 10).
+          #  - bucle externo: si lftp acaba en error, reintenta el mirror entero
+          #    (lftp se salta lo ya subido y solo reintenta lo que falte).
+          upload() {
+            lftp -c "
+              set cmd:fail-exit yes;
+              set ssl:verify-certificate no;
+              set ftp:ssl-force true;
+              set ftp:ssl-protect-data true;
+              set ftp:passive-mode on;
+              set net:timeout 30;
+              set net:max-retries 10;
+              set net:reconnect-interval-base 3;
+              set net:reconnect-interval-multiplier 1;
+              set mirror:parallel-transfer-count 1;
+              open -u \"$FTP_USERNAME\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
+              mirror -R --verbose --exclude-glob .git* ./build/web/ \"$DIR\";
+              bye
+            "
+          }
+          n=0
+          until upload; do
+            n=$((n + 1))
+            if [ "$n" -ge 4 ]; then
+              echo "❌ La subida por FTPS falló tras $n intentos."
+              exit 1
+            fi
+            echo "⚠ Subida incompleta (fallo transitorio). Reintento #$n…"
+            sleep 8
+          done
           echo "✓ Subida a $DIR completada (lftp mirror -R)"
 
       - name: Notify success
