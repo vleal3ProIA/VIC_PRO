@@ -16,12 +16,7 @@ import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { captureError, withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
 import { gatherMaterial } from "../_shared/ai/material.ts";
-import {
-  cloneIndexFromPool,
-  recordContribution,
-  writeSharedIndex,
-  writeSubjectToPool,
-} from "../_shared/ai/pool.ts";
+import { cloneIndexFromPool } from "../_shared/ai/pool.ts";
 import { docFingerprint } from "../_shared/ai/hash.ts";
 
 const corsHeaders = {
@@ -315,16 +310,8 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
         await admin.from("subjects")
           .update({ index_status: "ready", index_error: null })
           .eq("id", subject.id);
-        // Aunque clonemos, si el usuario declaró ESTE temario como libre dejamos
-        // su registro de cesión (email + fecha/hora) para compliance.
-        if (subject.shareable === true) {
-          await recordContribution(admin, {
-            subjectId: subject.id,
-            userId: subject.user_id,
-            title: subject.title,
-            sectionsCount: 0,
-          });
-        }
+        // La contribución al pool (y el registro de cesión) ocurre al VALIDAR
+        // (validate-index), no al generar/clonar.
         console.log("[generate-index] reused index from pool (identical doc)");
         return;
       }
@@ -466,30 +453,9 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
     await admin.from("subjects")
       .update({ index_status: "ready", index_error: null })
       .eq("id", subject.id);
-
-    // Si el material es libre, volcamos sus secciones a la biblioteca global
-    // (best-effort: no debe afectar al estado del índice ya marcado 'ready').
-    await writeSubjectToPool(admin, {
-      id: subject.id,
-      shareable: subject.shareable,
-      language: subject.language,
-    });
-    // Material libre: árbol clonable (para subidas idénticas) + registro legal
-    // de cesión (email + fecha/hora, permanente).
-    if (subject.shareable === true && fingerprint) {
-      await writeSharedIndex(admin, {
-        subjectId: subject.id,
-        fingerprint,
-        title: subject.title,
-        lang: subject.language ?? null,
-      });
-      await recordContribution(admin, {
-        subjectId: subject.id,
-        userId: subject.user_id,
-        title: subject.title,
-        sectionsCount: 0,
-      });
-    }
+    // La contribución a la biblioteca global (secciones + árbol clonable +
+    // registro de cesión) ocurre al VALIDAR el índice (validate-index), no al
+    // generar: así solo se cachean índices que el usuario ha aprobado.
   } catch (e) {
     const msg = e instanceof AiGatewayError ? e.message : (e as Error).message;
     // Log explícito para que el motivo salga en los logs de la Edge Function

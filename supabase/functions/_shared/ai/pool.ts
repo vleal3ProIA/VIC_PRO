@@ -308,27 +308,11 @@ export async function cloneIndexFromPool(
     const nodes = (si as { nodes: SharedIndexNode[] } | null)?.nodes;
     if (!nodes || nodes.length === 0) return false;
 
-    // 1) Inserta los nodos preservando la jerarquía (padres antes que hijos).
-    const newIds: string[] = [];
-    for (const n of nodes) {
-      const parentId = n.parent >= 0 ? (newIds[n.parent] ?? null) : null;
-      const { data: row, error } = await admin
-        .from("index_nodes")
-        .insert({
-          subject_id: args.subjectId,
-          user_id: args.userId,
-          parent_id: parentId,
-          title: n.title,
-          position: n.position,
-          depth: n.depth,
-        })
-        .select("id")
-        .single();
-      if (error || !row) throw new Error("clone_node_insert_failed");
-      newIds.push(row.id as string);
-    }
-
-    // 2) Texto 'original' de las hojas desde el pool (por hash).
+    // 1) Texto 'original' de las hojas desde el pool (por hash) ANTES de insertar
+    // nada. Si el índice cacheado no tiene NINGÚN contenido recuperable (p. ej.
+    // un índice malo/incompleto que se coló antes), NO clonamos: devolvemos
+    // false para que generate-index regenere con la IA. Así un caché envenenado
+    // no se sirve eternamente.
     const leafHashes = [
       ...new Set(
         nodes.filter((n) => n.leaf && n.hash).map((n) => n.hash as string),
@@ -350,6 +334,34 @@ export async function cloneIndexFromPool(
         if (r.body) bodyByHash.set(r.content_hash, r.body);
       }
     }
+    if (bodyByHash.size === 0) {
+      console.log(
+        "[pool] clone skipped: cached index has no recoverable content -> regenerate",
+      );
+      return false;
+    }
+
+    // 2) Inserta los nodos preservando la jerarquía (padres antes que hijos).
+    const newIds: string[] = [];
+    for (const n of nodes) {
+      const parentId = n.parent >= 0 ? (newIds[n.parent] ?? null) : null;
+      const { data: row, error } = await admin
+        .from("index_nodes")
+        .insert({
+          subject_id: args.subjectId,
+          user_id: args.userId,
+          parent_id: parentId,
+          title: n.title,
+          position: n.position,
+          depth: n.depth,
+        })
+        .select("id")
+        .single();
+      if (error || !row) throw new Error("clone_node_insert_failed");
+      newIds.push(row.id as string);
+    }
+
+    // 3) Vuelca el texto 'original' recuperado a las hojas clonadas.
     const contentRows: Array<Record<string, unknown>> = [];
     for (const n of nodes) {
       if (!n.leaf || !n.hash) continue;

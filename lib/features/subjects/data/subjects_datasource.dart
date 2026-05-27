@@ -234,13 +234,26 @@ class SubjectsDataSource {
     }
   }
 
-  /// Valida (bloquea) el índice: una vez validado ya no se puede regenerar.
-  /// RLS de subjects (propietario) permite el UPDATE desde el cliente.
+  /// Valida (bloquea) el índice. Vía EF `validate-index`, que ADEMÁS contribuye
+  /// el índice a la biblioteca global SOLO si el material es libre (así solo se
+  /// cachean índices aprobados por el usuario). Si la EF fallara, caemos al
+  /// UPDATE directo (RLS de propietario) para no bloquear la validación.
   Future<void> validateIndex(String subjectId) async {
-    await _client.from('subjects').update({
-      'index_locked': true,
-      'index_locked_at': DateTime.now().toUtc().toIso8601String(),
-    }).eq('id', subjectId);
+    try {
+      final res = await _client.functions.invoke(
+        'validate-index',
+        body: {'subject_id': subjectId},
+      );
+      final data = res.data;
+      if (data is Map && data['ok'] == true) return;
+      throw const SubjectsException('validate_failed');
+    } catch (_) {
+      // Fallback: bloqueo directo (sin contribuir al pool).
+      await _client.from('subjects').update({
+        'index_locked': true,
+        'index_locked_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', subjectId);
+    }
   }
 
   /// IDs de los nodos que YA tienen contenido generado por IA (explicado o
