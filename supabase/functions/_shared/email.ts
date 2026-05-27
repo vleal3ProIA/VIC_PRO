@@ -60,6 +60,40 @@ export interface SendEmailResult {
   error?: string;
 }
 
+/// Codifica un texto de cabecera (Subject, display-name del From) según RFC 2047
+/// cuando tiene caracteres NO ASCII. Usa "encoded-words" base64 en UTF-8,
+/// troceados en límites de carácter (≤45 bytes por palabra → ≤75 chars, como
+/// exige el RFC). Si el texto es ASCII puro lo deja igual.
+///
+/// Por qué: denomailer 1.6.0 solo codifica cabeceras no-ASCII y su Q-encoding es
+/// defectuoso (deja espacios literales dentro del encoded-word, inválido en
+/// RFC 2047). Clientes estrictos (Apple Mail / iCloud) entonces no parsean el
+/// mensaje y muestran el FUENTE en crudo, y el enlace de verificación no llega
+/// usable. Pre-codificando a base64 ASCII, denomailer no toca la cabecera y el
+/// asunto se decodifica bien en cualquier idioma (cirílico, acentos, etc.).
+export function encodeHeaderText(text: string): string {
+  // ASCII imprimible -> sin tocar (denomailer tampoco lo toca).
+  if (/^[\x20-\x7E]*$/.test(text)) return text;
+  const enc = new TextEncoder();
+  const words: string[] = [];
+  let buf: number[] = [];
+  const flush = () => {
+    if (buf.length === 0) return;
+    let bin = "";
+    for (const b of buf) bin += String.fromCharCode(b);
+    words.push(`=?UTF-8?B?${btoa(bin)}?=`);
+    buf = [];
+  };
+  for (const ch of text) {
+    const chBytes = [...enc.encode(ch)];
+    // No partir un carácter multibyte entre encoded-words (lo prohíbe RFC 2047).
+    if (buf.length + chBytes.length > 45) flush();
+    buf.push(...chBytes);
+  }
+  flush();
+  return words.join(" ");
+}
+
 /**
  * Envia un email via SMTP y lo registra en `email_log`. Idempotente
  * desde el punto de vista del caller: nunca lanza. Si SMTP falla,
@@ -151,9 +185,11 @@ export async function sendEmail(
 
   try {
     await client.send({
-      from: `${fromName} <${from}>`,
+      // Codificamos el display-name y el asunto (RFC 2047) para que los
+      // idiomas con caracteres no-ASCII (cirílico, acentos…) lleguen bien.
+      from: `${encodeHeaderText(fromName)} <${from}>`,
       to,
-      subject,
+      subject: encodeHeaderText(subject),
       content: textBody ?? subject,
       html: htmlBody,
     });
