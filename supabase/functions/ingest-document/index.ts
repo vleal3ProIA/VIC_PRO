@@ -19,22 +19,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { captureError, withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
-import { extractText, getDocumentProxy } from "https://esm.sh/unpdf@0.12.1";
 
-/// Extrae el texto COMPLETO de un PDF con capa de texto (sin IA, sin truncado).
-/// Devuelve "" si no hay texto (PDF escaneado) o si falla.
-async function extractPdfText(bytes: Uint8Array): Promise<string> {
-  try {
-    const pdf = await getDocumentProxy(bytes);
-    const res = await extractText(pdf, { mergePages: true });
-    const t = (res as { text: unknown }).text;
-    if (typeof t === "string") return t;
-    if (Array.isArray(t)) return t.join("\n\n");
-    return "";
-  } catch (_) {
-    return "";
-  }
-}
+// NOTA: ya NO usamos `unpdf` para extraer texto de PDFs. Parsear un PDF en el
+// Edge Function consume demasiada CPU y el runtime lo mata ("CPU Time
+// exceeded"), dejando el documento atascado en 'processing'. En su lugar, los
+// PDFs (y las imágenes) se mandan por VISIÓN al modelo (Gemini), que los lee en
+// su servidor: para nosotros es I/O, no CPU.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -185,20 +175,6 @@ async function processDocument(
     }
     const bytes = new Uint8Array(await blob.arrayBuffer());
 
-    // PDF con capa de texto: extraemos el TEXTO COMPLETO sin IA ni truncado.
-    if (mime === "application/pdf") {
-      const pdfText = await extractPdfText(bytes);
-      if (pdfText.trim().length >= 200) {
-        await admin.from("documents").update({
-          status: "ready",
-          extracted_text: pdfText,
-          error: null,
-        }).eq("id", document.id);
-        return;
-      }
-      // PDF escaneado (sin texto extraíble): seguimos al extractor por visión.
-    }
-
     // TEXTO PLANO: ya ES texto. Lo guardamos DIRECTO, sin pasar por la IA. Antes
     // se mandaba al modelo para que lo devolviera como JSON {language,title,text}
     // y, si la respuesta se truncaba o el JSON salía mal, se guardaba el JSON
@@ -222,8 +198,9 @@ async function processDocument(
       "code. Propose a short title. Respond ONLY with minified JSON of the " +
       'shape {"language":"xx","title":"...","text":"..."} and nothing else.';
 
-    // Solo llegamos aquí con IMÁGENES o PDFs ESCANEADOS (sin capa de texto):
-    // visión nativa. El texto plano y los PDFs con texto ya se resolvieron antes.
+    // PDFs e IMÁGENES -> visión nativa del modelo (lee el documento en su
+    // servidor; para nosotros es I/O, no CPU). El texto plano ya se resolvió
+    // arriba guardándose directo.
     const messages = [
       { role: "user" as const, content: "Process the attached document." },
     ];
