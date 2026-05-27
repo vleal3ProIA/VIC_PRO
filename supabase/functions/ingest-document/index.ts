@@ -211,7 +211,10 @@ async function processDocument(
       system,
       messages,
       attachments,
-      maxOutputTokens: 16384,
+      // Tope alto: el modelo devuelve el TEXTO del PDF; con poco tope se trunca
+      // y el extracted_text queda a medias -> índice incompleto. gemini-2.5-flash
+      // admite 65536; gemini-1.5-flash SOLO 8192 (por eso hay que usar 2.5).
+      maxOutputTokens: 65536,
       temperature: 0,
       userId: document.user_id,
       subjectId: document.subject_id,
