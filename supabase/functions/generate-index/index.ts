@@ -348,8 +348,11 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
     // así lo puede generar CUALQUIER proveedor con fallback, no solo los de
     // visión (Gemini/Anthropic), que pueden fallar por credenciales. Solo
     // usamos visión (adjunto) si NO hay nada de texto.
+    // Cap alto para cubrir temarios largos COMPLETOS (antes 200k recortaba a la
+    // mitad los temarios grandes -> índice incompleto). Gemini 2.5 (1M de
+    // contexto) y Claude (200k) admiten de sobra este tamaño.
     const aiText = fullText.trim().length > 0
-      ? fullText.slice(0, 200000)
+      ? fullText.slice(0, 600000)
       : mat.textContext;
     const useVision = aiText.trim().length === 0 && mat.attachments.length > 0;
     if (aiText.trim().length === 0 && !useVision) {
@@ -371,6 +374,10 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       // parseNodes lo rescata.
       maxOutputTokens: 32768,
       temperature: 0.2,
+      // El índice es la tarea más exigente: si hay un proveedor de PAGO activo
+      // (p. ej. Claude), se prefiere por su mejor seguimiento de "lista TODO";
+      // si no, cae a los gratuitos (Gemini). Reordena, no exige pago.
+      preferTier: "paid",
       userId: subject.user_id,
       subjectId: subject.id,
     });

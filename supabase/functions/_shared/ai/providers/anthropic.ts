@@ -11,6 +11,18 @@ import type { AdapterParams, AdapterResult } from "../types.ts";
 const DEFAULT_BASE = "https://api.anthropic.com";
 const ANTHROPIC_VERSION = "2023-06-01";
 
+/// Tope de tokens de salida por modelo Claude: la API RECHAZA (400) un
+/// `max_tokens` mayor que el límite del modelo. Los 3.5/3.7/haiku admiten 8192;
+/// los Claude 4.x (sonnet/opus) admiten salidas mucho mayores. Por defecto,
+/// valor seguro 8192. Así un caller puede pedir 32k+ sin romper la llamada.
+function modelMaxTokens(model: string): number {
+  const m = model.toLowerCase();
+  if (m.includes("sonnet-4") || m.includes("opus-4") || m.includes("claude-4")) {
+    return 64000;
+  }
+  return 8192;
+}
+
 export const anthropicAdapter = async (
   p: AdapterParams,
 ): Promise<AdapterResult> => {
@@ -54,7 +66,11 @@ export const anthropicAdapter = async (
 
   const body: Record<string, unknown> = {
     model: p.model,
-    max_tokens: p.maxOutputTokens,
+    // Acotamos al máximo del modelo para que la API no rechace la llamada.
+    max_tokens: Math.max(
+      1,
+      Math.min(p.maxOutputTokens, modelMaxTokens(p.model)),
+    ),
     temperature: p.temperature,
     messages,
   };
