@@ -117,6 +117,18 @@ function salvageNodes(t: string): IndexNode[] {
   return out;
 }
 
+/// Cuenta TODOS los nodos del árbol (recursivo). Solo para diagnóstico/logs.
+function countNodes(nodes: IndexNode[]): number {
+  let n = 0;
+  for (const node of nodes) {
+    n++;
+    if (Array.isArray(node.children)) {
+      n += countNodes(node.children as IndexNode[]);
+    }
+  }
+  return n;
+}
+
 Deno.serve(withSentry("generate-index", async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -369,10 +381,11 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
           : "Build the index from the attached document(s).",
       }],
       attachments: useVision ? mat.attachments : undefined,
-      // Tope alto para que quepa un índice grande (los modelos lo acotan a su
-      // máximo sin error; Gemini 2.5 admite hasta 65k). Si aun así se trunca,
-      // parseNodes lo rescata.
-      maxOutputTokens: 32768,
+      // Tope alto para que quepa un índice grande. OJO: el modelo lo acota a SU
+      // máximo: gemini-1.5-flash = 8192 (trunca índices medianos!), gemini-2.5-
+      // flash = 65536. Por eso conviene usar 2.5-flash. Si aún se trunca, el
+      // parser de rescate recupera lo completo.
+      maxOutputTokens: 65536,
       temperature: 0.2,
       // El índice es la tarea más exigente: si hay un proveedor de PAGO activo
       // (p. ej. Claude), se prefiere por su mejor seguimiento de "lista TODO";
@@ -382,8 +395,24 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       subjectId: subject.id,
     });
 
+    // Diagnóstico: qué modelo respondió, cuánto texto devolvió y si la salida
+    // llegó al tope (señal de TRUNCADO = índice incompleto).
+    console.log(
+      "[generate-index] ai-output:",
+      JSON.stringify({
+        provider: result.providerSlug,
+        model: result.model,
+        outputChars: result.text.length,
+        outputTokens: result.outputTokens,
+      }),
+    );
+
     const raw = parseNodes(result.text);
     if (raw.length === 0) throw new Error("empty_index");
+    console.log(
+      "[generate-index] parsed:",
+      JSON.stringify({ topLevelNodes: raw.length, totalNodes: countNodes(raw) }),
+    );
 
     // Troceo (best-effort) con el texto guardado, si lo hay. Cada nodo recibe
     // SOLO su texto propio: las hojas su sección, las carpetas su intro.
