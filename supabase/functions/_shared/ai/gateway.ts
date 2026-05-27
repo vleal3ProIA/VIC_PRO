@@ -148,46 +148,59 @@ export async function runCompletion(
         temperature: req.temperature ?? 0.3,
         attachments: req.attachments,
       };
-      try {
-        const r = await adapter(params);
-        const cost = estimateCost(r.model, r.inputTokens, r.outputTokens, prov.tier);
-        await admin.from("ai_credentials")
-          .update({ last_used_at: nowIso, disabled_reason: null })
-          .eq("id", cred.id);
-        await admin.from("ai_usage").insert({
-          user_id: req.userId ?? null,
-          provider_id: prov.id,
-          task_type: req.task,
-          model: r.model,
-          input_tokens: r.inputTokens,
-          output_tokens: r.outputTokens,
-          cost_usd: cost,
-          subject_id: req.subjectId ?? null,
-        });
-        return {
-          text: r.text,
-          providerSlug: prov.slug,
-          model: r.model,
-          inputTokens: r.inputTokens,
-          outputTokens: r.outputTokens,
-          costUsd: cost,
-        };
-      } catch (e) {
-        const kind = e instanceof AiProviderError ? e.kind : "transient";
-        errors.push(`${prov.slug}: ${(e as Error).message}`);
-        if (kind === "auth") {
+      // Reintentos para errores TRANSITORIOS (5xx, timeout; p. ej. Gemini 503
+      // "high demand / UNAVAILABLE"): hasta 2 reintentos con backoff sobre la
+      // MISMA credencial antes de pasar a la siguiente. Absorbe picos temporales
+      // de saturación del proveedor en vez de fallar el flujo entero.
+      const maxTransientRetries = 2;
+      for (let attempt = 0;; attempt++) {
+        try {
+          const r = await adapter(params);
+          const cost = estimateCost(r.model, r.inputTokens, r.outputTokens, prov.tier);
           await admin.from("ai_credentials")
-            .update({ enabled: false, disabled_reason: "invalid" })
+            .update({ last_used_at: nowIso, disabled_reason: null })
             .eq("id", cred.id);
-        } else if (kind === "quota" || kind === "rate") {
-          await admin.from("ai_credentials")
-            .update({
-              cooldown_until: new Date(Date.now() + COOLDOWN_MS).toISOString(),
-              disabled_reason: "quota_exhausted",
-            })
-            .eq("id", cred.id);
+          await admin.from("ai_usage").insert({
+            user_id: req.userId ?? null,
+            provider_id: prov.id,
+            task_type: req.task,
+            model: r.model,
+            input_tokens: r.inputTokens,
+            output_tokens: r.outputTokens,
+            cost_usd: cost,
+            subject_id: req.subjectId ?? null,
+          });
+          return {
+            text: r.text,
+            providerSlug: prov.slug,
+            model: r.model,
+            inputTokens: r.inputTokens,
+            outputTokens: r.outputTokens,
+            costUsd: cost,
+          };
+        } catch (e) {
+          const kind = e instanceof AiProviderError ? e.kind : "transient";
+          if (kind === "transient" && attempt < maxTransientRetries) {
+            // backoff: 1.5s, 3s
+            await new Promise((res) => setTimeout(res, 1500 * (attempt + 1)));
+            continue;
+          }
+          errors.push(`${prov.slug}: ${(e as Error).message}`);
+          if (kind === "auth") {
+            await admin.from("ai_credentials")
+              .update({ enabled: false, disabled_reason: "invalid" })
+              .eq("id", cred.id);
+          } else if (kind === "quota" || kind === "rate") {
+            await admin.from("ai_credentials")
+              .update({
+                cooldown_until: new Date(Date.now() + COOLDOWN_MS).toISOString(),
+                disabled_reason: "quota_exhausted",
+              })
+              .eq("id", cred.id);
+          }
+          // 'bad_request' / 'transient' agotado -> siguiente credencial/proveedor.
+          break;
         }
-        // 'bad_request' / 'transient' -> probar siguiente credencial/proveedor.
       }
     }
   }
