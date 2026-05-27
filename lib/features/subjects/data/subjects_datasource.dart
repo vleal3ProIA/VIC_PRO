@@ -831,6 +831,26 @@ class SubjectsDataSource {
     }
   }
 
+  /// Texto COMPLETO del temario (el extraído de los documentos 'ready',
+  /// concatenado en orden). Es lo que mostramos al seleccionar el nodo raíz
+  /// (título del temario): el documento entero tal cual su contenido. `null` si
+  /// aún no hay texto extraído.
+  Future<String?> originalFullText(String subjectId) async {
+    final rows = await _client
+        .from('documents')
+        .select('extracted_text')
+        .eq('subject_id', subjectId)
+        .eq('status', 'ready')
+        .order('created_at');
+    final parts = (rows as List)
+        .map((e) => (e as Map)['extracted_text'] as String?)
+        .where((t) => t != null && t.trim().isNotEmpty)
+        .cast<String>()
+        .toList(growable: false);
+    if (parts.isEmpty) return null;
+    return parts.join('\n\n');
+  }
+
   /// URL firmada (1 h) del primer documento del temario, para abrir el
   /// original tal cual. `null` si no hay documentos.
   Future<String?> originalDocumentUrl(String subjectId) async {

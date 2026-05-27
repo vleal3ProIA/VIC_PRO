@@ -913,6 +913,20 @@ class _ContentColumn extends ConsumerWidget {
       );
     }
 
+    // NODO RAÍZ (título del temario): mostramos el DOCUMENTO COMPLETO tal cual
+    // su contenido (texto extraído), navegable — el resto de nodos muestran su
+    // propia parte. El raíz es el único con parentId == null.
+    IndexNode? selected;
+    for (final n in nodes) {
+      if (n.id == nodeId) {
+        selected = n;
+        break;
+      }
+    }
+    if (selected != null && selected.parentId == null) {
+      return _RootOriginalView(subjectId: subjectId, title: nodeTitle ?? '');
+    }
+
     // CARPETA (nodo con subapartados): si tiene una INTRO propia (texto entre
     // su título y el primer subíndice) la mostramos SOLA; si no, mostramos solo
     // su ESTRUCTURA (los títulos de sus subíndices, clicables). Nunca volcamos
@@ -1024,6 +1038,105 @@ class _ContentColumn extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Vista del nodo RAÍZ (título del temario): muestra el DOCUMENTO COMPLETO tal
+/// cual su contenido (texto extraído), navegable por el índice (cada sección
+/// muestra su parte). Botón "Ver original" para abrir el archivo subido tal cual.
+class _RootOriginalView extends ConsumerStatefulWidget {
+  const _RootOriginalView({required this.subjectId, required this.title});
+
+  final String subjectId;
+  final String title;
+
+  @override
+  ConsumerState<_RootOriginalView> createState() => _RootOriginalViewState();
+}
+
+class _RootOriginalViewState extends ConsumerState<_RootOriginalView> {
+  bool _busy = false;
+
+  Future<void> _openOriginal() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final errBg = Theme.of(context).colorScheme.error;
+    try {
+      final url = await ref
+          .read(subjectsDataSourceProvider)
+          .originalDocumentUrl(widget.subjectId);
+      if (url != null) {
+        openUrlInNewTab(url);
+      } else {
+        messenger.showSnackBar(
+          SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+        );
+      }
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final async = ref.watch(subjectFullTextProvider(widget.subjectId));
+    return _ColumnCard(
+      title: widget.title,
+      leading: Icons.menu_book_outlined,
+      actions: [
+        IconButton(
+          tooltip: l.studyOpenOriginal,
+          visualDensity: VisualDensity.compact,
+          icon: _busy
+              ? const SizedBox(
+                  height: 16,
+                  width: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2.2),
+                )
+              : const Icon(Icons.open_in_new, size: 18),
+          onPressed: _busy ? null : _openOriginal,
+        ),
+      ],
+      body: async.when(
+        loading: () => const Center(child: AppLoadingState()),
+        error: (e, _) => AppErrorState(
+          message: l.studyViewError,
+          detail: e.toString(),
+          onRetry: () =>
+              ref.invalidate(subjectFullTextProvider(widget.subjectId)),
+          retryLabel: l.actionRetry,
+        ),
+        data: (text) {
+          if (text == null || text.trim().isEmpty) {
+            // Sin texto extraído: ofrecemos abrir el archivo original tal cual.
+            return Center(
+              child: PremiumButton(
+                label: l.studyOpenOriginal,
+                leadingIcon: Icons.open_in_new,
+                loading: _busy,
+                onPressed: _busy ? null : _openOriginal,
+              ),
+            );
+          }
+          return Scrollbar(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: SelectableText(
+                text,
+                style: context.textTheme.bodyMedium?.copyWith(height: 1.5),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

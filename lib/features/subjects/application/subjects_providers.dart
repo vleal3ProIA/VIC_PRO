@@ -131,3 +131,10 @@ final nodeContentProvider =
         key.kind,
       );
 });
+
+/// Texto completo del temario (documento entero extraído), para mostrarlo al
+/// seleccionar el nodo raíz del índice. `null` si aún no hay texto.
+final subjectFullTextProvider =
+    FutureProvider.family<String?, String>((ref, subjectId) {
+  return ref.watch(subjectsDataSourceProvider).originalFullText(subjectId);
+});
