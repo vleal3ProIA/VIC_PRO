@@ -8,6 +8,7 @@
 // ============================================================================
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -845,10 +846,34 @@ class SubjectsDataSource {
     final parts = (rows as List)
         .map((e) => (e as Map)['extracted_text'] as String?)
         .where((t) => t != null && t.trim().isNotEmpty)
-        .cast<String>()
+        .map((t) => _plainTextFromExtracted(t!))
+        .where((t) => t.trim().isNotEmpty)
         .toList(growable: false);
     if (parts.isEmpty) return null;
     return parts.join('\n\n');
+  }
+
+  /// Devuelve el texto legible de un `extracted_text`. Normalmente ya es texto
+  /// plano, pero en datos antiguos podía haberse guardado como el JSON crudo del
+  /// modelo (`{"language","title","text":"…\\n…"}`, a veces con fence ```json```).
+  /// Si detecta ese caso y es parseable, extrae el campo `text` (con saltos de
+  /// línea reales); si no, devuelve el original tal cual.
+  static String _plainTextFromExtracted(String raw) {
+    var t = raw.trim();
+    final fence = RegExp(r'```(?:json)?\s*([\s\S]*?)```').firstMatch(t);
+    if (fence != null) t = (fence.group(1) ?? '').trim();
+    if (t.startsWith('{') && t.endsWith('}')) {
+      try {
+        final obj = jsonDecode(t);
+        if (obj is Map && obj['text'] is String) {
+          final inner = (obj['text'] as String).trim();
+          if (inner.isNotEmpty) return inner;
+        }
+      } catch (_) {
+        // JSON inválido/truncado -> devolvemos el original.
+      }
+    }
+    return raw;
   }
 
   /// URL firmada (1 h) del primer documento del temario, para abrir el

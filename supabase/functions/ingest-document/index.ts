@@ -199,6 +199,22 @@ async function processDocument(
       // PDF escaneado (sin texto extraíble): seguimos al extractor por visión.
     }
 
+    // TEXTO PLANO: ya ES texto. Lo guardamos DIRECTO, sin pasar por la IA. Antes
+    // se mandaba al modelo para que lo devolviera como JSON {language,title,text}
+    // y, si la respuesta se truncaba o el JSON salía mal, se guardaba el JSON
+    // CRUDO como `extracted_text` (con `\n` literales). Guardarlo directo evita
+    // ese bug por completo; el idioma se infiere luego del propio contenido.
+    if (mime.startsWith("text/")) {
+      const raw = new TextDecoder().decode(bytes).trim();
+      if (raw.length === 0) throw new Error("empty_text_document");
+      await admin.from("documents").update({
+        status: "ready",
+        extracted_text: raw.slice(0, 500_000),
+        error: null,
+      }).eq("id", document.id);
+      return;
+    }
+
     const system =
       "You are a document ingestion engine for a study app. Extract the full " +
       "readable text content of the provided material, preserving structure " +
@@ -206,23 +222,19 @@ async function processDocument(
       "code. Propose a short title. Respond ONLY with minified JSON of the " +
       'shape {"language":"xx","title":"...","text":"..."} and nothing else.';
 
-    let messages: Array<{ role: "user"; content: string }>;
-    let attachments: Array<{ mimeType: string; dataBase64: string }> | undefined;
-    if (mime.startsWith("text/")) {
-      const raw = new TextDecoder().decode(bytes).slice(0, 200000);
-      messages = [{ role: "user", content: "Process this document:\n\n" + raw }];
-      attachments = undefined;
-    } else {
-      messages = [{ role: "user", content: "Process the attached document." }];
-      attachments = [{ mimeType: mime, dataBase64: toBase64(bytes) }];
-    }
+    // Solo llegamos aquí con IMÁGENES o PDFs ESCANEADOS (sin capa de texto):
+    // visión nativa. El texto plano y los PDFs con texto ya se resolvieron antes.
+    const messages = [
+      { role: "user" as const, content: "Process the attached document." },
+    ];
+    const attachments = [{ mimeType: mime, dataBase64: toBase64(bytes) }];
 
     const result = await runCompletion(admin, {
       task: "ingest",
       system,
       messages,
       attachments,
-      maxOutputTokens: 8192,
+      maxOutputTokens: 16384,
       temperature: 0,
       userId: document.user_id,
       subjectId: document.subject_id,
