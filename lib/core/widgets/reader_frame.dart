@@ -9,9 +9,9 @@ class ReaderFrame extends StatelessWidget {
   const ReaderFrame({
     required this.child,
     super.key,
-    this.maxWidth = 760,
-    this.horizontalPadding = 24,
-    this.verticalPadding = 24,
+    this.maxWidth = 880,
+    this.horizontalPadding = 12,
+    this.verticalPadding = 20,
   });
 
   final Widget child;

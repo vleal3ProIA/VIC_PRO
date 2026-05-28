@@ -99,13 +99,15 @@ class ReadableText extends StatelessWidget {
               TextSpan(text: p, style: base),
             ],
           ),
+          textAlign: TextAlign.justify,
         );
       } else {
-        paragraph = Text(p, style: base);
+        paragraph = Text(p, style: base, textAlign: TextAlign.justify);
       }
 
+      // Separación visible "tipo salto de línea en blanco" entre párrafos.
       blocks.add(Padding(
-        padding: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.only(bottom: 22),
         child: paragraph,
       ),);
     }
