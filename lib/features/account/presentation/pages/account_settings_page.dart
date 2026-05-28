@@ -484,6 +484,14 @@ class _WorkspaceTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final auditLogVisible = ref.watch(flagEnabledProvider('audit_log_visible'));
+    // Cada sección "opcional" del Workspace tiene su flag — el admin las
+    // apaga/enciende desde `/admin/flags` sin tocar código.
+    final tokensVisible =
+        ref.watch(flagEnabledProvider('workspace_tokens_visible'));
+    final webhooksVisible =
+        ref.watch(flagEnabledProvider('workspace_webhooks_visible'));
+    final teamVisible =
+        ref.watch(flagEnabledProvider('workspace_team_visible'));
 
     return PremiumCard(
       padding: EdgeInsets.zero,
@@ -495,27 +503,33 @@ class _WorkspaceTab extends ConsumerWidget {
             subtitle: l.filesHint,
             onTap: () => context.pushNamed(RouteNames.files),
           ),
-          const Divider(height: 1),
-          _LinkTile(
-            icon: Icons.vpn_key_outlined,
-            title: l.tokensTitle,
-            subtitle: l.tokensHint,
-            onTap: () => context.pushNamed(RouteNames.tokens),
-          ),
-          const Divider(height: 1),
-          _LinkTile(
-            icon: Icons.webhook_outlined,
-            title: l.webhooksTitle,
-            subtitle: l.webhooksHint,
-            onTap: () => context.pushNamed(RouteNames.webhooks),
-          ),
-          const Divider(height: 1),
-          _LinkTile(
-            icon: Icons.groups_outlined,
-            title: l.settingsTeam,
-            subtitle: l.settingsTeamHint,
-            onTap: () => context.pushNamed(RouteNames.team),
-          ),
+          if (tokensVisible) ...[
+            const Divider(height: 1),
+            _LinkTile(
+              icon: Icons.vpn_key_outlined,
+              title: l.tokensTitle,
+              subtitle: l.tokensHint,
+              onTap: () => context.pushNamed(RouteNames.tokens),
+            ),
+          ],
+          if (webhooksVisible) ...[
+            const Divider(height: 1),
+            _LinkTile(
+              icon: Icons.webhook_outlined,
+              title: l.webhooksTitle,
+              subtitle: l.webhooksHint,
+              onTap: () => context.pushNamed(RouteNames.webhooks),
+            ),
+          ],
+          if (teamVisible) ...[
+            const Divider(height: 1),
+            _LinkTile(
+              icon: Icons.groups_outlined,
+              title: l.settingsTeam,
+              subtitle: l.settingsTeamHint,
+              onTap: () => context.pushNamed(RouteNames.team),
+            ),
+          ],
           // Activity y Audit log estan gated por feature flag
           // `audit_log_visible`.
           if (auditLogVisible) ...[
@@ -753,6 +767,12 @@ class _WorkspaceMasterDetail extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final auditVisible = ref.watch(flagEnabledProvider('audit_log_visible'));
+    final tokensVisible =
+        ref.watch(flagEnabledProvider('workspace_tokens_visible'));
+    final webhooksVisible =
+        ref.watch(flagEnabledProvider('workspace_webhooks_visible'));
+    final teamVisible =
+        ref.watch(flagEnabledProvider('workspace_team_visible'));
     return SettingsMasterDetail(
       items: [
         SettingsDetailItem(
@@ -760,21 +780,24 @@ class _WorkspaceMasterDetail extends ConsumerWidget {
           label: l.filesTitle,
           builder: (_) => const FilesView(embedded: true),
         ),
-        SettingsDetailItem(
-          icon: Icons.vpn_key_outlined,
-          label: l.tokensTitle,
-          builder: (_) => const TokensView(embedded: true),
-        ),
-        SettingsDetailItem(
-          icon: Icons.webhook_outlined,
-          label: l.webhooksTitle,
-          builder: (_) => const WebhooksView(embedded: true),
-        ),
-        SettingsDetailItem(
-          icon: Icons.groups_outlined,
-          label: l.settingsTeam,
-          builder: (_) => const TeamView(embedded: true),
-        ),
+        if (tokensVisible)
+          SettingsDetailItem(
+            icon: Icons.vpn_key_outlined,
+            label: l.tokensTitle,
+            builder: (_) => const TokensView(embedded: true),
+          ),
+        if (webhooksVisible)
+          SettingsDetailItem(
+            icon: Icons.webhook_outlined,
+            label: l.webhooksTitle,
+            builder: (_) => const WebhooksView(embedded: true),
+          ),
+        if (teamVisible)
+          SettingsDetailItem(
+            icon: Icons.groups_outlined,
+            label: l.settingsTeam,
+            builder: (_) => const TeamView(embedded: true),
+          ),
         if (auditVisible) ...[
           SettingsDetailItem(
             icon: Icons.timeline,
