@@ -607,7 +607,7 @@ class _BillingTab extends ConsumerWidget {
                 ? null
                 : () => ref
                     .read(dataExportNotifierProvider.notifier)
-                    .exportAndDownload(),
+                    .exportAndDownload(context),
           ),
         ],
       ),
@@ -896,7 +896,7 @@ class _DataExportPanel extends ConsumerWidget {
               ? null
               : () => ref
                   .read(dataExportNotifierProvider.notifier)
-                  .exportAndDownload(),
+                  .exportAndDownload(context),
           icon: exportState.isBuilding
               ? const SizedBox(
                   width: 18,

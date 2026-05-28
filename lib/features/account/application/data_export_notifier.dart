@@ -1,17 +1,28 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:archive/archive.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:myapp/core/providers/supabase_providers.dart';
+import 'package:myapp/features/account/presentation/util/data_export_pdf_builder.dart';
 import 'package:myapp/features/account/presentation/util/web_download.dart';
+import 'package:myapp/generated/l10n/app_localizations.dart';
 
-/// Función que dispara la descarga del archivo. Está detrás de un provider
-/// para poder inyectar un fake en los tests.
+/// Función que dispara la descarga del ZIP final. Está detrás de un
+/// provider para poder inyectar un fake en los tests sin tocar el DOM.
+///
+/// Acepta bytes ya construidos (no un payload genérico): el notifier es
+/// quien sabe cómo armar el JSON + PDF + ZIP, esta función solo lo entrega
+/// al navegador.
 typedef DataDownloader = void Function({
   required String filename,
-  required Object payload,
+  required Uint8List bytes,
 });
 
 final dataDownloaderProvider = Provider<DataDownloader>((ref) {
-  return downloadJsonFile;
+  return downloadZipFile;
 });
 
 enum DataExportStatus { idle, building, success, failure }
@@ -39,32 +50,33 @@ class DataExportState {
   }
 }
 
-/// Genera y descarga una copia de los datos del usuario en JSON.
+/// Genera y descarga una copia de los datos del usuario en un **ZIP** que
+/// contiene `mis-datos.json` (machine-readable) + `mis-datos.pdf`
+/// (human-readable, localizado).
 ///
-/// **Compliance**: cubre **GDPR Article 15 (Right of Access)** y
-/// **Article 20 (Data Portability)**, asi como equivalentes (CCPA,
-/// LGPD).
+/// **Compliance**: GDPR Article 15 (Right of Access) + Article 20 (Data
+/// Portability), equivalentes (CCPA, LGPD).
 ///
-/// **Antes (v1)**: el payload se construia client-side a partir de
-/// `User`, `Profile` y `mfaFactors`. Cobertura limitada: solo cuenta +
-/// perfil + factores MFA. Falto: uploads, audit_logs, tenants,
-/// notificaciones, emails recibidos, PATs, webhooks.
-///
-/// **Ahora (v2)**: llama la RPC SQL `get_my_data_export()` (migracion
-/// 0043) que recopila TODO en server-side y devuelve un JSONB. La RPC
-/// es `SECURITY DEFINER` con `auth.uid()`, asi que aunque bypassa RLS
-/// solo expone los datos del propio caller. Strippea secretos
-/// (token_hash, secret_hash) y info tecnica (Storage paths).
-///
-/// **Limit**: `audit_logs` y `email_log` se truncan a las 1000 entradas
-/// mas recientes server-side para evitar exports gigantes que rompan
-/// el browser. Para historial completo, contact support.
+/// **v2**: la RPC `get_my_data_export` (migración 0072) ya devuelve el
+/// payload limpio — sin UUIDs internos del sistema, con `login_summary`
+/// agregando ruido y nombres más amigables (kind, uploaded_at). El PDF se
+/// construye client-side a partir de ese mismo Map (sin duplicar lógica).
 class DataExportNotifier extends Notifier<DataExportState> {
   @override
   DataExportState build() => const DataExportState();
 
-  Future<void> exportAndDownload() async {
+  /// El [context] es necesario para leer las cadenas localizadas que van
+  /// al PDF — los notifiers no tienen acceso a `AppLocalizations`. Se
+  /// extraen ANTES del primer await para no usar el context tras un gap
+  /// async (linter "use_build_context_synchronously").
+  Future<void> exportAndDownload(BuildContext context) async {
     if (state.isBuilding) return;
+
+    // 1. Leer labels localizadas y locale del UI ANTES de await.
+    final l10n = AppLocalizations.of(context);
+    final uiLocale = Localizations.localeOf(context).languageCode;
+    final labels = _buildLabels(l10n);
+
     state = state.copyWith(
       status: DataExportStatus.building,
       clearError: true,
@@ -81,23 +93,49 @@ class DataExportNotifier extends Notifier<DataExportState> {
         return;
       }
 
-      // La RPC devuelve un JSONB con TODO. Es un Map<String, dynamic>
-      // anidado: cada seccion (account, profile, uploads, ...) es una
-      // sub-key. La RPC valida `auth.uid()` internamente y lanza
-      // `not_authenticated` si el JWT esta vacio (no deberia pasar
-      // tras el currentUser != null pero defense in depth).
-      final data = await client.rpc<dynamic>('get_my_data_export');
-      if (data is! Map) {
+      // 2. RPC v2 — JSON ya sin UUIDs, con login_summary, etc.
+      final raw = await client.rpc<dynamic>('get_my_data_export');
+      if (raw is! Map) {
         state = state.copyWith(
           status: DataExportStatus.failure,
           errorMessage: 'unexpected_response_shape',
         );
         return;
       }
+      final data = raw.cast<String, dynamic>();
 
+      // 3. Preferimos el locale del usuario almacenado en su perfil, no el
+      //    de la UI — si el user cambió de idioma este export ahora pero
+      //    su preferencia base es otra, respetamos su preferencia para el
+      //    contenido del PDF (más consistente con sus correos y otros
+      //    artefactos generados a partir del perfil).
+      final profile = data['profile'];
+      final profileLocale = profile is Map
+          ? (profile['locale'] as String?)
+          : null;
+      final locale = profileLocale ?? uiLocale;
+
+      // 4. Construir PDF.
+      final pdfBytes = await buildDataExportPdf(
+        data: data,
+        locale: locale,
+        labels: labels,
+      );
+
+      // 5. JSON pretty-printed.
+      final jsonString = const JsonEncoder.withIndent('  ').convert(data);
+      final jsonBytes = Uint8List.fromList(utf8.encode(jsonString));
+
+      // 6. Empaquetar en ZIP (in-memory).
+      final archive = Archive()
+        ..addFile(ArchiveFile('mis-datos.json', jsonBytes.length, jsonBytes))
+        ..addFile(ArchiveFile('mis-datos.pdf', pdfBytes.length, pdfBytes));
+      final zipBytes = Uint8List.fromList(ZipEncoder().encode(archive));
+
+      // 7. Trigger descarga.
       ref.read(dataDownloaderProvider)(
         filename: _buildFilename(),
-        payload: data.cast<String, dynamic>(),
+        bytes: zipBytes,
       );
 
       state = state.copyWith(status: DataExportStatus.success);
@@ -111,14 +149,57 @@ class DataExportNotifier extends Notifier<DataExportState> {
 
   void reset() => state = const DataExportState();
 
+  /// Convierte `AppLocalizations` (i18n generada) en un bag plano de
+  /// strings para el builder. Mantenemos el builder libre de
+  /// `BuildContext` así puede ser un módulo puro Dart testeable sin
+  /// MaterialApp wrapper.
+  PdfExportLabels _buildLabels(AppLocalizations l) {
+    return PdfExportLabels(
+      title: l.dataExportPdfTitle,
+      subtitle: l.dataExportPdfSubtitle('{date}'),
+      notice: l.dataExportPdfNotice,
+      sectionAccount: l.dataExportPdfSectionAccount,
+      sectionProfile: l.dataExportPdfSectionProfile,
+      sectionTenants: l.dataExportPdfSectionTenants,
+      sectionUploads: l.dataExportPdfSectionUploads,
+      sectionLogins: l.dataExportPdfSectionLogins,
+      sectionEvents: l.dataExportPdfSectionEvents,
+      sectionEmails: l.dataExportPdfSectionEmails,
+      sectionTokens: l.dataExportPdfSectionTokens,
+      sectionWebhooks: l.dataExportPdfSectionWebhooks,
+      sectionNotifs: l.dataExportPdfSectionNotifs,
+      labelEmail: l.dataExportPdfLabelEmail,
+      labelCreated: l.dataExportPdfLabelCreated,
+      labelLastLogin: l.dataExportPdfLabelLastLogin,
+      labelVerified: l.dataExportPdfLabelVerified,
+      labelDisplayName: l.dataExportPdfLabelDisplayName,
+      labelUsername: l.dataExportPdfLabelUsername,
+      labelLocale: l.dataExportPdfLabelLocale,
+      labelTheme: l.dataExportPdfLabelTheme,
+      labelName: l.dataExportPdfLabelName,
+      labelKind: l.dataExportPdfLabelKind,
+      labelSize: l.dataExportPdfLabelSize,
+      labelDate: l.dataExportPdfLabelDate,
+      labelDeleted: l.dataExportPdfLabelDeleted,
+      labelRole: l.dataExportPdfLabelRole,
+      labelJoinedAt: l.dataExportPdfLabelJoinedAt,
+      loginsSummaryBuilder: l.dataExportPdfLabelLoginsSummary,
+      yes: l.dataExportPdfYes,
+      no: l.dataExportPdfNo,
+      themeDark: l.dataExportPdfThemeDark,
+      themeLight: l.dataExportPdfThemeLight,
+      themeSystem: l.dataExportPdfThemeSystem,
+    );
+  }
+
   String _buildFilename() {
-    // `myapp-data-2026-05-15T18-30-12.json`
-    final stamp = DateTime.now()
-        .toIso8601String()
-        .split('.')
-        .first
-        .replaceAll(':', '-');
-    return 'myapp-data-$stamp.json';
+    // `myapp-datos-2026-05-28.zip` — fecha solo, sin timestamp full ni
+    // UUIDs en el nombre.
+    final now = DateTime.now();
+    final y = now.year.toString().padLeft(4, '0');
+    final m = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    return 'myapp-datos-$y-$m-$d.zip';
   }
 }
 

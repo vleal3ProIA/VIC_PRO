@@ -80,6 +80,12 @@ dependencies:
   sentry_flutter: ^8.14.2
   meta: ^1.17.0
 
+  # GDPR export (PDF + ZIP)
+  # `pdf`: generador puro Dart para construir PDFs sin headless browser.
+  # `archive`: ZIP encoder, encapsula JSON + PDF en un solo fichero.
+  pdf: ^3.11.1
+  archive: ^4.0.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
