@@ -947,50 +947,78 @@ class _ContentColumnState extends ConsumerState<_ContentColumn> {
       body = _tabbed(context, nodeId);
     }
 
-    // Panel de chat deslizante: sube desde abajo cubriendo ~65% del card. El
-    // botón flotante se desvanece cuando el chat está abierto. La IA solo
-    // responde sobre este temario o la sección activa (lo fuerza el system
-    // prompt de `ask-subject`).
+    // Panel de chat deslizante (bottom sheet acoplado a la card): sube desde
+    // abajo cubriendo ~55% del card (con techo en 440 px y suelo en 260) y deja
+    // siempre visible el contenido detrás, con un velo semitransparente para
+    // que se perciba claramente que está SUPERPUESTO. El botón flotante se
+    // desvanece mientras el chat está abierto. La IA solo responde sobre este
+    // temario o la sección activa (lo fuerza el system prompt de `ask-subject`).
     return LayoutBuilder(
       builder: (ctx, constraints) {
-        final panelHeight =
-            (constraints.maxHeight * 0.65).clamp(280.0, 640.0);
-        return Stack(
-          children: [
-            Positioned.fill(child: body),
-            Positioned(
-              right: 12,
-              bottom: 12,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 150),
-                opacity: _chatOpen ? 0 : 1,
+        // Si el padre no acota la altura (caso defensivo), usamos un valor fijo
+        // razonable para que el sheet no degenere a pantalla completa.
+        final hasBounded = constraints.maxHeight.isFinite;
+        final base = hasBounded ? constraints.maxHeight : 560.0;
+        final panelHeight = (base * 0.55).clamp(260.0, 440.0);
+        final scheme = Theme.of(context).colorScheme;
+        return ClipRect(
+          child: Stack(
+            children: [
+              Positioned.fill(child: body),
+              // Velo: fade-in cuando se abre el chat, transparente cuando se
+              // cierra. Cliquear el velo cierra el panel.
+              Positioned.fill(
                 child: IgnorePointer(
-                  ignoring: _chatOpen,
-                  child: FloatingActionButton.small(
-                    heroTag: 'study_chat_open',
-                    tooltip: l.studyTabChat,
-                    onPressed: () => setState(() => _chatOpen = true),
-                    child: const Icon(Icons.chat_bubble_outline),
+                  ignoring: !_chatOpen,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 220),
+                    opacity: _chatOpen ? 1 : 0,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => setState(() => _chatOpen = false),
+                      child: ColoredBox(
+                        color: Colors.black.withValues(alpha: 0.18),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: panelHeight,
-              child: IgnorePointer(
-                ignoring: !_chatOpen,
-                child: AnimatedSlide(
-                  duration: const Duration(milliseconds: 240),
-                  curve: Curves.easeOutCubic,
-                  offset: _chatOpen ? Offset.zero : const Offset(0, 1.05),
-                  child: _chatPanel(context),
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 150),
+                  opacity: _chatOpen ? 0 : 1,
+                  child: IgnorePointer(
+                    ignoring: _chatOpen,
+                    child: FloatingActionButton.small(
+                      heroTag: 'study_chat_open',
+                      tooltip: l.studyTabChat,
+                      backgroundColor: scheme.primary,
+                      foregroundColor: scheme.onPrimary,
+                      onPressed: () => setState(() => _chatOpen = true),
+                      child: const Icon(Icons.chat_bubble_outline),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: panelHeight,
+                child: IgnorePointer(
+                  ignoring: !_chatOpen,
+                  child: AnimatedSlide(
+                    duration: const Duration(milliseconds: 320),
+                    curve: Curves.easeOutCubic,
+                    offset: _chatOpen ? Offset.zero : const Offset(0, 1.1),
+                    child: _chatPanel(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
