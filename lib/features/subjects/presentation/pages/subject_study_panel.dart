@@ -925,12 +925,8 @@ class _ContentColumnState extends ConsumerState<_ContentColumn> {
       );
     }
 
-    // Chat abierto -> ocupa la card entera con un botón de cerrar.
-    if (_chatOpen) return _chatPanel(context);
-
-    // Estado normal: contenido (raíz / carpeta / hoja) + botón flotante de chat
-    // abajo a la derecha. La IA solo responde sobre este temario o la sección
-    // seleccionada (lo fuerza el system prompt de `ask-subject`).
+    // Contenido normal (raíz / carpeta / hoja). Siempre presente debajo, así
+    // sigue visible/clicable cuando el chat se abre desde abajo.
     IndexNode? selected;
     for (final n in widget.nodes) {
       if (n.id == nodeId) {
@@ -951,20 +947,52 @@ class _ContentColumnState extends ConsumerState<_ContentColumn> {
       body = _tabbed(context, nodeId);
     }
 
-    return Stack(
-      children: [
-        Positioned.fill(child: body),
-        Positioned(
-          right: 12,
-          bottom: 12,
-          child: FloatingActionButton.small(
-            heroTag: 'study_chat_open',
-            tooltip: l.studyTabChat,
-            onPressed: () => setState(() => _chatOpen = true),
-            child: const Icon(Icons.chat_bubble_outline),
-          ),
-        ),
-      ],
+    // Panel de chat deslizante: sube desde abajo cubriendo ~65% del card. El
+    // botón flotante se desvanece cuando el chat está abierto. La IA solo
+    // responde sobre este temario o la sección activa (lo fuerza el system
+    // prompt de `ask-subject`).
+    return LayoutBuilder(
+      builder: (ctx, constraints) {
+        final panelHeight =
+            (constraints.maxHeight * 0.65).clamp(280.0, 640.0);
+        return Stack(
+          children: [
+            Positioned.fill(child: body),
+            Positioned(
+              right: 12,
+              bottom: 12,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 150),
+                opacity: _chatOpen ? 0 : 1,
+                child: IgnorePointer(
+                  ignoring: _chatOpen,
+                  child: FloatingActionButton.small(
+                    heroTag: 'study_chat_open',
+                    tooltip: l.studyTabChat,
+                    onPressed: () => setState(() => _chatOpen = true),
+                    child: const Icon(Icons.chat_bubble_outline),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: panelHeight,
+              child: IgnorePointer(
+                ignoring: !_chatOpen,
+                child: AnimatedSlide(
+                  duration: const Duration(milliseconds: 240),
+                  curve: Curves.easeOutCubic,
+                  offset: _chatOpen ? Offset.zero : const Offset(0, 1.05),
+                  child: _chatPanel(context),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1064,27 +1092,67 @@ class _ContentColumnState extends ConsumerState<_ContentColumn> {
     );
   }
 
-  /// Panel de chat: ocupa la card central. Recibe la sección activa, así la IA
-  /// solo responde sobre el temario o esa sección.
+  /// Hoja DESLIZANTE de chat: aparece por la parte inferior del card central,
+  /// con cabecera (icono + título + cerrar) y el contenido de chat debajo. La
+  /// IA solo responde sobre el temario o la sección activa.
   Widget _chatPanel(BuildContext context) {
     final l = context.l10n;
-    return _ColumnCard(
-      title: l.studyTabChat,
-      leading: Icons.chat_bubble_outline,
-      actions: [
-        IconButton(
-          tooltip: l.actionClose,
-          visualDensity: VisualDensity.compact,
-          icon: const Icon(Icons.close, size: 18),
-          onPressed: () => setState(() => _chatOpen = false),
-        ),
-      ],
-      body: _ChatView(
-        key: ValueKey('chat_${widget.subjectId}'),
-        subjectId: widget.subjectId,
-        nodeId: widget.nodeId,
-        nodes: widget.nodes,
-        onSelectNode: widget.onSelectNode,
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      elevation: 12,
+      color: scheme.surface,
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(16),
+        topRight: Radius.circular(16),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+              border: Border(
+                bottom: BorderSide(
+                  color: scheme.outline.withValues(alpha: 0.18),
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.chat_bubble_outline,
+                  size: 18,
+                  color: scheme.primary,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    l.studyTabChat,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: l.actionClose,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.close, size: 18),
+                  onPressed: () => setState(() => _chatOpen = false),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _ChatView(
+              key: ValueKey('chat_${widget.subjectId}'),
+              subjectId: widget.subjectId,
+              nodeId: widget.nodeId,
+              nodes: widget.nodes,
+              onSelectNode: widget.onSelectNode,
+            ),
+          ),
+        ],
       ),
     );
   }
