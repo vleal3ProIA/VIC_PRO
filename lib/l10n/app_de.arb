@@ -284,6 +284,7 @@
   "adminPlansNotAdmin": "Du brauchst Admin-Rolle, um Pläne zu verwalten.",
   "adminFlagsEmpty": "Noch keine Feature Flags definiert.",
   "adminFlagsError": "Feature Flags konnten nicht geladen werden.",
+  "adminFlagsErrorDenied": "Keine Berechtigung, Feature Flags zu ändern (Capability `manage_flags` erforderlich).",
   "adminFlagsRollout": "{percent}%",
 
   "adminBrandingTitle": "Stripe-Branding",

@@ -284,6 +284,7 @@
   "adminPlansNotAdmin": "Потрібна роль admin для керування тарифами.",
   "adminFlagsEmpty": "Feature флагів ще немає.",
   "adminFlagsError": "Не вдалося завантажити feature флаги.",
+  "adminFlagsErrorDenied": "Немає прав на зміну feature флагів (потрібна capability `manage_flags`).",
   "adminFlagsRollout": "{percent}%",
 
   "adminBrandingTitle": "Брендинг Stripe",

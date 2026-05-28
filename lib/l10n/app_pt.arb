@@ -284,6 +284,7 @@
   "adminPlansNotAdmin": "Precisas do papel admin para gerir planos.",
   "adminFlagsEmpty": "Ainda não há feature flags definidas.",
   "adminFlagsError": "Não foi possível carregar as feature flags.",
+  "adminFlagsErrorDenied": "Sem permissões para modificar feature flags (capability `manage_flags` necessária).",
   "adminFlagsRollout": "{percent}%",
 
   "adminBrandingTitle": "Branding Stripe",

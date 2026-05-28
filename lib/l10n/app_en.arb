@@ -313,6 +313,7 @@
   "adminPlansNotAdmin": "You need admin role to manage plans.",
   "adminFlagsEmpty": "No feature flags defined yet.",
   "adminFlagsError": "Couldn't load feature flags.",
+  "adminFlagsErrorDenied": "Not allowed to modify feature flags (capability `manage_flags` required).",
   "adminFlagsRollout": "{percent}%",
   "@adminFlagsRollout": {"placeholders": {"percent": {"type": "String"}}},
 

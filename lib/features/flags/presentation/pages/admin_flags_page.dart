@@ -7,6 +7,7 @@ import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/feature_flags_providers.dart';
+import '../../data/feature_flags_datasource.dart';
 import '../../domain/feature_flag.dart';
 
 /// Pantalla `/admin/flags` — gestión de feature flags (solo admin global).
@@ -130,6 +131,22 @@ class _FlagCardState extends ConsumerState<_FlagCard> {
     _rollout = widget.definition.rolloutPercentage.toDouble();
   }
 
+  /// Si el provider entrega una definición distinta (p.ej. tras un refresh
+  /// que confirma el valor real en BD), resincronizamos el estado local
+  /// salvo que el usuario esté manipulando algo (no estamos `_busy`). Esto
+  /// evita que el Switch quede "mintiendo" tras un guardado fallido.
+  @override
+  void didUpdateWidget(_FlagCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_busy && widget.definition.enabled != _enabled) {
+      _enabled = widget.definition.enabled;
+    }
+    if (!_busy &&
+        widget.definition.rolloutPercentage.toDouble() != _rollout) {
+      _rollout = widget.definition.rolloutPercentage.toDouble();
+    }
+  }
+
   Future<void> _save({bool? enabled, int? rollout}) async {
     setState(() => _busy = true);
     final ds = ref.read(featureFlagsDataSourceProvider);
@@ -142,8 +159,26 @@ class _FlagCardState extends ConsumerState<_FlagCard> {
       ref
         ..invalidate(featureFlagDefinitionsProvider)
         ..invalidate(myFeatureFlagsProvider);
-    } catch (_) {
+      if (mounted) context.showSnack(context.l10n.settingsSaved);
+    } on FeatureFlagsWriteDenied {
+      // RLS rechazó: revertimos el estado local al de la BD para que el
+      // Switch deje de mostrar el valor "fantasma" no persistido.
       if (!mounted) return;
+      setState(() {
+        if (enabled != null) _enabled = widget.definition.enabled;
+        if (rollout != null) {
+          _rollout = widget.definition.rolloutPercentage.toDouble();
+        }
+      });
+      context.showSnack(context.l10n.adminFlagsErrorDenied, isError: true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        if (enabled != null) _enabled = widget.definition.enabled;
+        if (rollout != null) {
+          _rollout = widget.definition.rolloutPercentage.toDouble();
+        }
+      });
       context.showSnack(context.l10n.adminFlagsError, isError: true);
     } finally {
       if (mounted) setState(() => _busy = false);

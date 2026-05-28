@@ -41,7 +41,12 @@ class FeatureFlagsDataSource {
   }
 
   /// Actualiza un flag (toggle, rollout %, descripción, valor). RLS exige
-  /// admin global; los demás reciben 0 filas afectadas.
+  /// la capability `manage_flags`; los demás reciben 0 filas afectadas.
+  ///
+  /// PostgREST no lanza error si RLS bloquea silenciosamente el UPDATE
+  /// (devuelve 0 filas afectadas con `select()` vacío). Por eso usamos
+  /// `.select()` y comprobamos que la fila existe: así la UI puede
+  /// distinguir "guardado OK" de "guardado denegado por RLS".
   Future<void> update({
     required String key,
     bool? enabled,
@@ -56,6 +61,24 @@ class FeatureFlagsDataSource {
       if (value != null) 'value': value,
     };
     if (patch.isEmpty) return;
-    await _client.from('feature_flags').update(patch).eq('key', key);
+    final rows = await _client
+        .from('feature_flags')
+        .update(patch)
+        .eq('key', key)
+        .select();
+    if ((rows as List).isEmpty) {
+      // RLS bloqueó la escritura (sin capability manage_flags) o la clave
+      // no existe. Lanzamos para que la UI muestre el error real.
+      throw const FeatureFlagsWriteDenied();
+    }
   }
+}
+
+/// El UPDATE fue silenciosamente rechazado por RLS (sin capability
+/// `manage_flags`) o la clave no existe. La UI lo convierte en mensaje
+/// claro al admin.
+class FeatureFlagsWriteDenied implements Exception {
+  const FeatureFlagsWriteDenied();
+  @override
+  String toString() => 'FeatureFlagsWriteDenied';
 }
