@@ -92,6 +92,20 @@ final examQuestionsProvider =
   return ref.watch(subjectsDataSourceProvider).listExamQuestions(subjectId);
 });
 
+/// Banco GLOBAL de afirmaciones Verdadero/Falso del temario (mapeadas a nodo
+/// por `content_hash`). Vacío si aún no se ha generado nada.
+final tfQuestionsProvider =
+    FutureProvider.family<List<TfQuestion>, String>((ref, subjectId) {
+  return ref.watch(subjectsDataSourceProvider).listTfBank(subjectId);
+});
+
+/// Banco GLOBAL de preguntas a desarrollar del temario (mapeadas a nodo por
+/// `content_hash`). Vacío si aún no se ha generado nada.
+final essayQuestionsProvider =
+    FutureProvider.family<List<EssayQuestion>, String>((ref, subjectId) {
+  return ref.watch(subjectsDataSourceProvider).listEssayBank(subjectId);
+});
+
 /// Historial de tests realizados de un temario (recientes primero).
 final examAttemptsProvider =
     FutureProvider.family<List<ExamAttempt>, String>((ref, subjectId) {

@@ -241,6 +241,69 @@ class QuizQuestion {
   final int timesCorrect;
 }
 
+/// Afirmación Verdadero/Falso del banco GLOBAL `tf_bank` (Fase 4+). Misma idea
+/// que [QuizQuestion] pero binaria. El `nodeId` solo se rellena cuando se
+/// cruza el banco con `index_nodes.content_hash` para saber a qué sección del
+/// temario pertenece (null si no se pudo mapear, p. ej. otro contenido).
+class TfQuestion {
+  const TfQuestion({
+    required this.id,
+    required this.statement,
+    required this.isTrue,
+    required this.explanation,
+    required this.nodeId,
+  });
+
+  factory TfQuestion.fromMap(Map<String, dynamic> m, {String? nodeId}) {
+    return TfQuestion(
+      id: m['id'] as String,
+      statement: (m['statement'] as String?) ?? '',
+      isTrue: (m['is_true'] as bool?) ?? false,
+      explanation: m['explanation'] as String?,
+      nodeId: nodeId,
+    );
+  }
+
+  final String id;
+  final String statement;
+  final bool isTrue;
+  final String? explanation;
+
+  /// Solo se rellena cuando se cruza el banco con `index_nodes.content_hash`
+  /// para saber a qué sección pertenece. Null si no se pudo mapear.
+  final String? nodeId;
+}
+
+/// Pregunta a desarrollar del banco GLOBAL `essay_bank` (Fase 4+). Contiene la
+/// pregunta y su respuesta modelo (puede ser larga). El `nodeId` solo se
+/// rellena cuando se cruza el banco con `index_nodes.content_hash` para saber
+/// a qué sección del temario pertenece (null si no se pudo mapear).
+class EssayQuestion {
+  const EssayQuestion({
+    required this.id,
+    required this.question,
+    required this.answer,
+    required this.nodeId,
+  });
+
+  factory EssayQuestion.fromMap(Map<String, dynamic> m, {String? nodeId}) {
+    return EssayQuestion(
+      id: m['id'] as String,
+      question: (m['question'] as String?) ?? '',
+      answer: (m['answer'] as String?) ?? '',
+      nodeId: nodeId,
+    );
+  }
+
+  final String id;
+  final String question;
+  final String answer;
+
+  /// Solo se rellena cuando se cruza el banco con `index_nodes.content_hash`
+  /// para saber a qué sección pertenece. Null si no se pudo mapear.
+  final String? nodeId;
+}
+
 /// Un test COMPLETADO (historial). Guarda nota, desglose, configuración y un
 /// SNAPSHOT de las preguntas con la respuesta que marcó el usuario, para poder
 /// revisarlo o repetirlo con las mismas preguntas y comparar la evolución.

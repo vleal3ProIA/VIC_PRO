@@ -633,6 +633,156 @@ class SubjectsDataSource {
     return out;
   }
 
+  // ─────────────────── Banco Verdadero/Falso (Fase 4+) ───────────────────
+
+  /// Construye/extiende (vía EF `generate-tf`) el banco GLOBAL de afirmaciones
+  /// V/F para las secciones [nodeIds] (vacío = todo el temario). Reutiliza lo
+  /// ya guardado por contenido; solo llama a la IA para las secciones sin
+  /// afirmaciones (o todas si [force]). Mismo shape de respuesta que
+  /// [generateExam] (progreso por sección + total).
+  Future<({int generated, int reused, int pending, int total})> generateTfBank({
+    required String subjectId,
+    List<String> nodeIds = const [],
+    bool force = false,
+  }) async {
+    try {
+      final res = await _client.functions.invoke(
+        'generate-tf',
+        body: {
+          'subject_id': subjectId,
+          'node_ids': nodeIds,
+          'force': force,
+        },
+      );
+      final data = res.data;
+      if (data is! Map) throw const SubjectsException('invalid_response');
+      final p = data.cast<String, dynamic>();
+      if (p['ok'] != true) {
+        throw SubjectsException(
+          (p['error'] as String?) ?? 'generation_failed',
+          detail: p['detail'] as String?,
+        );
+      }
+      return (
+        generated: (p['generated'] as num?)?.toInt() ?? 0,
+        reused: (p['reused'] as num?)?.toInt() ?? 0,
+        pending: (p['pending'] as num?)?.toInt() ?? 0,
+        total: (p['total'] as num?)?.toInt() ?? 0,
+      );
+    } on FunctionException catch (e) {
+      throw SubjectsException(_efError(e));
+    }
+  }
+
+  /// Banco V/F disponible para el temario: las del banco GLOBAL `tf_bank` cuyo
+  /// `content_hash` coincide con el de alguna sección del índice de este
+  /// temario. Cada afirmación queda mapeada a su nodo (mismo patrón que
+  /// [listExamQuestions]).
+  Future<List<TfQuestion>> listTfBank(String subjectId) async {
+    final nodesData = await _client
+        .from('index_nodes')
+        .select('id, content_hash')
+        .eq('subject_id', subjectId);
+    final hashToNode = <String, String>{};
+    for (final n in (nodesData as List).cast<Map<String, dynamic>>()) {
+      final h = n['content_hash'] as String?;
+      if (h != null && h.isNotEmpty) {
+        hashToNode.putIfAbsent(h, () => n['id'] as String);
+      }
+    }
+    if (hashToNode.isEmpty) return const [];
+    final hashes = hashToNode.keys.toList();
+    final out = <TfQuestion>[];
+    for (var i = 0; i < hashes.length; i += 100) {
+      final end = (i + 100) < hashes.length ? i + 100 : hashes.length;
+      final chunk = hashes.sublist(i, end);
+      final data = await _client
+          .from('tf_bank')
+          .select()
+          .inFilter('content_hash', chunk);
+      for (final m in (data as List).cast<Map<String, dynamic>>()) {
+        final h = m['content_hash'] as String?;
+        out.add(TfQuestion.fromMap(m, nodeId: h != null ? hashToNode[h] : null));
+      }
+    }
+    return out;
+  }
+
+  // ─────────────────── Banco preguntas a desarrollar (Fase 4+) ───────────────
+
+  /// Construye/extiende (vía EF `generate-essay`) el banco GLOBAL de preguntas
+  /// a desarrollar para las secciones [nodeIds] (vacío = todo el temario).
+  /// Mismo shape de respuesta que [generateExam].
+  Future<({int generated, int reused, int pending, int total})>
+      generateEssayBank({
+    required String subjectId,
+    List<String> nodeIds = const [],
+    bool force = false,
+  }) async {
+    try {
+      final res = await _client.functions.invoke(
+        'generate-essay',
+        body: {
+          'subject_id': subjectId,
+          'node_ids': nodeIds,
+          'force': force,
+        },
+      );
+      final data = res.data;
+      if (data is! Map) throw const SubjectsException('invalid_response');
+      final p = data.cast<String, dynamic>();
+      if (p['ok'] != true) {
+        throw SubjectsException(
+          (p['error'] as String?) ?? 'generation_failed',
+          detail: p['detail'] as String?,
+        );
+      }
+      return (
+        generated: (p['generated'] as num?)?.toInt() ?? 0,
+        reused: (p['reused'] as num?)?.toInt() ?? 0,
+        pending: (p['pending'] as num?)?.toInt() ?? 0,
+        total: (p['total'] as num?)?.toInt() ?? 0,
+      );
+    } on FunctionException catch (e) {
+      throw SubjectsException(_efError(e));
+    }
+  }
+
+  /// Banco "desarrollo" disponible para el temario: las del banco GLOBAL
+  /// `essay_bank` cuyo `content_hash` coincide con el de alguna sección del
+  /// índice. Cada pregunta queda mapeada a su nodo.
+  Future<List<EssayQuestion>> listEssayBank(String subjectId) async {
+    final nodesData = await _client
+        .from('index_nodes')
+        .select('id, content_hash')
+        .eq('subject_id', subjectId);
+    final hashToNode = <String, String>{};
+    for (final n in (nodesData as List).cast<Map<String, dynamic>>()) {
+      final h = n['content_hash'] as String?;
+      if (h != null && h.isNotEmpty) {
+        hashToNode.putIfAbsent(h, () => n['id'] as String);
+      }
+    }
+    if (hashToNode.isEmpty) return const [];
+    final hashes = hashToNode.keys.toList();
+    final out = <EssayQuestion>[];
+    for (var i = 0; i < hashes.length; i += 100) {
+      final end = (i + 100) < hashes.length ? i + 100 : hashes.length;
+      final chunk = hashes.sublist(i, end);
+      final data = await _client
+          .from('essay_bank')
+          .select()
+          .inFilter('content_hash', chunk);
+      for (final m in (data as List).cast<Map<String, dynamic>>()) {
+        final h = m['content_hash'] as String?;
+        out.add(
+          EssayQuestion.fromMap(m, nodeId: h != null ? hashToNode[h] : null),
+        );
+      }
+    }
+    return out;
+  }
+
   /// Guarda en el historial un test COMPLETADO (snapshot de preguntas +
   /// respuestas marcadas + desglose). Best-effort: no rompe el flujo del test.
   Future<void> recordExamAttempt({

@@ -26,6 +26,13 @@ const INTENTIONAL_SERVICE_ROLE_ONLY = new Set<string>([
   // toca estas tablas directamente.
   "shared_indexes",
   "shared_contributions",
+  // Bancos compartidos T/F y "desarrollo" (Fase 4+, migración 0071): mismo
+  // patrón que `question_bank` — lectura para cualquier autenticado vía
+  // policy, pero la escritura SOLO ocurre desde las EFs `generate-tf` y
+  // `generate-essay` (service_role, salta RLS). No tienen policy de write a
+  // propósito; un cliente nunca debe insertar/actualizar/borrar aquí.
+  "tf_bank",
+  "essay_bank",
 ]);
 
 export const runCheck: AuditCheckRunner = async (admin) => {

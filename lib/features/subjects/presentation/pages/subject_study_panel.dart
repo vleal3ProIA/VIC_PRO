@@ -1924,6 +1924,8 @@ enum _StudioTool {
   guide,
   exam,
   mock,
+  tf,
+  essay,
   progress,
   history,
 }
@@ -1973,6 +1975,8 @@ class _StudioColumnState extends State<_StudioColumn> {
     final inGuide = _tool == _StudioTool.guide;
     final inExam = _tool == _StudioTool.exam;
     final inMock = _tool == _StudioTool.mock;
+    final inTf = _tool == _StudioTool.tf;
+    final inEssay = _tool == _StudioTool.essay;
     final inProgress = _tool == _StudioTool.progress;
     final inHistory = _tool == _StudioTool.history;
 
@@ -1999,6 +2003,12 @@ class _StudioColumnState extends State<_StudioColumn> {
     } else if (inMock) {
       title = l.studioTest;
       leading = Icons.fact_check_outlined;
+    } else if (inTf) {
+      title = l.studioTf;
+      leading = Icons.rule;
+    } else if (inEssay) {
+      title = l.studioEssay;
+      leading = Icons.edit_note;
     } else if (inProgress) {
       title = l.studioProgress;
       leading = Icons.insights_outlined;
@@ -2045,6 +2055,16 @@ class _StudioColumnState extends State<_StudioColumn> {
         nodes: widget.nodes,
         onSelectNode: widget.onSelectNode,
       );
+    } else if (inTf) {
+      body = _TfView(
+        subjectId: widget.subjectId,
+        nodes: widget.nodes,
+      );
+    } else if (inEssay) {
+      body = _EssayView(
+        subjectId: widget.subjectId,
+        nodes: widget.nodes,
+      );
     } else if (inProgress) {
       body = _ProgressView(subjectId: widget.subjectId);
     } else if (inHistory) {
@@ -2067,6 +2087,8 @@ class _StudioColumnState extends State<_StudioColumn> {
             inGuide ||
             inExam ||
             inMock ||
+            inTf ||
+            inEssay ||
             inProgress ||
             inHistory)
           IconButton(
@@ -2128,6 +2150,18 @@ class _StudioColumnState extends State<_StudioColumn> {
         label: l.studioTest,
         color: Colors.indigo.shade400,
         onTap: () => setState(() => _tool = _StudioTool.mock),
+      ),
+      _StudioTile(
+        icon: Icons.rule,
+        label: l.studioTf,
+        color: Colors.cyan.shade700,
+        onTap: () => setState(() => _tool = _StudioTool.tf),
+      ),
+      _StudioTile(
+        icon: Icons.edit_note,
+        label: l.studioEssay,
+        color: Colors.purple.shade400,
+        onTap: () => setState(() => _tool = _StudioTool.essay),
       ),
       _StudioTile(
         icon: Icons.insights_outlined,
@@ -5218,6 +5252,1164 @@ class _NotesViewState extends ConsumerState<_NotesView> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Verdadero/Falso — clon casi exacto de _MockExamView pero binario.
+// ════════════════════════════════════════════════════════════════════════════
+
+/// Configurador del test V/F: secciones, nº de afirmaciones, tiempo opcional y
+/// penalización. Al pulsar "Empezar" abre un modal casi a pantalla completa con
+/// el runner ([_TfRunnerDialog]), análogo al de Test pero con dos botones
+/// (Verdadero / Falso) en lugar de opciones A/B/C/D.
+class _TfView extends ConsumerStatefulWidget {
+  const _TfView({required this.subjectId, required this.nodes});
+
+  final String subjectId;
+  final List<IndexNode> nodes;
+
+  @override
+  ConsumerState<_TfView> createState() => _TfViewState();
+}
+
+class _TfViewState extends ConsumerState<_TfView> {
+  bool _busy = false;
+
+  // Configuración del test.
+  bool _all = true;
+  final Set<String> _selected = {};
+  int _count = 10;
+  bool _timed = false;
+  int _minutes = 20;
+  bool _penalty = true;
+
+  /// Ids del ámbito elegido: si es "todo", todos los nodos; si no, las
+  /// secciones marcadas MÁS sus descendientes (las afirmaciones se etiquetan
+  /// al nodo hoja cuyo texto se usó).
+  Set<String> _scopeNodeIds() {
+    if (_all) return widget.nodes.map((n) => n.id).toSet();
+    final byParent = <String?, List<IndexNode>>{};
+    for (final n in widget.nodes) {
+      byParent.putIfAbsent(n.parentId, () => []).add(n);
+    }
+    final out = <String>{};
+    void add(String id) {
+      if (!out.add(id)) return;
+      for (final c in byParent[id] ?? const <IndexNode>[]) {
+        add(c.id);
+      }
+    }
+    for (final id in _selected) {
+      add(id);
+    }
+    return out;
+  }
+
+  /// Afirmaciones del banco que caen dentro del ámbito elegido.
+  List<TfQuestion> _pool(List<TfQuestion> bank) {
+    if (_all) return bank;
+    final scope = _scopeNodeIds();
+    return bank
+        .where((q) => q.nodeId != null && scope.contains(q.nodeId))
+        .toList();
+  }
+
+  Future<void> _open(List<TfQuestion> pool) async {
+    final qs = List.of(pool)..shuffle();
+    final take = _count <= 0 || _count >= qs.length ? qs.length : _count;
+    await showTestModal(
+      context,
+      _TfRunnerDialog(
+        questions: qs.sublist(0, take),
+        timed: _timed,
+        minutes: _minutes,
+        penalty: _penalty,
+      ),
+    );
+  }
+
+  Future<void> _generate({bool force = false}) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final errBg = Theme.of(context).colorScheme.error;
+    try {
+      final r = await ref.read(subjectsDataSourceProvider).generateTfBank(
+            subjectId: widget.subjectId,
+            nodeIds: _all ? const [] : _scopeNodeIds().toList(),
+            force: force,
+          );
+      ref.invalidate(tfQuestionsProvider(widget.subjectId));
+      if (mounted) {
+        final msg = r.pending > 0
+            ? '${l.studyBankProgress(r.total, r.generated)} · '
+                '${l.studyBankPending(r.pending)}'
+            : l.studyBankProgress(r.total, r.generated);
+        messenger.showSnackBar(
+          SnackBar(duration: const Duration(seconds: 6), content: Text(msg)),
+        );
+      }
+    } on SubjectsException catch (e) {
+      final detail =
+          e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: errBg,
+          duration: const Duration(seconds: 8),
+          content: Text('${l.studyViewError} (${e.code})$detail'),
+        ),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    if (_busy) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: AppSpacing.sm),
+            Text(l.studyGenerating, style: context.textTheme.bodySmall),
+          ],
+        ),
+      );
+    }
+    return _config(context);
+  }
+
+  Widget _config(BuildContext context) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final bank =
+        ref.watch(tfQuestionsProvider(widget.subjectId)).valueOrNull ??
+            const <TfQuestion>[];
+    final sections = widget.nodes.where((n) => n.parentId != null).toList();
+    final canGenerate = _all || _selected.isNotEmpty;
+    final pool = _pool(bank);
+
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      children: [
+        // ─── Secciones ───
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                l.studyTestSections,
+                style: context.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+            Text(l.studyTestAll, style: context.textTheme.bodySmall),
+            Switch(value: _all, onChanged: (v) => setState(() => _all = v)),
+          ],
+        ),
+        if (!_all)
+          for (final s in sections)
+            CheckboxListTile(
+              dense: true,
+              contentPadding: EdgeInsets.only(left: 4 + s.depth * 12.0),
+              controlAffinity: ListTileControlAffinity.leading,
+              value: _selected.contains(s.id),
+              title:
+                  Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+              onChanged: (v) => setState(() {
+                if (v ?? false) {
+                  _selected.add(s.id);
+                } else {
+                  _selected.remove(s.id);
+                }
+              }),
+            ),
+        const Divider(height: AppSpacing.lg),
+        // ─── Nº de afirmaciones ───
+        Row(
+          children: [
+            Expanded(child: Text(l.studyTestCount)),
+            DropdownButton<int>(
+              value: _count,
+              items: [10, 25, 50, 75, 100, 0]
+                  .map((n) => DropdownMenuItem(
+                        value: n,
+                        child: Text(n == 0 ? l.studyTestAllQuestions : '$n'),
+                      ),)
+                  .toList(),
+              onChanged: (v) => setState(() => _count = v ?? 10),
+            ),
+          ],
+        ),
+        // ─── Tiempo ───
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(l.studyTestTimed),
+          value: _timed,
+          onChanged: (v) => setState(() => _timed = v),
+        ),
+        if (_timed)
+          Row(
+            children: [
+              Expanded(child: Text(l.studyTestMinutes)),
+              DropdownButton<int>(
+                value: _minutes,
+                items: [5, 10, 20, 30, 45, 60]
+                    .map((n) => DropdownMenuItem(value: n, child: Text('$n')))
+                    .toList(),
+                onChanged: (v) => setState(() => _minutes = v ?? 20),
+              ),
+            ],
+          ),
+        // ─── Penalización ───
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(l.studyTestPenalty),
+          value: _penalty,
+          onChanged: (v) => setState(() => _penalty = v),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        if (pool.isNotEmpty)
+          Text(
+            l.studyTestBank(pool.length),
+            style: context.textTheme.bodySmall
+                ?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        const SizedBox(height: AppSpacing.sm),
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            if (pool.isNotEmpty)
+              FilledButton.icon(
+                onPressed: () => _open(pool),
+                icon: const Icon(Icons.play_arrow, size: 16),
+                label: Text(l.studyTestStart),
+              ),
+            PremiumButton(
+              label: l.studyTestGenerate,
+              leadingIcon: Icons.auto_awesome_outlined,
+              onPressed: canGenerate ? _generate : null,
+            ),
+            if (pool.isNotEmpty)
+              OutlinedButton.icon(
+                onPressed: canGenerate ? () => _generate(force: true) : null,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: Text(l.studyTestRegenerate),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Runner del test Verdadero/Falso. Clon de [_TestRunnerDialog] adaptado a
+/// preguntas binarias (dos botones grandes en vez de A/B/C/D). NO se persiste
+/// en `exam_attempts` — el banco V/F es ephemeral en este sprint; el historial
+/// podrá añadirse más adelante si hace falta.
+class _TfRunnerDialog extends ConsumerStatefulWidget {
+  const _TfRunnerDialog({
+    required this.questions,
+    required this.timed,
+    required this.minutes,
+    required this.penalty,
+  });
+
+  final List<TfQuestion> questions;
+  final bool timed;
+  final int minutes;
+  final bool penalty;
+
+  @override
+  ConsumerState<_TfRunnerDialog> createState() => _TfRunnerDialogState();
+}
+
+class _TfRunnerDialogState extends ConsumerState<_TfRunnerDialog> {
+  late List<bool?> _answers;
+  int _cur = 0;
+  int _elapsed = 0;
+  Timer? _timer;
+  bool _done = false;
+  bool _review = false;
+  int _reviewCur = 0;
+
+  int get _totalSecs => widget.minutes * 60;
+  int get _answered => _answers.where((a) => a != null).length;
+
+  @override
+  void initState() {
+    super.initState();
+    _answers = List<bool?>.filled(widget.questions.length, null);
+    if (widget.timed) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) {
+          _timer?.cancel();
+          return;
+        }
+        setState(() => _elapsed++);
+        if (_elapsed >= _totalSecs) _finish(confirm: false);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _fmt(int secs) {
+    final m = (secs ~/ 60).toString().padLeft(2, '0');
+    final s = (secs % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  ({int correct, int wrong, int blank, double grade}) _score() {
+    final total = widget.questions.length;
+    var correct = 0;
+    var wrong = 0;
+    var blank = 0;
+    for (var i = 0; i < total; i++) {
+      final a = _answers[i];
+      if (a == null) {
+        blank++;
+      } else if (a == widget.questions[i].isTrue) {
+        correct++;
+      } else {
+        wrong++;
+      }
+    }
+    final raw = widget.penalty ? correct - wrong.toDouble() : correct.toDouble();
+    final grade = total == 0 ? 0.0 : (raw < 0 ? 0.0 : raw / total * 10);
+    return (correct: correct, wrong: wrong, blank: blank, grade: grade);
+  }
+
+  Future<void> _finish({bool confirm = true}) async {
+    if (confirm) {
+      final l = context.l10n;
+      final ok = await AppConfirmDialog.show(
+        context,
+        title: l.studyTestFinishTitle,
+        body: l.studyTestFinishBody(_answered, widget.questions.length),
+        confirmLabel: l.studyMockFinish,
+      );
+      if (ok != true) return;
+    }
+    _timer?.cancel();
+    // Marcar el día estudiado (best-effort); no registramos en exam_attempts
+    // porque el historial de V/F no está en el schema en este sprint.
+    unawaited(ref.read(subjectsDataSourceProvider).recordStudyToday());
+    if (mounted) setState(() => _done = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final w = (size.width - 48).clamp(280.0, 1100.0);
+    final h = size.height - 48;
+    return Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        width: w,
+        height: h,
+        child: _done
+            ? (_review ? _reviewPaged(context) : _results(context))
+            : _running(context),
+      ),
+    );
+  }
+
+  Widget _header(BuildContext context, {required Widget trailing}) {
+    final scheme = context.colors;
+    final l = context.l10n;
+    return Material(
+      color: scheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.sm,
+          AppSpacing.sm,
+          AppSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.rule, size: 18, color: scheme.primary),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              l.studioTf,
+              style: context.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const Spacer(),
+            trailing,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _running(BuildContext context) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final q = widget.questions[_cur];
+    final total = widget.questions.length;
+    final remaining = (_totalSecs - _elapsed).clamp(0, _totalSecs);
+    final last = _cur == total - 1;
+    final danger = widget.timed && remaining <= 30;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _header(
+          context,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.timed) ...[
+                Icon(
+                  Icons.timer_outlined,
+                  size: 16,
+                  color: danger ? scheme.error : scheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  _fmt(remaining),
+                  style: context.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: danger ? scheme.error : null,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+              ],
+              FilledButton.icon(
+                onPressed: _finish,
+                icon: const Icon(Icons.flag_outlined, size: 16),
+                label: Text(l.studyMockFinish),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Afirmación sobre fondo azul claro, con su número (1/50).
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: Colors.blue.withValues(alpha: 0.30),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '${_cur + 1}/$total',
+                              style: context.textTheme.labelMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: Colors.blue.shade800,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            q.statement,
+                            style: context.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    // Dos botones grandes: Verdadero / Falso.
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _tfChoice(
+                            context,
+                            label: l.studyTfAnswerTrue,
+                            icon: Icons.check,
+                            color: Colors.green,
+                            selected: _answers[_cur] ?? false,
+                            onTap: () => setState(() {
+                              final wasTrue = _answers[_cur] ?? false;
+                              _answers[_cur] = wasTrue ? null : true;
+                            }),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: _tfChoice(
+                            context,
+                            label: l.studyTfAnswerFalse,
+                            icon: Icons.close,
+                            color: scheme.error,
+                            selected: !(_answers[_cur] ?? true),
+                            onTap: () => setState(() {
+                              final wasFalse = !(_answers[_cur] ?? true);
+                              _answers[_cur] = wasFalse ? null : false;
+                            }),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              IconButton.filledTonal(
+                onPressed: _cur > 0 ? () => setState(() => _cur--) : null,
+                icon: const Icon(Icons.chevron_left),
+              ),
+              const Spacer(),
+              Text(
+                '${_cur + 1}/$total · $_answered',
+                style: context.textTheme.titleSmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+              const Spacer(),
+              IconButton.filledTonal(
+                onPressed: !last ? () => setState(() => _cur++) : null,
+                icon: const Icon(Icons.chevron_right),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _results(BuildContext context) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final total = widget.questions.length;
+    final s = _score();
+    final correct = s.correct;
+    final wrong = s.wrong;
+    final blank = s.blank;
+    final grade = s.grade;
+    final gradeColor = grade >= 5 ? Colors.green.shade600 : scheme.error;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _header(
+          context,
+          trailing: IconButton(
+            tooltip: l.actionClose,
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.close),
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 760),
+                  child: Column(
+                    children: [
+                      Text(
+                        l.studioQuizResult,
+                        style: context.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        '${grade.toStringAsFixed(2)} / 10',
+                        style: context.textTheme.displaySmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: gradeColor,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        l.studyTestAnswered(total - blank, total),
+                        style: context.textTheme.bodyMedium
+                            ?.copyWith(color: scheme.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.xs,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          Chip(
+                            avatar: const Icon(Icons.check,
+                                size: 14, color: Colors.green,),
+                            label: Text('${l.studyMockCorrect}: $correct'),
+                          ),
+                          Chip(
+                            avatar: Icon(Icons.close,
+                                size: 14, color: scheme.error,),
+                            label: Text('${l.studyMockWrong}: $wrong'),
+                          ),
+                          Chip(
+                            avatar: const Icon(Icons.remove, size: 14),
+                            label: Text('${l.studyMockBlank}: $blank'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () => setState(() {
+                              _review = true;
+                              _reviewCur = 0;
+                            }),
+                            icon: const Icon(Icons.fact_check_outlined,
+                                size: 16,),
+                            label: Text(l.studyMockReview),
+                          ),
+                          FilledButton.tonalIcon(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.close, size: 16),
+                            label: Text(l.actionClose),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Repaso PAGINADO: una afirmación a la vez con Anterior/Siguiente y un
+  /// botón de Finalizar siempre visible para salir.
+  Widget _reviewPaged(BuildContext context) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final total = widget.questions.length;
+    final last = _reviewCur >= total - 1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _header(
+          context,
+          trailing: FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.flag_outlined, size: 16),
+            label: Text(l.studyMockFinish),
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: _reviewItem(context, _reviewCur),
+              ),
+            ),
+          ),
+        ),
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              IconButton.filledTonal(
+                onPressed: _reviewCur > 0
+                    ? () => setState(() => _reviewCur--)
+                    : null,
+                icon: const Icon(Icons.chevron_left),
+              ),
+              const Spacer(),
+              Text(
+                '${_reviewCur + 1}/$total',
+                style: context.textTheme.titleSmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+              const Spacer(),
+              IconButton.filledTonal(
+                onPressed: !last ? () => setState(() => _reviewCur++) : null,
+                icon: const Icon(Icons.chevron_right),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _reviewItem(BuildContext context, int i) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final q = widget.questions[i];
+    final mine = _answers[i];
+    final correctLabel =
+        q.isTrue ? l.studyTfAnswerTrue : l.studyTfAnswerFalse;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${i + 1}. ${q.statement}',
+            style: context.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: _tfChoice(
+                  context,
+                  label: l.studyTfAnswerTrue,
+                  icon: Icons.check,
+                  color: Colors.green,
+                  selected: mine ?? false,
+                  readOnly: true,
+                  correct: q.isTrue,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: _tfChoice(
+                  context,
+                  label: l.studyTfAnswerFalse,
+                  icon: Icons.close,
+                  color: scheme.error,
+                  selected: !(mine ?? true),
+                  readOnly: true,
+                  correct: !q.isTrue,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            '${l.studyMockCorrect}: $correctLabel',
+            style: context.textTheme.labelMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          if (q.explanation?.isNotEmpty ?? false)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  q.explanation!,
+                  style: context.textTheme.bodyMedium?.copyWith(height: 1.4),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Tarjeta-botón con texto + icono. En modo runner es seleccionable; en modo
+  /// review marca el correcto en verde y el fallo en rojo si lo hubo.
+  Widget _tfChoice(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required Color color,
+    required bool selected,
+    bool readOnly = false,
+    bool? correct,
+    VoidCallback? onTap,
+  }) {
+    final scheme = context.colors;
+    Color border = scheme.outlineVariant;
+    Color fg = scheme.onSurface;
+    Color? bg;
+    var strong = false;
+    if (readOnly) {
+      if (correct ?? false) {
+        border = Colors.green;
+        bg = Colors.green.withValues(alpha: 0.12);
+        fg = Colors.green.shade800;
+        strong = true;
+      } else if (selected) {
+        border = scheme.error;
+        bg = scheme.error.withValues(alpha: 0.10);
+        fg = scheme.error;
+        strong = true;
+      }
+    } else if (selected) {
+      border = color;
+      bg = color.withValues(alpha: 0.12);
+      fg = color;
+      strong = true;
+    }
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.lg,
+        ),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: border, width: strong ? 1.6 : 1),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 20, color: fg),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              label,
+              style: context.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w800, color: fg),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Preguntas a desarrollar — visor SIMPLE: lista scrollable con expansores.
+// ════════════════════════════════════════════════════════════════════════════
+
+/// Preguntas a desarrollar: selector de secciones + Generar/Regenerar +
+/// `ListView` de tarjetas expansibles ("Ver respuesta" toggle). NO hay timer,
+/// puntuación ni count: siempre devuelve TODO lo del banco para el ámbito.
+class _EssayView extends ConsumerStatefulWidget {
+  const _EssayView({required this.subjectId, required this.nodes});
+
+  final String subjectId;
+  final List<IndexNode> nodes;
+
+  @override
+  ConsumerState<_EssayView> createState() => _EssayViewState();
+}
+
+class _EssayViewState extends ConsumerState<_EssayView> {
+  bool _busy = false;
+  bool _all = true;
+  final Set<String> _selected = {};
+
+  Set<String> _scopeNodeIds() {
+    if (_all) return widget.nodes.map((n) => n.id).toSet();
+    final byParent = <String?, List<IndexNode>>{};
+    for (final n in widget.nodes) {
+      byParent.putIfAbsent(n.parentId, () => []).add(n);
+    }
+    final out = <String>{};
+    void add(String id) {
+      if (!out.add(id)) return;
+      for (final c in byParent[id] ?? const <IndexNode>[]) {
+        add(c.id);
+      }
+    }
+    for (final id in _selected) {
+      add(id);
+    }
+    return out;
+  }
+
+  List<EssayQuestion> _pool(List<EssayQuestion> bank) {
+    if (_all) return bank;
+    final scope = _scopeNodeIds();
+    return bank
+        .where((q) => q.nodeId != null && scope.contains(q.nodeId))
+        .toList();
+  }
+
+  Future<void> _generate({bool force = false}) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final errBg = Theme.of(context).colorScheme.error;
+    try {
+      final r = await ref.read(subjectsDataSourceProvider).generateEssayBank(
+            subjectId: widget.subjectId,
+            nodeIds: _all ? const [] : _scopeNodeIds().toList(),
+            force: force,
+          );
+      ref.invalidate(essayQuestionsProvider(widget.subjectId));
+      if (mounted) {
+        final msg = r.pending > 0
+            ? '${l.studyBankProgress(r.total, r.generated)} · '
+                '${l.studyBankPending(r.pending)}'
+            : l.studyBankProgress(r.total, r.generated);
+        messenger.showSnackBar(
+          SnackBar(duration: const Duration(seconds: 6), content: Text(msg)),
+        );
+      }
+    } on SubjectsException catch (e) {
+      final detail =
+          e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: errBg,
+          duration: const Duration(seconds: 8),
+          content: Text('${l.studyViewError} (${e.code})$detail'),
+        ),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    if (_busy) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: AppSpacing.sm),
+            Text(l.studyGenerating, style: context.textTheme.bodySmall),
+          ],
+        ),
+      );
+    }
+
+    final scheme = context.colors;
+    final bank =
+        ref.watch(essayQuestionsProvider(widget.subjectId)).valueOrNull ??
+            const <EssayQuestion>[];
+    final sections = widget.nodes.where((n) => n.parentId != null).toList();
+    final canGenerate = _all || _selected.isNotEmpty;
+    final pool = _pool(bank);
+
+    // Agrupar por sección, en el orden del índice (preservamos posición).
+    final nodeOrder = <String, int>{
+      for (var i = 0; i < widget.nodes.length; i++) widget.nodes[i].id: i,
+    };
+    final nodeTitleById = <String, String>{
+      for (final n in widget.nodes) n.id: n.title,
+    };
+    final grouped = <String?, List<EssayQuestion>>{};
+    for (final q in pool) {
+      grouped.putIfAbsent(q.nodeId, () => []).add(q);
+    }
+    final groupKeys = grouped.keys.toList()
+      ..sort((a, b) {
+        final ai = a == null ? 1 << 30 : (nodeOrder[a] ?? 1 << 29);
+        final bi = b == null ? 1 << 30 : (nodeOrder[b] ?? 1 << 29);
+        return ai.compareTo(bi);
+      });
+
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      children: [
+        // ─── Secciones ───
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                l.studyTestSections,
+                style: context.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+            Text(l.studyTestAll, style: context.textTheme.bodySmall),
+            Switch(value: _all, onChanged: (v) => setState(() => _all = v)),
+          ],
+        ),
+        if (!_all)
+          for (final s in sections)
+            CheckboxListTile(
+              dense: true,
+              contentPadding: EdgeInsets.only(left: 4 + s.depth * 12.0),
+              controlAffinity: ListTileControlAffinity.leading,
+              value: _selected.contains(s.id),
+              title:
+                  Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+              onChanged: (v) => setState(() {
+                if (v ?? false) {
+                  _selected.add(s.id);
+                } else {
+                  _selected.remove(s.id);
+                }
+              }),
+            ),
+        const Divider(height: AppSpacing.lg),
+        // ─── Acciones ───
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            PremiumButton(
+              label: pool.isEmpty
+                  ? l.studyEssayGenerate
+                  : l.studyEssayRegenerate,
+              leadingIcon: pool.isEmpty
+                  ? Icons.auto_awesome_outlined
+                  : Icons.refresh,
+              onPressed:
+                  canGenerate ? () => _generate(force: pool.isNotEmpty) : null,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        if (pool.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+            child: Center(
+              child: Text(
+                l.studyEssayEmpty,
+                textAlign: TextAlign.center,
+                style: context.textTheme.bodyMedium
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ),
+          )
+        else
+          for (final key in groupKeys) ...[
+            // Cabecera de sección (o "Sin sección" si el hash no se mapeó).
+            Padding(
+              padding: const EdgeInsets.only(
+                top: AppSpacing.sm,
+                bottom: AppSpacing.xs,
+              ),
+              child: Text(
+                key == null
+                    ? '—'
+                    : (nodeTitleById[key] ?? '—'),
+                style: context.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: scheme.primary,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+            for (var i = 0; i < grouped[key]!.length; i++)
+              _EssayTile(
+                index: i,
+                question: grouped[key]![i],
+              ),
+          ],
+      ],
+    );
+  }
+}
+
+/// Tarjeta de una pregunta a desarrollar: pregunta arriba, toggle "Ver / Ocultar
+/// respuesta" que despliega la respuesta modelo en `SelectableText` (copy/paste
+/// amigable para el estudiante).
+class _EssayTile extends StatefulWidget {
+  const _EssayTile({required this.index, required this.question});
+
+  final int index;
+  final EssayQuestion question;
+
+  @override
+  State<_EssayTile> createState() => _EssayTileState();
+}
+
+class _EssayTileState extends State<_EssayTile> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final q = widget.question;
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SelectableText(
+              '${widget.index + 1}. ${q.question}',
+              style: context.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700, height: 1.35),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setState(() => _open = !_open),
+                icon: Icon(
+                  _open ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  size: 16,
+                ),
+                label: Text(
+                  _open ? l.studyEssayHideAnswer : l.studyEssayShowAnswer,
+                ),
+              ),
+            ),
+            if (_open) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SelectableText(
+                  q.answer,
+                  style: context.textTheme.bodyMedium?.copyWith(height: 1.5),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
