@@ -27,6 +27,8 @@ import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
 import 'package:myapp/core/widgets/markdown_text.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
+import 'package:myapp/core/widgets/readable_text.dart';
+import 'package:myapp/core/widgets/reader_frame.dart';
 
 import '../../application/subjects_providers.dart';
 import '../../data/subjects_datasource.dart';
@@ -947,10 +949,7 @@ class _ContentColumn extends ConsumerWidget {
             return _ColumnCard(
               title: nodeTitle ?? '',
               leading: Icons.menu_book_outlined,
-              body: SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: MarkdownText(intro),
-              ),
+              body: ReaderFrame(child: MarkdownText(intro)),
             );
           }
           return _folderStructure(context);
@@ -1127,15 +1126,7 @@ class _RootOriginalViewState extends ConsumerState<_RootOriginalView> {
               ),
             );
           }
-          return Scrollbar(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: SelectableText(
-                text,
-                style: context.textTheme.bodyMedium?.copyWith(height: 1.5),
-              ),
-            ),
-          );
+          return ReaderFrame(child: ReadableText(text));
         },
       ),
     );
@@ -1770,14 +1761,10 @@ class _NodeViewState extends ConsumerState<_NodeView> {
   }
 
   Widget _scroll(BuildContext context, String content, {required bool markdown}) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      child: markdown
-          ? MarkdownText(content)
-          : SelectableText(
-              content,
-              style: context.textTheme.bodyMedium?.copyWith(height: 1.5),
-            ),
+    return ReaderFrame(
+      // Vista verbatim (Original) -> ReadableText con párrafos y sangría.
+      // Vistas IA (Explicado / Resumen) -> Markdown con su propia tipografía.
+      child: markdown ? MarkdownText(content) : ReadableText(content),
     );
   }
 }
@@ -3810,12 +3797,7 @@ class _GuideViewState extends ConsumerState<_GuideView> {
                 ),
               ],
             ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                child: MarkdownText(content),
-              ),
-            ),
+            Expanded(child: ReaderFrame(child: MarkdownText(content))),
           ],
         );
       },
