@@ -9,7 +9,7 @@ class ReaderFrame extends StatelessWidget {
   const ReaderFrame({
     required this.child,
     super.key,
-    this.horizontalPadding = 16,
+    this.horizontalPadding = 24,
     this.verticalPadding = 16,
   });
 
