@@ -879,7 +879,7 @@ class _TreeTile extends StatelessWidget {
 
 // ─────────────────────────────── Columna CENTRO ─────────────────────────────
 
-class _ContentColumn extends ConsumerWidget {
+class _ContentColumn extends ConsumerStatefulWidget {
   const _ContentColumn({
     required this.subjectId,
     required this.nodeId,
@@ -895,8 +895,18 @@ class _ContentColumn extends ConsumerWidget {
   final ValueChanged<String> onSelectNode;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ContentColumn> createState() => _ContentColumnState();
+}
+
+class _ContentColumnState extends ConsumerState<_ContentColumn> {
+  /// Chat acoplado a la card: oculto por defecto. Se abre con el botón flotante
+  /// abajo a la derecha; el botón de cerrar lo oculta y vuelve al contenido.
+  bool _chatOpen = false;
+
+  @override
+  Widget build(BuildContext context) {
     final l = context.l10n;
+    final nodeId = widget.nodeId;
     if (nodeId == null) {
       return _ColumnCard(
         title: l.studyTabOriginal,
@@ -915,70 +925,91 @@ class _ContentColumn extends ConsumerWidget {
       );
     }
 
-    // NODO RAÍZ (título del temario): mostramos el DOCUMENTO COMPLETO tal cual
-    // su contenido (texto extraído), navegable — el resto de nodos muestran su
-    // propia parte. El raíz es el único con parentId == null.
+    // Chat abierto -> ocupa la card entera con un botón de cerrar.
+    if (_chatOpen) return _chatPanel(context);
+
+    // Estado normal: contenido (raíz / carpeta / hoja) + botón flotante de chat
+    // abajo a la derecha. La IA solo responde sobre este temario o la sección
+    // seleccionada (lo fuerza el system prompt de `ask-subject`).
     IndexNode? selected;
-    for (final n in nodes) {
+    for (final n in widget.nodes) {
       if (n.id == nodeId) {
         selected = n;
         break;
       }
     }
+
+    final Widget body;
     if (selected != null && selected.parentId == null) {
-      return _RootOriginalView(subjectId: subjectId, title: nodeTitle ?? '');
-    }
-
-    // CARPETA (nodo con subapartados): si tiene una INTRO propia (texto entre
-    // su título y el primer subíndice) la mostramos SOLA; si no, mostramos solo
-    // su ESTRUCTURA (los títulos de sus subíndices, clicables). Nunca volcamos
-    // el contenido de los subíndices ni Explicado/Resumen/Chat.
-    final isFolder = nodes.any((n) => n.parentId == nodeId);
-    if (isFolder) {
-      final introAsync =
-          ref.watch(nodeContentProvider((nodeId: nodeId!, kind: 'intro')));
-      return introAsync.when(
-        loading: () => _ColumnCard(
-          title: nodeTitle ?? '',
-          leading: Icons.folder_rounded,
-          body: const Center(child: AppLoadingState()),
-        ),
-        error: (_, __) => _folderStructure(context),
-        data: (intro) {
-          if (intro != null && intro.trim().isNotEmpty) {
-            return _ColumnCard(
-              title: nodeTitle ?? '',
-              leading: Icons.menu_book_outlined,
-              body: ReaderFrame(child: MarkdownText(intro)),
-            );
-          }
-          return _folderStructure(context);
-        },
+      body = _RootOriginalView(
+        subjectId: widget.subjectId,
+        title: widget.nodeTitle ?? '',
       );
+    } else if (widget.nodes.any((n) => n.parentId == nodeId)) {
+      body = _folderBody(context, nodeId);
+    } else {
+      body = _tabbed(context, nodeId);
     }
 
-    return _tabbed(context);
+    return Stack(
+      children: [
+        Positioned.fill(child: body),
+        Positioned(
+          right: 12,
+          bottom: 12,
+          child: FloatingActionButton.small(
+            heroTag: 'study_chat_open',
+            tooltip: l.studyTabChat,
+            onPressed: () => setState(() => _chatOpen = true),
+            child: const Icon(Icons.chat_bubble_outline),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _folderBody(BuildContext context, String nodeId) {
+    final introAsync =
+        ref.watch(nodeContentProvider((nodeId: nodeId, kind: 'intro')));
+    return introAsync.when(
+      loading: () => _ColumnCard(
+        title: widget.nodeTitle ?? '',
+        leading: Icons.folder_rounded,
+        body: const Center(child: AppLoadingState()),
+      ),
+      error: (_, __) => _folderStructure(context, nodeId),
+      data: (intro) {
+        if (intro != null && intro.trim().isNotEmpty) {
+          return _ColumnCard(
+            title: widget.nodeTitle ?? '',
+            leading: Icons.menu_book_outlined,
+            body: ReaderFrame(child: MarkdownText(intro)),
+          );
+        }
+        return _folderStructure(context, nodeId);
+      },
+    );
   }
 
   /// Card con la ESTRUCTURA de la carpeta (títulos de sus subíndices).
-  Widget _folderStructure(BuildContext context) {
+  Widget _folderStructure(BuildContext context, String nodeId) {
     return _ColumnCard(
-      title: nodeTitle ?? '',
+      title: widget.nodeTitle ?? '',
       leading: Icons.folder_rounded,
       body: _FolderStructureView(
-        folderId: nodeId!,
-        nodes: nodes,
-        onSelectNode: onSelectNode,
+        folderId: nodeId,
+        nodes: widget.nodes,
+        onSelectNode: widget.onSelectNode,
       ),
     );
   }
 
-  Widget _tabbed(BuildContext context) {
+  Widget _tabbed(BuildContext context, String nodeId) {
     final l = context.l10n;
     return PremiumCard(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: DefaultTabController(
-        length: 4,
+        length: 3,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -990,7 +1021,7 @@ class _ContentColumn extends ConsumerWidget {
                 0,
               ),
               child: Text(
-                nodeTitle ?? '',
+                widget.nodeTitle ?? '',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: context.textTheme.titleSmall
@@ -1004,39 +1035,56 @@ class _ContentColumn extends ConsumerWidget {
                 Tab(text: l.studyTabOriginal),
                 Tab(text: l.studyTabExplained),
                 Tab(text: l.studyTabSummary),
-                Tab(text: l.studyTabChat),
               ],
             ),
             Expanded(
               child: TabBarView(
                 children: [
                   _NodeView(
-                    nodeId: nodeId!,
-                    kind: 'original',
-                    subjectId: subjectId,
-                  ),
-                  _NodeView(
-                    nodeId: nodeId!,
-                    kind: 'explained',
-                    subjectId: subjectId,
-                  ),
-                  _NodeView(
-                    nodeId: nodeId!,
-                    kind: 'summary',
-                    subjectId: subjectId,
-                  ),
-                  _ChatView(
-                    key: ValueKey('chat_$subjectId'),
-                    subjectId: subjectId,
                     nodeId: nodeId,
-                    nodes: nodes,
-                    onSelectNode: onSelectNode,
+                    kind: 'original',
+                    subjectId: widget.subjectId,
+                  ),
+                  _NodeView(
+                    nodeId: nodeId,
+                    kind: 'explained',
+                    subjectId: widget.subjectId,
+                  ),
+                  _NodeView(
+                    nodeId: nodeId,
+                    kind: 'summary',
+                    subjectId: widget.subjectId,
                   ),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Panel de chat: ocupa la card central. Recibe la sección activa, así la IA
+  /// solo responde sobre el temario o esa sección.
+  Widget _chatPanel(BuildContext context) {
+    final l = context.l10n;
+    return _ColumnCard(
+      title: l.studyTabChat,
+      leading: Icons.chat_bubble_outline,
+      actions: [
+        IconButton(
+          tooltip: l.actionClose,
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.close, size: 18),
+          onPressed: () => setState(() => _chatOpen = false),
+        ),
+      ],
+      body: _ChatView(
+        key: ValueKey('chat_${widget.subjectId}'),
+        subjectId: widget.subjectId,
+        nodeId: widget.nodeId,
+        nodes: widget.nodes,
+        onSelectNode: widget.onSelectNode,
       ),
     );
   }
