@@ -60,6 +60,17 @@ class CountryPicker extends StatelessWidget {
     (code: 'SG', name: 'Singapore'),
   ];
 
+  /// Devuelve "CODE · Name" para un código ISO (o solo el código si no
+  /// está en nuestra lista). Útil para la vista de SOLO LECTURA del
+  /// formulario de facturación.
+  static String displayNameFor(String? code) {
+    if (code == null || code.isEmpty) return '';
+    for (final c in _countries) {
+      if (c.code == code) return '${c.code} · ${c.name}';
+    }
+    return code;
+  }
+
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(

@@ -71,6 +71,22 @@ class BillingInfo {
         nonEmpty(country);
   }
 
+  /// True si AL MENOS UN campo está relleno. Lo usamos para decidir entre
+  /// el "empty state" (todavía no has añadido nada) y la card de lectura
+  /// con los datos guardados.
+  bool get hasAnyData {
+    bool nonEmpty(String? s) => s != null && s.trim().isNotEmpty;
+    return nonEmpty(firstName) ||
+        nonEmpty(lastName) ||
+        dateOfBirth != null ||
+        nonEmpty(addressLine1) ||
+        nonEmpty(addressLine2) ||
+        nonEmpty(city) ||
+        nonEmpty(postalCode) ||
+        nonEmpty(country) ||
+        nonEmpty(taxId);
+  }
+
   /// Nombre completo "Firstname Lastname" si existen, si no null.
   String? get fullName {
     final f = firstName?.trim() ?? '';
