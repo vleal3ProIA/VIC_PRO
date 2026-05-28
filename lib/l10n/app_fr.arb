@@ -475,6 +475,7 @@
   "authErrorWeakPassword": "Ce mot de passe est trop faible.",
   "authErrorLeakedPassword": "Ce mot de passe est apparu dans des fuites de données connues. Choisis-en un autre.",
   "authErrorEmailNotConfirmed": "Veuillez vérifier votre e-mail avant de vous connecter.",
+  "authErrorEmailNotRegistered": "Cet e-mail n'est pas enregistré. Crée un compte avant d'utiliser la connexion sans mot de passe.",
   "authErrorInvalidCredentials": "E-mail ou mot de passe invalide.",
   "authErrorOtpInvalid": "Le code est invalide, expiré ou déjà utilisé. Utilisez le dernier code que nous avons envoyé.",
   "authErrorRateLimited": "Trop de tentatives. Veuillez réessayer plus tard.",

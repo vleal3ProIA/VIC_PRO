@@ -29,6 +29,14 @@ class AuthEmailNotConfirmed extends AuthFailure {
   const AuthEmailNotConfirmed({super.cause});
 }
 
+/// El email introducido no pertenece a ninguna cuenta. Se usa en los flujos
+/// passwordless (magic link, código OTP), donde NO permitimos signup al vuelo
+/// (`shouldCreateUser: false`): si el email es desconocido, mostramos un
+/// mensaje claro que invita a registrarse en vez de crear cuenta de tapadillo.
+class AuthEmailNotRegistered extends AuthFailure {
+  const AuthEmailNotRegistered({super.cause});
+}
+
 class AuthRateLimited extends AuthFailure {
   const AuthRateLimited({super.cause});
 }

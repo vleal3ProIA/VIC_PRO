@@ -475,6 +475,7 @@
   "authErrorWeakPassword": "Dieses Passwort ist zu schwach.",
   "authErrorLeakedPassword": "Dieses Passwort ist in bekannten Datenlecks aufgetaucht. Bitte wähle ein anderes.",
   "authErrorEmailNotConfirmed": "Bitte bestätige deine E-Mail vor der Anmeldung.",
+  "authErrorEmailNotRegistered": "Diese E-Mail ist nicht registriert. Lege erst ein Konto an, bevor du die passwortlose Anmeldung nutzt.",
   "authErrorInvalidCredentials": "Ungültige E-Mail oder Passwort.",
   "authErrorOtpInvalid": "Der Code ist ungültig, abgelaufen oder bereits verwendet. Nutze den zuletzt gesendeten Code.",
   "authErrorRateLimited": "Zu viele Versuche. Bitte später erneut versuchen.",

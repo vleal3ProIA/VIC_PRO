@@ -475,6 +475,7 @@
   "authErrorWeakPassword": "Этот пароль слишком слабый.",
   "authErrorLeakedPassword": "Этот пароль встречается в известных утечках данных. Выберите другой.",
   "authErrorEmailNotConfirmed": "Подтвердите email перед входом.",
+  "authErrorEmailNotRegistered": "Этот email не зарегистрирован. Создайте аккаунт перед использованием входа без пароля.",
   "authErrorInvalidCredentials": "Неверный email или пароль.",
   "authErrorOtpInvalid": "Код неверный, истёк или уже использован. Используйте последний отправленный код.",
   "authErrorRateLimited": "Слишком много попыток. Попробуйте позже.",

@@ -173,13 +173,16 @@ class AuthSupabaseDataSource {
 
   /// Envía un magic link (passwordless email).
   ///
-  /// Si `shouldCreateUser` es `true`, se crea el usuario al firmar por
-  /// primera vez. Lo dejamos en `true` por defecto para que el magic link
-  /// sirva tanto para login como para signup sin contraseña.
+  /// `shouldCreateUser` POR DEFECTO `false`: los métodos passwordless son
+  /// SOLO para usuarios ya registrados. Si el email no existe, Supabase
+  /// responde con `otp_disabled` ("Signups not allowed for otp"); el
+  /// repositorio lo mapea a `AuthEmailNotRegistered` y la UI muestra un
+  /// mensaje que invita a registrarse — en vez de crear cuenta de tapadillo
+  /// y enviar un email de confirmación que confunde al usuario.
   Future<void> sendMagicLink({
     required String email,
     required String redirectTo,
-    bool shouldCreateUser = true,
+    bool shouldCreateUser = false,
   }) {
     return _client.auth.signInWithOtp(
       email: email,
@@ -194,10 +197,13 @@ class AuthSupabaseDataSource {
   /// de email muestra tanto el link como el código; el usuario usa el que
   /// prefiera. En la app, el flujo OTP redirige a la pantalla de verificar
   /// código y el del magic link al callback.
+  ///
+  /// `shouldCreateUser` POR DEFECTO `false`: por la misma razón que en el
+  /// magic link, el código de acceso no puede crear cuentas al vuelo.
   Future<void> sendEmailOtp({
     required String email,
     required String redirectTo,
-    bool shouldCreateUser = true,
+    bool shouldCreateUser = false,
   }) {
     return _client.auth.signInWithOtp(
       email: email,

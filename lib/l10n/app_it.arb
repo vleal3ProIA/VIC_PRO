@@ -475,6 +475,7 @@
   "authErrorWeakPassword": "Questa password è troppo debole.",
   "authErrorLeakedPassword": "Questa password è comparsa in violazioni di dati note. Scegline una diversa.",
   "authErrorEmailNotConfirmed": "Verifica la tua email prima di accedere.",
+  "authErrorEmailNotRegistered": "Questa email non è registrata. Crea un account prima di usare l'accesso senza password.",
   "authErrorInvalidCredentials": "Email o password non valide.",
   "authErrorOtpInvalid": "Il codice non è valido, è scaduto o è già stato usato. Usa l'ultimo codice che ti abbiamo inviato.",
   "authErrorRateLimited": "Troppi tentativi. Riprova più tardi.",

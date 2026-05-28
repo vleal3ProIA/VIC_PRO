@@ -252,10 +252,12 @@ class AuthRepositoryImpl implements AuthRepository {
       await _dataSource.sendMagicLink(
         email: email,
         redirectTo: AuthRedirect.resolve(AuthRedirectType.magiclink),
+        // SOLO usuarios ya registrados: el magic link nunca crea cuenta nueva.
+        shouldCreateUser: false,
       );
       return const Right(unit);
     } on AuthException catch (e, st) {
-      return Left(_mapAuthException(e, st));
+      return Left(_mapPasswordlessAuthException(e, st));
     } catch (e) {
       return Left(AuthUnknown(cause: e, message: e.toString()));
     }
@@ -269,10 +271,12 @@ class AuthRepositoryImpl implements AuthRepository {
         // Si el usuario pulsa el link en lugar de meter el código, también
         // funciona — caemos en el callback como magic link.
         redirectTo: AuthRedirect.resolve(AuthRedirectType.magiclink),
+        // SOLO usuarios ya registrados: el OTP por email nunca crea cuenta.
+        shouldCreateUser: false,
       );
       return const Right(unit);
     } on AuthException catch (e, st) {
-      return Left(_mapAuthException(e, st));
+      return Left(_mapPasswordlessAuthException(e, st));
     } catch (e) {
       return Left(AuthUnknown(cause: e, message: e.toString()));
     }
@@ -460,6 +464,24 @@ class AuthRepositoryImpl implements AuthRepository {
         msg.contains('mfa') ||
         msg.contains('totp')) {
       return AuthMfaInvalid(cause: e);
+    }
+    return _mapAuthException(e, st);
+  }
+
+  /// Errores del flujo passwordless (magic link / OTP request, NO la
+  /// verificación del código). Si el email no está registrado y la llamada
+  /// se hizo con `shouldCreateUser: false`, Supabase responde con
+  /// `otp_disabled` ("Signups not allowed for otp"). Lo mapeamos a
+  /// `AuthEmailNotRegistered` para que la UI invite a registrarse en vez
+  /// de mostrar un genérico "algo salió mal".
+  AuthFailure _mapPasswordlessAuthException(AuthException e, StackTrace st) {
+    final code = e.code ?? '';
+    final msg = e.message.toLowerCase();
+    if (code == 'otp_disabled' ||
+        code == 'user_not_found' ||
+        msg.contains('signups not allowed') ||
+        msg.contains('user not found')) {
+      return AuthEmailNotRegistered(cause: e);
     }
     return _mapAuthException(e, st);
   }

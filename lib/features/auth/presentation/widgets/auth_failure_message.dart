@@ -12,6 +12,7 @@ String authFailureMessage(BuildContext context, AuthFailure failure) {
     AuthWeakPassword() => l.authErrorWeakPassword,
     AuthLeakedPassword() => l.authErrorLeakedPassword,
     AuthEmailNotConfirmed() => l.authErrorEmailNotConfirmed,
+    AuthEmailNotRegistered() => l.authErrorEmailNotRegistered,
     AuthInvalidCredentials() => l.authErrorInvalidCredentials,
     AuthOtpInvalid() => l.authErrorOtpInvalid,
     AuthMfaInvalid() => l.authErrorMfaInvalid,
