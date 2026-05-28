@@ -17,6 +17,15 @@ const INTENTIONAL_SERVICE_ROLE_ONLY = new Set<string>([
   "webhook_secrets", // secretos de firma de webhooks -- jamas al cliente
   "webauthn_challenges", // retos efimeros de passkeys, server-side
   "edge_rate_limits", // contadores de rate-limit, server-side
+  // IA (Fase 0): API keys cifradas de proveedores. SOLO las leen las EFs
+  // que llaman al modelo (`ai-gateway`); cliente NUNCA debe acceder.
+  "ai_credentials",
+  // Biblioteca compartida (shared_library, Fase 2+): pool global de
+  // índices/views/cuestionarios reutilizables. La escritura va por la EF
+  // `validate-index` y la lectura por `generate-index`. El cliente nunca
+  // toca estas tablas directamente.
+  "shared_indexes",
+  "shared_contributions",
 ]);
 
 export const runCheck: AuditCheckRunner = async (admin) => {
