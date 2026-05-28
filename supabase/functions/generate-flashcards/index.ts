@@ -1,10 +1,10 @@
 // ============================================================================
 // Edge Function: generate-flashcards · Tarjetas de estudio (Fase 3)
 // ----------------------------------------------------------------------------
-// Genera N flashcards (pregunta/respuesta) de un temario o de una sección del
-// índice. Usa el TEXTO ya disponible (el 'original' guardado del nodo, o el
-// texto completo del temario; visión del PDF solo como último recurso) para que
-// cualquier proveedor del gateway pueda generarlas.
+// Genera N flashcards (pregunta/respuesta) de UNA SECCIÓN del índice. Regla del
+// producto: las flashcards SIEMPRE se crean por sección activa, nunca de todo
+// el temario a la vez (el usuario estudia paso a paso). Para "ver todo" se hace
+// agregando lo ya generado por secciones — esto es responsabilidad de la UI.
 //
 // Reemplaza el lote anterior del mismo ámbito (subject + node) para no acumular
 // duplicados al regenerar. Síncrono: la UI espera con spinner.
@@ -14,10 +14,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
-import { gatherMaterial } from "../_shared/ai/material.ts";
 import { contentHash } from "../_shared/ai/hash.ts";
 import { findSimilarHash } from "../_shared/ai/pool.ts";
-import type { AiAttachment } from "../_shared/ai/types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -105,6 +103,8 @@ Deno.serve(withSentry("generate-flashcards", async (req) => {
   if (typeof subjectId !== "string") {
     return json({ error: "missing_subject_id" }, 400);
   }
+  // Solo se permite generar por sección activa (no todo el temario a la vez).
+  if (!nodeId) return json({ error: "missing_node_id" }, 400);
 
   // Propiedad del temario.
   const { data: subj } = await admin
@@ -128,46 +128,35 @@ Deno.serve(withSentry("generate-flashcards", async (req) => {
   });
   if (!rateOk) return json({ error: "rate_limited" }, 429);
 
-  // Material: preferimos el texto de la sección (si hay node), luego el texto
-  // completo del temario; visión del PDF como último recurso.
-  let textContext = "";
-  let attachments: AiAttachment[] = [];
-  if (nodeId) {
-    const { data: nodeRow } = await admin
-      .from("index_nodes")
-      .select("id, subject_id, user_id")
-      .eq("id", nodeId)
-      .maybeSingle();
-    const node = nodeRow as NodeRow | null;
-    if (node && node.user_id === user.id) {
-      const { data: orig } = await admin
-        .from("node_content")
-        .select("content")
-        .eq("node_id", node.id)
-        .eq("kind", "original")
-        .maybeSingle();
-      textContext =
-        ((orig as { content: string | null } | null)?.content ?? "").trim();
-    }
+  // Material: SOLO el texto propio de la sección. No hay fallback al temario
+  // completo: si la sección no tiene cuerpo aún, el usuario tiene que abrirla
+  // o pedir su contenido antes (no inflamos el prompt con todo el temario).
+  const { data: nodeRow } = await admin
+    .from("index_nodes")
+    .select("id, subject_id, user_id")
+    .eq("id", nodeId)
+    .maybeSingle();
+  const node = nodeRow as NodeRow | null;
+  if (!node || node.subject_id !== subject.id || node.user_id !== user.id) {
+    return json({ error: "node_not_found" }, 404);
   }
-  // Texto propio de la sección (antes del posible fallback al temario entero):
-  // base para el hash de reutilización de flashcards.
-  const nodeOriginal = nodeId ? textContext : "";
-  const sectionHash = nodeOriginal.length >= 40
-    ? await contentHash(nodeOriginal)
-    : null;
-  if (textContext.length < 20) {
-    const mat = await gatherMaterial(admin, subjectId);
-    if (mat.textContext.trim().length > 0) {
-      textContext = mat.textContext;
-    } else {
-      textContext = "";
-      attachments = mat.attachments;
-    }
+  const { data: orig } = await admin
+    .from("node_content")
+    .select("content")
+    .eq("node_id", node.id)
+    .eq("kind", "original")
+    .maybeSingle();
+  const textContext =
+    ((orig as { content: string | null } | null)?.content ?? "").trim();
+  if (textContext.length < 120) {
+    return json({
+      ok: false,
+      error: "section_empty",
+      detail:
+        "La sección activa no tiene texto suficiente para generar flashcards.",
+    }, 200);
   }
-  if (textContext.length === 0 && attachments.length === 0) {
-    return json({ error: "no_ready_documents" }, 409);
-  }
+  const sectionHash = await contentHash(textContext);
 
   const lang = subject.language && subject.language.length > 0
     ? `Write the cards in this language (ISO code): ${subject.language}.`
@@ -180,37 +169,36 @@ Deno.serve(withSentry("generate-flashcards", async (req) => {
     `most important facts, definitions and rules. Produce about ${count} cards. ` +
     `${lang} No commentary.`;
 
-  // Reutilización por hash (solo ámbito de sección con texto propio): si la
-  // biblioteca ya tiene flashcards de esta sección (idéntica o muy parecida),
-  // las usamos sin gastar IA.
-  if (sectionHash) {
-    const fetchShared = async (h: string) => {
-      const { data } = await admin
-        .from("shared_flashcards")
-        .select("front, back")
-        .eq("content_hash", h)
-        .limit(count);
-      return (data ?? []) as Array<{ front: string; back: string }>;
-    };
-    let cached = await fetchShared(sectionHash);
-    if (cached.length < 4) {
-      const sim = await findSimilarHash(admin, nodeOriginal);
-      if (sim && sim.hash !== sectionHash) cached = await fetchShared(sim.hash);
-    }
-    if (cached.length >= 4) {
-      let del = admin.from("flashcards").delete().eq("subject_id", subject.id);
-      del = nodeId ? del.eq("node_id", nodeId) : del.is("node_id", null);
-      await del;
-      const rows = cached.slice(0, count).map((c) => ({
-        subject_id: subject.id,
-        user_id: subject.user_id,
-        node_id: nodeId,
-        front: c.front,
-        back: c.back,
-      }));
-      await admin.from("flashcards").insert(rows);
-      return json({ ok: true, count: rows.length, reused: true }, 200);
-    }
+  // Reutilización por hash: si la biblioteca ya tiene flashcards de esta
+  // sección (idéntica o muy parecida), las usamos sin gastar IA.
+  const fetchShared = async (h: string) => {
+    const { data } = await admin
+      .from("shared_flashcards")
+      .select("front, back")
+      .eq("content_hash", h)
+      .limit(count);
+    return (data ?? []) as Array<{ front: string; back: string }>;
+  };
+  let cached = await fetchShared(sectionHash);
+  if (cached.length < 4) {
+    const sim = await findSimilarHash(admin, textContext);
+    if (sim && sim.hash !== sectionHash) cached = await fetchShared(sim.hash);
+  }
+  if (cached.length >= 4) {
+    await admin
+      .from("flashcards")
+      .delete()
+      .eq("subject_id", subject.id)
+      .eq("node_id", nodeId);
+    const rows = cached.slice(0, count).map((c) => ({
+      subject_id: subject.id,
+      user_id: subject.user_id,
+      node_id: nodeId,
+      front: c.front,
+      back: c.back,
+    }));
+    await admin.from("flashcards").insert(rows);
+    return json({ ok: true, count: rows.length, reused: true }, 200);
   }
 
   try {
@@ -219,11 +207,8 @@ Deno.serve(withSentry("generate-flashcards", async (req) => {
       system,
       messages: [{
         role: "user",
-        content: textContext
-          ? "Material:\n\n" + textContext
-          : "Use the attached document(s).",
+        content: "Material:\n\n" + textContext,
       }],
-      attachments: attachments.length > 0 ? attachments : undefined,
       maxOutputTokens: 4096,
       temperature: 0.3,
       userId: subject.user_id,
@@ -236,9 +221,11 @@ Deno.serve(withSentry("generate-flashcards", async (req) => {
     }
 
     // Reemplaza el lote anterior del mismo ámbito (subject + node).
-    let del = admin.from("flashcards").delete().eq("subject_id", subject.id);
-    del = nodeId ? del.eq("node_id", nodeId) : del.is("node_id", null);
-    await del;
+    await admin
+      .from("flashcards")
+      .delete()
+      .eq("subject_id", subject.id)
+      .eq("node_id", nodeId);
 
     const rows = cards.map((c) => ({
       subject_id: subject.id,
@@ -249,8 +236,8 @@ Deno.serve(withSentry("generate-flashcards", async (req) => {
     }));
     await admin.from("flashcards").insert(rows);
 
-    // Material libre + ámbito de sección: aportamos las flashcards al pool.
-    if (subject.shareable === true && sectionHash) {
+    // Material libre: aportamos las flashcards al pool por sección.
+    if (subject.shareable === true) {
       await admin.from("shared_flashcards").insert(
         cards.map((c) => ({
           content_hash: sectionHash,

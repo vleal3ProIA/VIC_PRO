@@ -43,16 +43,47 @@ final annotationsProvider =
   return ref.watch(subjectsDataSourceProvider).listAnnotations(nodeId);
 });
 
-/// Flashcards de un temario (ordenadas por fecha de repaso).
+/// Flashcards de un temario (todas, ordenadas por fecha de repaso). Usado en
+/// los contadores agregados del Studio (no en la pantalla de repaso).
 final flashcardsProvider =
     FutureProvider.family<List<Flashcard>, String>((ref, subjectId) {
   return ref.watch(subjectsDataSourceProvider).listFlashcards(subjectId);
 });
 
-/// Preguntas del cuestionario de un temario.
+/// Preguntas del cuestionario de un temario (todas, contadores).
 final quizQuestionsProvider =
     FutureProvider.family<List<QuizQuestion>, String>((ref, subjectId) {
   return ref.watch(subjectsDataSourceProvider).listQuizQuestions(subjectId);
+});
+
+/// Argumento "(temario, sección?)" para los providers con ámbito de sección.
+/// `nodeId == null` significa "todo el temario" (vista agregada).
+typedef SectionScope = ({String subjectId, String? nodeId});
+
+/// Flashcards filtradas por sección (o todo el temario si `nodeId == null`).
+/// Generación: siempre por sección activa. Visualización: ambas.
+final flashcardsScopedProvider =
+    FutureProvider.family<List<Flashcard>, SectionScope>((ref, s) {
+  return ref
+      .watch(subjectsDataSourceProvider)
+      .listFlashcards(s.subjectId, nodeId: s.nodeId);
+});
+
+/// Preguntas del cuestionario filtradas por sección (o todo el temario).
+final quizQuestionsScopedProvider =
+    FutureProvider.family<List<QuizQuestion>, SectionScope>((ref, s) {
+  return ref
+      .watch(subjectsDataSourceProvider)
+      .listQuizQuestions(s.subjectId, nodeId: s.nodeId);
+});
+
+/// Notas de TODO el temario (vista agregada "todas mis notas del temario").
+/// La creación/edición sigue siendo por sección, como en `annotationsProvider`.
+final annotationsForSubjectProvider =
+    FutureProvider.family<List<Annotation>, String>((ref, subjectId) {
+  return ref
+      .watch(subjectsDataSourceProvider)
+      .listAnnotationsForSubject(subjectId);
 });
 
 /// Banco de preguntas de examen de un temario (tests configurables).

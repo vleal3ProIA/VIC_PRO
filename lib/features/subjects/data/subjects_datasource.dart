@@ -322,6 +322,21 @@ class SubjectsDataSource {
         .toList(growable: false);
   }
 
+  /// Notas de TODO el temario (vista global "ver mis notas del temario").
+  /// Las notas se crean siempre asociadas a una sección, pero el usuario puede
+  /// consultarlas todas a la vez.
+  Future<List<Annotation>> listAnnotationsForSubject(String subjectId) async {
+    final data = await _client
+        .from('annotations')
+        .select()
+        .eq('subject_id', subjectId)
+        .order('created_at', ascending: false);
+    return (data as List)
+        .cast<Map<String, dynamic>>()
+        .map(Annotation.fromMap)
+        .toList(growable: false);
+  }
+
   /// Crea una nota en la sección [nodeId] del temario [subjectId].
   Future<Annotation> createAnnotation({
     required String subjectId,
@@ -385,12 +400,15 @@ class SubjectsDataSource {
   }
 
   /// Flashcards del temario, ordenadas por fecha de repaso (lo que toca antes).
-  Future<List<Flashcard>> listFlashcards(String subjectId) async {
-    final data = await _client
-        .from('flashcards')
-        .select()
-        .eq('subject_id', subjectId)
-        .order('due_at');
+  /// Si se pasa [nodeId], solo devuelve las de esa sección activa; si no, las
+  /// de TODO el temario (para la vista agregada "todo el temario").
+  Future<List<Flashcard>> listFlashcards(
+    String subjectId, {
+    String? nodeId,
+  }) async {
+    var q = _client.from('flashcards').select().eq('subject_id', subjectId);
+    if (nodeId != null) q = q.eq('node_id', nodeId);
+    final data = await q.order('due_at');
     return (data as List)
         .cast<Map<String, dynamic>>()
         .map(Flashcard.fromMap)
@@ -504,13 +522,16 @@ class SubjectsDataSource {
     }
   }
 
-  /// Preguntas del cuestionario de un temario.
-  Future<List<QuizQuestion>> listQuizQuestions(String subjectId) async {
-    final data = await _client
-        .from('quiz_questions')
-        .select()
-        .eq('subject_id', subjectId)
-        .order('created_at');
+  /// Preguntas del cuestionario de un temario. Si se pasa [nodeId], solo
+  /// devuelve las de esa sección activa (la generación es siempre por sección,
+  /// pero la UI puede agregar las de todo el temario para la vista global).
+  Future<List<QuizQuestion>> listQuizQuestions(
+    String subjectId, {
+    String? nodeId,
+  }) async {
+    var q = _client.from('quiz_questions').select().eq('subject_id', subjectId);
+    if (nodeId != null) q = q.eq('node_id', nodeId);
+    final data = await q.order('created_at');
     return (data as List)
         .cast<Map<String, dynamic>>()
         .map(QuizQuestion.fromMap)

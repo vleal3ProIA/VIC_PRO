@@ -1,19 +1,19 @@
 // ============================================================================
 // Edge Function: generate-quiz · Cuestionario tipo test (Fase 3)
 // ----------------------------------------------------------------------------
-// Genera N preguntas de opción múltiple de un temario o sección del índice.
-// Usa el TEXTO ya disponible (el 'original' del nodo, o el texto completo del
-// temario; visión del PDF solo como último recurso) para que cualquier
-// proveedor del gateway pueda generarlas. Reemplaza el lote anterior del mismo
-// ámbito. Síncrono: la UI espera con spinner.
+// Genera N preguntas de opción múltiple de UNA SECCIÓN del índice. Regla del
+// producto: el cuestionario SIEMPRE se crea por sección activa, nunca de todo
+// el temario a la vez (el usuario estudia paso a paso). Para "ver todo" la UI
+// agrega lo que ya se generó por secciones.
+//
+// Reemplaza el lote anterior del mismo ámbito. Síncrono: la UI espera con
+// spinner.
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
-import { gatherMaterial } from "../_shared/ai/material.ts";
-import type { AiAttachment } from "../_shared/ai/types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -121,6 +121,8 @@ Deno.serve(withSentry("generate-quiz", async (req) => {
   if (typeof subjectId !== "string") {
     return json({ error: "missing_subject_id" }, 400);
   }
+  // Solo se permite generar por sección activa (no todo el temario a la vez).
+  if (!nodeId) return json({ error: "missing_node_id" }, 400);
 
   const { data: subj } = await admin
     .from("subjects")
@@ -142,38 +144,32 @@ Deno.serve(withSentry("generate-quiz", async (req) => {
   });
   if (!rateOk) return json({ error: "rate_limited" }, 429);
 
-  // Material: texto de la sección -> texto del temario -> visión.
-  let textContext = "";
-  let attachments: AiAttachment[] = [];
-  if (nodeId) {
-    const { data: nodeRow } = await admin
-      .from("index_nodes")
-      .select("id, subject_id, user_id")
-      .eq("id", nodeId)
-      .maybeSingle();
-    const node = nodeRow as NodeRow | null;
-    if (node && node.user_id === user.id) {
-      const { data: orig } = await admin
-        .from("node_content")
-        .select("content")
-        .eq("node_id", node.id)
-        .eq("kind", "original")
-        .maybeSingle();
-      textContext =
-        ((orig as { content: string | null } | null)?.content ?? "").trim();
-    }
+  // Material: SOLO el texto propio de la sección. Sin fallback al temario
+  // completo (el cuestionario es siempre por sección).
+  const { data: nodeRow } = await admin
+    .from("index_nodes")
+    .select("id, subject_id, user_id")
+    .eq("id", nodeId)
+    .maybeSingle();
+  const node = nodeRow as NodeRow | null;
+  if (!node || node.subject_id !== subject.id || node.user_id !== user.id) {
+    return json({ error: "node_not_found" }, 404);
   }
-  if (textContext.length < 20) {
-    const mat = await gatherMaterial(admin, subjectId);
-    if (mat.textContext.trim().length > 0) {
-      textContext = mat.textContext;
-    } else {
-      textContext = "";
-      attachments = mat.attachments;
-    }
-  }
-  if (textContext.length === 0 && attachments.length === 0) {
-    return json({ error: "no_ready_documents" }, 409);
+  const { data: orig } = await admin
+    .from("node_content")
+    .select("content")
+    .eq("node_id", node.id)
+    .eq("kind", "original")
+    .maybeSingle();
+  const textContext =
+    ((orig as { content: string | null } | null)?.content ?? "").trim();
+  if (textContext.length < 120) {
+    return json({
+      ok: false,
+      error: "section_empty",
+      detail:
+        "La sección activa no tiene texto suficiente para generar preguntas.",
+    }, 200);
   }
 
   const lang = subject.language && subject.language.length > 0
@@ -194,11 +190,8 @@ Deno.serve(withSentry("generate-quiz", async (req) => {
       system,
       messages: [{
         role: "user",
-        content: textContext
-          ? "Material:\n\n" + textContext
-          : "Use the attached document(s).",
+        content: "Material:\n\n" + textContext,
       }],
-      attachments: attachments.length > 0 ? attachments : undefined,
       maxOutputTokens: 4096,
       temperature: 0.3,
       userId: subject.user_id,
@@ -210,9 +203,11 @@ Deno.serve(withSentry("generate-quiz", async (req) => {
       return json({ ok: false, error: "empty_result" }, 200);
     }
 
-    let del = admin.from("quiz_questions").delete().eq("subject_id", subject.id);
-    del = nodeId ? del.eq("node_id", nodeId) : del.is("node_id", null);
-    await del;
+    await admin
+      .from("quiz_questions")
+      .delete()
+      .eq("subject_id", subject.id)
+      .eq("node_id", nodeId);
 
     const rows = questions.map((q) => ({
       subject_id: subject.id,

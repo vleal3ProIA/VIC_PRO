@@ -1952,6 +1952,17 @@ class _StudioColumn extends StatefulWidget {
 class _StudioColumnState extends State<_StudioColumn> {
   _StudioTool _tool = _StudioTool.home;
 
+  /// Título de la sección actualmente activa (si la hay), para mostrarlo en
+  /// los headers de las herramientas con ámbito de sección (Flashcards / Quiz).
+  String? _activeNodeTitle() {
+    final id = widget.nodeId;
+    if (id == null) return null;
+    for (final n in widget.nodes) {
+      if (n.id == id) return n.title;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
@@ -2003,7 +2014,11 @@ class _StudioColumnState extends State<_StudioColumn> {
     if (inNotes) {
       body = _NotesView(nodeId: widget.nodeId!, subjectId: widget.subjectId);
     } else if (inFlash) {
-      body = _FlashcardsView(subjectId: widget.subjectId);
+      body = _FlashcardsView(
+        subjectId: widget.subjectId,
+        activeNodeId: widget.nodeId,
+        activeNodeTitle: _activeNodeTitle(),
+      );
     } else if (inMind) {
       body = _MindMapView(
         subjectId: widget.subjectId,
@@ -2011,7 +2026,11 @@ class _StudioColumnState extends State<_StudioColumn> {
         onSelectNode: widget.onSelectNode,
       );
     } else if (inQuiz) {
-      body = _QuizView(subjectId: widget.subjectId);
+      body = _QuizView(
+        subjectId: widget.subjectId,
+        activeNodeId: widget.nodeId,
+        activeNodeTitle: _activeNodeTitle(),
+      );
     } else if (inGuide) {
       body = _GuideView(subjectId: widget.subjectId);
     } else if (inExam) {
@@ -3949,12 +3968,21 @@ class _GuideViewState extends ConsumerState<_GuideView> {
   }
 }
 
-/// Cuestionario tipo test: responder preguntas con corrección inmediata,
-/// explicación y puntuación final.
+/// Cuestionario tipo test: corrección inmediata, explicación y puntuación.
+///
+/// Regla del producto: **la generación es siempre de la SECCIÓN ACTIVA del
+/// índice** (no de todo el temario). La vista alterna entre "Esta sección" y
+/// "Todo el temario" para repasar lo ya generado.
 class _QuizView extends ConsumerStatefulWidget {
-  const _QuizView({required this.subjectId});
+  const _QuizView({
+    required this.subjectId,
+    required this.activeNodeId,
+    required this.activeNodeTitle,
+  });
 
   final String subjectId;
+  final String? activeNodeId;
+  final String? activeNodeTitle;
 
   @override
   ConsumerState<_QuizView> createState() => _QuizViewState();
@@ -3966,6 +3994,10 @@ class _QuizViewState extends ConsumerState<_QuizView> {
   int? _selected;
   bool _answered = false;
   int _correct = 0;
+
+  /// `true` = solo esta sección, `false` = todo el temario.
+  bool _scopeSection = true;
+  String? get _scopedNodeId => _scopeSection ? widget.activeNodeId : null;
 
   /// IDs de las preguntas falladas en la ronda actual (para "practicar
   /// falladas").
@@ -3998,16 +4030,31 @@ class _QuizViewState extends ConsumerState<_QuizView> {
 
   Future<void> _generate() async {
     if (_busy) return;
+    final nodeId = widget.activeNodeId;
+    if (nodeId == null) return;
     setState(() => _busy = true);
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     final errBg = Theme.of(context).colorScheme.error;
     try {
-      await ref
-          .read(subjectsDataSourceProvider)
-          .generateQuiz(subjectId: widget.subjectId);
-      if (mounted) setState(_reset);
-      ref.invalidate(quizQuestionsProvider(widget.subjectId));
+      await ref.read(subjectsDataSourceProvider).generateQuiz(
+            subjectId: widget.subjectId,
+            nodeId: nodeId,
+          );
+      if (mounted) {
+        setState(() {
+          _scopeSection = true;
+          _reset();
+        });
+      }
+      ref
+        ..invalidate(quizQuestionsProvider(widget.subjectId))
+        ..invalidate(quizQuestionsScopedProvider(
+          (subjectId: widget.subjectId, nodeId: nodeId),
+        ),)
+        ..invalidate(quizQuestionsScopedProvider(
+          (subjectId: widget.subjectId, nodeId: null),
+        ),);
     } on SubjectsException catch (e) {
       final detail =
           e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
@@ -4058,127 +4105,190 @@ class _QuizViewState extends ConsumerState<_QuizView> {
         ),
       );
     }
-    final async = ref.watch(quizQuestionsProvider(widget.subjectId));
-    return async.when(
-      loading: () => const Center(child: AppLoadingState()),
-      error: (e, _) => AppErrorState(
-        message: l.studyViewError,
-        detail: e.toString(),
-        onRetry: () => ref.invalidate(quizQuestionsProvider(widget.subjectId)),
-        retryLabel: l.actionRetry,
-      ),
-      data: (qs) {
-        if (qs.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    l.studioQuizEmpty,
-                    textAlign: TextAlign.center,
-                    style: context.textTheme.bodyMedium
-                        ?.copyWith(color: context.colors.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  PremiumButton(
-                    label: l.studioQuizGenerate,
-                    leadingIcon: Icons.auto_awesome_outlined,
-                    onPressed: _generate,
-                  ),
-                ],
-              ),
+    final scope = (subjectId: widget.subjectId, nodeId: _scopedNodeId);
+    final async = ref.watch(quizQuestionsScopedProvider(scope));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _scopeBar(context),
+        const Divider(height: 1),
+        Expanded(
+          child: async.when(
+            loading: () => const Center(child: AppLoadingState()),
+            error: (e, _) => AppErrorState(
+              message: l.studyViewError,
+              detail: e.toString(),
+              onRetry: () =>
+                  ref.invalidate(quizQuestionsScopedProvider(scope)),
+              retryLabel: l.actionRetry,
             ),
-          );
-        }
-        final questions = _practice ?? _byWeakness(qs);
-        if (_index >= questions.length) return _result(context, questions);
+            data: (qs) => _quizContent(context, qs),
+          ),
+        ),
+      ],
+    );
+  }
 
-        final q = questions[_index];
-        final last = _index == questions.length - 1;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.xs,
-                AppSpacing.xs,
-                AppSpacing.xs,
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    '${_index + 1} / ${questions.length}',
-                    style: context.textTheme.labelMedium
-                        ?.copyWith(color: context.colors.onSurfaceVariant),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: l.studyRegenerate,
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.refresh, size: 18),
-                    onPressed: _generate,
-                  ),
-                ],
-              ),
+  Widget _scopeBar(BuildContext context) {
+    final l = context.l10n;
+    final hasActive = widget.activeNodeId != null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.xs,
+        AppSpacing.xs,
+        AppSpacing.xs,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: SegmentedButton<bool>(
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(value: true, label: Text(l.studyScopeSection)),
+                ButtonSegment(value: false, label: Text(l.studyScopeAll)),
+              ],
+              selected: {_scopeSection},
+              onSelectionChanged: (s) => setState(() {
+                _scopeSection = s.first;
+                _reset();
+              }),
             ),
-            const Divider(height: 1),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      q.question,
-                      style: context.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    for (var i = 0; i < q.options.length; i++)
-                      _option(context, q, i),
-                    if (_answered && (q.explanation?.isNotEmpty ?? false))
-                      Padding(
-                        padding: const EdgeInsets.only(top: AppSpacing.sm),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(AppSpacing.sm),
-                          decoration: BoxDecoration(
-                            color: context.colors.surfaceContainerHighest
-                                .withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            q.explanation!,
-                            style: context.textTheme.bodySmall
-                                ?.copyWith(height: 1.4),
-                          ),
-                        ),
-                      ),
-                  ],
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          IconButton(
+            tooltip: hasActive ? l.studyRegenerate : l.studyPickSectionTooltip,
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.refresh, size: 18),
+            onPressed: hasActive ? _generate : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _quizContent(BuildContext context, List<QuizQuestion> qs) {
+    final l = context.l10n;
+    if (qs.isEmpty) {
+      if (widget.activeNodeId == null) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.touch_app_outlined,
+                    size: 36, color: context.colors.onSurfaceVariant,),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  l.studyPickSectionForQuiz,
+                  textAlign: TextAlign.center,
+                  style: context.textTheme.bodyMedium
+                      ?.copyWith(color: context.colors.onSurfaceVariant),
                 ),
-              ),
+              ],
             ),
-            if (_answered)
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: FilledButton(
-                    onPressed: () => setState(() {
-                      _index++;
-                      _selected = null;
-                      _answered = false;
-                    }),
-                    child: Text(last ? l.studioQuizFinish : l.studioQuizNext),
-                  ),
-                ),
-              ),
-          ],
+          ),
         );
-      },
+      }
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _scopeSection
+                    ? l.studioQuizEmptyForSection(widget.activeNodeTitle ?? '')
+                    : l.studioQuizEmpty,
+                textAlign: TextAlign.center,
+                style: context.textTheme.bodyMedium
+                    ?.copyWith(color: context.colors.onSurfaceVariant),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              PremiumButton(
+                label: l.studioQuizGenerate,
+                leadingIcon: Icons.auto_awesome_outlined,
+                onPressed: _generate,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    final questions = _practice ?? _byWeakness(qs);
+    if (_index >= questions.length) return _result(context, questions);
+
+    final q = questions[_index];
+    final last = _index == questions.length - 1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.xs,
+            AppSpacing.md,
+            AppSpacing.xs,
+          ),
+          child: Text(
+            '${_index + 1} / ${questions.length}',
+            style: context.textTheme.labelMedium
+                ?.copyWith(color: context.colors.onSurfaceVariant),
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  q.question,
+                  style: context.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                for (var i = 0; i < q.options.length; i++)
+                  _option(context, q, i),
+                if (_answered && (q.explanation?.isNotEmpty ?? false))
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.sm),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: context.colors.surfaceContainerHighest
+                            .withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        q.explanation!,
+                        style: context.textTheme.bodySmall
+                            ?.copyWith(height: 1.4),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (_answered)
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton(
+                onPressed: () => setState(() {
+                  _index++;
+                  _selected = null;
+                  _answered = false;
+                }),
+                child: Text(last ? l.studioQuizFinish : l.studioQuizNext),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -4525,11 +4635,22 @@ class _MindMapViewState extends ConsumerState<_MindMapView> {
   }
 }
 
-/// Flashcards del temario con repaso espaciado (flip + Otra vez/Bien/Fácil).
+/// Flashcards con repaso espaciado (flip + Otra vez/Bien/Fácil).
+///
+/// Regla del producto: **la generación es siempre de la SECCIÓN ACTIVA del
+/// índice** (no de todo el temario). La vista, en cambio, permite alternar
+/// entre "Esta sección" y "Todo el temario" para repasar agregadamente lo que
+/// ya se generó por secciones.
 class _FlashcardsView extends ConsumerStatefulWidget {
-  const _FlashcardsView({required this.subjectId});
+  const _FlashcardsView({
+    required this.subjectId,
+    required this.activeNodeId,
+    required this.activeNodeTitle,
+  });
 
   final String subjectId;
+  final String? activeNodeId;
+  final String? activeNodeTitle;
 
   @override
   ConsumerState<_FlashcardsView> createState() => _FlashcardsViewState();
@@ -4540,23 +4661,44 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
   bool _flipped = false;
   int _index = 0;
 
+  /// `true` = solo esta sección, `false` = todo el temario.
+  bool _scopeSection = true;
+
+  String? get _scopedNodeId =>
+      _scopeSection ? widget.activeNodeId : null;
+
+  void _resetReview() {
+    _index = 0;
+    _flipped = false;
+  }
+
   Future<void> _generate() async {
     if (_busy) return;
+    final nodeId = widget.activeNodeId;
+    if (nodeId == null) return; // botón estará deshabilitado
     setState(() => _busy = true);
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     final errBg = Theme.of(context).colorScheme.error;
     try {
-      await ref
-          .read(subjectsDataSourceProvider)
-          .generateFlashcards(subjectId: widget.subjectId);
+      await ref.read(subjectsDataSourceProvider).generateFlashcards(
+            subjectId: widget.subjectId,
+            nodeId: nodeId,
+          );
       if (mounted) {
         setState(() {
-            _index = 0;
-            _flipped = false;
-          });
+          _scopeSection = true; // tras generar, mostramos la sección recién creada
+          _resetReview();
+        });
       }
-      ref.invalidate(flashcardsProvider(widget.subjectId));
+      ref
+        ..invalidate(flashcardsProvider(widget.subjectId))
+        ..invalidate(flashcardsScopedProvider(
+          (subjectId: widget.subjectId, nodeId: nodeId),
+        ),)
+        ..invalidate(flashcardsScopedProvider(
+          (subjectId: widget.subjectId, nodeId: null),
+        ),);
     } on SubjectsException catch (e) {
       final detail =
           e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
@@ -4606,79 +4748,144 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
       );
     }
 
-    final async = ref.watch(flashcardsProvider(widget.subjectId));
-    return async.when(
-      loading: () => const Center(child: AppLoadingState()),
-      error: (e, _) => AppErrorState(
-        message: l.studyViewError,
-        detail: e.toString(),
-        onRetry: () => ref.invalidate(flashcardsProvider(widget.subjectId)),
-        retryLabel: l.actionRetry,
-      ),
-      data: (cards) {
-        if (cards.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    l.studioFlashEmpty,
-                    textAlign: TextAlign.center,
-                    style: context.textTheme.bodyMedium
-                        ?.copyWith(color: context.colors.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  PremiumButton(
-                    label: l.studioFlashGenerate,
-                    leadingIcon: Icons.auto_awesome_outlined,
-                    onPressed: _generate,
-                  ),
-                ],
-              ),
+    final scope = (subjectId: widget.subjectId, nodeId: _scopedNodeId);
+    final async = ref.watch(flashcardsScopedProvider(scope));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _scopeBar(context),
+        const Divider(height: 1),
+        Expanded(
+          child: async.when(
+            loading: () => const Center(child: AppLoadingState()),
+            error: (e, _) => AppErrorState(
+              message: l.studyViewError,
+              detail: e.toString(),
+              onRetry: () => ref.invalidate(flashcardsScopedProvider(scope)),
+              retryLabel: l.actionRetry,
             ),
-          );
-        }
+            data: (cards) => _content(context, cards),
+          ),
+        ),
+      ],
+    );
+  }
 
-        final done = _index >= cards.length;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.xs,
-                AppSpacing.xs,
-                AppSpacing.xs,
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    done ? '${cards.length} / ${cards.length}'
-                        : '${_index + 1} / ${cards.length}',
-                    style: context.textTheme.labelMedium
-                        ?.copyWith(color: context.colors.onSurfaceVariant),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: l.studyRegenerate,
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.refresh, size: 18),
-                    onPressed: _generate,
-                  ),
-                ],
-              ),
+  /// Barra superior: chip de scope (Esta sección / Todo el temario) +
+  /// botón de regenerar (solo activo si hay sección activa).
+  Widget _scopeBar(BuildContext context) {
+    final l = context.l10n;
+    final hasActive = widget.activeNodeId != null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.xs,
+        AppSpacing.xs,
+        AppSpacing.xs,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: SegmentedButton<bool>(
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(value: true, label: Text(l.studyScopeSection)),
+                ButtonSegment(value: false, label: Text(l.studyScopeAll)),
+              ],
+              selected: {_scopeSection},
+              onSelectionChanged: (s) => setState(() {
+                _scopeSection = s.first;
+                _resetReview();
+              }),
             ),
-            const Divider(height: 1),
-            Expanded(
-              child: done
-                  ? _allDone(context)
-                  : _cardArea(context, cards[_index]),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          IconButton(
+            tooltip: hasActive ? l.studyRegenerate : l.studyPickSectionTooltip,
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.refresh, size: 18),
+            onPressed: hasActive ? _generate : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _content(BuildContext context, List<Flashcard> cards) {
+    final l = context.l10n;
+    if (cards.isEmpty) {
+      // Sin sección activa → CTA pidiendo seleccionarla.
+      if (widget.activeNodeId == null) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.touch_app_outlined,
+                    size: 36, color: context.colors.onSurfaceVariant,),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  l.studyPickSectionForCards,
+                  textAlign: TextAlign.center,
+                  style: context.textTheme.bodyMedium
+                      ?.copyWith(color: context.colors.onSurfaceVariant),
+                ),
+              ],
             ),
-          ],
+          ),
         );
-      },
+      }
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _scopeSection
+                    ? l.studioFlashEmptyForSection(
+                        widget.activeNodeTitle ?? '',
+                      )
+                    : l.studioFlashEmpty,
+                textAlign: TextAlign.center,
+                style: context.textTheme.bodyMedium
+                    ?.copyWith(color: context.colors.onSurfaceVariant),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              PremiumButton(
+                label: l.studioFlashGenerate,
+                leadingIcon: Icons.auto_awesome_outlined,
+                onPressed: _generate,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final done = _index >= cards.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.xs,
+            AppSpacing.md,
+            AppSpacing.xs,
+          ),
+          child: Text(
+            done ? '${cards.length} / ${cards.length}'
+                : '${_index + 1} / ${cards.length}',
+            style: context.textTheme.labelMedium
+                ?.copyWith(color: context.colors.onSurfaceVariant),
+          ),
+        ),
+        Expanded(
+          child: done ? _allDone(context) : _cardArea(context, cards[_index]),
+        ),
+      ],
     );
   }
 
@@ -4697,11 +4904,10 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
             label: l.studioFlashReviewAgain,
             leadingIcon: Icons.replay,
             onPressed: () {
-              setState(() {
-                _index = 0;
-                _flipped = false;
-              });
-              ref.invalidate(flashcardsProvider(widget.subjectId));
+              setState(_resetReview);
+              ref.invalidate(flashcardsScopedProvider(
+                (subjectId: widget.subjectId, nodeId: _scopedNodeId),
+              ),);
             },
           ),
         ],
