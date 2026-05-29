@@ -89,20 +89,29 @@ class _PremiumCardState extends State<PremiumCard> {
         : AppShadows.card(theme.brightness);
     final hoverShadows = AppShadows.elevated(theme.brightness);
 
-    // Border sutil que se intensifica en hover. En dark mode el border
-    // es mas visible porque el contraste fondo/card es menor.
+    // Fondo: usamos una capa más alta que `surface` (que es el fondo del
+    // Scaffold) para que la card se diferencie SIEMPRE del fondo de la
+    // página. En hover subimos otra capa para reforzar el feedback. Esto
+    // hace que la card sea visible incluso si el border está apagado por
+    // el lector OS o accesibilidad.
+    final baseBg = scheme.surfaceContainerHigh;
+    final hoverBg = scheme.surfaceContainerHighest;
+
+    // Border más visible (antes 8-12% alpha → casi invisible sobre fondos
+    // similares). Ahora 18-28% en light, 28-40% en dark, lo que da una
+    // línea clara pero no agresiva (estilo Linear / Vercel / Notion).
     final baseBorderColor = isDark
-        ? scheme.outline.withValues(alpha: 0.12)
-        : scheme.outline.withValues(alpha: 0.08);
+        ? scheme.outline.withValues(alpha: 0.28)
+        : scheme.outline.withValues(alpha: 0.18);
     final hoverBorderColor = isDark
-        ? scheme.outline.withValues(alpha: 0.24)
-        : scheme.outline.withValues(alpha: 0.16);
+        ? scheme.outline.withValues(alpha: 0.40)
+        : scheme.outline.withValues(alpha: 0.28);
 
     final card = AnimatedContainer(
       duration: AppDurations.fast,
       curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
-        color: scheme.surface,
+        color: (_hovered && isInteractive) ? hoverBg : baseBg,
         borderRadius: borderRadius,
         border: Border.all(
           color: (_hovered || _focused)
