@@ -4,8 +4,11 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import 'package:myapp/core/providers/supabase_providers.dart';
+import 'package:myapp/features/account/presentation/util/data_export_csv_builder.dart';
+import 'package:myapp/features/account/presentation/util/data_export_html_builder.dart';
 import 'package:myapp/features/account/presentation/util/data_export_pdf_builder.dart';
 import 'package:myapp/features/account/presentation/util/web_download.dart';
 import 'package:myapp/generated/l10n/app_localizations.dart';
@@ -50,17 +53,32 @@ class DataExportState {
   }
 }
 
-/// Genera y descarga una copia de los datos del usuario en un **ZIP** que
-/// contiene `mis-datos.json` (machine-readable) + `mis-datos.pdf`
-/// (human-readable, localizado).
+/// Genera y descarga una copia de los datos del usuario en un **ZIP**
+/// estilo Google Takeout — multi-formato por tipo de dato.
 ///
-/// **Compliance**: GDPR Article 15 (Right of Access) + Article 20 (Data
-/// Portability), equivalentes (CCPA, LGPD).
+/// **Contenido del ZIP** (filenames localizados al idioma del usuario;
+/// `es` ⇒ español, cualquier otro idioma ⇒ inglés):
 ///
-/// **v2**: la RPC `get_my_data_export` (migración 0072) ya devuelve el
-/// payload limpio — sin UUIDs internos del sistema, con `login_summary`
-/// agregando ruido y nombres más amigables (kind, uploaded_at). El PDF se
-/// construye client-side a partir de ese mismo Map (sin duplicar lógica).
+///   * `LEEME.html` / `README.html` — README autocontenido (HTML+CSS
+///     inline) que explica qué hay en cada fichero.
+///   * `mis-datos.pdf` / `my-data.pdf` — Resumen legible para humanos
+///     (PDF generado client-side desde el JSON, sin dependencias de
+///     red).
+///   * `mis-datos.json` — Payload estructurado tal cual lo devuelve la
+///     RPC, para portabilidad RGPD art. 20.
+///   * `archivos.csv` / `files.csv` — Lista de uploads, formato CSV
+///     UTF-8+BOM compatible con Excel/Sheets directamente.
+///   * `actividad.csv` / `activity.csv` — Login summary + otros eventos.
+///   * `correos.csv` / `emails.csv` — Email log.
+///
+/// **Compliance**: GDPR Article 15 (Right of Access — el PDF y HTML) +
+/// Article 20 (Data Portability — JSON y CSVs), equivalentes (CCPA,
+/// LGPD).
+///
+/// **v3** (RPC): la RPC `get_my_data_export` (migración 0073) devuelve
+/// el payload limpio — sin UUIDs internos del sistema, con
+/// `login_summary` agregando ruido y nombres más amigables (kind,
+/// uploaded_at). Los builders trabajan sobre ese mismo Map.
 class DataExportNotifier extends Notifier<DataExportState> {
   @override
   DataExportState build() => const DataExportState();
@@ -115,24 +133,55 @@ class DataExportNotifier extends Notifier<DataExportState> {
           : null;
       final locale = profileLocale ?? uiLocale;
 
-      // 4. Construir PDF.
+      // 4. Construir PDF (resumen humano-legible, art. 15).
       final pdfBytes = await buildDataExportPdf(
         data: data,
         locale: locale,
         labels: labels,
       );
 
-      // 5. JSON pretty-printed.
+      // 5. JSON pretty-printed (portabilidad, art. 20).
       final jsonString = const JsonEncoder.withIndent('  ').convert(data);
       final jsonBytes = Uint8List.fromList(utf8.encode(jsonString));
 
-      // 6. Empaquetar en ZIP (in-memory).
+      // 6. CSVs por tipo de dato (Excel/Sheets friendly). Si una sección
+      //    no tiene entradas el builder devuelve un CSV con solo la
+      //    fila de cabecera — preferimos un fichero vacío explícito a
+      //    un fichero ausente (señal clara para el usuario).
+      final uploadsCsv = buildUploadsCsv(data, labels);
+      final activityCsv = buildActivityCsv(data, labels);
+      final emailsCsv = buildEmailsCsv(data, labels);
+
+      // 7. Filenames localizados — el usuario los verá al descomprimir.
+      //    Solo distinguimos `es`/no-es: para el resto se queda en
+      //    inglés (universal). Documentado en el dartdoc del notifier.
+      final filenames = _localizedFilenames(locale);
+
+      // 8. README HTML (debe construirse después de tener filenames —
+      //    los referencia para que el listado coincida con lo que el
+      //    usuario verá en el ZIP).
+      final dateFmt = DateFormat.yMMMd(_normalizeLocaleForIntl(locale));
+      final formattedDate = dateFmt.format(DateTime.now());
+      final readmeBytes = buildReadmeHtml(
+        data: data,
+        labels: labels,
+        localizedFilenames: filenames,
+        formattedDate: formattedDate,
+      );
+
+      // 9. Empaquetar en ZIP (in-memory). El README va primero — es lo
+      //    que el usuario suele abrir tras descomprimir y la mayoría de
+      //    herramientas de ZIP lo muestran arriba en la lista.
       final archive = Archive()
-        ..addFile(ArchiveFile('mis-datos.json', jsonBytes.length, jsonBytes))
-        ..addFile(ArchiveFile('mis-datos.pdf', pdfBytes.length, pdfBytes));
+        ..addFile(_zipFile(filenames[ExportFile.readme]!, readmeBytes))
+        ..addFile(_zipFile(filenames[ExportFile.pdf]!, pdfBytes))
+        ..addFile(_zipFile(filenames[ExportFile.json]!, jsonBytes))
+        ..addFile(_zipFile(filenames[ExportFile.uploadsCsv]!, uploadsCsv))
+        ..addFile(_zipFile(filenames[ExportFile.activityCsv]!, activityCsv))
+        ..addFile(_zipFile(filenames[ExportFile.emailsCsv]!, emailsCsv));
       final zipBytes = Uint8List.fromList(ZipEncoder().encode(archive));
 
-      // 7. Trigger descarga.
+      // 10. Trigger descarga.
       ref.read(dataDownloaderProvider)(
         filename: _buildFilename(),
         bytes: zipBytes,
@@ -190,8 +239,65 @@ class DataExportNotifier extends Notifier<DataExportState> {
       themeDark: l.dataExportPdfThemeDark,
       themeLight: l.dataExportPdfThemeLight,
       themeSystem: l.dataExportPdfThemeSystem,
+      // ── v4: README/HTML + CSVs ──
+      readmeIntro: l.dataExportPdfReadmeIntro,
+      readmeFilesTitle: l.dataExportPdfReadmeFilesTitle,
+      readmeSummaryTitle: l.dataExportPdfReadmeSummaryTitle,
+      filePdfDesc: l.dataExportPdfFilePdfDesc,
+      fileJsonDesc: l.dataExportPdfFileJsonDesc,
+      fileUploadsCsvDesc: l.dataExportPdfFileUploadsCsvDesc,
+      fileActivityCsvDesc: l.dataExportPdfFileActivityCsvDesc,
+      fileEmailsCsvDesc: l.dataExportPdfFileEmailsCsvDesc,
+      readmeGeneratedByBuilder: (date, brand) =>
+          l.dataExportPdfReadmeGeneratedBy(date, brand),
+      totalUploadsBuilder: l.dataExportTotalUploads,
+      totalLoginsBuilder: l.dataExportTotalLogins,
+      totalEventsBuilder: l.dataExportTotalEvents,
+      totalEmailsBuilder: l.dataExportTotalEmails,
+      csvHeaderLogin: l.dataExportCsvHeaderLogin,
     );
   }
+
+  /// Mapa `ExportFile → filename` localizado al idioma del usuario.
+  ///
+  /// Por ahora distinguimos solo `es` vs resto (cae a inglés universal).
+  /// Si en el futuro queremos español/portugués/etc. distintos, se
+  /// extiende este switch sin tocar el resto del flow.
+  Map<ExportFile, String> _localizedFilenames(String locale) {
+    final base = _normalizeLocaleForIntl(locale);
+    if (base == 'es') {
+      return const {
+        ExportFile.readme: 'LEEME.html',
+        ExportFile.pdf: 'mis-datos.pdf',
+        ExportFile.json: 'mis-datos.json',
+        ExportFile.uploadsCsv: 'archivos.csv',
+        ExportFile.activityCsv: 'actividad.csv',
+        ExportFile.emailsCsv: 'correos.csv',
+      };
+    }
+    return const {
+      ExportFile.readme: 'README.html',
+      ExportFile.pdf: 'my-data.pdf',
+      ExportFile.json: 'my-data.json',
+      ExportFile.uploadsCsv: 'files.csv',
+      ExportFile.activityCsv: 'activity.csv',
+      ExportFile.emailsCsv: 'emails.csv',
+    };
+  }
+
+  /// Misma normalización que el PDF builder — extraída aquí para no
+  /// importar `_normalizeLocale` (privado). Se acepta `es-ES`, `es_ES`,
+  /// etc; mismo set de idiomas soportados que el resto del módulo.
+  String _normalizeLocaleForIntl(String locale) {
+    final base = locale.split(RegExp('[-_]')).first.toLowerCase();
+    const supported = {'es', 'en', 'de', 'fr', 'it', 'pt', 'ru', 'uk'};
+    return supported.contains(base) ? base : 'en';
+  }
+
+  /// Helper trivial para evitar repetir `ArchiveFile(name, bytes.length,
+  /// bytes)` 6 veces en el bloque de empaquetado.
+  ArchiveFile _zipFile(String name, Uint8List bytes) =>
+      ArchiveFile(name, bytes.length, bytes);
 
   String _buildFilename() {
     // `myapp-datos-2026-05-28.zip` — fecha solo, sin timestamp full ni

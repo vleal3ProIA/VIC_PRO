@@ -72,6 +72,21 @@ class PdfExportLabels {
     required this.themeDark,
     required this.themeLight,
     required this.themeSystem,
+    // ── README/HTML + CSVs (v4, multi-formato estilo Google Takeout) ──
+    required this.readmeIntro,
+    required this.readmeFilesTitle,
+    required this.readmeSummaryTitle,
+    required this.filePdfDesc,
+    required this.fileJsonDesc,
+    required this.fileUploadsCsvDesc,
+    required this.fileActivityCsvDesc,
+    required this.fileEmailsCsvDesc,
+    required this.readmeGeneratedByBuilder,
+    required this.totalUploadsBuilder,
+    required this.totalLoginsBuilder,
+    required this.totalEventsBuilder,
+    required this.totalEmailsBuilder,
+    required this.csvHeaderLogin,
   });
 
   final String title;
@@ -122,6 +137,48 @@ class PdfExportLabels {
   final String themeDark;
   final String themeLight;
   final String themeSystem;
+
+  // ─────────────────────────────────────────────────────────────────────
+  // README/HTML + CSV — v4 (Google-Takeout-style multi-formato).
+  //
+  // El call-site (notifier) inyecta también esta sección, así el HTML
+  // builder y los CSV builders pueden compartir el mismo bundle de strings
+  // (sin contexto, sin AppLocalizations directo).
+  // ─────────────────────────────────────────────────────────────────────
+
+  /// Párrafo introductorio del README.html. Una sola línea.
+  final String readmeIntro;
+  /// Cabecera de la sección que lista los ficheros del ZIP.
+  final String readmeFilesTitle;
+  /// Cabecera de la sección con los contadores totales.
+  final String readmeSummaryTitle;
+  /// Descripción del PDF en el listado de ficheros.
+  final String filePdfDesc;
+  /// Descripción del JSON.
+  final String fileJsonDesc;
+  /// Descripción del CSV de uploads.
+  final String fileUploadsCsvDesc;
+  /// Descripción del CSV de actividad.
+  final String fileActivityCsvDesc;
+  /// Descripción del CSV de correos.
+  final String fileEmailsCsvDesc;
+
+  /// Línea final del README — `(date, brandName) -> "Generado el ... por ..."`.
+  final String Function(String date, String brand) readmeGeneratedByBuilder;
+
+  /// "{count} archivos subidos" — sin pluralizar, deja al traductor.
+  final String Function(int count) totalUploadsBuilder;
+  /// "{count} inicios de sesión".
+  final String Function(int count) totalLoginsBuilder;
+  /// "{count} eventos".
+  final String Function(int count) totalEventsBuilder;
+  /// "{count} correos".
+  final String Function(int count) totalEmailsBuilder;
+
+  /// Etiqueta para la primera fila del CSV de actividad ("login_summary").
+  /// Se usa como contenido del campo `event` cuando representamos el
+  /// resumen agregado de logins como una fila más del CSV.
+  final String csvHeaderLogin;
 }
 
 /// Genera el PDF como bytes listos para empaquetar en el ZIP.
@@ -733,6 +790,27 @@ final _es = PdfExportLabels(
   themeDark: 'Oscuro',
   themeLight: 'Claro',
   themeSystem: 'Sistema',
+  readmeIntro:
+      'Este ZIP contiene tus datos personales. Aquí tienes una guía rápida '
+      'de cada archivo:',
+  readmeFilesTitle: 'Qué incluye esta descarga',
+  readmeSummaryTitle: 'Resumen rápido',
+  filePdfDesc:
+      'Resumen legible de todos tus datos (para imprimir o consultar).',
+  fileJsonDesc:
+      'Tus datos en formato estructurado, para llevarlos a otro servicio '
+      '(RGPD art. 20).',
+  fileUploadsCsvDesc:
+      'Lista de tus archivos subidos, abrible en Excel o Google Sheets.',
+  fileActivityCsvDesc: 'Tu actividad: inicios de sesión y otros eventos.',
+  fileEmailsCsvDesc:
+      'Correos que has recibido desde la app (asunto, fecha, estado).',
+  readmeGeneratedByBuilder: _esGenerated,
+  totalUploadsBuilder: _esUploads,
+  totalLoginsBuilder: _esLogins2,
+  totalEventsBuilder: _esEvents,
+  totalEmailsBuilder: _esEmails,
+  csvHeaderLogin: 'Inicios de sesión (resumen)',
 );
 
 final _en = PdfExportLabels(
@@ -771,6 +849,26 @@ final _en = PdfExportLabels(
   themeDark: 'Dark',
   themeLight: 'Light',
   themeSystem: 'System',
+  readmeIntro:
+      'This ZIP contains your personal data. Here is a quick guide to each '
+      'file:',
+  readmeFilesTitle: 'What this download includes',
+  readmeSummaryTitle: 'Quick summary',
+  filePdfDesc: 'Human-readable summary of all your data (print or browse).',
+  fileJsonDesc:
+      'Your data in structured format, to move it to another service '
+      '(GDPR art. 20).',
+  fileUploadsCsvDesc:
+      'List of your uploaded files, openable in Excel or Google Sheets.',
+  fileActivityCsvDesc: 'Your activity: sign-ins and other events.',
+  fileEmailsCsvDesc:
+      'Emails you received from the app (subject, date, status).',
+  readmeGeneratedByBuilder: _enGenerated,
+  totalUploadsBuilder: _enUploads,
+  totalLoginsBuilder: _enLogins2,
+  totalEventsBuilder: _enEvents,
+  totalEmailsBuilder: _enEmails,
+  csvHeaderLogin: 'Sign-ins (summary)',
 );
 
 final _de = PdfExportLabels(
@@ -809,6 +907,29 @@ final _de = PdfExportLabels(
   themeDark: 'Dunkel',
   themeLight: 'Hell',
   themeSystem: 'System',
+  readmeIntro:
+      'Diese ZIP enthält deine persönlichen Daten. Hier ist eine kurze '
+      'Übersicht zu jeder Datei:',
+  readmeFilesTitle: 'Was dieser Download enthält',
+  readmeSummaryTitle: 'Kurzübersicht',
+  filePdfDesc:
+      'Lesbare Zusammenfassung all deiner Daten (zum Drucken oder '
+      'Nachschlagen).',
+  fileJsonDesc:
+      'Deine Daten im strukturierten Format, um sie zu einem anderen '
+      'Dienst mitzunehmen (DSGVO Art. 20).',
+  fileUploadsCsvDesc:
+      'Liste deiner hochgeladenen Dateien, in Excel oder Google Sheets '
+      'zu öffnen.',
+  fileActivityCsvDesc: 'Deine Aktivität: Anmeldungen und weitere Ereignisse.',
+  fileEmailsCsvDesc:
+      'E-Mails, die du aus der App erhalten hast (Betreff, Datum, Status).',
+  readmeGeneratedByBuilder: _deGenerated,
+  totalUploadsBuilder: _deUploads,
+  totalLoginsBuilder: _deLogins2,
+  totalEventsBuilder: _deEvents,
+  totalEmailsBuilder: _deEmails,
+  csvHeaderLogin: 'Anmeldungen (Zusammenfassung)',
 );
 
 final _fr = PdfExportLabels(
@@ -847,6 +968,28 @@ final _fr = PdfExportLabels(
   themeDark: 'Sombre',
   themeLight: 'Clair',
   themeSystem: 'Système',
+  readmeIntro:
+      'Ce ZIP contient vos données personnelles. Voici un guide rapide '
+      'pour chaque fichier :',
+  readmeFilesTitle: 'Ce que contient ce téléchargement',
+  readmeSummaryTitle: 'Résumé rapide',
+  filePdfDesc:
+      'Résumé lisible de toutes vos données (à imprimer ou consulter).',
+  fileJsonDesc:
+      'Vos données au format structuré, pour les transférer vers un autre '
+      'service (RGPD art. 20).',
+  fileUploadsCsvDesc:
+      'Liste de vos fichiers téléchargés, ouvrable dans Excel ou Google '
+      'Sheets.',
+  fileActivityCsvDesc: 'Votre activité : connexions et autres événements.',
+  fileEmailsCsvDesc:
+      "E-mails reçus depuis l'application (objet, date, statut).",
+  readmeGeneratedByBuilder: _frGenerated,
+  totalUploadsBuilder: _frUploads,
+  totalLoginsBuilder: _frLogins2,
+  totalEventsBuilder: _frEvents,
+  totalEmailsBuilder: _frEmails,
+  csvHeaderLogin: 'Connexions (résumé)',
 );
 
 final _it = PdfExportLabels(
@@ -885,6 +1028,27 @@ final _it = PdfExportLabels(
   themeDark: 'Scuro',
   themeLight: 'Chiaro',
   themeSystem: 'Sistema',
+  readmeIntro:
+      'Questo ZIP contiene i tuoi dati personali. Ecco una guida rapida '
+      'a ogni file:',
+  readmeFilesTitle: 'Cosa include questo download',
+  readmeSummaryTitle: 'Riepilogo rapido',
+  filePdfDesc:
+      'Riepilogo leggibile di tutti i tuoi dati (da stampare o consultare).',
+  fileJsonDesc:
+      'I tuoi dati in formato strutturato, per portarli a un altro '
+      'servizio (GDPR art. 20).',
+  fileUploadsCsvDesc:
+      'Elenco dei tuoi file caricati, apribile in Excel o Google Sheets.',
+  fileActivityCsvDesc: 'La tua attività: accessi e altri eventi.',
+  fileEmailsCsvDesc:
+      "Email che hai ricevuto dall'app (oggetto, data, stato).",
+  readmeGeneratedByBuilder: _itGenerated,
+  totalUploadsBuilder: _itUploads,
+  totalLoginsBuilder: _itLogins2,
+  totalEventsBuilder: _itEvents,
+  totalEmailsBuilder: _itEmails,
+  csvHeaderLogin: 'Accessi (riepilogo)',
 );
 
 final _pt = PdfExportLabels(
@@ -923,6 +1087,29 @@ final _pt = PdfExportLabels(
   themeDark: 'Escuro',
   themeLight: 'Claro',
   themeSystem: 'Sistema',
+  readmeIntro:
+      'Este ZIP contém os teus dados pessoais. Aqui tens um guia rápido '
+      'de cada ficheiro:',
+  readmeFilesTitle: 'O que inclui esta transferência',
+  readmeSummaryTitle: 'Resumo rápido',
+  filePdfDesc:
+      'Resumo legível de todos os teus dados (para imprimir ou consultar).',
+  fileJsonDesc:
+      'Os teus dados em formato estruturado, para os levares para outro '
+      'serviço (RGPD art. 20).',
+  fileUploadsCsvDesc:
+      'Lista dos teus ficheiros enviados, abrível no Excel ou Google '
+      'Sheets.',
+  fileActivityCsvDesc:
+      'A tua atividade: inícios de sessão e outros eventos.',
+  fileEmailsCsvDesc:
+      'Emails que recebeste a partir da app (assunto, data, estado).',
+  readmeGeneratedByBuilder: _ptGenerated,
+  totalUploadsBuilder: _ptUploads,
+  totalLoginsBuilder: _ptLogins2,
+  totalEventsBuilder: _ptEvents,
+  totalEmailsBuilder: _ptEmails,
+  csvHeaderLogin: 'Inícios de sessão (resumo)',
 );
 
 final _ru = PdfExportLabels(
@@ -961,6 +1148,29 @@ final _ru = PdfExportLabels(
   themeDark: 'Тёмная',
   themeLight: 'Светлая',
   themeSystem: 'Системная',
+  readmeIntro:
+      'В этом ZIP находятся ваши персональные данные. Краткий путеводитель '
+      'по каждому файлу:',
+  readmeFilesTitle: 'Что включено в эту загрузку',
+  readmeSummaryTitle: 'Краткая сводка',
+  filePdfDesc:
+      'Удобочитаемая сводка всех ваших данных (для печати или просмотра).',
+  fileJsonDesc:
+      'Ваши данные в структурированном формате — для переноса в другой '
+      'сервис (GDPR ст. 20).',
+  fileUploadsCsvDesc:
+      'Список ваших загруженных файлов, открывается в Excel или Google '
+      'Sheets.',
+  fileActivityCsvDesc:
+      'Ваша активность: входы в аккаунт и другие события.',
+  fileEmailsCsvDesc:
+      'Письма, полученные из приложения (тема, дата, статус).',
+  readmeGeneratedByBuilder: _ruGenerated,
+  totalUploadsBuilder: _ruUploads,
+  totalLoginsBuilder: _ruLogins2,
+  totalEventsBuilder: _ruEvents,
+  totalEmailsBuilder: _ruEmails,
+  csvHeaderLogin: 'Входы в аккаунт (сводка)',
 );
 
 final _uk = PdfExportLabels(
@@ -999,6 +1209,29 @@ final _uk = PdfExportLabels(
   themeDark: 'Темна',
   themeLight: 'Світла',
   themeSystem: 'Системна',
+  readmeIntro:
+      'У цьому ZIP — ваші персональні дані. Ось короткий путівник по '
+      'кожному файлу:',
+  readmeFilesTitle: 'Що містить це завантаження',
+  readmeSummaryTitle: 'Короткий огляд',
+  filePdfDesc:
+      'Зручний для читання огляд усіх ваших даних (для друку чи перегляду).',
+  fileJsonDesc:
+      'Ваші дані у структурованому форматі — щоб перенести їх до іншого '
+      'сервісу (GDPR ст. 20).',
+  fileUploadsCsvDesc:
+      'Список ваших завантажених файлів, відкривається в Excel або '
+      'Google Sheets.',
+  fileActivityCsvDesc:
+      'Ваша активність: входи в обліковий запис і інші події.',
+  fileEmailsCsvDesc:
+      'Листи, отримані з застосунку (тема, дата, статус).',
+  readmeGeneratedByBuilder: _ukGenerated,
+  totalUploadsBuilder: _ukUploads,
+  totalLoginsBuilder: _ukLogins2,
+  totalEventsBuilder: _ukEvents,
+  totalEmailsBuilder: _ukEmails,
+  csvHeaderLogin: 'Входи в обліковий запис (огляд)',
 );
 
 // Las funciones `_xxLogins` son las usadas por los fallbacks estáticos
@@ -1019,3 +1252,54 @@ String _ptLogins(int c, String f, String l) =>
     '$c inícios de sessão entre $f e $l';
 String _ruLogins(int c, String f, String l) => '$c входов между $f и $l';
 String _ukLogins(int c, String f, String l) => '$c входів між $f і $l';
+
+// ─────────────────────────────────────────────────────────────────────
+// v4 — helpers para los nuevos labels (README + CSV).
+// Mismo principio: el call-site real usa `AppLocalizations` directamente;
+// estos `_xx*` son solo para los fallback maps de arriba (tests/dev).
+// ─────────────────────────────────────────────────────────────────────
+
+String _esGenerated(String d, String b) => 'Generado el $d por $b';
+String _enGenerated(String d, String b) => 'Generated on $d by $b';
+String _deGenerated(String d, String b) => 'Erstellt am $d von $b';
+String _frGenerated(String d, String b) => 'Généré le $d par $b';
+String _itGenerated(String d, String b) => 'Generato il $d da $b';
+String _ptGenerated(String d, String b) => 'Gerado em $d por $b';
+String _ruGenerated(String d, String b) => 'Создано $d сервисом $b';
+String _ukGenerated(String d, String b) => 'Створено $d сервісом $b';
+
+String _esUploads(int c) => '$c archivos subidos';
+String _enUploads(int c) => '$c uploaded files';
+String _deUploads(int c) => '$c hochgeladene Dateien';
+String _frUploads(int c) => '$c fichiers téléchargés';
+String _itUploads(int c) => '$c file caricati';
+String _ptUploads(int c) => '$c ficheiros enviados';
+String _ruUploads(int c) => '$c загруженных файлов';
+String _ukUploads(int c) => '$c завантажених файлів';
+
+String _esLogins2(int c) => '$c inicios de sesión';
+String _enLogins2(int c) => '$c sign-ins';
+String _deLogins2(int c) => '$c Anmeldungen';
+String _frLogins2(int c) => '$c connexions';
+String _itLogins2(int c) => '$c accessi';
+String _ptLogins2(int c) => '$c inícios de sessão';
+String _ruLogins2(int c) => '$c входов';
+String _ukLogins2(int c) => '$c входів';
+
+String _esEvents(int c) => '$c eventos';
+String _enEvents(int c) => '$c events';
+String _deEvents(int c) => '$c Ereignisse';
+String _frEvents(int c) => '$c événements';
+String _itEvents(int c) => '$c eventi';
+String _ptEvents(int c) => '$c eventos';
+String _ruEvents(int c) => '$c событий';
+String _ukEvents(int c) => '$c подій';
+
+String _esEmails(int c) => '$c correos';
+String _enEmails(int c) => '$c emails';
+String _deEmails(int c) => '$c E-Mails';
+String _frEmails(int c) => '$c e-mails';
+String _itEmails(int c) => '$c email';
+String _ptEmails(int c) => '$c emails';
+String _ruEmails(int c) => '$c писем';
+String _ukEmails(int c) => '$c листів';

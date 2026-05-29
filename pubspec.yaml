@@ -80,11 +80,14 @@ dependencies:
   sentry_flutter: ^8.14.2
   meta: ^1.17.0
 
-  # GDPR export (PDF + ZIP)
+  # GDPR export (PDF + ZIP + CSV) — Google-Takeout-style multi-formato.
   # `pdf`: generador puro Dart para construir PDFs sin headless browser.
-  # `archive`: ZIP encoder, encapsula JSON + PDF en un solo fichero.
+  # `archive`: ZIP encoder, encapsula JSON + PDF + CSVs + HTML readme.
+  # `csv`: ListToCsvConverter para serializar uploads/actividad/correos
+  # con escaping correcto (Excel-friendly cuando se combina con UTF-8 BOM).
   pdf: ^3.11.1
   archive: ^4.0.2
+  csv: ^8.0.0
 
 dev_dependencies:
   flutter_test:

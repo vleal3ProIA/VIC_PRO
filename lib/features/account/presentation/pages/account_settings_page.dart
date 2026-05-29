@@ -595,7 +595,24 @@ class _BillingTab extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.download_outlined),
             title: Text(l.settingsDownloadData),
-            subtitle: Text(l.settingsDownloadDataHint),
+            // Subtitle multi-línea: el hint corto histórico ("GDPR…") +
+            // un párrafo más pequeño explicando el contenido del ZIP
+            // (PDF / JSON / CSVs / LEEME). Mismo patrón de `_LinkTile`
+            // pero con un segundo `Text` con color onSurfaceVariant.
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.settingsDownloadDataHint),
+                const SizedBox(height: 4),
+                Text(
+                  l.dataExportContentsHint,
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            isThreeLine: true,
             trailing: exportState.isBuilding
                 ? const SizedBox(
                     width: 22,
@@ -887,6 +904,16 @@ class _DataExportPanel extends ConsumerWidget {
         Text(
           l.settingsDownloadDataHint,
           style: context.textTheme.bodyMedium?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        // Explicativo extra (qué contiene el ZIP: PDF/JSON/CSVs/LEEME).
+        // Mismo color onSurfaceVariant, un punto más pequeño que el
+        // subtítulo principal.
+        Text(
+          l.dataExportContentsHint,
+          style: context.textTheme.bodySmall?.copyWith(
             color: scheme.onSurfaceVariant,
           ),
         ),
