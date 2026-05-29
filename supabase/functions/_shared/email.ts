@@ -41,7 +41,12 @@ export type EmailType =
   | "invite"
   | "plan_changed"
   | "broadcast"
-  | "test";
+  | "test"
+  // Internal alerts emitted by `notify-super-admins` EF (PR 0074).
+  // Differs from `broadcast` in that the template knows about the
+  // specific event type (user.registered / user.role_changed /
+  // user.deleted) via `data.event` and renders accordingly.
+  | "super_admin_alert";
 
 export interface SendEmailParams {
   type: EmailType;

@@ -53,6 +53,7 @@ const VALID_TYPES: EmailType[] = [
   "plan_changed",
   "broadcast",
   "test",
+  "super_admin_alert",
 ];
 
 const corsHeaders = {

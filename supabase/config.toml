@@ -44,3 +44,13 @@ verify_jwt = false
 # el cron no tiene sesion de Supabase.
 [functions.maintenance-cron]
 verify_jwt = false
+
+# notify-super-admins (PR 0074) lo invocan:
+#   - pg_net.http_post desde un trigger SQL (signup) -> SIN JWT.
+#   - pg_net.http_post desde RPCs SECURITY DEFINER (role_changed) -> SIN JWT.
+#   - fetch() server-to-server desde delete-account EF -> Authorization
+#     Bearer service_role_key, que es un token opaco sb_secret_* y NO
+#     parsea como JWT (mismo problema que scan-upload / run-audit).
+# Validacion interna: header `X-Internal-Auth` debe match SERVICE_ROLE_KEY.
+[functions.notify-super-admins]
+verify_jwt = false

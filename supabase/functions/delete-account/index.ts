@@ -108,6 +108,50 @@ Deno.serve(withSentry("delete-account", async (req) => {
       return json({ error: "reauth_required" }, 403);
     }
 
+    // ─── PR 0074: super-admin alert (user.deleted) ANTES de borrar ───
+    // Necesitamos email + username ahora porque despues los rows ya
+    // no existen. Fire-and-forget: si la EF notify-super-admins falla
+    // o tarda, NO bloqueamos el borrado. Los super_admins se enteran
+    // por otros canales (auditoria) si la alerta se pierde.
+    try {
+      const { data: prof } = await adminClient
+        .from("profiles")
+        .select("username, display_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      const subjectUsername =
+        (prof?.username as string | undefined) ??
+        (prof?.display_name as string | undefined) ??
+        "";
+      const subjectEmail = user.email ?? "";
+      // No await: fire-and-forget. EdgeRuntime.waitUntil mantiene el
+      // worker vivo hasta que el fetch termine (mejor que .catch sin
+      // await que podria cortarse al devolver la response).
+      const notifyP = fetch(
+        `${supabaseUrl}/functions/v1/notify-super-admins`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Internal-Auth": serviceRoleKey,
+          },
+          body: JSON.stringify({
+            event: "user.deleted",
+            user_id: user.id,
+            email: subjectEmail,
+            username: subjectUsername,
+          }),
+        },
+      ).catch((e) => {
+        console.warn("notify-super-admins (user.deleted) failed:", e);
+      });
+      // deno-lint-ignore no-explicit-any
+      (globalThis as any).EdgeRuntime?.waitUntil?.(notifyP);
+    } catch (e) {
+      // NUNCA bloquear el delete por un fallo en la alerta.
+      console.warn("notify-super-admins (user.deleted) setup failed:", e);
+    }
+
     // **Hotfix post-PR-F**: la tabla `public.tenants` tiene
     // `owner_id ... on delete restrict` -> si intentamos borrar el user
     // sin antes eliminar sus tenants, Postgres rechaza con

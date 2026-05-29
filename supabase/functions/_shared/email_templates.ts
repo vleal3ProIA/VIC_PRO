@@ -708,6 +708,78 @@ const STR: Record<EmailType, Partial<TypeI18n> & { en: TypeI18nEntry }> = {
       footerNote: "",
     },
   },
+  // PR 0074: super_admin_alert. El EF `notify-super-admins` ya conoce
+  // el evento (user.registered / user.role_changed / user.deleted) y
+  // los counters; aqui el template es minimal y per-locale solo aporta
+  // el "footer" comun + preheader. El subject y body se renderizan
+  // server-side via `_shared/i18n.ts` y se pasan via `data.subject` /
+  // `data.body_text`. Mismo patron que `broadcast`.
+  super_admin_alert: {
+    en: {
+      subject: "{{subject}}",
+      preheader: "Super-admin alert from {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "You are receiving this because you are a super-admin of {{app_name}}.",
+    },
+    es: {
+      subject: "{{subject}}",
+      preheader: "Alerta de super-admin de {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "Recibes este aviso porque eres super-admin de {{app_name}}.",
+    },
+    de: {
+      subject: "{{subject}}",
+      preheader: "Super-Admin-Benachrichtigung von {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "Du erhaeltst diese Nachricht, weil du Super-Admin von {{app_name}} bist.",
+    },
+    fr: {
+      subject: "{{subject}}",
+      preheader: "Alerte super-admin de {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "Tu recois cet email parce que tu es super-admin de {{app_name}}.",
+    },
+    it: {
+      subject: "{{subject}}",
+      preheader: "Avviso super-admin da {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "Ricevi questo messaggio perche sei super-admin di {{app_name}}.",
+    },
+    pt: {
+      subject: "{{subject}}",
+      preheader: "Alerta de super-admin de {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "Recebes esta mensagem porque es super-admin de {{app_name}}.",
+    },
+    ru: {
+      subject: "{{subject}}",
+      preheader: "Оповещение для супер-админа от {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "Вы получили это письмо, так как являетесь супер-админом {{app_name}}.",
+    },
+    uk: {
+      subject: "{{subject}}",
+      preheader: "Сповіщення для супер-адміна від {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "Ви отримали цей лист, бо ви супер-адмін {{app_name}}.",
+    },
+  },
   test: {
     en: {
       subject: "Test email from {{app_name}}",
