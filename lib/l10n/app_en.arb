@@ -456,6 +456,7 @@
   "mfaUseAuthenticatorInstead": "Use authenticator code instead",
   "mfaRecoveryCodeHint": "Recovery code",
   "actionCancel": "Cancel",
+  "actionEdit": "Edit",
 
   "reauthDialogTitle": "Confirm your password",
   "reauthDialogMessage": "For your security, please confirm your password to continue with this sensitive action.",

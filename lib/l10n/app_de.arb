@@ -418,6 +418,7 @@
   "mfaUseAuthenticatorInstead": "Stattdessen Authenticator-Code verwenden",
   "mfaRecoveryCodeHint": "Wiederherstellungscode",
   "actionCancel": "Abbrechen",
+  "actionEdit": "Bearbeiten",
 
   "reauthDialogTitle": "Passwort bestätigen",
   "reauthDialogMessage": "Aus Sicherheitsgründen bestätige bitte dein Passwort, um mit dieser sensiblen Aktion fortzufahren.",

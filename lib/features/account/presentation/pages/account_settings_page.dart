@@ -11,6 +11,7 @@ import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 import 'package:myapp/features/account/application/data_export_notifier.dart';
 import 'package:myapp/features/account/application/profile_settings_notifier.dart';
+import 'package:myapp/features/account/domain/entities/profile.dart';
 import 'package:myapp/features/account/presentation/pages/account_sessions_page.dart'
     show SessionsView;
 import 'package:myapp/features/account/presentation/widgets/profile_failure_message.dart';
@@ -70,8 +71,6 @@ class AccountSettingsPage extends ConsumerStatefulWidget {
 }
 
 class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
-  final _displayNameCtrl = TextEditingController();
-  String? _lastSyncedName;
   int _currentTab = 0;
 
   /// Última sección aplicada desde el query param `?section=`. El submenú
@@ -86,12 +85,6 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     'billing': 2,
     'security': 3,
   };
-
-  @override
-  void dispose() {
-    _displayNameCtrl.dispose();
-    super.dispose();
-  }
 
   /// Abre el selector de imagenes y sube la elegida como avatar.
   Future<void> _pickAvatar(ProfileSettingsNotifier notifier) async {
@@ -131,15 +124,6 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
         _sectionToTab.containsKey(section)) {
       _appliedSection = section;
       _currentTab = _sectionToTab[section]!;
-    }
-
-    // Sincroniza el controller con el profile cuando carga / cambia.
-    // Usamos `effectiveName` (no `displayName`) para que el campo editable
-    // muestre SIEMPRE el nombre visible: editar y ver son el mismo valor.
-    final profile = state.profile;
-    if (profile != null && _lastSyncedName != profile.effectiveName) {
-      _lastSyncedName = profile.effectiveName;
-      _displayNameCtrl.text = profile.effectiveName;
     }
 
     // Snackbar al guardar con éxito.
@@ -256,7 +240,6 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
                   0 => _AccountTab(
                       state: state,
                       notifier: notifier,
-                      displayNameCtrl: _displayNameCtrl,
                       email: email,
                       onPickAvatar: () => _pickAvatar(notifier),
                     ),
@@ -302,14 +285,12 @@ class _AccountTab extends ConsumerWidget {
   const _AccountTab({
     required this.state,
     required this.notifier,
-    required this.displayNameCtrl,
     required this.email,
     required this.onPickAvatar,
   });
 
   final ProfileSettingsState state;
   final ProfileSettingsNotifier notifier;
-  final TextEditingController displayNameCtrl;
   final String email;
   final VoidCallback onPickAvatar;
 
@@ -317,11 +298,45 @@ class _AccountTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final profile = state.profile!;
+    final profileCard = _profileCard(context, l, profile);
+    final preferencesCard = _preferencesCard(context, l, profile);
 
+    // Responsive: en ancho (≥600 px) ponemos las dos cards lado a lado para
+    // aprovechar el espacio; en móvil van apiladas centradas como antes.
+    // `IntrinsicHeight` iguala la altura de ambas para que el visual quede
+    // simétrico aunque una tenga más filas que la otra.
+    if (context.isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          profileCard,
+          AppSpacing.gapLg,
+          preferencesCard,
+        ],
+      );
+    }
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: profileCard),
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(child: preferencesCard),
+        ],
+      ),
+    );
+  }
+
+  // ─── Card: Profile ───
+  //
+  // Solo "Nombre de usuario" (con lápiz para editar inline) + Email
+  // (solo lectura). El "nombre visible" (display_name) se elimina del UI:
+  // el notifier escribe el mismo valor en ambas columnas (decisión de
+  // producto), así que con el username es suficiente.
+  Widget _profileCard(BuildContext context, AppLocalizations l, Profile profile) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ─── Card: Profile ───
         SectionHeader(title: l.settingsProfileSection, compact: true),
         AppSpacing.gapMd,
         PremiumCard(
@@ -367,30 +382,10 @@ class _AccountTab extends ConsumerWidget {
                 ),
               ),
               const Divider(height: 24),
-              TextField(
-                controller: displayNameCtrl,
-                enabled: !state.isSaving,
-                decoration: InputDecoration(
-                  labelText: l.settingsFieldDisplayName,
-                  prefixIcon: const Icon(Icons.badge_outlined),
-                ),
-                onSubmitted: notifier.saveDisplayName,
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton.tonal(
-                  onPressed: state.isSaving
-                      ? null
-                      : () => notifier.saveDisplayName(displayNameCtrl.text),
-                  child: Text(l.actionSave),
-                ),
-              ),
-              const Divider(height: 24),
-              _ReadOnlyRow(
-                icon: Icons.alternate_email,
-                label: l.settingsFieldUsername,
-                value: profile.username ?? '—',
+              _EditableUsernameRow(
+                username: profile.username ?? '',
+                isSaving: state.isSaving,
+                onSave: notifier.saveDisplayName,
               ),
               const SizedBox(height: 12),
               _ReadOnlyRow(
@@ -401,8 +396,15 @@ class _AccountTab extends ConsumerWidget {
             ],
           ),
         ),
-        AppSpacing.gapLg,
-        // ─── Card: Preferences ───
+      ],
+    );
+  }
+
+  // ─── Card: Preferences ───
+  Widget _preferencesCard(BuildContext context, AppLocalizations l, Profile profile) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         SectionHeader(title: l.settingsPreferencesSection, compact: true),
         AppSpacing.gapMd,
         PremiumCard(
@@ -466,6 +468,157 @@ class _AccountTab extends ConsumerWidget {
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Fila editable inline para el **nombre de usuario**. Por defecto solo se
+/// ve el valor + icono de lápiz; al pulsarlo el icono cambia a un TextField
+/// con su propio botón Guardar / Cancelar. Usamos `AnimatedSize` para que
+/// la card no haga un salto brusco al expandirse.
+///
+/// El callback `onSave` apunta a `notifier.saveDisplayName` — por decisión
+/// de producto username y display_name son el MISMO valor, así que al
+/// guardar el username se escribe también el display_name en BD (atomic).
+class _EditableUsernameRow extends StatefulWidget {
+  const _EditableUsernameRow({
+    required this.username,
+    required this.isSaving,
+    required this.onSave,
+  });
+
+  final String username;
+  final bool isSaving;
+  final Future<void> Function(String value) onSave;
+
+  @override
+  State<_EditableUsernameRow> createState() => _EditableUsernameRowState();
+}
+
+class _EditableUsernameRowState extends State<_EditableUsernameRow> {
+  bool _editing = false;
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.username);
+  }
+
+  /// Si la BD nos entrega un username distinto (p.ej. acaba de cargar), lo
+  /// reflejamos en el controller cuando NO estamos editando — así no
+  /// pisamos lo que el usuario está tecleando.
+  @override
+  void didUpdateWidget(_EditableUsernameRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_editing && widget.username != _ctrl.text) {
+      _ctrl.text = widget.username;
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final v = _ctrl.text.trim();
+    if (v.isEmpty || v == widget.username) {
+      setState(() => _editing = false);
+      return;
+    }
+    await widget.onSave(v);
+    if (mounted) setState(() => _editing = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: _editing ? _editView(context, l) : _readView(context, l),
+    );
+  }
+
+  Widget _readView(BuildContext context, AppLocalizations l) {
+    return Row(
+      key: const ValueKey('username-read'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          Icons.alternate_email,
+          size: 18,
+          color: context.colors.onSurfaceVariant,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l.settingsFieldUsername,
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                widget.username.isEmpty ? '—' : widget.username,
+                style: context.textTheme.bodyLarge,
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          tooltip: l.actionEdit,
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.edit_outlined, size: 18),
+          onPressed: widget.isSaving ? null : () => setState(() {
+            _ctrl.text = widget.username;
+            _editing = true;
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _editView(BuildContext context, AppLocalizations l) {
+    return Column(
+      key: const ValueKey('username-edit'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _ctrl,
+          autofocus: true,
+          enabled: !widget.isSaving,
+          decoration: InputDecoration(
+            labelText: l.settingsFieldUsername,
+            prefixIcon: const Icon(Icons.alternate_email),
+          ),
+          onSubmitted: (_) => _save(),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              onPressed: widget.isSaving
+                  ? null
+                  : () => setState(() => _editing = false),
+              child: Text(l.actionCancel),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.tonal(
+              onPressed: widget.isSaving ? null : _save,
+              child: Text(l.actionSave),
+            ),
+          ],
         ),
       ],
     );

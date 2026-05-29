@@ -418,6 +418,7 @@
   "mfaUseAuthenticatorInstead": "Usar o código do autenticador",
   "mfaRecoveryCodeHint": "Código de recuperação",
   "actionCancel": "Cancelar",
+  "actionEdit": "Editar",
 
   "reauthDialogTitle": "Confirma a tua palavra-passe",
   "reauthDialogMessage": "Para tua segurança, confirma a tua palavra-passe para continuar esta ação sensível.",

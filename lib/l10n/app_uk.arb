@@ -418,6 +418,7 @@
   "mfaUseAuthenticatorInstead": "Використати код автентифікатора",
   "mfaRecoveryCodeHint": "Код відновлення",
   "actionCancel": "Скасувати",
+  "actionEdit": "Редагувати",
 
   "reauthDialogTitle": "Підтверди свій пароль",
   "reauthDialogMessage": "Для твоєї безпеки підтверди пароль, щоб продовжити цю чутливу дію.",
