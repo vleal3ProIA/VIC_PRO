@@ -1702,6 +1702,7 @@
   "dataExportPdfLabelDeleted": "(deleted)",
   "dataExportPdfLabelRole": "Role",
   "dataExportPdfLabelJoinedAt": "Member since",
+  "dataExportPdfTenantPersonal": "Personal workspace",
   "dataExportPdfLabelLoginsSummary": "{count} sign-ins between {first} and {last}",
   "@dataExportPdfLabelLoginsSummary": {"placeholders": {"count": {"type": "int"}, "first": {"type": "String"}, "last": {"type": "String"}}},
   "dataExportPdfYes": "Yes",

@@ -183,6 +183,7 @@ class DataExportNotifier extends Notifier<DataExportState> {
       labelDeleted: l.dataExportPdfLabelDeleted,
       labelRole: l.dataExportPdfLabelRole,
       labelJoinedAt: l.dataExportPdfLabelJoinedAt,
+      tenantPersonal: l.dataExportPdfTenantPersonal,
       loginsSummaryBuilder: l.dataExportPdfLabelLoginsSummary,
       yes: l.dataExportPdfYes,
       no: l.dataExportPdfNo,

@@ -1554,6 +1554,7 @@
   "dataExportPdfLabelDeleted": "(eliminado)",
   "dataExportPdfLabelRole": "Função",
   "dataExportPdfLabelJoinedAt": "Membro desde",
+  "dataExportPdfTenantPersonal": "Espaço pessoal",
   "dataExportPdfLabelLoginsSummary": "{count} inícios de sessão entre {first} e {last}",
   "@dataExportPdfLabelLoginsSummary": {"placeholders": {"count": {"type": "int"}, "first": {"type": "String"}, "last": {"type": "String"}}},
   "dataExportPdfYes": "Sim",

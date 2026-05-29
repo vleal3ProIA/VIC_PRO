@@ -65,6 +65,7 @@ class PdfExportLabels {
     required this.labelDeleted,
     required this.labelRole,
     required this.labelJoinedAt,
+    required this.tenantPersonal,
     required this.loginsSummaryBuilder,
     required this.yes,
     required this.no,
@@ -105,6 +106,10 @@ class PdfExportLabels {
   final String labelDeleted;
   final String labelRole;
   final String labelJoinedAt;
+
+  /// Etiqueta usada para el workspace personal del usuario (cuando el
+  /// `name` viene null en el export v3 porque era literalmente el email).
+  final String tenantPersonal;
 
   /// Devuelve la línea agregada "{count} inicios de sesión entre {first}
   /// y {last}" para los parámetros dados. El call-site lo apunta al
@@ -292,7 +297,14 @@ List<pw.Widget> _buildBody({
     widgets.add(_sectionTitle('${labels.sectionTenants} (${tenants.length})'));
     for (final raw in tenants) {
       final t = _asMap(raw);
-      final name = t['name'] as String? ?? '—';
+      // En v3 del export el `name` viene null para el workspace personal
+      // (auto-creado al registrarse, antes era literalmente el email).
+      // Mostramos un placeholder "Espacio personal" en su idioma.
+      final isPersonal = t['is_personal'] == true;
+      final rawName = t['name'] as String?;
+      final name = (rawName == null || rawName.trim().isEmpty)
+          ? (isPersonal ? labels.tenantPersonal : '—')
+          : rawName;
       final role = t['role'] as String? ?? '';
       final joined = _dt(t['joined_at'], dateFmt) ?? '';
       widgets.add(
@@ -714,6 +726,7 @@ final _es = PdfExportLabels(
   labelDeleted: '(borrado)',
   labelRole: 'Rol',
   labelJoinedAt: 'Miembro desde',
+  tenantPersonal: 'Espacio personal',
   loginsSummaryBuilder: _esLogins,
   yes: 'Sí',
   no: 'No',
@@ -751,6 +764,7 @@ final _en = PdfExportLabels(
   labelDeleted: '(deleted)',
   labelRole: 'Role',
   labelJoinedAt: 'Member since',
+  tenantPersonal: 'Personal workspace',
   loginsSummaryBuilder: _enLogins,
   yes: 'Yes',
   no: 'No',
@@ -788,6 +802,7 @@ final _de = PdfExportLabels(
   labelDeleted: '(gelöscht)',
   labelRole: 'Rolle',
   labelJoinedAt: 'Mitglied seit',
+  tenantPersonal: 'Persönlicher Arbeitsbereich',
   loginsSummaryBuilder: _deLogins,
   yes: 'Ja',
   no: 'Nein',
@@ -825,6 +840,7 @@ final _fr = PdfExportLabels(
   labelDeleted: '(supprimé)',
   labelRole: 'Rôle',
   labelJoinedAt: 'Membre depuis',
+  tenantPersonal: 'Espace personnel',
   loginsSummaryBuilder: _frLogins,
   yes: 'Oui',
   no: 'Non',
@@ -862,6 +878,7 @@ final _it = PdfExportLabels(
   labelDeleted: '(eliminato)',
   labelRole: 'Ruolo',
   labelJoinedAt: 'Membro dal',
+  tenantPersonal: 'Spazio personale',
   loginsSummaryBuilder: _itLogins,
   yes: 'Sì',
   no: 'No',
@@ -899,6 +916,7 @@ final _pt = PdfExportLabels(
   labelDeleted: '(eliminado)',
   labelRole: 'Função',
   labelJoinedAt: 'Membro desde',
+  tenantPersonal: 'Espaço pessoal',
   loginsSummaryBuilder: _ptLogins,
   yes: 'Sim',
   no: 'Não',
@@ -936,6 +954,7 @@ final _ru = PdfExportLabels(
   labelDeleted: '(удалено)',
   labelRole: 'Роль',
   labelJoinedAt: 'Участник с',
+  tenantPersonal: 'Личное пространство',
   loginsSummaryBuilder: _ruLogins,
   yes: 'Да',
   no: 'Нет',
@@ -973,6 +992,7 @@ final _uk = PdfExportLabels(
   labelDeleted: '(видалено)',
   labelRole: 'Роль',
   labelJoinedAt: 'Учасник з',
+  tenantPersonal: 'Особистий простір',
   loginsSummaryBuilder: _ukLogins,
   yes: 'Так',
   no: 'Ні',

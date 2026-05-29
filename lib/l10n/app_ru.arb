@@ -1554,6 +1554,7 @@
   "dataExportPdfLabelDeleted": "(удалено)",
   "dataExportPdfLabelRole": "Роль",
   "dataExportPdfLabelJoinedAt": "Участник с",
+  "dataExportPdfTenantPersonal": "Личное пространство",
   "dataExportPdfLabelLoginsSummary": "{count} входов между {first} и {last}",
   "@dataExportPdfLabelLoginsSummary": {"placeholders": {"count": {"type": "int"}, "first": {"type": "String"}, "last": {"type": "String"}}},
   "dataExportPdfYes": "Да",
