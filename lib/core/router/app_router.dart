@@ -74,7 +74,9 @@ import 'package:myapp/features/onboarding/presentation/pages/onboarding_page.dar
 import 'package:myapp/features/shell/presentation/widgets/private_shell.dart';
 import 'package:myapp/features/status/presentation/pages/admin_incidents_page.dart';
 import 'package:myapp/features/status/presentation/pages/status_page.dart';
+import 'package:myapp/features/subjects/presentation/pages/my_material_kind_page.dart';
 import 'package:myapp/features/subjects/presentation/pages/my_material_page.dart';
+import 'package:myapp/features/subjects/presentation/pages/my_material_subject_page.dart';
 import 'package:myapp/features/tenants/presentation/pages/accept_invite_page.dart';
 import 'package:myapp/features/tenants/presentation/pages/team_page.dart';
 import 'package:myapp/features/tokens/presentation/pages/tokens_page.dart';
@@ -233,6 +235,28 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             path: RoutePaths.myMaterial,
             name: RouteNames.myMaterial,
             builder: (_, __) => const MyMaterialPage(),
+          ),
+          // Drill-down: dashboard del temario con contadores por tipo.
+          // Va aqui dentro del ShellRoute privado (igual que /mis-temarios)
+          // para que herede el shell con la nav lateral. El path es mas
+          // especifico que /mis-temarios pero GoRouter no se confunde:
+          // /mis-temarios casa exact, /mis-temarios/:id casa con id.
+          GoRoute(
+            path: RoutePaths.myMaterialSubject,
+            name: RouteNames.myMaterialSubject,
+            builder: (_, state) => MyMaterialSubjectPage(
+              subjectId: state.pathParameters['id'] ?? '',
+            ),
+          ),
+          // Drill-down nivel 2: vista por tipo (quiz, flashcards, notas...).
+          // Mismo razonamiento; GoRouter elige la mas larga al matchear.
+          GoRoute(
+            path: RoutePaths.myMaterialSubjectKind,
+            name: RouteNames.myMaterialSubjectKind,
+            builder: (_, state) => MyMaterialKindPage(
+              subjectId: state.pathParameters['id'] ?? '',
+              kind: state.pathParameters['kind'] ?? '',
+            ),
           ),
           GoRoute(
             path: RoutePaths.accountSettings,

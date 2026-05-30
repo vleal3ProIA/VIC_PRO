@@ -382,9 +382,14 @@ class _SubjectCard extends StatelessWidget {
     final scheme = context.colors;
     final lang = subject.language;
     return PremiumCard(
+      // Drill-down: ya NO redirigimos al StudyPanel completo (/home).
+      // El user pidio un flujo paralelo de acceso rapido: tap aqui ->
+      // dashboard del temario con contadores por tipo de contenido, y
+      // desde ahi a la lista/runner concreta. El StudyPanel sigue
+      // existiendo intacto en /home para quien quiera la vista completa.
       onTap: () => context.goNamed(
-        RouteNames.home,
-        queryParameters: {'subjectId': subject.id},
+        RouteNames.myMaterialSubject,
+        pathParameters: {'id': subject.id},
       ),
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(

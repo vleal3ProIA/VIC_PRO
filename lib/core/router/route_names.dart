@@ -19,6 +19,8 @@ class RouteNames {
   static const String mfaChallenge = 'mfa_challenge';
   static const String home = 'home';
   static const String myMaterial = 'my_material';
+  static const String myMaterialSubject = 'myMaterialSubject';
+  static const String myMaterialSubjectKind = 'myMaterialSubjectKind';
   static const String admin = 'admin';
   static const String adminMaterialLibrary = 'admin_material_library';
   static const String adminMaterialLibrarySubject = 'admin_material_library_subject';
@@ -98,6 +100,14 @@ class RoutePaths {
   static const String mfaChallenge = '/mfa-challenge';
   static const String home = '/home';
   static const String myMaterial = '/mis-temarios';
+  // Drill-down "Mi Material → subject dashboard → per-kind view".
+  // El orden importa: GoRouter prueba en orden, por eso definimos primero
+  // el path mas profundo (/:id/:kind) y luego (/:id) y luego (/). Aunque
+  // aqui las constantes son solo declaraciones (el orden lo fija el array
+  // de GoRoutes en app_router.dart), las dejamos en orden de profundidad
+  // para que coincidan visualmente con el orden de registro.
+  static const String myMaterialSubject = '/mis-temarios/:id';
+  static const String myMaterialSubjectKind = '/mis-temarios/:id/:kind';
   static const String admin = '/admin';
   static const String adminMaterialLibrary = '/admin/material-library';
   static const String adminMaterialLibrarySubject = '/admin/material-library/:id';
