@@ -780,6 +780,76 @@ const STR: Record<EmailType, Partial<TypeI18n> & { en: TypeI18nEntry }> = {
         "Ви отримали цей лист, бо ви супер-адмін {{app_name}}.",
     },
   },
+  // PR 0080: audit_digest. Mismo patron que super_admin_alert: el EF
+  // `send-audit-digest` ya tiene los counters + top-5 y construye el
+  // bodyHtml completo; aqui el template solo aporta el wrapper i18n
+  // (preheader/footer per-locale).
+  audit_digest: {
+    en: {
+      subject: "{{subject}}",
+      preheader: "Daily audit digest from {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "You are receiving this because you are an admin of {{app_name}}.",
+    },
+    es: {
+      subject: "{{subject}}",
+      preheader: "Resumen de auditoria diaria de {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "Recibes este aviso porque eres admin de {{app_name}}.",
+    },
+    de: {
+      subject: "{{subject}}",
+      preheader: "Taegliche Audit-Zusammenfassung von {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "Du erhaeltst diese Nachricht, weil du Admin von {{app_name}} bist.",
+    },
+    fr: {
+      subject: "{{subject}}",
+      preheader: "Resume d'audit quotidien de {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "Tu recois cet email parce que tu es admin de {{app_name}}.",
+    },
+    it: {
+      subject: "{{subject}}",
+      preheader: "Riepilogo audit giornaliero da {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "Ricevi questo messaggio perche sei admin di {{app_name}}.",
+    },
+    pt: {
+      subject: "{{subject}}",
+      preheader: "Resumo de auditoria diaria de {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "Recebes esta mensagem porque es admin de {{app_name}}.",
+    },
+    ru: {
+      subject: "{{subject}}",
+      preheader: "Ежедневная сводка аудита от {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "Вы получили это письмо, так как являетесь админом {{app_name}}.",
+    },
+    uk: {
+      subject: "{{subject}}",
+      preheader: "Щоденне зведення аудиту від {{app_name}}.",
+      greeting: "",
+      bodyHtml: "{{body_html}}",
+      footerNote:
+        "Ви отримали цей лист, бо ви адмін {{app_name}}.",
+    },
+  },
   test: {
     en: {
       subject: "Test email from {{app_name}}",

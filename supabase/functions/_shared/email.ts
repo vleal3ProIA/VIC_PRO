@@ -46,7 +46,14 @@ export type EmailType =
   // Differs from `broadcast` in that the template knows about the
   // specific event type (user.registered / user.role_changed /
   // user.deleted) via `data.event` and renders accordingly.
-  | "super_admin_alert";
+  | "super_admin_alert"
+  // Daily-audit digest (PR 0080). Fired by `send-audit-digest` EF
+  // after the maintenance cron finishes a run with triggered_by IS
+  // NULL. One email per super-admin / admin recipient. Reuses the
+  // `super_admin_alert` HTML wrapper for rendering; this is a
+  // distinct EmailType only so we can filter / count digests in
+  // email_log separately from generic super-admin alerts.
+  | "audit_digest";
 
 export interface SendEmailParams {
   type: EmailType;

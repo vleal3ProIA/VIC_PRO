@@ -68,6 +68,19 @@ const CATALOG: Catalog = {
       "Super-admin alert from {{app_name}}.",
     "super_admin_alert.email.footer":
       "You are receiving this because you are a super-admin of {{app_name}}.",
+
+    // ─── Audit digest (PR 0080) ───
+    "audit_digest.title": "Daily audit · {{count}} findings",
+    "audit_digest.body":
+      "Summary: {{critical}} critical, {{high}} high, {{medium}} medium, {{low}} low, {{info}} info.",
+    "audit_digest.subject":
+      "[{{app_name}}] Daily audit · {{count}} findings",
+    "audit_digest.greeting": "Hello,",
+    "audit_digest.report_link": "View full report",
+    "audit_digest.no_issues": "All clear. No issues detected.",
+    "audit_digest.top_findings": "Top findings",
+    "audit_digest.intro":
+      "An automatic audit run completed on {{app_name}}. Here is the summary:",
   },
   es: {
     "super_admin_alert.user_registered.title": "Nuevo registro",
@@ -90,6 +103,18 @@ const CATALOG: Catalog = {
       "Alerta de super-admin de {{app_name}}.",
     "super_admin_alert.email.footer":
       "Recibes este aviso porque eres super-admin de {{app_name}}.",
+
+    "audit_digest.title": "Auditoría diaria · {{count}} findings",
+    "audit_digest.body":
+      "Resumen: {{critical}} críticos, {{high}} altos, {{medium}} medios, {{low}} bajos, {{info}} info.",
+    "audit_digest.subject":
+      "[{{app_name}}] Auditoría diaria · {{count}} findings",
+    "audit_digest.greeting": "Hola,",
+    "audit_digest.report_link": "Ver informe completo",
+    "audit_digest.no_issues": "Todo en orden. Sin problemas detectados.",
+    "audit_digest.top_findings": "Principales hallazgos",
+    "audit_digest.intro":
+      "Se ha completado una auditoría automática en {{app_name}}. Este es el resumen:",
   },
   de: {
     "super_admin_alert.user_registered.title": "Neue Anmeldung",
@@ -112,6 +137,18 @@ const CATALOG: Catalog = {
       "Super-Admin-Benachrichtigung von {{app_name}}.",
     "super_admin_alert.email.footer":
       "Du erhaeltst diese Nachricht, weil du Super-Admin von {{app_name}} bist.",
+
+    "audit_digest.title": "Taegliches Audit · {{count}} Findings",
+    "audit_digest.body":
+      "Zusammenfassung: {{critical}} kritisch, {{high}} hoch, {{medium}} mittel, {{low}} niedrig, {{info}} info.",
+    "audit_digest.subject":
+      "[{{app_name}}] Taegliches Audit · {{count}} Findings",
+    "audit_digest.greeting": "Hallo,",
+    "audit_digest.report_link": "Vollstaendigen Bericht ansehen",
+    "audit_digest.no_issues": "Alles in Ordnung. Keine Probleme erkannt.",
+    "audit_digest.top_findings": "Wichtigste Findings",
+    "audit_digest.intro":
+      "Ein automatisches Audit auf {{app_name}} wurde abgeschlossen. Hier die Zusammenfassung:",
   },
   fr: {
     "super_admin_alert.user_registered.title": "Nouvelle inscription",
@@ -135,6 +172,18 @@ const CATALOG: Catalog = {
       "Alerte super-admin de {{app_name}}.",
     "super_admin_alert.email.footer":
       "Tu recois cet email parce que tu es super-admin de {{app_name}}.",
+
+    "audit_digest.title": "Audit quotidien · {{count}} resultats",
+    "audit_digest.body":
+      "Resume : {{critical}} critiques, {{high}} eleves, {{medium}} moyens, {{low}} faibles, {{info}} info.",
+    "audit_digest.subject":
+      "[{{app_name}}] Audit quotidien · {{count}} resultats",
+    "audit_digest.greeting": "Bonjour,",
+    "audit_digest.report_link": "Voir le rapport complet",
+    "audit_digest.no_issues": "Tout va bien. Aucun probleme detecte.",
+    "audit_digest.top_findings": "Principaux resultats",
+    "audit_digest.intro":
+      "Un audit automatique sur {{app_name}} est termine. Voici le resume :",
   },
   it: {
     "super_admin_alert.user_registered.title": "Nuova registrazione",
@@ -158,6 +207,18 @@ const CATALOG: Catalog = {
       "Avviso super-admin da {{app_name}}.",
     "super_admin_alert.email.footer":
       "Ricevi questo messaggio perche sei super-admin di {{app_name}}.",
+
+    "audit_digest.title": "Audit giornaliero · {{count}} risultati",
+    "audit_digest.body":
+      "Riepilogo: {{critical}} critici, {{high}} alti, {{medium}} medi, {{low}} bassi, {{info}} info.",
+    "audit_digest.subject":
+      "[{{app_name}}] Audit giornaliero · {{count}} risultati",
+    "audit_digest.greeting": "Ciao,",
+    "audit_digest.report_link": "Vedi il report completo",
+    "audit_digest.no_issues": "Tutto a posto. Nessun problema rilevato.",
+    "audit_digest.top_findings": "Risultati principali",
+    "audit_digest.intro":
+      "Un audit automatico su {{app_name}} e stato completato. Ecco il riepilogo:",
   },
   pt: {
     "super_admin_alert.user_registered.title": "Novo registo",
@@ -183,6 +244,18 @@ const CATALOG: Catalog = {
       "Alerta de super-admin de {{app_name}}.",
     "super_admin_alert.email.footer":
       "Recebes esta mensagem porque es super-admin de {{app_name}}.",
+
+    "audit_digest.title": "Auditoria diaria · {{count}} achados",
+    "audit_digest.body":
+      "Resumo: {{critical}} criticos, {{high}} altos, {{medium}} medios, {{low}} baixos, {{info}} info.",
+    "audit_digest.subject":
+      "[{{app_name}}] Auditoria diaria · {{count}} achados",
+    "audit_digest.greeting": "Ola,",
+    "audit_digest.report_link": "Ver relatorio completo",
+    "audit_digest.no_issues": "Tudo bem. Nenhum problema detetado.",
+    "audit_digest.top_findings": "Principais achados",
+    "audit_digest.intro":
+      "Uma auditoria automatica em {{app_name}} foi concluida. Este e o resumo:",
   },
   ru: {
     "super_admin_alert.user_registered.title": "Новая регистрация",
@@ -206,6 +279,18 @@ const CATALOG: Catalog = {
       "Оповещение для супер-админа от {{app_name}}.",
     "super_admin_alert.email.footer":
       "Вы получили это письмо, так как являетесь супер-админом {{app_name}}.",
+
+    "audit_digest.title": "Ежедневный аудит · {{count}} находок",
+    "audit_digest.body":
+      "Сводка: {{critical}} критических, {{high}} высоких, {{medium}} средних, {{low}} низких, {{info}} информационных.",
+    "audit_digest.subject":
+      "[{{app_name}}] Ежедневный аудит · {{count}} находок",
+    "audit_digest.greeting": "Здравствуйте,",
+    "audit_digest.report_link": "Открыть полный отчёт",
+    "audit_digest.no_issues": "Всё в порядке. Проблем не обнаружено.",
+    "audit_digest.top_findings": "Главные находки",
+    "audit_digest.intro":
+      "Автоматический аудит на {{app_name}} завершён. Вот сводка:",
   },
   uk: {
     "super_admin_alert.user_registered.title": "Нова реєстрація",
@@ -229,6 +314,18 @@ const CATALOG: Catalog = {
       "Сповіщення для супер-адміна від {{app_name}}.",
     "super_admin_alert.email.footer":
       "Ви отримали цей лист, бо ви супер-адмін {{app_name}}.",
+
+    "audit_digest.title": "Щоденний аудит · {{count}} знахідок",
+    "audit_digest.body":
+      "Підсумок: {{critical}} критичних, {{high}} високих, {{medium}} середніх, {{low}} низьких, {{info}} інформаційних.",
+    "audit_digest.subject":
+      "[{{app_name}}] Щоденний аудит · {{count}} знахідок",
+    "audit_digest.greeting": "Вітаємо,",
+    "audit_digest.report_link": "Переглянути повний звіт",
+    "audit_digest.no_issues": "Усе гаразд. Проблем не виявлено.",
+    "audit_digest.top_findings": "Головні знахідки",
+    "audit_digest.intro":
+      "Автоматичний аудит на {{app_name}} завершено. Ось підсумок:",
   },
 };
 

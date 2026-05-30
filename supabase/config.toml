@@ -54,3 +54,10 @@ verify_jwt = false
 # Validacion interna: header `X-Internal-Auth` debe match SERVICE_ROLE_KEY.
 [functions.notify-super-admins]
 verify_jwt = false
+
+# send-audit-digest (PR 0080) lo invoca exclusivamente el trigger SQL
+# `fire_audit_digest_trg` via pg_net.http_post cuando un audit
+# automatico (triggered_by IS NULL) pasa a status='completed'. SIN JWT.
+# Validacion interna: header `X-Internal-Auth` debe match SERVICE_ROLE_KEY.
+[functions.send-audit-digest]
+verify_jwt = false
