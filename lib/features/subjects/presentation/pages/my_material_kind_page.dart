@@ -6,21 +6,14 @@
 // notes, mindmap, guide, cram, mock, history). Renderiza una vista
 // especifica por kind reutilizando los providers existentes.
 //
-// **Decisión arquitectónica clave (Option B del brief)**:
-// los widgets reales del Panel (`_QuizView`, `_FlashcardsView`,
-// `_TestRunnerDialog`, ...) son `private` (prefijo `_`) dentro del archivo
-// `subject_study_panel.dart` (~6000 lineas). Refactorizarlos a public seria
-// invasivo y arriesgado. En su lugar:
-//   - vistas de lectura simples (notes, essay list, history, guide, cram,
-//     flashcards count, etc.) -> implementadas aqui, leen los mismos providers;
-//   - vistas que requieren un RUNNER complejo (quiz, tf, mock, flashcards
-//     review, mindmap interactivo) -> mostramos un preview/lista y un CTA
-//     bien visible "Abrir en el Panel" que deep-linkea a /home?subjectId=X
-//     donde el StudyPanel original sigue funcionando IDENTICO a antes.
+// Tras la extracción de runners (TestRunnerDialog/TfRunnerDialog/MockExamView/
+// MindMapView/TfView a `widgets/runners/`), las kinds que ANTES redirigían al
+// Panel (quiz, tf, mock, mindmap) renderizan AHORA el runner real INLINE.
+// El resto (notes/essay/history/guide/cram/flashcards list/documents/index/
+// views) sigue siendo lectura ligera leyendo los mismos providers.
 //
-// El StudyPanel NO se modifica — esto es ADITIVO. Si el user sigue yendo a
-// /home (desde el menu lateral o desde el boton "Abrir Panel" de esta page),
-// la experiencia es exactamente la misma.
+// El StudyPanel mantiene su flujo original — esto es complementario: cualquier
+// kind puede abrirse desde /mis-temarios/<id>/<kind> sin tocar /home.
 // ============================================================================
 
 import 'package:flutter/material.dart';
@@ -39,6 +32,14 @@ import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/subjects_providers.dart';
 import '../../domain/subject.dart';
+import '../widgets/runners/mind_map_view.dart';
+import '../widgets/runners/mock_exam_view.dart';
+import '../widgets/runners/tf_view.dart';
+
+/// Alto fijo (en lógicas) reservado al runner inline (test, V-F, mapa mental,
+/// simulacro). Los runners usan `ListView`/`Stack` internamente y necesitan
+/// limites verticales al vivir dentro de un `SingleChildScrollView`.
+const double _kRunnerHeight = 640;
 
 /// Identificador estable del tipo de contenido que estamos viendo. El `slug`
 /// es el segmento de URL `:kind` (ASCII estable, no traducible) — usar enum
@@ -235,9 +236,9 @@ class _KindContent extends StatelessWidget {
       case MyMaterialKind.views:
         return _ViewsCard(subjectId: subject.id);
       case MyMaterialKind.quiz:
-        return _QuizListCard(subjectId: subject.id);
+        return _QuizRunnerCard(subjectId: subject.id);
       case MyMaterialKind.tf:
-        return _TfListCard(subjectId: subject.id);
+        return _TfRunnerCard(subjectId: subject.id);
       case MyMaterialKind.essay:
         return _EssayListCard(subjectId: subject.id);
       case MyMaterialKind.flashcards:
@@ -245,13 +246,13 @@ class _KindContent extends StatelessWidget {
       case MyMaterialKind.notes:
         return _NotesCard(subjectId: subject.id);
       case MyMaterialKind.mindmap:
-        return _MindmapInfoCard(subjectId: subject.id);
+        return _MindMapRunnerCard(subjectId: subject.id);
       case MyMaterialKind.guide:
         return _GuideCard(subjectId: subject.id);
       case MyMaterialKind.cram:
         return _CramCard(subjectId: subject.id);
       case MyMaterialKind.mock:
-        return _MockInfoCard(subjectId: subject.id);
+        return _MockRunnerCard(subjectId: subject.id);
       case MyMaterialKind.history:
         return _HistoryListCard(subjectId: subject.id);
     }
@@ -288,10 +289,9 @@ class _KindEmpty extends StatelessWidget {
   }
 }
 
-/// CTA inline "Hacer test/V-F/simulacro -> abrir Panel". Lo usan las kinds
-/// quiz/tf/mock porque sus runners (`_TestRunnerDialog`, `_TfRunnerDialog`,
-/// `_MockExamView`) viven en `subject_study_panel.dart` y son privados. En
-/// vez de duplicarlos (~1000 lineas cada uno) redirigimos al Panel.
+/// CTA inline "Abrir en el Panel". Tras la extracción de runners se sigue
+/// usando para las kinds que aun no tienen runner inline (flashcards, cuya
+/// vista de repaso `_FlashcardsView` continua en `subject_study_panel.dart`).
 class _RunInPanelCta extends StatelessWidget {
   const _RunInPanelCta({required this.subjectId});
   final String subjectId;
@@ -609,87 +609,55 @@ class _NodeContentPane extends ConsumerWidget {
   }
 }
 
-class _QuizListCard extends StatelessWidget {
-  const _QuizListCard({required this.subjectId});
+/// Quiz / Test: configurador inline (mismo que el Panel) — secciones,
+/// nº preguntas, tiempo y penalización. Al pulsar Empezar abre el modal
+/// difuminado con el [TestRunnerDialog]. Necesita los nodes del índice para
+/// el ámbito; cargamos `indexNodesProvider` y delegamos a [MockExamView].
+class _QuizRunnerCard extends ConsumerWidget {
+  const _QuizRunnerCard({required this.subjectId});
   final String subjectId;
 
   @override
-  Widget build(BuildContext context) {
-    final l = context.l10n;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _RunInPanelCta(subjectId: subjectId),
-        AppSpacing.gapMd,
-        PremiumCard(
-          child: _AsyncWrap<List<QuizQuestion>>(
-            provider: examQuestionsProvider(subjectId),
-            isEmpty: (v) => v.isEmpty,
-            onEmpty: _KindEmpty(
-              subjectId: subjectId,
-              icon: Icons.quiz_outlined,
-            ),
-            builder: (qs) => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SectionHeader(title: l.myMaterialKindQuiz, compact: true),
-                AppSpacing.gapSm,
-                for (final q in qs)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Text(
-                      '• ${_oneLine(q.question)}',
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.textTheme.bodyMedium,
-                    ),
-                  ),
-              ],
-            ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    return PremiumCard(
+      padding: EdgeInsets.zero,
+      child: SizedBox(
+        height: _kRunnerHeight,
+        child: _AsyncWrap<List<IndexNode>>(
+          provider: indexNodesProvider(subjectId),
+          isEmpty: (v) => v.where((n) => n.parentId != null).isEmpty,
+          onEmpty: _KindEmpty(subjectId: subjectId, icon: Icons.quiz_outlined),
+          builder: (nodes) => MockExamView(
+            subjectId: subjectId,
+            nodes: nodes,
+            // En /mis-temarios no hay columna índice que sincronizar; el salto
+            // al material se hace via la URL si el user quiere ir al Panel.
+            onSelectNode: (_) {},
           ),
         ),
-      ],
+      ),
     );
   }
 }
 
-class _TfListCard extends StatelessWidget {
-  const _TfListCard({required this.subjectId});
+/// Verdadero/Falso: configurador inline + [TfRunnerDialog] vía [TfView].
+class _TfRunnerCard extends ConsumerWidget {
+  const _TfRunnerCard({required this.subjectId});
   final String subjectId;
 
   @override
-  Widget build(BuildContext context) {
-    final l = context.l10n;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _RunInPanelCta(subjectId: subjectId),
-        AppSpacing.gapMd,
-        PremiumCard(
-          child: _AsyncWrap<List<TfQuestion>>(
-            provider: tfQuestionsProvider(subjectId),
-            isEmpty: (v) => v.isEmpty,
-            onEmpty: _KindEmpty(subjectId: subjectId, icon: Icons.rule),
-            builder: (qs) => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SectionHeader(title: l.myMaterialKindTf, compact: true),
-                AppSpacing.gapSm,
-                for (final q in qs)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Text(
-                      '• ${_oneLine(q.statement)}',
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.textTheme.bodyMedium,
-                    ),
-                  ),
-              ],
-            ),
-          ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    return PremiumCard(
+      padding: EdgeInsets.zero,
+      child: SizedBox(
+        height: _kRunnerHeight,
+        child: _AsyncWrap<List<IndexNode>>(
+          provider: indexNodesProvider(subjectId),
+          isEmpty: (v) => v.where((n) => n.parentId != null).isEmpty,
+          onEmpty: _KindEmpty(subjectId: subjectId, icon: Icons.rule),
+          builder: (nodes) => TfView(subjectId: subjectId, nodes: nodes),
         ),
-      ],
+      ),
     );
   }
 }
@@ -836,32 +804,29 @@ class _NotesCard extends StatelessWidget {
   }
 }
 
-/// El mapa mental es una vista visual interactiva en el Panel — no es lista,
-/// es widget grafico. Para no duplicarlo, ofrecemos un atajo al Panel.
-class _MindmapInfoCard extends StatelessWidget {
-  const _MindmapInfoCard({required this.subjectId});
+/// Mapa mental navegable inline. Reutiliza el mismo widget del Panel
+/// ([MindMapView]) — el `selectedId` queda en null aqui (no hay seleccion
+/// previa al entrar) y `onSelectNode` es no-op porque no hay columna indice
+/// que sincronizar; las burbujas son visuales/clicables solo para expandir.
+class _MindMapRunnerCard extends StatelessWidget {
+  const _MindMapRunnerCard({required this.subjectId});
   final String subjectId;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _RunInPanelCta(subjectId: subjectId),
-        AppSpacing.gapMd,
-        PremiumCard(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Icon(
-                Icons.hub_outlined,
-                size: 64,
-                color: context.colors.onSurfaceVariant.withValues(alpha: 0.4),
-              ),
-            ),
+    return PremiumCard(
+      padding: EdgeInsets.zero,
+      child: SizedBox(
+        height: _kRunnerHeight,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: MindMapView(
+            subjectId: subjectId,
+            selectedId: null,
+            onSelectNode: (_) {},
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -916,40 +881,34 @@ class _CramCard extends StatelessWidget {
   }
 }
 
-/// Mock exam = configurador del simulacro cronometrado. Esta logica vive en
-/// `_MockExamView` (privada). Por consistencia con quiz/tf/mindmap, aqui
-/// solo redirigimos al Panel para hacerlo.
-class _MockInfoCard extends StatelessWidget {
-  const _MockInfoCard({required this.subjectId});
+/// Mock exam = simulacro cronometrado. Es el MISMO configurador que `quiz`
+/// ([MockExamView]) porque ambos abren el [TestRunnerDialog]; la diferencia
+/// es semantica: aqui el user llega con la intencion de hacer un simulacro
+/// completo cronometrado. Compartimos widget para no duplicar logica.
+class _MockRunnerCard extends ConsumerWidget {
+  const _MockRunnerCard({required this.subjectId});
   final String subjectId;
 
   @override
-  Widget build(BuildContext context) {
-    final l = context.l10n;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _RunInPanelCta(subjectId: subjectId),
-        AppSpacing.gapMd,
-        PremiumCard(
-          child: _AsyncWrap<List<QuizQuestion>>(
-            provider: examQuestionsProvider(subjectId),
-            isEmpty: (v) => v.isEmpty,
-            onEmpty: _KindEmpty(
-              subjectId: subjectId,
-              icon: Icons.fact_check_outlined,
-            ),
-            builder: (qs) => Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Text(
-                l.myMaterialKindMock,
-                style: context.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    return PremiumCard(
+      padding: EdgeInsets.zero,
+      child: SizedBox(
+        height: _kRunnerHeight,
+        child: _AsyncWrap<List<IndexNode>>(
+          provider: indexNodesProvider(subjectId),
+          isEmpty: (v) => v.where((n) => n.parentId != null).isEmpty,
+          onEmpty: _KindEmpty(
+            subjectId: subjectId,
+            icon: Icons.fact_check_outlined,
+          ),
+          builder: (nodes) => MockExamView(
+            subjectId: subjectId,
+            nodes: nodes,
+            onSelectNode: (_) {},
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -999,5 +958,3 @@ class _HistoryListCard extends StatelessWidget {
     );
   }
 }
-
-String _oneLine(String s) => s.replaceAll(RegExp(r'\s+'), ' ').trim();
