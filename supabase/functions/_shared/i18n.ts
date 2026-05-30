@@ -59,6 +59,10 @@ const CATALOG: Catalog = {
     "super_admin_alert.user_deleted.body":
       "{{username}} ({{email}}) deleted their account. {{total_users}} users left.",
 
+    "super_admin_alert.plan_changed.title": "Plan changed: {{username}}",
+    "super_admin_alert.plan_changed.body":
+      "{{username}} ({{email}}) {{action}}: {{prev_plan}} -> {{new_plan}}.",
+
     // ─── Super-admin alert: email (subject + intro + footer) ───
     "super_admin_alert.email.preheader":
       "Super-admin alert from {{app_name}}.",
@@ -78,6 +82,10 @@ const CATALOG: Catalog = {
     "super_admin_alert.user_deleted.body":
       "{{username}} ({{email}}) elimino su cuenta. Quedan {{total_users}} usuarios.",
 
+    "super_admin_alert.plan_changed.title": "Cambio de plan: {{username}}",
+    "super_admin_alert.plan_changed.body":
+      "{{username}} ({{email}}) {{action}}: {{prev_plan}} -> {{new_plan}}.",
+
     "super_admin_alert.email.preheader":
       "Alerta de super-admin de {{app_name}}.",
     "super_admin_alert.email.footer":
@@ -95,6 +103,10 @@ const CATALOG: Catalog = {
     "super_admin_alert.user_deleted.title": "Nutzer geloescht: {{username}}",
     "super_admin_alert.user_deleted.body":
       "{{username}} ({{email}}) hat das Konto geloescht. Es bleiben {{total_users}} Nutzer.",
+
+    "super_admin_alert.plan_changed.title": "Plan geaendert: {{username}}",
+    "super_admin_alert.plan_changed.body":
+      "{{username}} ({{email}}) {{action}}: {{prev_plan}} -> {{new_plan}}.",
 
     "super_admin_alert.email.preheader":
       "Super-Admin-Benachrichtigung von {{app_name}}.",
@@ -115,6 +127,10 @@ const CATALOG: Catalog = {
     "super_admin_alert.user_deleted.body":
       "{{username}} ({{email}}) a supprime son compte. Il reste {{total_users}} utilisateurs.",
 
+    "super_admin_alert.plan_changed.title": "Plan modifie : {{username}}",
+    "super_admin_alert.plan_changed.body":
+      "{{username}} ({{email}}) {{action}} : {{prev_plan}} -> {{new_plan}}.",
+
     "super_admin_alert.email.preheader":
       "Alerte super-admin de {{app_name}}.",
     "super_admin_alert.email.footer":
@@ -133,6 +149,10 @@ const CATALOG: Catalog = {
     "super_admin_alert.user_deleted.title": "Utente eliminato: {{username}}",
     "super_admin_alert.user_deleted.body":
       "{{username}} ({{email}}) ha eliminato il suo account. Restano {{total_users}} utenti.",
+
+    "super_admin_alert.plan_changed.title": "Piano cambiato: {{username}}",
+    "super_admin_alert.plan_changed.body":
+      "{{username}} ({{email}}) {{action}}: {{prev_plan}} -> {{new_plan}}.",
 
     "super_admin_alert.email.preheader":
       "Avviso super-admin da {{app_name}}.",
@@ -154,6 +174,11 @@ const CATALOG: Catalog = {
     "super_admin_alert.user_deleted.body":
       "{{username}} ({{email}}) eliminou a conta. Restam {{total_users}} utilizadores.",
 
+    "super_admin_alert.plan_changed.title":
+      "Plano alterado: {{username}}",
+    "super_admin_alert.plan_changed.body":
+      "{{username}} ({{email}}) {{action}}: {{prev_plan}} -> {{new_plan}}.",
+
     "super_admin_alert.email.preheader":
       "Alerta de super-admin de {{app_name}}.",
     "super_admin_alert.email.footer":
@@ -173,6 +198,10 @@ const CATALOG: Catalog = {
     "super_admin_alert.user_deleted.body":
       "{{username}} ({{email}}) удалил аккаунт. Осталось {{total_users}} пользователей.",
 
+    "super_admin_alert.plan_changed.title": "Смена плана: {{username}}",
+    "super_admin_alert.plan_changed.body":
+      "{{username}} ({{email}}) {{action}}: {{prev_plan}} -> {{new_plan}}.",
+
     "super_admin_alert.email.preheader":
       "Оповещение для супер-админа от {{app_name}}.",
     "super_admin_alert.email.footer":
@@ -191,6 +220,10 @@ const CATALOG: Catalog = {
       "Користувача видалено: {{username}}",
     "super_admin_alert.user_deleted.body":
       "{{username}} ({{email}}) видалив акаунт. Залишилось {{total_users}} користувачів.",
+
+    "super_admin_alert.plan_changed.title": "Зміна плану: {{username}}",
+    "super_admin_alert.plan_changed.body":
+      "{{username}} ({{email}}) {{action}}: {{prev_plan}} -> {{new_plan}}.",
 
     "super_admin_alert.email.preheader":
       "Сповіщення для супер-адміна від {{app_name}}.",
@@ -214,4 +247,82 @@ export function t(
   const loc = normalizeLocale(locale);
   const tpl = CATALOG[loc][key] ?? CATALOG.en[key] ?? key;
   return interpolate(tpl, params);
+}
+
+// ─── Plan-change action dictionary ──────────────────────────────────────────
+// El EF `notify-super-admins` (event `plan.changed`) recibe un `action`
+// canonico ('subscribed' | 'canceled' | 'upgrade' | 'downgrade' |
+// 'plan_changed') y lo traduce con `tAction(locale, action)` antes de
+// pasarlo a `t()` como placeholder {{action}}. Asi el body del email
+// queda 100% en el idioma del super-admin.
+const ACTION_CATALOG: Record<Locale, Record<string, string>> = {
+  en: {
+    subscribed: "subscribed",
+    canceled: "canceled their subscription",
+    upgrade: "upgraded",
+    downgrade: "downgraded",
+    plan_changed: "changed plan",
+  },
+  es: {
+    subscribed: "se ha suscrito",
+    canceled: "ha cancelado la suscripcion",
+    upgrade: "ha subido de plan",
+    downgrade: "ha bajado de plan",
+    plan_changed: "cambio de plan",
+  },
+  de: {
+    subscribed: "hat ein Abo abgeschlossen",
+    canceled: "hat das Abo gekuendigt",
+    upgrade: "hat ein Upgrade durchgefuehrt",
+    downgrade: "hat ein Downgrade durchgefuehrt",
+    plan_changed: "hat den Plan gewechselt",
+  },
+  fr: {
+    subscribed: "s'est abonne",
+    canceled: "a annule son abonnement",
+    upgrade: "a effectue une mise a niveau",
+    downgrade: "a retrograde son plan",
+    plan_changed: "a change de plan",
+  },
+  it: {
+    subscribed: "si e abbonato",
+    canceled: "ha annullato l'abbonamento",
+    upgrade: "ha effettuato l'upgrade",
+    downgrade: "ha effettuato il downgrade",
+    plan_changed: "ha cambiato piano",
+  },
+  pt: {
+    subscribed: "subscreveu",
+    canceled: "cancelou a subscricao",
+    upgrade: "fez upgrade",
+    downgrade: "fez downgrade",
+    plan_changed: "mudou de plano",
+  },
+  ru: {
+    subscribed: "оформил подписку",
+    canceled: "отменил подписку",
+    upgrade: "повысил план",
+    downgrade: "понизил план",
+    plan_changed: "сменил план",
+  },
+  uk: {
+    subscribed: "оформив підписку",
+    canceled: "скасував підписку",
+    upgrade: "підвищив план",
+    downgrade: "понизив план",
+    plan_changed: "змінив план",
+  },
+};
+
+/// Traduce un `action` canonico al idioma del recipient. Si el action
+/// no existe en el diccionario (caso futuro), devuelve la cadena cruda
+/// para que al menos quede legible en ingles.
+export function tAction(
+  locale: string | undefined | null,
+  action: string,
+): string {
+  const loc = normalizeLocale(locale);
+  return ACTION_CATALOG[loc][action]
+    ?? ACTION_CATALOG.en[action]
+    ?? action;
 }

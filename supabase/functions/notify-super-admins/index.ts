@@ -39,12 +39,13 @@
 import { withSentry } from "../_shared/sentry.ts";
 import { adminClient, sendEmail } from "../_shared/email.ts";
 import { fetchAppName, renderEmail } from "../_shared/email_templates.ts";
-import { t } from "../_shared/i18n.ts";
+import { t, tAction } from "../_shared/i18n.ts";
 
 const VALID_EVENTS = new Set<string>([
   "user.registered",
   "user.role_changed",
   "user.deleted",
+  "plan.changed",
 ]);
 
 const corsHeaders = {
@@ -68,6 +69,7 @@ const CATEGORY_BY_EVENT: Record<string, string> = {
   "user.registered": "user.registered",
   "user.role_changed": "user.role_changed",
   "user.deleted": "user.deleted",
+  "plan.changed": "plan.changed",
 };
 
 // Map evento -> claves i18n para titulo y body de la notif in-app.
@@ -83,6 +85,10 @@ const I18N_KEY_BY_EVENT: Record<string, { title: string; body: string }> = {
   "user.deleted": {
     title: "super_admin_alert.user_deleted.title",
     body: "super_admin_alert.user_deleted.body",
+  },
+  "plan.changed": {
+    title: "super_admin_alert.plan_changed.title",
+    body: "super_admin_alert.plan_changed.body",
   },
 };
 
@@ -118,6 +124,14 @@ Deno.serve(withSentry("notify-super-admins", async (req) => {
   const subjectUsername = (body.username as string | undefined) ?? "";
   const prevRole = (body.prev_role as string | undefined) ?? "";
   const newRole = (body.new_role as string | undefined) ?? "";
+  // plan.changed extras. Llegan strings ya formateados desde stripe-webhook.
+  // Si son null/undefined (ej. canceled -> sin new_plan, subscribed -> sin
+  // prev_plan), mostramos un guion para que el body siga legible.
+  const prevPlan = (body.prev_plan as string | undefined) ?? "-";
+  const newPlan = (body.new_plan as string | undefined) ?? "-";
+  // action canonico: 'subscribed' | 'canceled' | 'upgrade' | 'downgrade' |
+  // 'plan_changed'. Se traduce por locale via tAction().
+  const actionRaw = (body.action as string | undefined) ?? "plan_changed";
 
   if (!event || !VALID_EVENTS.has(event)) {
     return json({ error: "invalid_event" }, 400);
@@ -230,6 +244,15 @@ Deno.serve(withSentry("notify-super-admins", async (req) => {
       prev_role: prevRole,
       new_role: newRole,
       roles_breakdown: formatBreakdown(rolesBreakdown),
+      // plan.changed placeholders. Para los otros eventos quedan sin
+      // efecto porque sus templates no los referencian.
+      prev_plan: prevPlan,
+      new_plan: newPlan,
+      // action ya traducido al locale del recipient (super_admin que
+      // recibe el email). El EF stripe-webhook nos manda 'subscribed' /
+      // 'canceled' / 'upgrade' / 'downgrade' / 'plan_changed' en ingles
+      // canonico y tAction lo localiza.
+      action: tAction(locale, actionRaw),
     };
 
     const title = t(locale, i18nKeys.title, params);

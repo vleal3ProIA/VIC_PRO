@@ -74,13 +74,66 @@ Deno.serve(withSentry("stripe-webhook", async (req) => {
   // ── Aplicación del evento ──
   try {
     switch (event.type) {
-      case "customer.subscription.created":
-      case "customer.subscription.updated":
-        await handleSubscriptionUpserted(admin, event.data.object);
+      case "customer.subscription.created": {
+        const r = await handleSubscriptionUpserted(admin, event.data.object);
+        // Fire-and-forget super-admin alert. action='subscribed' porque
+        // es el primer paid plan para este customer (el free no pasa por
+        // Stripe). NO bloqueamos el ACK a Stripe.
+        if (r) {
+          dispatchSuperAdminPlanChanged(admin, supabaseUrl, serviceRoleKey, {
+            tenantId: r.tenantId,
+            prevPlanId: undefined,
+            newPlanId: r.newPlanId,
+            action: "subscribed",
+            createdByUserId: r.createdByUserId,
+          });
+        }
         break;
-      case "customer.subscription.deleted":
-        await handleSubscriptionDeleted(admin, event.data.object);
+      }
+      case "customer.subscription.updated": {
+        const r = await handleSubscriptionUpserted(admin, event.data.object);
+        // Solo alertar si REALMENTE cambio el plan; las updates de status
+        // (renovaciones, past_due, etc.) se ignoran -- igual que el
+        // dispatchPlanChangedEmail al user.
+        if (r && r.planChanged) {
+          // action = upgrade/downgrade segun rank o 'plan_changed' si no
+          // podemos decidir (sin position en plans, mismo rank, etc.).
+          let act = "plan_changed";
+          try {
+            act = await deriveUpgradeDirection(
+              admin,
+              r.prevPlanId,
+              r.newPlanId,
+            );
+          } catch (e) {
+            console.warn(
+              "[stripe-webhook] deriveUpgradeDirection failed:",
+              (e as Error).message,
+            );
+          }
+          dispatchSuperAdminPlanChanged(admin, supabaseUrl, serviceRoleKey, {
+            tenantId: r.tenantId,
+            prevPlanId: r.prevPlanId,
+            newPlanId: r.newPlanId,
+            action: act,
+            createdByUserId: r.createdByUserId,
+          });
+        }
         break;
+      }
+      case "customer.subscription.deleted": {
+        const r = await handleSubscriptionDeleted(admin, event.data.object);
+        if (r) {
+          dispatchSuperAdminPlanChanged(admin, supabaseUrl, serviceRoleKey, {
+            tenantId: r.tenantId,
+            prevPlanId: r.prevPlanId,
+            newPlanId: undefined,
+            action: "canceled",
+            createdByUserId: r.createdByUserId,
+          });
+        }
+        break;
+      }
       case "checkout.session.completed":
         await handleCheckoutCompleted(admin, event.data.object);
         break;
@@ -110,15 +163,23 @@ async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
+type UpsertResult = {
+  tenantId: string;
+  prevPlanId: string | undefined;
+  newPlanId: string | undefined;
+  planChanged: boolean;
+  createdByUserId: string | undefined;
+};
+
 async function handleSubscriptionUpserted(
   admin: ReturnType<typeof createClient>,
   sub: Record<string, unknown>,
-) {
+): Promise<UpsertResult | null> {
   const tenantId = (sub.metadata as Record<string, string> | undefined)
     ?.tenant_id;
   if (!tenantId) {
     console.warn("subscription without tenant_id metadata:", sub.id);
-    return;
+    return null;
   }
   const planId =
     (sub.metadata as Record<string, string> | undefined)?.plan_id;
@@ -221,17 +282,26 @@ async function handleSubscriptionUpserted(
   // Email "plan changed" al user que pago. Best-effort: si SMTP no
   // esta configurado o falla, NO bloqueamos el resto del webhook (la
   // suscripcion ya quedo persistida).
+  const createdByUserId = (sub.metadata as Record<string, string> | undefined)
+    ?.created_by_user_id;
   if (planChanged && status === "active") {
     await dispatchPlanChangedEmail(admin, {
       tenantId,
       planId,
       periodEnd: currentPeriodEnd,
-      createdByUserId: (sub.metadata as Record<string, string>)
-        ?.created_by_user_id,
+      createdByUserId,
     }).catch((e) => {
       console.warn("dispatchPlanChangedEmail failed:", (e as Error).message);
     });
   }
+
+  return {
+    tenantId,
+    prevPlanId: priorPlanId,
+    newPlanId: planId,
+    planChanged,
+    createdByUserId,
+  };
 }
 
 /// Envia el email "plan changed" al user que pago. Lookup:
@@ -387,14 +457,43 @@ async function syncCustomerBillingInfo(
   }
 }
 
+type DeletedResult = {
+  tenantId: string;
+  prevPlanId: string | undefined;
+  createdByUserId: string | undefined;
+};
+
 async function handleSubscriptionDeleted(
   admin: ReturnType<typeof createClient>,
   sub: Record<string, unknown>,
-) {
+): Promise<DeletedResult | null> {
+  // Snapshot ANTES de actualizar: necesitamos tenant_id + plan_id para
+  // la alerta a super-admins (despues del UPDATE el plan_id sigue ahi,
+  // pero leerlo antes evita carreras si otra mutacion concurrente lo
+  // cambiara).
+  const stripeSubId = sub.id as string;
+  const { data: existing } = await admin
+    .from("tenant_subscriptions")
+    .select("tenant_id, plan_id")
+    .eq("stripe_subscription_id", stripeSubId)
+    .maybeSingle();
+
   await admin
     .from("tenant_subscriptions")
     .update({ status: "canceled", canceled_at: new Date().toISOString() })
-    .eq("stripe_subscription_id", sub.id as string);
+    .eq("stripe_subscription_id", stripeSubId);
+
+  if (!existing) {
+    // Sub que no estaba registrada localmente -> nada que alertar.
+    return null;
+  }
+  const createdByUserId = (sub.metadata as Record<string, string> | undefined)
+    ?.created_by_user_id;
+  return {
+    tenantId: existing.tenant_id as string,
+    prevPlanId: existing.plan_id as string | undefined,
+    createdByUserId,
+  };
 }
 
 async function handleCheckoutCompleted(
@@ -434,4 +533,141 @@ function mapStripeStatus(s: string): string {
 function unixToIso(s: number | null | undefined): string | null {
   if (!s) return null;
   return new Date(s * 1000).toISOString();
+}
+
+// ─── Super-admin "plan.changed" alert ───────────────────────────────────────
+// Fire-and-forget POST a notify-super-admins. Stripe nos da 200 sin esperar.
+// El worker queda vivo hasta que el fetch termine via EdgeRuntime.waitUntil.
+// NUNCA debe lanzar fuera del handler -> si Stripe ve 5xx, reintenta hasta
+// 3 veces y nos puede acabar cancelando una sub buena.
+function dispatchSuperAdminPlanChanged(
+  admin: ReturnType<typeof createClient>,
+  supabaseUrl: string,
+  serviceRoleKey: string,
+  params: {
+    tenantId: string;
+    prevPlanId: string | undefined;
+    newPlanId: string | undefined;
+    action: string;
+    createdByUserId: string | undefined;
+  },
+): void {
+  // Resolvemos email/username/plan slugs en background. Si algo falta
+  // (race con delete-account, sin metadata.created_by_user_id, etc.)
+  // skip silencioso con warn.
+  const work = (async () => {
+    try {
+      // Determinar user_id: preferir metadata.created_by_user_id (es el
+      // user que disparo el checkout); fallback a tenants.owner_id.
+      let userId = params.createdByUserId;
+      if (!userId) {
+        const { data: tenant } = await admin
+          .from("tenants")
+          .select("owner_id")
+          .eq("id", params.tenantId)
+          .maybeSingle();
+        userId = tenant?.owner_id as string | undefined;
+      }
+      if (!userId) {
+        console.warn(
+          "[stripe-webhook] notify-super-admins skipped: no user_id for tenant",
+          params.tenantId,
+        );
+        return;
+      }
+
+      // username desde profiles.
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("username, display_name")
+        .eq("id", userId)
+        .maybeSingle();
+      const username = (profile?.username as string | undefined)
+        ?? (profile?.display_name as string | undefined)
+        ?? "";
+
+      // email desde auth.users.
+      // deno-lint-ignore no-explicit-any
+      const { data: userData } = await (admin.auth as any).admin
+        .getUserById(userId);
+      const email = (userData?.user?.email as string | undefined) ?? "";
+
+      if (!email && !username) {
+        console.warn(
+          "[stripe-webhook] notify-super-admins skipped: no email/username",
+          userId,
+        );
+        return;
+      }
+
+      // plan slugs (mostrados en el body) -> de la tabla plans.
+      const planIds = [params.prevPlanId, params.newPlanId].filter(
+        (x): x is string => Boolean(x),
+      );
+      let prevSlug = "";
+      let newSlug = "";
+      if (planIds.length > 0) {
+        const { data: plans } = await admin
+          .from("plans")
+          .select("id, slug, name")
+          .in("id", planIds);
+        const byId = new Map<string, string>(
+          ((plans as Array<{ id: string; slug: string; name: string }> | null)
+            ?? []).map((p) => [
+              p.id,
+              (p.name as string) || (p.slug as string),
+            ]),
+        );
+        prevSlug = params.prevPlanId ? (byId.get(params.prevPlanId) ?? "") : "";
+        newSlug = params.newPlanId ? (byId.get(params.newPlanId) ?? "") : "";
+      }
+
+      await fetch(`${supabaseUrl}/functions/v1/notify-super-admins`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Internal-Auth": serviceRoleKey,
+        },
+        body: JSON.stringify({
+          event: "plan.changed",
+          user_id: userId,
+          email,
+          username,
+          prev_plan: prevSlug || null,
+          new_plan: newSlug || null,
+          action: params.action,
+        }),
+      });
+    } catch (e) {
+      console.warn(
+        "[stripe-webhook] notify-super-admins (plan.changed) failed:",
+        (e as Error).message,
+      );
+    }
+  })();
+  // deno-lint-ignore no-explicit-any
+  (globalThis as any).EdgeRuntime?.waitUntil?.(work);
+}
+
+/// Devuelve 'upgrade' | 'downgrade' | 'plan_changed' comparando
+/// `plans.position` (mayor = tier mas alto). Si no podemos resolver
+/// alguno o quedan empatados, devolvemos 'plan_changed' (neutro).
+async function deriveUpgradeDirection(
+  admin: ReturnType<typeof createClient>,
+  prevPlanId: string | undefined,
+  newPlanId: string | undefined,
+): Promise<string> {
+  if (!prevPlanId || !newPlanId || prevPlanId === newPlanId) {
+    return "plan_changed";
+  }
+  const { data: rows } = await admin
+    .from("plans")
+    .select("id, position")
+    .in("id", [prevPlanId, newPlanId]);
+  const list = (rows as Array<{ id: string; position: number | null }> | null)
+    ?? [];
+  const prev = list.find((r) => r.id === prevPlanId)?.position ?? null;
+  const next = list.find((r) => r.id === newPlanId)?.position ?? null;
+  if (prev == null || next == null || prev === next) return "plan_changed";
+  return next > prev ? "upgrade" : "downgrade";
 }
