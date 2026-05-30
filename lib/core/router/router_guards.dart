@@ -42,7 +42,9 @@ const excludedFromGuard = <String>{
 /// Rutas privadas (requieren sesión activa).
 const privateRoutes = <String>{
   RoutePaths.home,
+  RoutePaths.myMaterial,
   RoutePaths.admin,
+  RoutePaths.adminMaterialLibrary,
   RoutePaths.adminFlags,
   RoutePaths.adminPlans,
   RoutePaths.adminBranding,
@@ -90,6 +92,7 @@ const privateRoutes = <String>{
 /// rol que las pida es redirigido a `/home`.
 const adminRoutes = <String>{
   RoutePaths.admin,
+  RoutePaths.adminMaterialLibrary,
   RoutePaths.adminFlags,
   RoutePaths.adminPlans,
   RoutePaths.adminBranding,
@@ -186,6 +189,7 @@ bool isPrivateRoute(String loc) {
   if (loc.startsWith('/admin/users/')) return true;
   if (loc.startsWith('/admin/broadcasts/')) return true;
   if (loc.startsWith('/admin/audit/')) return true;
+  if (loc.startsWith('/admin/material-library/')) return true;
   return false;
 }
 
@@ -195,13 +199,18 @@ bool isAdminRoute(String loc) {
   if (loc.startsWith('/admin/users/')) return true;
   if (loc.startsWith('/admin/broadcasts/')) return true;
   if (loc.startsWith('/admin/audit/')) return true;
+  if (loc.startsWith('/admin/material-library/')) return true;
   return false;
 }
 
-/// `true` si la ruta es exclusiva del super admin (solo `/admin/admins`
-/// hoy). Un admin normal no puede entrar -> guard redirige a /admin.
+/// `true` si la ruta es exclusiva del super admin: `/admin/admins` y
+/// `/admin/material-library` (+ su detalle `/admin/material-library/:id`).
+/// Un admin normal no puede entrar -> guard redirige a /admin.
 bool isSuperAdminRoute(String loc) {
-  return loc == RoutePaths.adminAdmins;
+  if (loc == RoutePaths.adminAdmins) return true;
+  if (loc == RoutePaths.adminMaterialLibrary) return true;
+  if (loc.startsWith('/admin/material-library/')) return true;
+  return false;
 }
 
 // ─────────────────────────── La logica pura ───────────────────────────

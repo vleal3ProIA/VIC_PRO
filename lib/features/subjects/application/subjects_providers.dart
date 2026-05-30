@@ -2,6 +2,7 @@
 // subjects · Providers Riverpod (Fase 1)
 // ============================================================================
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:myapp/core/providers/supabase_providers.dart';
@@ -182,4 +183,151 @@ final nodeContentProvider =
 final subjectFullTextProvider =
     FutureProvider.family<String?, String>((ref, subjectId) {
   return ref.watch(subjectsDataSourceProvider).originalFullText(subjectId);
+});
+
+// ─────────────────── Admin Material Library (super-admin) ───────────────────
+
+/// Query/filtros del listado admin de temarios. Inmutable; los cambios se
+/// hacen via `copyWith`. Inputs vacios o `null` se traducen a "sin filtro"
+/// en la RPC (server-side).
+@immutable
+class AdminSubjectsQuery {
+  const AdminSubjectsQuery({
+    this.language,
+    this.ownerUserId,
+    this.indexStatus,
+    this.titleSearch,
+    this.fromDate,
+    this.toDate,
+    this.limit = 50,
+    this.offset = 0,
+    this.sortBy = AdminSubjectsSort.newestFirst,
+  });
+
+  final String? language;
+  final String? ownerUserId;
+  final String? indexStatus;
+  final String? titleSearch;
+  final DateTime? fromDate;
+  final DateTime? toDate;
+  final int limit;
+  final int offset;
+  final AdminSubjectsSort sortBy;
+
+  AdminSubjectsQuery copyWith({
+    Object? language = _sentinel,
+    Object? ownerUserId = _sentinel,
+    Object? indexStatus = _sentinel,
+    Object? titleSearch = _sentinel,
+    Object? fromDate = _sentinel,
+    Object? toDate = _sentinel,
+    int? limit,
+    int? offset,
+    AdminSubjectsSort? sortBy,
+  }) =>
+      AdminSubjectsQuery(
+        language: language == _sentinel ? this.language : language as String?,
+        ownerUserId:
+            ownerUserId == _sentinel ? this.ownerUserId : ownerUserId as String?,
+        indexStatus:
+            indexStatus == _sentinel ? this.indexStatus : indexStatus as String?,
+        titleSearch:
+            titleSearch == _sentinel ? this.titleSearch : titleSearch as String?,
+        fromDate: fromDate == _sentinel ? this.fromDate : fromDate as DateTime?,
+        toDate: toDate == _sentinel ? this.toDate : toDate as DateTime?,
+        limit: limit ?? this.limit,
+        offset: offset ?? this.offset,
+        sortBy: sortBy ?? this.sortBy,
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      other is AdminSubjectsQuery &&
+      other.language == language &&
+      other.ownerUserId == ownerUserId &&
+      other.indexStatus == indexStatus &&
+      other.titleSearch == titleSearch &&
+      other.fromDate == fromDate &&
+      other.toDate == toDate &&
+      other.limit == limit &&
+      other.offset == offset &&
+      other.sortBy == sortBy;
+
+  @override
+  int get hashCode => Object.hash(
+        language,
+        ownerUserId,
+        indexStatus,
+        titleSearch,
+        fromDate,
+        toDate,
+        limit,
+        offset,
+        sortBy,
+      );
+}
+
+const Object _sentinel = Object();
+
+/// Orden del listado admin. La RPC siempre devuelve por created_at desc,
+/// y reordenamos en cliente porque la paginacion es por ventana (50) y
+/// queremos que cada paginacion sea coherente.
+enum AdminSubjectsSort { newestFirst, oldestFirst, titleAsc }
+
+/// Notifier mutable del filtro del Material Library.
+final adminSubjectsQueryProvider =
+    StateProvider<AdminSubjectsQuery>((_) => const AdminSubjectsQuery());
+
+/// Pagina actual de temarios admin (rows traidos del backend para la query).
+/// La RPC ya respeta orden created_at desc; el sort secundario se aplica
+/// despues si el usuario eligio title/oldest.
+final adminSubjectsPageProvider = FutureProvider.autoDispose
+    .family<List<AdminSubjectRow>, AdminSubjectsQuery>((ref, q) async {
+  final rows =
+      await ref.watch(subjectsDataSourceProvider).listAllSubjectsAdmin(
+            language: q.language,
+            ownerUserId: q.ownerUserId,
+            indexStatus: q.indexStatus,
+            titleSearch: q.titleSearch,
+            fromDate: q.fromDate,
+            toDate: q.toDate,
+            limit: q.limit,
+            offset: q.offset,
+          );
+  // Sort secundario en cliente — la pagina ya tiene <= 50 filas.
+  final list = [...rows];
+  switch (q.sortBy) {
+    case AdminSubjectsSort.newestFirst:
+      // ya viene así de la RPC
+      break;
+    case AdminSubjectsSort.oldestFirst:
+      list.sort((a, b) {
+        final ca = a.subject.createdAt;
+        final cb = b.subject.createdAt;
+        if (ca == null && cb == null) return 0;
+        if (ca == null) return 1;
+        if (cb == null) return -1;
+        return ca.compareTo(cb);
+      });
+    case AdminSubjectsSort.titleAsc:
+      list.sort((a, b) => a.subject.title
+          .toLowerCase()
+          .compareTo(b.subject.title.toLowerCase()),);
+  }
+  return list;
+});
+
+/// Autocomplete de owners. Se busca por username/display/email; vacio
+/// devuelve los 20 con mas temarios.
+final adminSubjectOwnersProvider = FutureProvider.autoDispose
+    .family<List<AdminOwnerRow>, String>((ref, search) {
+  return ref
+      .watch(subjectsDataSourceProvider)
+      .listSubjectOwnersAdmin(search: search);
+});
+
+/// Detalle admin de un subject (vista read-only).
+final adminSubjectProvider = FutureProvider.autoDispose
+    .family<AdminSubjectRow?, String>((ref, subjectId) {
+  return ref.watch(subjectsDataSourceProvider).getSubjectAdmin(subjectId);
 });

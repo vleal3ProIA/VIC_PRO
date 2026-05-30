@@ -1080,4 +1080,77 @@ class SubjectsDataSource {
     if (d is Map && d['error'] is String) return d['error'] as String;
     return 'server_error';
   }
+
+  // ─────────────────── Admin Material Library (super-admin only) ──────────────
+  //
+  // Estos metodos hablan con las RPCs SECURITY DEFINER definidas en la
+  // migracion 0078. RLS por owner se salta server-side, pero el gate
+  // `is_super_admin()` rechaza a cualquiera que no sea el super con
+  // `permission_denied`. Las funciones a continuacion ASUMEN que el caller
+  // ya es super (la UI las protege con el guard de ruta).
+
+  /// Lista TODOS los temarios del proyecto (no filtra por owner). Solo debe
+  /// llamarse desde el panel admin -- la RPC rechaza a non-super con
+  /// `permission_denied`. Soporta filtros + paginacion para no traer 10k
+  /// filas al cliente.
+  Future<List<AdminSubjectRow>> listAllSubjectsAdmin({
+    String? language,
+    String? ownerUserId,
+    String? indexStatus,
+    String? titleSearch,
+    DateTime? fromDate,
+    DateTime? toDate,
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final data = await _client.rpc<dynamic>(
+      'admin_list_subjects',
+      params: {
+        'p_language': language,
+        'p_owner_user_id': ownerUserId,
+        'p_index_status': indexStatus,
+        'p_title_search': titleSearch,
+        'p_from_date': fromDate?.toUtc().toIso8601String(),
+        'p_to_date': toDate?.toUtc().toIso8601String(),
+        'p_limit': limit,
+        'p_offset': offset,
+      },
+    );
+    if (data is! List) return const [];
+    return data
+        .cast<Map<String, dynamic>>()
+        .map(AdminSubjectRow.fromMap)
+        .toList(growable: false);
+  }
+
+  /// Autocomplete del filtro "owner" en /admin/material-library: busca en
+  /// profiles.username, profiles.display_name y auth.users.email.
+  Future<List<AdminOwnerRow>> listSubjectOwnersAdmin({
+    String? search,
+    int limit = 20,
+  }) async {
+    final data = await _client.rpc<dynamic>(
+      'admin_list_subject_owners',
+      params: {'p_search': search, 'p_limit': limit},
+    );
+    if (data is! List) return const [];
+    return data
+        .cast<Map<String, dynamic>>()
+        .map(AdminOwnerRow.fromMap)
+        .toList(growable: false);
+  }
+
+  /// Detalle read-only de un subject (salta RLS por owner). Devuelve null
+  /// si no existe o si el caller no es super (la RPC ya tira en ese caso,
+  /// asi que el null practicamente solo ocurre por id incorrecto).
+  Future<AdminSubjectRow?> getSubjectAdmin(String subjectId) async {
+    final data = await _client.rpc<dynamic>(
+      'admin_get_subject',
+      params: {'p_subject_id': subjectId},
+    );
+    if (data is! List || data.isEmpty) return null;
+    return AdminSubjectRow.fromMap(
+      (data.first as Map).cast<String, dynamic>(),
+    );
+  }
 }

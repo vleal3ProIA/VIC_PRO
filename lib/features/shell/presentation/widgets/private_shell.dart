@@ -86,6 +86,8 @@ class _PrivateShellState extends ConsumerState<PrivateShell> {
           commercialName: commercialName,
           showHeader: showHeader,
           onGoHome: () => navigate(() => context.goNamed(RouteNames.home)),
+          onGoMyMaterial: () =>
+              navigate(() => context.goNamed(RouteNames.myMaterial)),
           onGoSettings: (s) => navigate(
             () => context.goNamed(
               RouteNames.accountSettings,
@@ -185,6 +187,7 @@ class _SidebarNav extends StatelessWidget {
     required this.commercialName,
     required this.showHeader,
     required this.onGoHome,
+    required this.onGoMyMaterial,
     required this.onGoSettings,
     required this.onGoAdmin,
   });
@@ -195,6 +198,7 @@ class _SidebarNav extends StatelessWidget {
   final String commercialName;
   final bool showHeader;
   final VoidCallback onGoHome;
+  final VoidCallback onGoMyMaterial;
   final ValueChanged<String> onGoSettings;
   final VoidCallback onGoAdmin;
 
@@ -222,6 +226,14 @@ class _SidebarNav extends StatelessWidget {
           label: l.navDashboard,
           selected: location == RoutePaths.home,
           onTap: onGoHome,
+        ),
+        // ─── Mi Material ───
+        _NavTile(
+          icon: Icons.folder_copy_outlined,
+          selectedIcon: Icons.folder_copy,
+          label: l.navMyMaterial,
+          selected: location == RoutePaths.myMaterial,
+          onTap: onGoMyMaterial,
         ),
         // ─── Ajustes (submenú) ───
         _ExpandableNav(

@@ -9,7 +9,9 @@ import 'package:myapp/core/router/router_guards.dart';
 import 'package:myapp/features/account/application/profile_providers.dart';
 import 'package:myapp/features/account/presentation/pages/account_sessions_page.dart';
 import 'package:myapp/features/account/presentation/pages/account_settings_page.dart';
+import 'package:myapp/features/admin/presentation/pages/admin_material_library_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_page.dart';
+import 'package:myapp/features/admin/presentation/pages/admin_subject_view_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_trash_page.dart';
 import 'package:myapp/features/admin_acl/application/admin_acl_providers.dart';
 import 'package:myapp/features/admin_acl/presentation/pages/admin_admins_page.dart';
@@ -72,6 +74,7 @@ import 'package:myapp/features/onboarding/presentation/pages/onboarding_page.dar
 import 'package:myapp/features/shell/presentation/widgets/private_shell.dart';
 import 'package:myapp/features/status/presentation/pages/admin_incidents_page.dart';
 import 'package:myapp/features/status/presentation/pages/status_page.dart';
+import 'package:myapp/features/subjects/presentation/pages/my_material_page.dart';
 import 'package:myapp/features/tenants/presentation/pages/accept_invite_page.dart';
 import 'package:myapp/features/tenants/presentation/pages/team_page.dart';
 import 'package:myapp/features/tokens/presentation/pages/tokens_page.dart';
@@ -225,6 +228,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             path: RoutePaths.home,
             name: RouteNames.home,
             builder: (_, __) => const HomePage(),
+          ),
+          GoRoute(
+            path: RoutePaths.myMaterial,
+            name: RouteNames.myMaterial,
+            builder: (_, __) => const MyMaterialPage(),
           ),
           GoRoute(
             path: RoutePaths.accountSettings,
@@ -443,6 +451,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: RoutePaths.adminAiProviders,
         name: RouteNames.adminAiProviders,
         builder: (_, __) => const AdminAiProvidersPage(),
+      ),
+      // SOLO super admin. El guard del router (`isSuperAdminRoute`) ya
+      // bloquea a admins normales antes de llegar. Defensa: la RPC
+      // `admin_list_subjects` valida `is_super_admin()` server-side.
+      GoRoute(
+        path: RoutePaths.adminMaterialLibrary,
+        name: RouteNames.adminMaterialLibrary,
+        builder: (_, __) => const AdminMaterialLibraryPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.adminMaterialLibrarySubject,
+        name: RouteNames.adminMaterialLibrarySubject,
+        builder: (_, state) => AdminSubjectViewPage(
+          subjectId: state.pathParameters['id'] ?? '',
+        ),
       ),
       GoRoute(
         path: RoutePaths.status,

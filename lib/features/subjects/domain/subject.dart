@@ -434,3 +434,92 @@ class SubjectDocument {
 }
 
 DateTime? _ts(Object? v) => v is String ? DateTime.tryParse(v) : null;
+
+/// Fila de la RPC `admin_list_subjects` (super-admin only): subject + datos
+/// del owner + contadores agregados (# docs, # secciones del indice). NO se
+/// reusa [Subject] porque trae el owner desnormalizado para que la tabla del
+/// Material Library no necesite N joins en el cliente.
+class AdminSubjectRow {
+  const AdminSubjectRow({
+    required this.subject,
+    required this.ownerUserId,
+    required this.docsCount,
+    required this.nodesCount,
+    this.ownerEmail,
+    this.ownerUsername,
+    this.ownerDisplayName,
+  });
+
+  factory AdminSubjectRow.fromMap(Map<String, dynamic> m) => AdminSubjectRow(
+        subject: Subject(
+          id: m['id'] as String,
+          title: (m['title'] as String?) ?? '',
+          language: m['language'] as String?,
+          indexStatus: indexStatusFrom(m['index_status'] as String?),
+          indexLocked: (m['index_locked'] as bool?) ?? false,
+          indexError: m['index_error'] as String?,
+          examDate: _ts(m['exam_date']),
+          createdAt: _ts(m['created_at']),
+          shareable: (m['shareable'] as bool?) ?? false,
+        ),
+        ownerUserId: (m['user_id'] as String?) ?? '',
+        ownerEmail: m['owner_email'] as String?,
+        ownerUsername: m['owner_username'] as String?,
+        ownerDisplayName: m['owner_display'] as String?,
+        docsCount: (m['docs_count'] as num?)?.toInt() ?? 0,
+        nodesCount: (m['nodes_count'] as num?)?.toInt() ?? 0,
+      );
+
+  final Subject subject;
+  final String ownerUserId;
+  final String? ownerEmail;
+  final String? ownerUsername;
+  final String? ownerDisplayName;
+  final int docsCount;
+  final int nodesCount;
+
+  /// Etiqueta amigable del owner: username > display_name > email > "—".
+  String get ownerLabel {
+    final u = ownerUsername;
+    if (u != null && u.trim().isNotEmpty) return u;
+    final d = ownerDisplayName;
+    if (d != null && d.trim().isNotEmpty) return d;
+    final e = ownerEmail;
+    if (e != null && e.trim().isNotEmpty) return e;
+    return '—';
+  }
+}
+
+/// Fila de la RPC `admin_list_subject_owners` (autocomplete del filtro
+/// owner en /admin/material-library).
+class AdminOwnerRow {
+  const AdminOwnerRow({
+    required this.userId,
+    required this.subjectsCount,
+    this.email,
+    this.username,
+    this.displayName,
+  });
+
+  factory AdminOwnerRow.fromMap(Map<String, dynamic> m) => AdminOwnerRow(
+        userId: (m['user_id'] as String?) ?? '',
+        email: m['email'] as String?,
+        username: m['username'] as String?,
+        displayName: m['display_name'] as String?,
+        subjectsCount: (m['subjects_count'] as num?)?.toInt() ?? 0,
+      );
+
+  final String userId;
+  final String? email;
+  final String? username;
+  final String? displayName;
+  final int subjectsCount;
+
+  String get label {
+    final u = username;
+    if (u != null && u.trim().isNotEmpty) return u;
+    final d = displayName;
+    if (d != null && d.trim().isNotEmpty) return d;
+    return email ?? userId;
+  }
+}

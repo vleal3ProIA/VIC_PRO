@@ -32,7 +32,11 @@ import 'subject_study_panel.dart';
 const String _kPrefLastSubject = 'study_last_subject';
 
 class SubjectsHome extends ConsumerStatefulWidget {
-  const SubjectsHome({super.key});
+  const SubjectsHome({this.initialSubjectId, super.key});
+
+  /// Si llega via deep-link (`/home?subjectId=X` desde /mis-temarios) tiene
+  /// preferencia sobre el ultimo subject usado guardado en SharedPreferences.
+  final String? initialSubjectId;
 
   @override
   ConsumerState<SubjectsHome> createState() => _SubjectsHomeState();
@@ -47,8 +51,14 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
   @override
   void initState() {
     super.initState();
-    _selectedId =
+    _selectedId = widget.initialSubjectId ??
         ref.read(sharedPreferencesProvider).getString(_kPrefLastSubject);
+    // Si el deep-link traia un subjectId, persistirlo como "ultimo abierto".
+    if (widget.initialSubjectId != null) {
+      ref
+          .read(sharedPreferencesProvider)
+          .setString(_kPrefLastSubject, widget.initialSubjectId!);
+    }
   }
 
   void _select(String id) {

@@ -570,9 +570,7 @@ class _AdminDestinations {
       ];
 
   /// Tools exclusivos del super admin. NO tienen capability gate --
-  /// se filtran por `isSuperAdmin` en el build de AdminPage. Hoy
-  /// solo "Manage admins"; en el futuro pueden venir mas (system
-  /// settings, etc).
+  /// se filtran por `isSuperAdmin` en el build de AdminPage.
   List<_AdminDestination> get superTools => [
         _AdminDestination(
           icon: Icons.admin_panel_settings_outlined,
@@ -581,6 +579,13 @@ class _AdminDestinations {
           hint: l.adminAdminsHint,
           route: RouteNames.adminAdmins,
           embeddedBuilder: (_) => const AdminAdminsView(embedded: true),
+        ),
+        _AdminDestination(
+          icon: Icons.library_books,
+          colorSeed: const Color(0xFF6366F1), // indigo-500
+          title: l.adminMaterialLibraryTitle,
+          hint: l.adminMaterialLibrarySubtitle,
+          route: RouteNames.adminMaterialLibrary,
         ),
       ];
 }

@@ -18,7 +18,10 @@ class RouteNames {
   static const String mfaSetup = 'mfa_setup';
   static const String mfaChallenge = 'mfa_challenge';
   static const String home = 'home';
+  static const String myMaterial = 'my_material';
   static const String admin = 'admin';
+  static const String adminMaterialLibrary = 'admin_material_library';
+  static const String adminMaterialLibrarySubject = 'admin_material_library_subject';
   static const String adminFlags = 'admin_flags';
   static const String adminPlans = 'admin_plans';
   static const String adminBranding = 'admin_branding';
@@ -94,7 +97,10 @@ class RoutePaths {
   static const String mfaSetup = '/mfa-setup';
   static const String mfaChallenge = '/mfa-challenge';
   static const String home = '/home';
+  static const String myMaterial = '/mis-temarios';
   static const String admin = '/admin';
+  static const String adminMaterialLibrary = '/admin/material-library';
+  static const String adminMaterialLibrarySubject = '/admin/material-library/:id';
   static const String adminFlags = '/admin/flags';
   static const String adminPlans = '/admin/plans';
   static const String adminBranding = '/admin/branding';
