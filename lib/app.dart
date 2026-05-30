@@ -7,6 +7,7 @@ import 'package:myapp/core/observability/analytics_service.dart';
 import 'package:myapp/core/observability/sentry_user_sync.dart';
 import 'package:myapp/core/providers/locale_provider.dart';
 import 'package:myapp/core/providers/theme_provider.dart';
+import 'package:myapp/core/providers/user_cache_guard.dart';
 import 'package:myapp/core/router/app_router.dart';
 import 'package:myapp/core/theme/app_theme.dart';
 import 'package:myapp/features/account/application/profile_preferences_sync.dart';
@@ -28,6 +29,10 @@ class MyApp extends ConsumerWidget {
     ref.watch(sentryUserSyncProvider);
     ref.watch(analyticsUserSyncProvider);
     ref.watch(tenantSentrySyncProvider);
+    // CRÍTICO seguridad: invalida cache de providers user-scoped al cambiar
+    // de sesión. Previene que el usuario B vea datos del usuario A tras un
+    // logout+login sin recargar la página. Ver user_cache_guard.dart.
+    ref.watch(userCacheGuardProvider);
 
     final router = ref.watch(goRouterProvider);
     final themeMode = ref.watch(themeNotifierProvider);
