@@ -86,11 +86,44 @@ const Set<String> kAllowedAvatarMimes = {
   'image/webp',
 };
 
+/// Whitelist de MIMEs aceptados para assets de branding (logo, favicon,
+/// og-image). Mas amplio que avatares: ademas de los raster del set de
+/// avatar admitimos SVG (logo vectorial) e ICO (favicon clasico). El
+/// flujo es analogo al avatar: validamos magic bytes client-side antes
+/// de subir al bucket publico `branding-assets`.
+const Set<String> kAllowedBrandingMimes = {
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml',
+  'image/x-icon',
+  'image/vnd.microsoft.icon',
+};
+
+// SVG no es binario: empieza por '<' (0x3C) seguido normalmente por
+// '?xml' o '!DOCTYPE' o 'svg'. Aceptamos cualquiera de las tres aperturas
+// validas mas comunes para detectar polyglots tipo HTML disfrazado.
+const List<ImageSignature> _svgVariants = [
+  ImageSignature(bytes: [0x3c, 0x3f, 0x78, 0x6d, 0x6c]),       // <?xml
+  ImageSignature(bytes: [0x3c, 0x73, 0x76, 0x67]),             // <svg
+  ImageSignature(bytes: [0x3c, 0x21, 0x44, 0x4f, 0x43, 0x54, 0x59, 0x50, 0x45]), // <!DOCTYPE
+];
+
+// ICO classic header: 00 00 01 00 (reserved + type=icon).
+// CUR cursor seria 00 00 02 00 — lo rechazamos.
+const ImageSignature _ico = ImageSignature(
+  bytes: [0x00, 0x00, 0x01, 0x00],
+);
+
 const Map<String, List<ImageSignature>> _signaturesByMime = {
   'image/png': [_png],
   'image/jpeg': _jpegVariants,
   'image/gif': _gifVariants,
   'image/webp': [_webp],
+  'image/svg+xml': _svgVariants,
+  'image/x-icon': [_ico],
+  'image/vnd.microsoft.icon': [_ico],
 };
 
 // ─────────────────────── API publica ───────────────────────

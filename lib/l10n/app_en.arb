@@ -1276,6 +1276,12 @@
   "adminAppBrandingOgImageUrlHint": "Used in OpenGraph cards when sharing on social media.",
   "adminAppBrandingRegistrationEnabled": "Public registration enabled",
   "adminAppBrandingRegistrationEnabledHint": "If off, only admins can create new accounts. Useful for private beta.",
+  "brandingUploadImage": "Upload image",
+  "brandingImagePreview": "Preview",
+  "brandingImageNoPreview": "No image",
+  "brandingImageUploadSuccess": "Image uploaded successfully",
+  "brandingImageUploadError": "Couldn't upload the image",
+  "brandingImageInvalidFormat": "Format not allowed. Use PNG, JPG, WEBP, SVG or ICO.",
 
   "adminEmailLogTitle": "Email log",
   "adminEmailLogHint": "Audit of every email sent by the app.",

@@ -10,6 +10,7 @@ import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../application/branding_providers.dart';
 import '../../domain/app_branding.dart';
+import '../widgets/branding_image_field.dart';
 import '../widgets/palette_picker.dart';
 
 /// `/admin/app-branding` — Edita el branding del deploy en cualquier
@@ -204,50 +205,40 @@ class _AdminAppBrandingViewState extends ConsumerState<AdminAppBrandingView> {
                               setState(() => _paletteSlug = slug),
                         ),
                         const SizedBox(height: 16),
-                        TextFormField(
+                        BrandingImageField(
                           controller: _logoUrl,
                           enabled: !_saving,
-                          keyboardType: TextInputType.url,
-                          decoration: InputDecoration(
-                            labelText: l.setupFieldLogoUrl,
-                            helperText: l.setupFieldLogoUrlHint,
-                            prefixIcon: const Icon(Icons.image_outlined),
-                          ),
+                          kind: 'logo',
+                          icon: Icons.image_outlined,
+                          label: l.setupFieldLogoUrl,
+                          helperText: l.setupFieldLogoUrlHint,
                         ),
-                        const SizedBox(height: 8),
-                        TextFormField(
+                        const SizedBox(height: 16),
+                        BrandingImageField(
                           controller: _logoDarkUrl,
                           enabled: !_saving,
-                          keyboardType: TextInputType.url,
-                          decoration: InputDecoration(
-                            labelText: l.adminAppBrandingLogoDarkUrl,
-                            helperText: l.adminAppBrandingLogoDarkUrlHint,
-                            prefixIcon: const Icon(
-                              Icons.dark_mode_outlined,
-                            ),
-                          ),
+                          kind: 'logo-dark',
+                          icon: Icons.dark_mode_outlined,
+                          label: l.adminAppBrandingLogoDarkUrl,
+                          helperText: l.adminAppBrandingLogoDarkUrlHint,
                         ),
-                        const SizedBox(height: 8),
-                        TextFormField(
+                        const SizedBox(height: 16),
+                        BrandingImageField(
                           controller: _faviconUrl,
                           enabled: !_saving,
-                          keyboardType: TextInputType.url,
-                          decoration: InputDecoration(
-                            labelText: l.setupFieldFaviconUrl,
-                            helperText: l.setupFieldFaviconUrlHint,
-                            prefixIcon: const Icon(Icons.bookmark_outline),
-                          ),
+                          kind: 'favicon',
+                          icon: Icons.bookmark_outline,
+                          label: l.setupFieldFaviconUrl,
+                          helperText: l.setupFieldFaviconUrlHint,
                         ),
-                        const SizedBox(height: 8),
-                        TextFormField(
+                        const SizedBox(height: 16),
+                        BrandingImageField(
                           controller: _ogImageUrl,
                           enabled: !_saving,
-                          keyboardType: TextInputType.url,
-                          decoration: InputDecoration(
-                            labelText: l.adminAppBrandingOgImageUrl,
-                            helperText: l.adminAppBrandingOgImageUrlHint,
-                            prefixIcon: const Icon(Icons.share_outlined),
-                          ),
+                          kind: 'og-image',
+                          icon: Icons.share_outlined,
+                          label: l.adminAppBrandingOgImageUrl,
+                          helperText: l.adminAppBrandingOgImageUrlHint,
                         ),
                       ],
                     ),
