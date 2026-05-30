@@ -60,6 +60,7 @@ const privateRoutes = <String>{
   RoutePaths.adminIncidents,
   RoutePaths.adminAudit,
   RoutePaths.adminAiProviders,
+  RoutePaths.adminPublicDomainSources,
   RoutePaths.changelog,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
@@ -109,6 +110,7 @@ const adminRoutes = <String>{
   RoutePaths.adminAudit,
   RoutePaths.adminAdmins,
   RoutePaths.adminAiProviders,
+  RoutePaths.adminPublicDomainSources,
 };
 
 /// Mapeo route -> capability requerida (post migracion 0044). Si una
@@ -210,6 +212,7 @@ bool isSuperAdminRoute(String loc) {
   if (loc == RoutePaths.adminAdmins) return true;
   if (loc == RoutePaths.adminMaterialLibrary) return true;
   if (loc.startsWith('/admin/material-library/')) return true;
+  if (loc == RoutePaths.adminPublicDomainSources) return true;
   return false;
 }
 

@@ -79,9 +79,15 @@ class SubjectsDataSource {
   }
 
   /// Sube el archivo al bucket, registra el documento y dispara la ingesta.
+  ///
+  /// [sourceUrl] es opcional: si el user la informa al subir (URL publica de
+  /// la que descargo el archivo, p.ej. BOE / wikipedia), se persiste en
+  /// `documents.source_url`. Sirve al super-admin para detectar material de
+  /// dominio publico via la whitelist `public_domain_sources`.
   Future<void> uploadDocument({
     required String subjectId,
     required PickedFile file,
+    String? sourceUrl,
   }) async {
     final uid = _uid;
     final safeName = file.name.replaceAll(RegExp('[^A-Za-z0-9._-]'), '_');
@@ -101,6 +107,9 @@ class SubjectsDataSource {
       throw SubjectsException('upload_failed', detail: e.message);
     }
 
+    final cleanedSource =
+        (sourceUrl == null || sourceUrl.trim().isEmpty) ? null : sourceUrl.trim();
+
     final row = await _client
         .from('documents')
         .insert({
@@ -111,6 +120,7 @@ class SubjectsDataSource {
           'mime_type': file.mimeType,
           'size_bytes': file.bytes.length,
           'status': 'queued',
+          if (cleanedSource != null) 'source_url': cleanedSource,
         })
         .select('id')
         .single();
@@ -1102,6 +1112,7 @@ class SubjectsDataSource {
     DateTime? toDate,
     int limit = 50,
     int offset = 0,
+    bool onlyPublicDomain = false,
   }) async {
     final data = await _client.rpc<dynamic>(
       'admin_list_subjects',
@@ -1114,6 +1125,7 @@ class SubjectsDataSource {
         'p_to_date': toDate?.toUtc().toIso8601String(),
         'p_limit': limit,
         'p_offset': offset,
+        'p_only_public_domain': onlyPublicDomain,
       },
     );
     if (data is! List) return const [];
@@ -1121,6 +1133,22 @@ class SubjectsDataSource {
         .cast<Map<String, dynamic>>()
         .map(AdminSubjectRow.fromMap)
         .toList(growable: false);
+  }
+
+  /// URL firmada (1 h por defecto) para descargar un objeto concreto del
+  /// bucket `temarios`. Solo funciona si la RLS de storage permite al
+  /// caller leer ese objeto. Para super-admin con material de dominio
+  /// publico, lo permite la policy `temarios_super_read_public_domain`
+  /// (migracion 0079). Si el caller no tiene permiso, Storage devuelve
+  /// 403 y este metodo propaga el error.
+  Future<String> signedUrlForStoragePath(
+    String storagePath, {
+    int expiresInSeconds = 3600,
+  }) {
+    return _client.storage.from(_bucket).createSignedUrl(
+          storagePath,
+          expiresInSeconds,
+        );
   }
 
   /// Autocomplete del filtro "owner" en /admin/material-library: busca en

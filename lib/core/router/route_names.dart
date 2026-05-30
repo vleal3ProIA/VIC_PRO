@@ -45,6 +45,7 @@ class RouteNames {
   static const String adminAuditDetail = 'admin_audit_detail';
   static const String adminAdmins = 'admin_admins';
   static const String adminAiProviders = 'admin_ai_providers';
+  static const String adminPublicDomainSources = 'admin_public_domain_sources';
   static const String status = 'status';
   static const String accountSettings = 'account_settings';
   static const String changePassword = 'change_password';
@@ -142,6 +143,10 @@ class RoutePaths {
   // lo redirige a /admin.
   static const String adminAdmins = '/admin/admins';
   static const String adminAiProviders = '/admin/ai-providers';
+  // SOLO super admin. Gestion de patterns que marcan un material como
+  // dominio publico (BOE, .gov, wikipedia.org). Habilita al super-admin
+  // para descargar los originales (storage policy en migracion 0079).
+  static const String adminPublicDomainSources = '/admin/public-domain-sources';
   static const String status = '/status';
   static const String accountSettings = '/account-settings';
   static const String changePassword = '/change-password';

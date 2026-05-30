@@ -202,6 +202,7 @@ class AdminSubjectsQuery {
     this.limit = 50,
     this.offset = 0,
     this.sortBy = AdminSubjectsSort.newestFirst,
+    this.onlyPublicDomain = false,
   });
 
   final String? language;
@@ -214,6 +215,11 @@ class AdminSubjectsQuery {
   final int offset;
   final AdminSubjectsSort sortBy;
 
+  /// Si `true`, solo devuelve subjects donde `is_public_domain == true`
+  /// (shareable o source matched). Defaults a `false` para no romper el
+  /// comportamiento original del Material Library.
+  final bool onlyPublicDomain;
+
   AdminSubjectsQuery copyWith({
     Object? language = _sentinel,
     Object? ownerUserId = _sentinel,
@@ -224,6 +230,7 @@ class AdminSubjectsQuery {
     int? limit,
     int? offset,
     AdminSubjectsSort? sortBy,
+    bool? onlyPublicDomain,
   }) =>
       AdminSubjectsQuery(
         language: language == _sentinel ? this.language : language as String?,
@@ -238,6 +245,7 @@ class AdminSubjectsQuery {
         limit: limit ?? this.limit,
         offset: offset ?? this.offset,
         sortBy: sortBy ?? this.sortBy,
+        onlyPublicDomain: onlyPublicDomain ?? this.onlyPublicDomain,
       );
 
   @override
@@ -251,7 +259,8 @@ class AdminSubjectsQuery {
       other.toDate == toDate &&
       other.limit == limit &&
       other.offset == offset &&
-      other.sortBy == sortBy;
+      other.sortBy == sortBy &&
+      other.onlyPublicDomain == onlyPublicDomain;
 
   @override
   int get hashCode => Object.hash(
@@ -264,6 +273,7 @@ class AdminSubjectsQuery {
         limit,
         offset,
         sortBy,
+        onlyPublicDomain,
       );
 }
 
@@ -293,6 +303,7 @@ final adminSubjectsPageProvider = FutureProvider.autoDispose
             toDate: q.toDate,
             limit: q.limit,
             offset: q.offset,
+            onlyPublicDomain: q.onlyPublicDomain,
           );
   // Sort secundario en cliente — la pagina ya tiene <= 50 filas.
   final list = [...rows];

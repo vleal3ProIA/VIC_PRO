@@ -72,8 +72,8 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
     final errBg = Theme.of(context).colorScheme.error;
     // El modal pide nombre (obligatorio) y, opcionalmente, el archivo del
     // temario: así se crea y se sube de una vez.
-    final result =
-        await showDialog<({String title, PickedFile? file, bool shareable})>(
+    final result = await showDialog<
+        ({String title, PickedFile? file, bool shareable, String? sourceUrl})>(
       context: context,
       builder: (_) => const _CreateSubjectDialog(),
     );
@@ -112,8 +112,11 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
         barrierDismissible: false,
         // Fondo OPACO: durante subida/proceso/índice solo se ve el asistente.
         barrierColor: Theme.of(context).colorScheme.surface,
-        builder: (_) =>
-            _SubjectSetupWizard(subjectId: createdId!, initialFile: result.file),
+        builder: (_) => _SubjectSetupWizard(
+          subjectId: createdId!,
+          initialFile: result.file,
+          initialSourceUrl: result.sourceUrl,
+        ),
       );
     }
   }
@@ -616,6 +619,7 @@ class _CreateSubjectDialog extends StatefulWidget {
 
 class _CreateSubjectDialogState extends State<_CreateSubjectDialog> {
   late final TextEditingController _name;
+  late final TextEditingController _sourceUrl;
   PickedFile? _file;
   bool _picking = false;
   bool _shareable = false;
@@ -624,6 +628,7 @@ class _CreateSubjectDialogState extends State<_CreateSubjectDialog> {
   void initState() {
     super.initState();
     _name = TextEditingController()..addListener(_onChanged);
+    _sourceUrl = TextEditingController();
   }
 
   void _onChanged() => setState(() {});
@@ -633,6 +638,7 @@ class _CreateSubjectDialogState extends State<_CreateSubjectDialog> {
     _name
       ..removeListener(_onChanged)
       ..dispose();
+    _sourceUrl.dispose();
     super.dispose();
   }
 
@@ -650,7 +656,15 @@ class _CreateSubjectDialogState extends State<_CreateSubjectDialog> {
   void _submit() {
     final t = sanitizeSubjectName(_name.text);
     if (t.isEmpty) return;
-    Navigator.of(context).pop((title: t, file: _file, shareable: _shareable));
+    final raw = _sourceUrl.text.trim();
+    Navigator.of(context).pop(
+      (
+        title: t,
+        file: _file,
+        shareable: _shareable,
+        sourceUrl: raw.isEmpty ? null : raw,
+      ),
+    );
   }
 
   @override
@@ -697,6 +711,23 @@ class _CreateSubjectDialogState extends State<_CreateSubjectDialog> {
                 ],
               ),
             ),
+          const SizedBox(height: AppSpacing.sm),
+          // URL opcional: si el user descargo el documento de una web
+          // publica (BOE, gov, wikipedia, etc.), aqui puede pegar la URL
+          // para que sea reconocido como material libre por el super-admin.
+          TextField(
+            controller: _sourceUrl,
+            keyboardType: TextInputType.url,
+            decoration: InputDecoration(
+              labelText: l.documentUploadSourceUrl,
+              hintText: 'https://boe.es/...',
+              helperText: l.documentUploadSourceUrlHint,
+              helperMaxLines: 3,
+              isDense: true,
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.link, size: 18),
+            ),
+          ),
           const SizedBox(height: AppSpacing.sm),
           // Declaración de material libre: solo así el contenido generado entra
           // en la biblioteca global del proyecto y puede reutilizarse.
@@ -810,13 +841,22 @@ class _RenameSubjectDialogState extends State<_RenameSubjectDialog> {
 /// Las fases se derivan del estado real (documento + índice) con sondeo cada
 /// 3 s, así avanza solo a medida que el backend progresa.
 class _SubjectSetupWizard extends ConsumerStatefulWidget {
-  const _SubjectSetupWizard({required this.subjectId, this.initialFile});
+  const _SubjectSetupWizard({
+    required this.subjectId,
+    this.initialFile,
+    this.initialSourceUrl,
+  });
 
   final String subjectId;
 
   /// Si se pasa, el asistente sube este archivo al abrirse (con barra de
   /// progreso) antes de pasar a procesar/generar el índice.
   final PickedFile? initialFile;
+
+  /// URL publica de la que el user descargo el archivo. Si esta presente
+  /// se pasa al INSERT en `documents.source_url` y permite al super-admin
+  /// detectar material de dominio publico via `public_domain_sources`.
+  final String? initialSourceUrl;
 
   @override
   ConsumerState<_SubjectSetupWizard> createState() =>
@@ -853,6 +893,7 @@ class _SubjectSetupWizardState extends ConsumerState<_SubjectSetupWizard> {
       await ref.read(subjectsDataSourceProvider).uploadDocument(
             subjectId: widget.subjectId,
             file: widget.initialFile!,
+            sourceUrl: widget.initialSourceUrl,
           );
       ref.invalidate(subjectDocumentsProvider(widget.subjectId));
     } on SubjectsException catch (e) {

@@ -11,6 +11,7 @@ import 'package:myapp/features/account/presentation/pages/account_sessions_page.
 import 'package:myapp/features/account/presentation/pages/account_settings_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_material_library_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_page.dart';
+import 'package:myapp/features/admin/presentation/pages/admin_public_domain_sources_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_subject_view_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_trash_page.dart';
 import 'package:myapp/features/admin_acl/application/admin_acl_providers.dart';
@@ -490,6 +491,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => AdminSubjectViewPage(
           subjectId: state.pathParameters['id'] ?? '',
         ),
+      ),
+      // SOLO super admin. Gestion de whitelist de fuentes de dominio
+      // publico (BOE, .gov, wikipedia.org, etc). Defensa server-side:
+      // RLS de `public_domain_sources` exige `is_super_admin()` en write.
+      GoRoute(
+        path: RoutePaths.adminPublicDomainSources,
+        name: RouteNames.adminPublicDomainSources,
+        builder: (_, __) => const AdminPublicDomainSourcesPage(),
       ),
       GoRoute(
         path: RoutePaths.status,

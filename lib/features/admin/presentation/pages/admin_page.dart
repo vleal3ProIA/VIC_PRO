@@ -587,6 +587,13 @@ class _AdminDestinations {
           hint: l.adminMaterialLibrarySubtitle,
           route: RouteNames.adminMaterialLibrary,
         ),
+        _AdminDestination(
+          icon: Icons.public_outlined,
+          colorSeed: const Color(0xFF22C55E), // green-500
+          title: l.adminPublicDomainSourcesTitle,
+          hint: l.adminPublicDomainSourcesDescription,
+          route: RouteNames.adminPublicDomainSources,
+        ),
       ];
 }
 

@@ -26,6 +26,8 @@ import 'package:myapp/core/widgets/markdown_text.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 import 'package:myapp/features/subjects/application/subjects_providers.dart';
 import 'package:myapp/features/subjects/domain/subject.dart';
+import 'package:myapp/features/subjects/presentation/util/file_picker_web.dart'
+    show openUrlInNewTab;
 
 class AdminSubjectViewPage extends ConsumerWidget {
   const AdminSubjectViewPage({required this.subjectId, super.key});
@@ -230,9 +232,21 @@ class _AdminSubjectBodyState extends ConsumerState<_AdminSubjectBody> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      SectionHeader(
-                        title: l.adminMaterialLibrarySectionDocuments,
-                        compact: true,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SectionHeader(
+                              title: l.adminMaterialLibrarySectionDocuments,
+                              compact: true,
+                            ),
+                          ),
+                          // Chip que indica si el subject es de dominio
+                          // publico (=> super podra descargar). Si no,
+                          // tooltip explicando por que no se puede.
+                          _PublicDomainHeaderChip(
+                            isPublicDomain: widget.row.isPublicDomain,
+                          ),
+                        ],
                       ),
                       AppSpacing.gapSm,
                       docsAsync.when(
@@ -253,14 +267,9 @@ class _AdminSubjectBodyState extends ConsumerState<_AdminSubjectBody> {
                           return Column(
                             children: [
                               for (final d in docs)
-                                ListTile(
-                                  dense: true,
-                                  leading:
-                                      const Icon(Icons.description_outlined),
-                                  title: Text(d.fileName ?? d.storagePath),
-                                  subtitle: Text(
-                                    '${d.mimeType ?? '—'} · ${_docStatusLabel(context, d.status)}',
-                                  ),
+                                _AdminDocTile(
+                                  doc: d,
+                                  canDownload: widget.row.isPublicDomain,
                                 ),
                             ],
                           );
@@ -910,5 +919,108 @@ String _docStatusLabel(BuildContext context, DocStatus s) {
       return 'ready';
     case DocStatus.failed:
       return 'failed';
+  }
+}
+
+/// Chip de cabecera de la seccion Documentos. En verde si el subject es de
+/// dominio publico (=> super puede descargar originales); en gris con
+/// tooltip si no lo es (=> super NO puede descargar — defensa GDPR / IP).
+class _PublicDomainHeaderChip extends StatelessWidget {
+  const _PublicDomainHeaderChip({required this.isPublicDomain});
+  final bool isPublicDomain;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    if (isPublicDomain) {
+      return PremiumBadge(
+        label: l.adminSubjectDownloadOriginal,
+        variant: PremiumBadgeVariant.success,
+        icon: Icons.download_rounded,
+      );
+    }
+    return Tooltip(
+      message: l.adminSubjectNotDownloadableReason,
+      child: PremiumBadge(
+        label: l.adminSubjectNotDownloadable,
+        variant: PremiumBadgeVariant.neutral,
+        icon: Icons.lock_outline,
+      ),
+    );
+  }
+}
+
+/// Una fila de la lista de documentos del subject. Si `canDownload`, anyade
+/// un boton de descarga que pide una signed URL (1 h) y la abre en otra
+/// pestaya. Si no, el boton aparece deshabilitado con tooltip explicando
+/// por que. Defensa: aunque el boton este "habilitado", la RLS de storage
+/// rechaza el access si el subject no es realmente de dominio publico.
+class _AdminDocTile extends ConsumerStatefulWidget {
+  const _AdminDocTile({required this.doc, required this.canDownload});
+
+  final SubjectDocument doc;
+  final bool canDownload;
+
+  @override
+  ConsumerState<_AdminDocTile> createState() => _AdminDocTileState();
+}
+
+class _AdminDocTileState extends ConsumerState<_AdminDocTile> {
+  bool _busy = false;
+
+  Future<void> _download() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
+    try {
+      final ds = ref.read(subjectsDataSourceProvider);
+      final url = await ds.signedUrlForStoragePath(widget.doc.storagePath);
+      openUrlInNewTab(url);
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('${l.adminMaterialLibraryLoadError}: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final d = widget.doc;
+    final Widget trailing;
+    if (widget.canDownload) {
+      trailing = IconButton(
+        tooltip: l.adminSubjectDownloadOriginal,
+        icon: _busy
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.download_rounded),
+        onPressed: _busy ? null : _download,
+      );
+    } else {
+      trailing = Tooltip(
+        message: l.adminSubjectNotDownloadableReason,
+        child: const IconButton(
+          icon: Icon(Icons.download_rounded),
+          onPressed: null,
+        ),
+      );
+    }
+    return ListTile(
+      dense: true,
+      leading: const Icon(Icons.description_outlined),
+      title: Text(d.fileName ?? d.storagePath),
+      subtitle: Text(
+        '${d.mimeType ?? '—'} · ${_docStatusLabel(context, d.status)}'
+        '${d.sourceUrl != null ? ' · ${d.sourceUrl}' : ''}',
+      ),
+      trailing: trailing,
+    );
   }
 }

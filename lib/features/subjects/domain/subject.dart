@@ -406,6 +406,7 @@ class SubjectDocument {
     this.mimeType,
     this.pageCount,
     this.error,
+    this.sourceUrl,
   });
 
   factory SubjectDocument.fromMap(Map<String, dynamic> m) => SubjectDocument(
@@ -417,6 +418,7 @@ class SubjectDocument {
         mimeType: m['mime_type'] as String?,
         pageCount: (m['page_count'] as num?)?.toInt(),
         error: m['error'] as String?,
+        sourceUrl: m['source_url'] as String?,
       );
 
   final String id;
@@ -427,6 +429,12 @@ class SubjectDocument {
   final String? mimeType;
   final int? pageCount;
   final String? error;
+
+  /// URL publica de la que el user descargo el documento (BOE, gov,
+  /// wikipedia, etc.). `null` si no se informo en la subida. Se usa para
+  /// emparejar con la whitelist `public_domain_sources` y permitir al super
+  /// admin descargar el original.
+  final String? sourceUrl;
 
   /// `true` mientras el documento aún se está procesando (encolado o en curso).
   bool get inProgress =>
@@ -448,6 +456,7 @@ class AdminSubjectRow {
     this.ownerEmail,
     this.ownerUsername,
     this.ownerDisplayName,
+    this.isPublicDomain = false,
   });
 
   factory AdminSubjectRow.fromMap(Map<String, dynamic> m) => AdminSubjectRow(
@@ -468,6 +477,7 @@ class AdminSubjectRow {
         ownerDisplayName: m['owner_display'] as String?,
         docsCount: (m['docs_count'] as num?)?.toInt() ?? 0,
         nodesCount: (m['nodes_count'] as num?)?.toInt() ?? 0,
+        isPublicDomain: (m['is_public_domain'] as bool?) ?? false,
       );
 
   final Subject subject;
@@ -477,6 +487,13 @@ class AdminSubjectRow {
   final String? ownerDisplayName;
   final int docsCount;
   final int nodesCount;
+
+  /// `true` si el subject es shareable=true o alguno de sus documents tiene un
+  /// `source_url` / `file_name` que casa con un pattern activo de
+  /// `public_domain_sources`. Calculado server-side via la RPC
+  /// `is_public_domain_subject`. Solo asi el super-admin podra descargar los
+  /// documentos originales (RLS de storage lo verifica de nuevo).
+  final bool isPublicDomain;
 
   /// Etiqueta amigable del owner: username > display_name > email > "—".
   String get ownerLabel {

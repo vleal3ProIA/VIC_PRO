@@ -170,6 +170,9 @@ class _AdminMaterialLibraryViewState
                       toDate: null,
                       offset: 0,
                     ),),
+                onOnlyPublicDomainChanged: (v) => _updateQuery(
+                  (q) => q.copyWith(onlyPublicDomain: v, offset: 0),
+                ),
               ),
             ),
             AppSpacing.gapMd,
@@ -244,6 +247,7 @@ class _FiltersBar extends StatelessWidget {
     required this.onPickFromDate,
     required this.onPickToDate,
     required this.onClearDates,
+    required this.onOnlyPublicDomainChanged,
   });
 
   final TextEditingController searchCtrl;
@@ -258,6 +262,7 @@ class _FiltersBar extends StatelessWidget {
   final VoidCallback onPickFromDate;
   final VoidCallback onPickToDate;
   final VoidCallback onClearDates;
+  final ValueChanged<bool> onOnlyPublicDomainChanged;
 
   static const _languages = [
     'es',
@@ -380,6 +385,14 @@ class _FiltersBar extends StatelessWidget {
               onPressed: onClearDates,
               icon: const Icon(Icons.close, size: 18),
             ),
+          // Toggle "solo dominio publico". Util para el super que esta
+          // buscando material descargable.
+          FilterChip(
+            label: Text(l.adminMaterialLibraryFilterOnlyPublicDomain),
+            selected: query.onlyPublicDomain,
+            onSelected: onOnlyPublicDomainChanged,
+            avatar: const Icon(Icons.public_outlined, size: 16),
+          ),
           // Sort.
           DropdownButtonHideUnderline(
             child: DropdownButton<AdminSubjectsSort>(
@@ -460,6 +473,10 @@ class _SubjectsTable extends StatelessWidget {
                 numeric: true,
               ),
               DataColumn(label: Text(l.adminMaterialLibraryColStatus)),
+              // Nueva columna: muestra el origen "libre" del material —
+              // shareable (verde) o dominio publico (azul). Vacia si
+              // ninguno.
+              DataColumn(label: Text(l.adminMaterialLibraryColAccess)),
               DataColumn(label: Text(l.adminMaterialLibraryColCreated)),
               DataColumn(label: Text(l.adminMaterialLibraryColActions)),
             ],
@@ -524,6 +541,7 @@ class _SubjectsTable extends StatelessWidget {
         DataCell(Text('${r.docsCount}')),
         DataCell(Text('${r.nodesCount}')),
         DataCell(_StatusCell(subject: s)),
+        DataCell(_AccessCell(row: r)),
         DataCell(
           Text(
             s.createdAt == null ? '—' : fmt.format(s.createdAt!.toLocal()),
@@ -580,6 +598,44 @@ class _StatusCell extends StatelessWidget {
           color: color,
           fontWeight: FontWeight.w600,
         ),
+      ),
+    );
+  }
+}
+
+/// Celda "acceso libre": muestra el origen por el que un subject es de
+/// dominio publico, si lo es:
+///   - shareable=true     → badge VERDE "Libre" (declarado por el owner).
+///   - isPublicDomain && !shareable → badge AZUL "Dominio publico" (matched
+///     por la whitelist `public_domain_sources` via source_url/file_name).
+///   - ninguno            → guion (—).
+class _AccessCell extends StatelessWidget {
+  const _AccessCell({required this.row});
+  final AdminSubjectRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    if (row.subject.shareable) {
+      return PremiumBadge(
+        label: l.materialShareableBadge,
+        variant: PremiumBadgeVariant.success,
+        icon: Icons.bookmark_added_outlined,
+        dense: true,
+      );
+    }
+    if (row.isPublicDomain) {
+      return PremiumBadge(
+        label: l.materialPublicDomainBadge,
+        variant: PremiumBadgeVariant.info,
+        icon: Icons.public_outlined,
+        dense: true,
+      );
+    }
+    return Text(
+      '—',
+      style: context.textTheme.bodySmall?.copyWith(
+        color: context.colors.onSurfaceVariant,
       ),
     );
   }
