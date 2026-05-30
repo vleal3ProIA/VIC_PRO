@@ -70,7 +70,25 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinneamos a la versión que sabemos que funciona localmente. Cambiar
+          # solo tras verificar que la nueva no rompe `functions deploy`.
+          version: '2.98.2'
+
+      - name: Verificar secrets requeridos (fail-fast)
+        # Si los secrets no están configurados, todos los deploys fallan con
+        # auth empty y el log no es claro. Fallar aquí con un mensaje
+        # explicativo ahorra 10 min de "por qué falla todo" en cada run.
+        shell: bash
+        run: |
+          if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            echo "::error::Falta el secret SUPABASE_ACCESS_TOKEN. Configúralo en https://github.com/${{ github.repository }}/settings/secrets/actions"
+            exit 1
+          fi
+          if [ -z "${SUPABASE_PROJECT_REF:-}" ]; then
+            echo "::error::Falta el secret SUPABASE_PROJECT_REF. Configúralo en https://github.com/${{ github.repository }}/settings/secrets/actions"
+            exit 1
+          fi
+          echo "✓ Secrets presentes (access token: ${#SUPABASE_ACCESS_TOKEN} chars · project ref: $SUPABASE_PROJECT_REF)"
 
       - name: Detectar EFs cambiadas
         id: detect
@@ -141,18 +159,22 @@ jobs:
           set -euo pipefail
           FNS="${{ steps.detect.outputs.functions }}"
           FAIL=0
+          FAILED_FNS=""
           for fn in $FNS; do
             echo "─── Desplegando: $fn ───"
+            # Capturamos stdout+stderr para que al fallar quede el motivo
+            # real en el log (auth error, network, parse error, etc.).
             if supabase functions deploy "$fn" \
-                 --project-ref "$SUPABASE_PROJECT_REF"; then
+                 --project-ref "$SUPABASE_PROJECT_REF" 2>&1; then
               echo "✓ $fn OK"
             else
               echo "✗ $fn FAIL"
               FAIL=$((FAIL+1))
+              FAILED_FNS="$FAILED_FNS $fn"
             fi
           done
           if [ "$FAIL" -gt 0 ]; then
-            echo "::error::$FAIL EFs fallaron al desplegar"
+            echo "::error::$FAIL EFs fallaron al desplegar:$FAILED_FNS"
             exit 1
           fi
 
