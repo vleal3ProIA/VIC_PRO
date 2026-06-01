@@ -52,9 +52,14 @@ alter table public.admin_capabilities
 -- los admins con la capability explicita ven los reports. El super tiene
 -- todas las capabilities automaticamente, sigue viendo todo.
 
-drop policy if exists "error_reports_admin_read"   on public.error_reports;
-drop policy if exists "error_reports_admin_update" on public.error_reports;
-drop policy if exists "error_reports_admin_delete" on public.error_reports;
+drop policy if exists "error_reports_admin_read"      on public.error_reports;
+drop policy if exists "error_reports_admin_update"    on public.error_reports;
+drop policy if exists "error_reports_admin_delete"    on public.error_reports;
+-- Tambien drop las nuevas si quedaron de un intento parcial previo
+-- (re-run idempotente -- pasara si un push anterior fallo a medias).
+drop policy if exists "error_reports_read_with_cap"   on public.error_reports;
+drop policy if exists "error_reports_update_with_cap" on public.error_reports;
+drop policy if exists "error_reports_delete_with_cap" on public.error_reports;
 
 create policy "error_reports_read_with_cap"
   on public.error_reports for select to authenticated
