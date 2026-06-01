@@ -1115,10 +1115,14 @@ export function renderEmail(params: {
   const textBody = [
     greeting.trim(),
     plainBody,
-    // URL en linea propia: si va en la misma linea que ctaLabel, la
-    // concatenacion supera 76 chars y denomailer mete `=20` como
-    // continuacion en quoted-printable (visible literal en Gmail).
-    ctaUrl ? `${ctaLabel.trim()}:\n${ctaUrl}` : "",
+    // URL en linea propia (NO concatenada con label) para evitar wrap
+    // >76 chars que QP transforma en `=20\n` literal. denomailer auto-
+    // wrappea cualquier linea > 76 chars; mantenemos la URL "sola" y
+    // confiamos en que casi todas las URLs caben en <76 chars. Si
+    // alguna especifica las pasa, denomailer la dividira limpiamente
+    // sin generar `=20` problematicos (los wrap-marks van al final de
+    // linea, no al medio).
+    ctaUrl ? `${ctaLabel.trim()}\n${ctaUrl}` : "",
     footerNote.trim(),
   ]
     .filter((line) => line.length > 0)
@@ -1209,6 +1213,12 @@ function wrapHtml(params: {
   // Boton CTA: tabla por compat con Outlook. bg azul corporativo +
   // texto blanco. En dark mode mantenemos buen contraste invirtiendo
   // a azul claro / texto oscuro.
+  //
+  // NOTA: antes habia un `<tr>` extra que pintaba la URL en texto
+  // pequenyo bajo el boton. Lo quitamos porque:
+  //   (1) Duplicaba info (el boton ya lleva el link).
+  //   (2) La URL completa wrappeaba a 76 chars en QP -> `=20` literal.
+  //   (3) Visualmente confunde: parece otro link cuando es el mismo.
   const ctaBlock = ctaUrl
     ? `
       <tr><td style="padding: 24px 0;" align="center">
@@ -1224,11 +1234,6 @@ function wrapHtml(params: {
             </a>
           </td></tr>
         </table>
-      </td></tr>
-      <tr><td style="padding: 0 0 8px 0;" align="center">
-        <div style="font-size: 12px; color: #6B7280; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-          ${escapeHtml(ctaUrl)}
-        </div>
       </td></tr>`
     : "";
 
