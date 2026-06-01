@@ -44,25 +44,99 @@ interface NodeRow {
 
 function systemFor(kind: string, language: string | null): string {
   const lang = language && language.length > 0
-    ? `Write in this language (ISO code): ${language}.`
+    ? `Write the output in this language (ISO code): ${language}.`
     : "Write in the SAME language as the material.";
   switch (kind) {
     case "original":
       return "You extract content from study material. Return, verbatim and " +
         "complete, only the text of the requested section (keep its headings " +
         "and structure). Do not summarize, do not add commentary.";
+
     case "explained":
-      return "You are an expert tutor. Rewrite and explain the requested " +
-        "section using EASY-READING principles (lectura fácil): short " +
-        "sentences with ONE idea each; simple and common words; active voice; " +
-        "explain every difficult or technical term in parentheses; clear " +
-        "headings and bullet lists; and a concrete example when it helps. " +
-        `Stay faithful to the content, do not invent. ${lang} Use Markdown. ` +
-        "No preamble.";
+      // System prompt entrenado contra el PDF "Constitucion Espanola - Lectura
+      // Facil" (Univ. Rey Juan Carlos + Fundacion Esfera). Reglas:
+      //   - frases cortas (1 idea por frase).
+      //   - vocabulario sencillo + explicacion inline con "es decir,..."
+      //     "porque...", "que es...", "que significa..."
+      //   - structural roman/ordinal (Titulo, Capitulo, Seccion) -> ANYadir
+      //     "se lee primero/tercero/..." despues del numeral.
+      //   - preservar TODA la estructura (articulos, apartados, sub-apartados).
+      //   - glosario para conceptos clave via blockquote Markdown.
+      //   - NO inventar, NO opinar.
+      return [
+        "You are an expert tutor who transforms study material into an " +
+        "EASY-READING version (\"lectura facil\"), so ANY reader -- including " +
+        "people with reading difficulties or second-language learners -- can " +
+        "understand it with no prior knowledge.",
+        "",
+        "STYLE -- mandatory:",
+        "1. Short sentences. ONE idea per sentence. Active voice, present tense.",
+        "2. Common, everyday vocabulary.",
+        "3. The FIRST time a technical term, foreign word, abbreviation, " +
+        "Latinism, or legal/specialist concept appears, EXPLAIN IT INLINE " +
+        "right after, using one of these connectors: \"es decir, ...\", " +
+        "\"porque ...\", \"que es ...\", \"que significa ...\" (or the " +
+        "exact equivalent in the target language). Example (Spanish): " +
+        "\"ratificado, es decir, ha validado\". Example (Spanish): " +
+        "\"ideologia, es decir, cada partido tiene su propio conjunto de ideas\".",
+        "4. For STRUCTURAL Roman or ordinal numerals attached to top-level " +
+        "items (Titulo, Capitulo, Seccion -- NOT individual Articulo numbers), " +
+        "APPEND how to read them aloud right after the numeral. Examples: " +
+        "\"Titulo III se lee tercero\", \"Capitulo primero\", \"Seccion 1.a " +
+        "se lee primera\".",
+        "5. Bullet lists with \"-\" for enumerations. Numbered lists when the " +
+        "original uses numbering (1., 2., 3., a), b), c)).",
+        "6. **Bold** key concepts on FIRST appearance. *Italic* for foreign " +
+        "terms.",
+        "7. For glossary-worthy concepts (e.g. \"ordenamiento juridico\", " +
+        "\"soberania\", \"mayoria absoluta\", \"extradicion\"), add a Markdown " +
+        "blockquote \"> ...\" immediately after the first mention with a " +
+        "short, neutral, general-knowledge definition.",
+        "8. Use connectors that explain the WHY: \"...porque ...\", " +
+        "\"...para que ...\", \"...con el objetivo de ...\".",
+        "",
+        "STRUCTURE -- mandatory:",
+        "1. PRESERVE the section structure EXACTLY: same articles, same " +
+        "numbering of apartados (1., 2., 3.) and sub-apartados (a, b, c). " +
+        "DO NOT skip any apartado.",
+        "2. Use \"## Articulo X\" headings per article and \"### Capitulo ...\" " +
+        "for chapters.",
+        "3. If the section opens with a structural element (Titulo, Capitulo, " +
+        "Seccion), start with a 1-2-line intro explaining what that element is.",
+        "",
+        "FAITHFULNESS -- hard constraints:",
+        "- Do NOT invent facts, do NOT add opinions or commentary.",
+        "- Do NOT add information that is not in the source. The goal is to " +
+        "REPHRASE for clarity, not extend.",
+        "- Inline definitions of generic terms come from neutral general " +
+        "knowledge.",
+        "- If the source is ambiguous, keep the ambiguity.",
+        "",
+        `OUTPUT: Markdown only. No preamble. No closing remarks. ${lang}`,
+      ].join("\n");
+
     case "summary":
-      return "You summarize study material. Produce a concise summary of the " +
-        `key points of the requested section as bullet points. ${lang} ` +
-        "Use Markdown. No preamble.";
+      // Resumen en estilo "lectura facil": ESENCIA del articulo en bullets
+      // cortos, vocabulario sencillo, inline definitions cuando haga falta.
+      return [
+        "You produce an EASY-READING summary of the requested section.",
+        "",
+        "STYLE -- mandatory:",
+        "- Short sentences. One idea per bullet.",
+        "- Common, everyday vocabulary.",
+        "- The FIRST time a technical term appears, explain it INLINE with " +
+        "\"es decir, ...\" / \"que es ...\" (or the equivalent in the target " +
+        "language).",
+        "- Bullet list with \"-\". 5-12 bullets max.",
+        "- Keep ONLY the essential points. No commentary, no opinions.",
+        "",
+        "FAITHFULNESS:",
+        "- Faithful to the source. Do not invent.",
+        "- Preserve the apartado numbering if the source has it (1., 2., 3.).",
+        "",
+        `OUTPUT: Markdown only. No preamble. ${lang}`,
+      ].join("\n");
+
     default:
       return "Summarize the requested section.";
   }
