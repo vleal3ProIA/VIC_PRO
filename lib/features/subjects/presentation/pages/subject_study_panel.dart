@@ -628,85 +628,11 @@ class _IndexColumn extends ConsumerWidget {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _ReuseBanner(subjectId: subject.id),
-        Expanded(
-          child: _IndexTree(
-            nodes: orderedNodes,
-            selectedId: selectedId,
-            aiNodeIds: aiNodeIds,
-            onSelect: onSelect,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Aviso compacto: cuánto material reutilizable hay en la biblioteca global del
-/// proyecto para este temario (secciones idénticas, preguntas, explicaciones).
-/// Se reutiliza solo al abrir secciones o generar tests, sin gastar tokens. Si
-/// no hay nada reutilizable (o aún carga / falla), no muestra nada.
-class _ReuseBanner extends ConsumerWidget {
-  const _ReuseBanner({required this.subjectId});
-
-  final String subjectId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = context.l10n;
-    final scheme = context.colors;
-    final match = ref.watch(subjectMatchProvider(subjectId)).valueOrNull;
-    if (match == null) return const SizedBox.shrink();
-    final useful = match.exact > 0 ||
-        match.questions > 0 ||
-        match.views > 0 ||
-        match.flashcards > 0;
-    if (!useful) return const SizedBox.shrink();
-    return Container(
-      margin: const EdgeInsets.fromLTRB(
-        AppSpacing.sm,
-        AppSpacing.xs,
-        AppSpacing.sm,
-        AppSpacing.sm,
-      ),
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: scheme.primaryContainer.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.auto_awesome, size: 16, color: scheme.primary),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l.studyLibraryTitle,
-                  style: context.textTheme.labelLarge
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  l.studyLibraryBody(
-                    match.exact,
-                    match.questions,
-                    match.views,
-                  ),
-                  style: context.textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return _IndexTree(
+      nodes: orderedNodes,
+      selectedId: selectedId,
+      aiNodeIds: aiNodeIds,
+      onSelect: onSelect,
     );
   }
 }
