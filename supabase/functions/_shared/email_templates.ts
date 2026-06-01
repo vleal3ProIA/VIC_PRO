@@ -1013,16 +1013,28 @@ export function renderEmail(params: {
   const ctaLabel = strings.ctaLabel ?? "";
 
   // Plain-text fallback: clientes que no muestran HTML.
-  // Strip tags muy simple — suficiente para preview.
+  //
+  // Strip tags + colapsa whitespace + recorta cada linea para evitar
+  // que `denomailer` codifique espacios trailing como `=20` en quoted-
+  // printable (Gmail los mostraba literales en algunos clientes).
+  // Tambien convierte <li> y <br> en saltos de linea naturales.
+  const plainBody = bodyHtml
+    .replace(/<\/?p[^>]*>/gi, "\n")
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "  - ")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/[ \t]+\n/g, "\n")     // strip trailing whitespace per line
+    .replace(/\n{3,}/g, "\n\n")     // colapsa runs de \n
+    .trim();
   const textBody = [
-    greeting,
-    "",
-    bodyHtml.replace(/<[^>]+>/g, ""),
-    "",
-    ctaUrl ? `${ctaLabel}: ${ctaUrl}` : "",
-    "",
-    footerNote,
-  ].filter(Boolean).join("\n");
+    greeting.trim(),
+    plainBody,
+    ctaUrl ? `${ctaLabel.trim()}: ${ctaUrl}` : "",
+    footerNote.trim(),
+  ]
+    .filter((line) => line.length > 0)
+    .join("\n\n");
 
   return {
     subject,

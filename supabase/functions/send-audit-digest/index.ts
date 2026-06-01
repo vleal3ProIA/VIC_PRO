@@ -322,7 +322,12 @@ Deno.serve(withSentry("send-audit-digest", async (req) => {
     // IMPORTANTE: join con cadena vacia (NO \n) — los saltos de linea
     // dentro de HTML quoted-printable se codifican como `=20\n` cuando
     // hay espacios trailing y aparecen literales en Gmail.
+    // Intro: "Se ha completado una auditoria automatica en {{app_name}}.
+    // Este es el resumen:" - precede al detalle del resumen.
+    const introText = t(locale, "audit_digest.intro", baseParams);
+
     const bodyParts: string[] = [];
+    bodyParts.push(`<p>${escHtml(introText)}</p>`);
     if (total === 0) {
       bodyParts.push(
         `<p>${escHtml(t(locale, "audit_digest.no_issues", baseParams))}</p>`,
