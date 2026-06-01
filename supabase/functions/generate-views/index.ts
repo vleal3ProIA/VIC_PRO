@@ -48,9 +48,27 @@ function systemFor(kind: string, language: string | null): string {
     : "Write in the SAME language as the material.";
   switch (kind) {
     case "original":
-      return "You extract content from study material. Return, verbatim and " +
-        "complete, only the text of the requested section (keep its headings " +
-        "and structure). Do not summarize, do not add commentary.";
+      // ABSOLUTE SCOPE RULE: el modelo recibe el material entero y debe
+      // extraer SOLO la seccion pedida. Sin esta regla, un title como
+      // "Articulo 10" puede provocar que extraiga 100, 101, 102, etc. por
+      // prefijo numerico.
+      return [
+        "You extract content from study material. Return, verbatim and " +
+        "complete, only the text of the REQUESTED section (keep its headings " +
+        "and structure). Do not summarize, do not add commentary.",
+        "",
+        "ABSOLUTE SCOPE RULE -- EXACT TITLE MATCH:",
+        "- The user gives you ONE section title between >>> <<< delimiters.",
+        "- Extract ONLY that exact section. NEVER include sibling sections.",
+        "- Numbers are EXACT NUMERIC MATCHES, NOT prefixes. If the title is " +
+        "\"Articulo 10\", you extract ONLY Articulo 10 -- NEVER Articulo 100, " +
+        "101, 102, 103, 104, 105, 106, 107, 108, 109. If the title is " +
+        "\"Articulo 4\", you extract ONLY Articulo 4 -- NEVER Articulo 40, 41, 42, etc.",
+        "- If the material contains additional sections beyond the requested " +
+        "one, IGNORE them completely.",
+        "- Return the section's text from its heading to JUST BEFORE the next " +
+        "heading of the same or higher level.",
+      ].join("\n");
 
     case "explained":
       // System prompt entrenado contra el PDF "Constitucion Espanola - Lectura
@@ -112,6 +130,18 @@ function systemFor(kind: string, language: string | null): string {
         "knowledge.",
         "- If the source is ambiguous, keep the ambiguity.",
         "",
+        "ABSOLUTE SCOPE RULE -- EXACT TITLE MATCH:",
+        "- The user gives you ONE section title between >>> <<< delimiters.",
+        "- Generate the explained view for THAT ONE SECTION ONLY. NEVER " +
+        "include sibling sections in the same response.",
+        "- Numbers are EXACT NUMERIC MATCHES, NOT prefixes. If the title is " +
+        "\"Articulo 10\", you produce ONLY Articulo 10 -- NEVER Articulo 100, " +
+        "101, 102, 103, 104, 105, 106, 107, 108, 109. If the title is " +
+        "\"Articulo 4\", you produce ONLY Articulo 4 -- NEVER 40, 41, 42, etc.",
+        "- If the material contains additional sections beyond the requested " +
+        "one, IGNORE them.",
+        "- DO NOT generate multiple consecutive sections in one response.",
+        "",
         `OUTPUT: Markdown only. No preamble. No closing remarks. ${lang}`,
       ].join("\n");
 
@@ -133,6 +163,14 @@ function systemFor(kind: string, language: string | null): string {
         "FAITHFULNESS:",
         "- Faithful to the source. Do not invent.",
         "- Preserve the apartado numbering if the source has it (1., 2., 3.).",
+        "",
+        "ABSOLUTE SCOPE RULE -- EXACT TITLE MATCH:",
+        "- The user gives you ONE section title between >>> <<< delimiters.",
+        "- Summarize ONLY that section. Numbers are EXACT NUMERIC MATCHES. " +
+        "If the title is \"Articulo 10\", summarize ONLY Articulo 10 -- " +
+        "NEVER 100, 101, 102, etc. If the title is \"Articulo 4\", summarize " +
+        "ONLY Articulo 4 -- NEVER 40, 41, 42.",
+        "- Do NOT summarize multiple sections in one response.",
         "",
         `OUTPUT: Markdown only. No preamble. ${lang}`,
       ].join("\n");
@@ -302,14 +340,30 @@ Deno.serve(withSentry("generate-views", async (req) => {
     }
 
     // 2) Generación con IA.
+    // Destacamos el title con delimitadores >>> <<< para que el modelo lo
+    // identifique sin ambiguedad. Sin esto, "Articulo 10" se puede confundir
+    // con "Articulo 100" si el material contiene ambos.
+    const userMsgWithMaterial =
+      `Generate the view for THIS SECTION ONLY, with EXACT title match:\n\n` +
+      `>>> ${node.title} <<<\n\n` +
+      `CRITICAL: Generate content for the EXACT title above. Do NOT include ` +
+      `sibling sections in the same response. Numbers are EXACT NUMERIC ` +
+      `MATCHES (not prefixes). If the title is "Articulo 10", produce ONLY ` +
+      `Articulo 10 -- not 100, 101, 102, etc.\n\n` +
+      `Material (may contain other sections; IGNORE them):\n\n${textContext}`;
+    const userMsgAttachments =
+      `Generate the view for THIS SECTION ONLY, with EXACT title match:\n\n` +
+      `>>> ${node.title} <<<\n\n` +
+      `CRITICAL: Generate content for the EXACT title above. Do NOT include ` +
+      `sibling sections. Numbers are EXACT NUMERIC MATCHES (not prefixes). ` +
+      `Use the attached document(s); ignore any section that is not the one ` +
+      `requested.`;
     const result = await runCompletion(admin, {
       task: `view:${k}`,
       system: systemFor(k, language),
       messages: [{
         role: "user",
-        content: textContext
-          ? `Section title: ${node.title}\n\nMaterial:\n\n${textContext}`
-          : `Section title: ${node.title}\n\nUse the attached document(s).`,
+        content: textContext ? userMsgWithMaterial : userMsgAttachments,
       }],
       attachments: attachments.length > 0 ? attachments : undefined,
       maxOutputTokens: k === "summary" ? 2048 : 8192,
