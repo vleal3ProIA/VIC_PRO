@@ -106,7 +106,7 @@ Deno.serve(withSentry("diagnose-error", async (req) => {
 
   // Comprobamos rol via `is_admin()` RPC (incluye super; ver 0044).
   // Si el caller no es admin/super, devolvemos `forbidden`.
-  const { data: isAdminData } = await userClient.rpc<unknown>("is_admin");
+  const { data: isAdminData } = await userClient.rpc("is_admin");
   const isAdmin = isAdminData === true;
   if (!isAdmin) return json({ error: "forbidden" }, 403);
 
