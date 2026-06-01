@@ -234,17 +234,52 @@ Deno.serve(withSentry("generate-essay", async (req) => {
       ? "\n\nDo NOT repeat or rephrase any of these existing questions:\n" +
         existing.slice(-40).map((q) => `- ${q}`).join("\n")
       : "";
+    // System prompt entrenado para preguntas ESTILO OPOSICIONES de
+    // desarrollo. Reglas:
+    //   - Verbos de orden formal: Analice, Exponga, Desarrolle, Compare,
+    //     Razone, Justifique, Aplique. NO usar "habla sobre" o "que es".
+    //   - Cubrir niveles cognitivos VARIADOS: comprension, analisis,
+    //     aplicacion, evaluacion (taxonomia de Bloom).
+    //   - Respuesta modelo con ESTRUCTURA: planteamiento + cuerpo (puntos
+    //     clave numerados) + conclusion + cita exacta del articulo.
+    //   - Citar articulos/apartados/numeros concretos.
     const system =
-      'You create open-ended ("essay" / "desarrollo") EXAM questions from ' +
-      "ONE section of study material, EACH WITH ITS MODEL ANSWER. Return " +
-      'ONLY minified JSON: {"items":[{"question":"...","answer":"..."}]}. ' +
-      "The question asks the student to explain, develop, contrast, or " +
-      "apply a concept from the section. The `answer` is a thorough model " +
-      "answer grounded ONLY in the section text (do not invent), including " +
-      "the key points the student must mention to score full marks. " +
-      `Produce up to ${need} distinct questions covering the section as ` +
-      "thoroughly as possible; if the section is too short for that many, " +
-      `return fewer. ${lang}${avoid} No commentary.`;
+      "You create EXAM-grade open-ended (\"essay\" / \"desarrollo\") " +
+      "questions for Spanish competitive exams (\"oposiciones\") from ONE " +
+      "section of study material, EACH WITH ITS MODEL ANSWER. Return ONLY " +
+      'minified JSON: {"items":[{"question":"...","answer":"..."}]}.' +
+      "\n\n" +
+      "QUESTION FORMULATION (mandatory):\n" +
+      "- Start with formal academic verbs: \"Analice\", \"Exponga\", " +
+      "\"Desarrolle\", \"Compare\", \"Razone\", \"Justifique\", " +
+      "\"Aplique\", \"Distinga entre\", \"Identifique los requisitos\". " +
+      "Do NOT use informal phrasings like \"habla sobre\" or \"que es\".\n" +
+      "- Vary COGNITIVE LEVELS across the items (Bloom): comprehension " +
+      "(\"Exponga el contenido del articulo X\"), analysis (\"Analice las " +
+      "diferencias entre Y y Z\"), application (\"Aplique el procedimiento " +
+      "del articulo X al caso siguiente\"), evaluation (\"Razone la " +
+      "constitucionalidad de...\").\n" +
+      "- Cite the article/apartado the question targets when relevant " +
+      "(\"...del articulo 99\", \"...regulado en el Titulo III\").\n" +
+      "\n" +
+      "MODEL ANSWER STRUCTURE (mandatory):\n" +
+      "- Use a CLEAR structure inside `answer`: short planteamiento " +
+      "(1 line) -> cuerpo con KEY POINTS numerados (1., 2., 3., ...) -> " +
+      "conclusion (1-2 lineas).\n" +
+      "- Each KEY POINT names the specific element (article number, " +
+      "majority required, body involved, deadline, etc.).\n" +
+      "- Cite the exact source: \"Articulo 99.2 CE\", \"Disposicion " +
+      "transitoria primera\", etc.\n" +
+      "- Length: 150-400 words. NEVER invent facts beyond the source.\n" +
+      "\n" +
+      "COVERAGE:\n" +
+      `- Produce up to ${need} distinct questions covering different ` +
+      "aspects of the section thoroughly; if the section is too short, " +
+      "return fewer.\n" +
+      "- NO repetition: each question must target a DIFFERENT aspect or a " +
+      "different cognitive level.\n" +
+      "\n" +
+      `${lang}${avoid} No commentary, no preamble, JSON ONLY.`;
 
     try {
       const result = await runCompletion(admin, {

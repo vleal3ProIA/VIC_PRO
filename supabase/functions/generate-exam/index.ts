@@ -259,16 +259,52 @@ Deno.serve(withSentry("generate-exam", async (req) => {
       ? "\n\nDo NOT repeat or rephrase any of these existing questions:\n" +
         existing.slice(-40).map((q) => `- ${q}`).join("\n")
       : "";
+    // System prompt entrenado contra el banco de 4000 preguntas tipo test
+    // de oposiciones (Constitucion Espanola). Reglas:
+    //   - Tono formal-juridico.
+    //   - DISTRACTORES PLAUSIBLES: cambiar UN detalle (num. articulo,
+    //     plazo, mayoria, organo, fecha). NUNCA distractores absurdos.
+    //   - Variedad de TIPOS: literal/parafrasis, dato cuantitativo,
+    //     inferencia normativa, "señale la INCORRECTA", "respuestas a y
+    //     b son correctas" (combinatoria).
+    //   - Explanation cita el articulo/apartado concreto.
     const system =
-      "You create multiple-choice EXAM questions from ONE section of study " +
-      'material. Return ONLY minified JSON: {"questions":[{"question":"...",' +
-      '"options":["...","...","...","..."],"correct_index":0,"explanation":' +
-      '"..."}]}. Exactly 4 plausible options, ONLY ONE correct, grounded ONLY ' +
-      "in the section text (do not invent). `correct_index` is the 0-based " +
-      "index of the right option. `explanation` briefly says why it is " +
-      `correct. Produce up to ${need} distinct, NON-overlapping questions ` +
-      "covering this section as thoroughly as possible; if the section is too " +
-      `short for that many, return fewer. ${lang}${avoid} No commentary.`;
+      "You create EXAM-grade multiple-choice questions for Spanish " +
+      "competitive exams (\"oposiciones\") from ONE section of study " +
+      "material. Return ONLY minified JSON: " +
+      '{"questions":[{"question":"...","options":["...","...","...","..."],' +
+      '"correct_index":0,"explanation":"..."}]}.' +
+      "\n\n" +
+      "QUALITY (mandatory):\n" +
+      "- Formal legal/administrative tone, NOT classroom-level. Use the " +
+      "exact terminology of the source (\"Cortes Generales\", \"mayoria " +
+      "absoluta\", \"ley organica\", \"refrendo\", \"Disposicion " +
+      "transitoria\").\n" +
+      "- Exactly 4 options. ONLY ONE correct. Options must be ALL " +
+      "plausible to an average student.\n" +
+      "- DISTRACTORS must each change ONE specific detail an unprepared " +
+      "student would miss: wrong article number, wrong majority, wrong " +
+      "deadline, wrong body/organ, wrong subject vs object, swapped " +
+      "concepts. NEVER trivially absurd options.\n" +
+      "- Vary QUESTION TYPES across the items: (a) literal/paraphrased " +
+      "citation, (b) quantitative fact (dates, plazos, mayorias), (c) " +
+      "negative formulation (\"señale la respuesta INCORRECTA\"), (d) " +
+      "combinatorial (\"a y b son correctas\", \"todas las anteriores son " +
+      "ciertas\"), (e) inference (\"de los preceptos anteriores se " +
+      "deduce...\").\n" +
+      "- `correct_index` is the 0-based index of the right option.\n" +
+      "- `explanation` cites the EXACT article/apartado from the section " +
+      "(e.g. \"Articulo 99.2 establece que...\", \"segun el Titulo III, " +
+      "Capitulo II del texto\") and explains why the correct answer is " +
+      "correct in 1-2 sentences.\n" +
+      "- Grounded ONLY in the section text. Do NOT invent facts.\n" +
+      "\n" +
+      "COVERAGE:\n" +
+      `- Produce up to ${need} distinct, NON-overlapping questions ` +
+      "covering MULTIPLE aspects of this section (not just the obvious " +
+      "facts); if the section is too short, return fewer.\n" +
+      "\n" +
+      `${lang}${avoid} No commentary, no preamble, JSON ONLY.`;
 
     try {
       const result = await runCompletion(admin, {

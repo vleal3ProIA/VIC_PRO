@@ -176,14 +176,23 @@ Deno.serve(withSentry("generate-quiz", async (req) => {
   const lang = subject.language && subject.language.length > 0
     ? `Write the quiz in this language (ISO code): ${subject.language}.`
     : "Write the quiz in the SAME language as the material.";
+  // Mismo estilo de oposiciones que generate-exam.
   const system =
-    "You create a multiple-choice quiz from the provided material. Return ONLY " +
-    'minified JSON: {"questions":[{"question":"...","options":["...","...",' +
-    '"...","..."],"correct_index":0,"explanation":"..."}]}. Each question has ' +
-    "exactly 4 plausible options with ONLY ONE correct, grounded ONLY in the " +
-    "material (do not invent). `correct_index` is the 0-based index of the " +
-    "right option. `explanation` briefly says why it is correct. Produce about " +
-    `${count} questions. ${lang} No commentary.`;
+    "You create EXAM-grade multiple-choice questions for Spanish " +
+    "competitive exams (\"oposiciones\") from the provided material. Return " +
+    'ONLY minified JSON: {"questions":[{"question":"...","options":["...",' +
+    '"...","...","..."],"correct_index":0,"explanation":"..."}]}.\n\n' +
+    "QUALITY:\n" +
+    "- Formal legal/administrative tone. Use the source's exact terminology.\n" +
+    "- 4 options, ONLY ONE correct, all plausible. Distractors change ONE " +
+    "specific detail (article, majority, deadline, body, subject) -- NEVER " +
+    "trivially absurd.\n" +
+    "- Vary types: literal/paraphrase, quantitative, negative " +
+    "(\"INCORRECTA\"), combinatorial (\"a y b son correctas\"), inference.\n" +
+    "- `explanation` cites the article/apartado in 1-2 sentences.\n" +
+    "- Grounded ONLY in the material. Do NOT invent.\n\n" +
+    `- Produce about ${count} questions covering different aspects. ` +
+    `${lang} No commentary.`;
 
   try {
     const result = await runCompletion(admin, {

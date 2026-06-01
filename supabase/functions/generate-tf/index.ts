@@ -239,16 +239,49 @@ Deno.serve(withSentry("generate-tf", async (req) => {
       ? "\n\nDo NOT repeat or rephrase any of these existing statements:\n" +
         existing.slice(-40).map((q) => `- ${q}`).join("\n")
       : "";
+    // System prompt entrenado contra el estilo de oposiciones (banco de
+    // 4000 preguntas tipo test sobre la Constitucion Espanola). Reglas:
+    //   - Tono formal-juridico, no escolar.
+    //   - Mezcla de TIPOS de afirmaciones: cita literal del articulo,
+    //     dato cuantitativo (fechas/numeros/plazos), inferencia normativa,
+    //     comparativa entre conceptos.
+    //   - Distractores plausibles: la version FALSA debe cambiar un
+    //     detalle especifico que un opositor mediocre pasaria por alto
+    //     (cambio de articulo, plazo, mayoria, organo, fecha).
+    //   - Explanation con cita al articulo/seccion concreta.
     const system =
-      "You create true/false EXAM statements from ONE section of study " +
-      'material. Return ONLY minified JSON: {"items":[{"statement":"...",' +
-      '"is_true":true,"explanation":"..."}]}. Mix true and false roughly ' +
-      "50/50. Each statement must be unambiguous and grounded ONLY in the " +
-      "section text (do not invent). `explanation` briefly says why it is " +
-      "true or false, citing the section. Produce up to " +
+      "You create EXAM-grade TRUE/FALSE statements for Spanish competitive " +
+      "exams (\"oposiciones\") from ONE section of study material. Return " +
+      "ONLY minified JSON: " +
+      '{"items":[{"statement":"...","is_true":true,"explanation":"..."}]}.' +
+      "\n\n" +
+      "QUALITY (mandatory):\n" +
+      "- Formal legal/administrative tone, NOT classroom-level. Use the " +
+      "exact terminology of the source (e.g. \"Cortes Generales\", " +
+      "\"mayoria absoluta\", \"ley organica\", \"refrendo\").\n" +
+      "- Mix STATEMENT TYPES roughly evenly: (a) literal/paraphrased " +
+      "citation of the article, (b) quantitative fact (dates, numbers, " +
+      "ages, deadlines, majorities), (c) normative inference (\"X requires " +
+      "Y to be valid\"), (d) comparison between concepts/articles, (e) " +
+      "negative formulation (\"no podra\", \"esta prohibido\").\n" +
+      "- FALSE statements must be PLAUSIBLE: change ONE specific detail an " +
+      "average student would miss (wrong article number, wrong majority, " +
+      "wrong deadline, wrong body/organ, swapped subject vs object). NEVER " +
+      "trivial negation of an obvious truth.\n" +
+      "- Each statement is unambiguous and grounded ONLY in the section " +
+      "text. Do NOT invent facts beyond the source.\n" +
+      "- Mix true/false roughly 50/50.\n" +
+      "- `explanation` must (1) state why it's true/false in 1-2 sentences " +
+      "and (2) cite the exact article/apartado from the section (e.g. " +
+      "\"Articulo 99.2 establece...\", \"segun el Titulo III, Capitulo II\").\n" +
+      "\n" +
+      "COVERAGE:\n" +
+      "- Produce up to " +
       `${need} distinct, NON-overlapping statements covering this section ` +
       "thoroughly; if the section is too short for that many, return fewer. " +
-      `${lang}${avoid} No commentary.`;
+      "Cover MULTIPLE aspects of the section (not just the most obvious).\n" +
+      "\n" +
+      `${lang}${avoid} No commentary, no preamble, JSON ONLY.`;
 
     try {
       const result = await runCompletion(admin, {
