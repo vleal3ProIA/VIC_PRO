@@ -371,6 +371,21 @@ Deno.serve(withSentry("generate-views", async (req) => {
       userId: node.user_id,
       subjectId: node.subject_id,
     });
+
+    // Defensa: el modelo (o el gateway) puede devolver string vacia (refusal,
+    // safety filter, parsing fallido, etc.). Si guardamos vacio, la cache
+    // queda envenenada: las siguientes peticiones devuelven "" sin reintentar.
+    // Mejor lanzar error explicito para que la UI lo muestre y el siguiente
+    // intento regenere.
+    const generatedText = (result.text ?? "").trim();
+    if (generatedText.length === 0) {
+      throw new AiGatewayError(
+        `Model returned empty content for ${k} of "${node.title}". ` +
+        `The section may not be present in the material, or the AI provider ` +
+        `refused. Try regenerating, or check the material.`,
+      );
+    }
+
     await admin.from("node_content").upsert({
       node_id: node.id,
       user_id: node.user_id,
@@ -379,8 +394,7 @@ Deno.serve(withSentry("generate-views", async (req) => {
     }, { onConflict: "node_id,kind" });
 
     // 3) Aportar a la biblioteca global si el material es libre.
-    if (sectionHash && shareable && k !== "original" &&
-        result.text.trim().length > 0) {
+    if (sectionHash && shareable && k !== "original") {
       await admin.from("shared_node_content").upsert({
         content_hash: sectionHash,
         kind: k,

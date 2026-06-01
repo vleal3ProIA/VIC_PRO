@@ -18,8 +18,11 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 export const EMBED_DIM = 768;
 
 /// Modelo de embedding por proveedor. Solo los que pueden dar 768 dims.
+/// Gemini "text-embedding-004" deprecado a junio 2026 (404 not_found en v1beta).
+/// Sustituido por "gemini-embedding-001" que sigue dando 768 dims via
+/// outputDimensionality (modelo MRL = Matryoshka Representation Learning).
 const EMBED_MODEL: Record<string, string> = {
-  gemini: "text-embedding-004",
+  gemini: "gemini-embedding-001",
   openai: "text-embedding-3-small",
 };
 
