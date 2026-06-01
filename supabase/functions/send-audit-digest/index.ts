@@ -301,78 +301,44 @@ Deno.serve(withSentry("send-audit-digest", async (req) => {
     }
 
     // ── 2) Email body HTML ──
-    // High-level: tabla de severidades + top-5 list + link button.
-    // Sin SQL, sin row IDs de user-data. Solo check_id + severity + count.
-    const severityRows = [
-      ["critical", bySeverity.critical, "#DC2626"],
-      ["high", bySeverity.high, "#EA580C"],
-      ["medium", bySeverity.medium, "#CA8A04"],
-      ["low", bySeverity.low, "#0EA5E9"],
-      ["info", bySeverity.info, "#6B7280"],
-    ] as const;
-
-    const breakdownTable = `
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0"
-             style="margin-top:12px; border-collapse:collapse;">
-        ${severityRows.map(([sev, n, color]) => `
-          <tr>
-            <td style="padding:4px 16px 4px 0; font-weight:700; color:${color};">
-              ${escHtml(sev)}
-            </td>
-            <td style="padding:4px 0; color:#374151;">${n}</td>
-          </tr>
-        `).join("")}
-      </table>`;
-
-    const topFindingsBlock = total === 0
-      ? ""
-      : `<p style="margin-top:20px; font-weight:700;">${
-        escHtml(topFindingsLabel)
-      }</p>
-         <ol style="padding-left:20px; margin:8px 0;">
-           ${top5.map((f) => {
-             const label = (f.title && f.title.trim().length > 0)
-               ? f.title
-               : f.check_id;
-             const cnt = f.affected_count ?? f.count ?? 0;
-             return `<li style="margin-bottom:6px;">
-               <code style="background:#F3F4F6; padding:1px 6px; border-radius:4px;
-                            font-size:12px;">${escHtml(f.check_id)}</code>
-               &nbsp;<strong>${escHtml(f.severity)}</strong>
-               &nbsp;-&nbsp;${escHtml(label)}
-               ${cnt > 0 ? ` (<em>${cnt}</em>)` : ""}
-             </li>`;
-           }).join("")}
-         </ol>`;
-
-    const ctaButton = `
-      <p style="margin-top:24px;">
-        <a href="${escHtml(fullActionUrl)}"
-           style="display:inline-block; background:#2563EB; color:#ffffff;
-                  padding:10px 20px; border-radius:6px; text-decoration:none;
-                  font-weight:700;">
-          ${escHtml(reportLinkLabel)}
-        </a>
-      </p>
-      <p style="font-size:12px; color:#6B7280; margin-top:6px;">
-        <a href="${escHtml(fullActionUrl)}" style="color:#6B7280;">
-          ${escHtml(fullActionUrl)}
-        </a>
-      </p>`;
-
-    const noIssuesBlock = total === 0
-      ? `<p style="margin-top:12px; color:#059669; font-weight:700;">
-           ${escHtml(t(locale, "audit_digest.no_issues", baseParams))}
-         </p>`
-      : "";
-
-    const bodyHtmlAlert = `
-      <p>${escHtml(greeting)}</p>
-      <p>${escHtml(intro)}</p>
-      ${noIssuesBlock}
-      ${breakdownTable}
-      ${topFindingsBlock}
-      ${ctaButton}`;
+    // Patron MINIMO -- mismo formato que `notify-super-admins` (que si
+    // llega a Gmail sin filtrarse). HTML rico (tablas, botones con
+    // background-color, badges con <code>) hace que Gmail descarte
+    // silenciosamente los digests aunque el SMTP devuelva 250 OK.
+    //
+    // El detalle visual rico lo ve el admin EN la pagina
+    // /admin/audit/<id> -- el email es solo un trigger para abrirla.
+    const lines: string[] = [
+      `<p>${escHtml(greeting)}</p>`,
+      `<p>${escHtml(intro)}</p>`,
+    ];
+    if (total === 0) {
+      lines.push(`<p>${escHtml(t(locale, "audit_digest.no_issues", baseParams))}</p>`);
+    } else {
+      // Breakdown en texto plano dentro de <p>. Mas ligero que tabla.
+      lines.push(
+        `<p>${escHtml(t(locale, "audit_digest.body", baseParams))}</p>`,
+      );
+      if (top5.length > 0) {
+        const topLine = top5.map((f) => {
+          const label = (f.title && f.title.trim().length > 0)
+            ? f.title
+            : f.check_id;
+          return `${f.severity}: ${label}`;
+        }).join("; ");
+        lines.push(
+          `<p><strong>${escHtml(topFindingsLabel)}:</strong> ${
+            escHtml(topLine)
+          }</p>`,
+        );
+      }
+    }
+    lines.push(
+      `<p style="margin-top:16px;"><a href="${
+        escHtml(fullActionUrl)
+      }" style="color:#2563EB;">${escHtml(reportLinkLabel)}</a></p>`,
+    );
+    const bodyHtmlAlert = lines.join("\n");
 
     try {
       const rendered = renderEmail({

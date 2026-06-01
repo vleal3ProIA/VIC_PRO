@@ -70,11 +70,11 @@ const CATALOG: Catalog = {
       "You are receiving this because you are a super-admin of {{app_name}}.",
 
     // ─── Audit digest (PR 0080) ───
-    "audit_digest.title": "Daily audit · {{count}} findings",
+    "audit_digest.title": "Daily audit report ({{count}} findings)",
     "audit_digest.body":
       "Summary: {{critical}} critical, {{high}} high, {{medium}} medium, {{low}} low, {{info}} info.",
     "audit_digest.subject":
-      "[{{app_name}}] Daily audit · {{count}} findings",
+      "Daily audit report from {{app_name}} ({{count}} findings)",
     "audit_digest.greeting": "Hello,",
     "audit_digest.report_link": "View full report",
     "audit_digest.no_issues": "All clear. No issues detected.",
@@ -104,11 +104,11 @@ const CATALOG: Catalog = {
     "super_admin_alert.email.footer":
       "Recibes este aviso porque eres super-admin de {{app_name}}.",
 
-    "audit_digest.title": "Auditoría diaria · {{count}} findings",
+    "audit_digest.title": "Informe de auditoria diaria ({{count}} hallazgos)",
     "audit_digest.body":
-      "Resumen: {{critical}} críticos, {{high}} altos, {{medium}} medios, {{low}} bajos, {{info}} info.",
+      "Resumen: {{critical}} criticos, {{high}} altos, {{medium}} medios, {{low}} bajos, {{info}} info.",
     "audit_digest.subject":
-      "[{{app_name}}] Auditoría diaria · {{count}} findings",
+      "Informe de auditoria diaria de {{app_name}} ({{count}} hallazgos)",
     "audit_digest.greeting": "Hola,",
     "audit_digest.report_link": "Ver informe completo",
     "audit_digest.no_issues": "Todo en orden. Sin problemas detectados.",
@@ -138,11 +138,11 @@ const CATALOG: Catalog = {
     "super_admin_alert.email.footer":
       "Du erhaeltst diese Nachricht, weil du Super-Admin von {{app_name}} bist.",
 
-    "audit_digest.title": "Taegliches Audit · {{count}} Findings",
+    "audit_digest.title": "Taeglicher Audit-Bericht ({{count}} Findings)",
     "audit_digest.body":
       "Zusammenfassung: {{critical}} kritisch, {{high}} hoch, {{medium}} mittel, {{low}} niedrig, {{info}} info.",
     "audit_digest.subject":
-      "[{{app_name}}] Taegliches Audit · {{count}} Findings",
+      "Taeglicher Audit-Bericht von {{app_name}} ({{count}} Findings)",
     "audit_digest.greeting": "Hallo,",
     "audit_digest.report_link": "Vollstaendigen Bericht ansehen",
     "audit_digest.no_issues": "Alles in Ordnung. Keine Probleme erkannt.",
@@ -173,11 +173,11 @@ const CATALOG: Catalog = {
     "super_admin_alert.email.footer":
       "Tu recois cet email parce que tu es super-admin de {{app_name}}.",
 
-    "audit_digest.title": "Audit quotidien · {{count}} resultats",
+    "audit_digest.title": "Rapport d'audit quotidien ({{count}} resultats)",
     "audit_digest.body":
       "Resume : {{critical}} critiques, {{high}} eleves, {{medium}} moyens, {{low}} faibles, {{info}} info.",
     "audit_digest.subject":
-      "[{{app_name}}] Audit quotidien · {{count}} resultats",
+      "Rapport d'audit quotidien de {{app_name}} ({{count}} resultats)",
     "audit_digest.greeting": "Bonjour,",
     "audit_digest.report_link": "Voir le rapport complet",
     "audit_digest.no_issues": "Tout va bien. Aucun probleme detecte.",
@@ -208,11 +208,11 @@ const CATALOG: Catalog = {
     "super_admin_alert.email.footer":
       "Ricevi questo messaggio perche sei super-admin di {{app_name}}.",
 
-    "audit_digest.title": "Audit giornaliero · {{count}} risultati",
+    "audit_digest.title": "Report audit giornaliero ({{count}} risultati)",
     "audit_digest.body":
       "Riepilogo: {{critical}} critici, {{high}} alti, {{medium}} medi, {{low}} bassi, {{info}} info.",
     "audit_digest.subject":
-      "[{{app_name}}] Audit giornaliero · {{count}} risultati",
+      "Report audit giornaliero di {{app_name}} ({{count}} risultati)",
     "audit_digest.greeting": "Ciao,",
     "audit_digest.report_link": "Vedi il report completo",
     "audit_digest.no_issues": "Tutto a posto. Nessun problema rilevato.",
@@ -245,11 +245,11 @@ const CATALOG: Catalog = {
     "super_admin_alert.email.footer":
       "Recebes esta mensagem porque es super-admin de {{app_name}}.",
 
-    "audit_digest.title": "Auditoria diaria · {{count}} achados",
+    "audit_digest.title": "Relatorio de auditoria diaria ({{count}} achados)",
     "audit_digest.body":
       "Resumo: {{critical}} criticos, {{high}} altos, {{medium}} medios, {{low}} baixos, {{info}} info.",
     "audit_digest.subject":
-      "[{{app_name}}] Auditoria diaria · {{count}} achados",
+      "Relatorio de auditoria diaria de {{app_name}} ({{count}} achados)",
     "audit_digest.greeting": "Ola,",
     "audit_digest.report_link": "Ver relatorio completo",
     "audit_digest.no_issues": "Tudo bem. Nenhum problema detetado.",
@@ -280,11 +280,11 @@ const CATALOG: Catalog = {
     "super_admin_alert.email.footer":
       "Вы получили это письмо, так как являетесь супер-админом {{app_name}}.",
 
-    "audit_digest.title": "Ежедневный аудит · {{count}} находок",
+    "audit_digest.title": "Ежедневный отчёт аудита ({{count}} находок)",
     "audit_digest.body":
       "Сводка: {{critical}} критических, {{high}} высоких, {{medium}} средних, {{low}} низких, {{info}} информационных.",
     "audit_digest.subject":
-      "[{{app_name}}] Ежедневный аудит · {{count}} находок",
+      "Ежедневный отчёт аудита от {{app_name}} ({{count}} находок)",
     "audit_digest.greeting": "Здравствуйте,",
     "audit_digest.report_link": "Открыть полный отчёт",
     "audit_digest.no_issues": "Всё в порядке. Проблем не обнаружено.",
@@ -315,11 +315,11 @@ const CATALOG: Catalog = {
     "super_admin_alert.email.footer":
       "Ви отримали цей лист, бо ви супер-адмін {{app_name}}.",
 
-    "audit_digest.title": "Щоденний аудит · {{count}} знахідок",
+    "audit_digest.title": "Щоденний звіт аудиту ({{count}} знахідок)",
     "audit_digest.body":
       "Підсумок: {{critical}} критичних, {{high}} високих, {{medium}} середніх, {{low}} низьких, {{info}} інформаційних.",
     "audit_digest.subject":
-      "[{{app_name}}] Щоденний аудит · {{count}} знахідок",
+      "Щоденний звіт аудиту від {{app_name}} ({{count}} знахідок)",
     "audit_digest.greeting": "Вітаємо,",
     "audit_digest.report_link": "Переглянути повний звіт",
     "audit_digest.no_issues": "Усе гаразд. Проблем не виявлено.",
