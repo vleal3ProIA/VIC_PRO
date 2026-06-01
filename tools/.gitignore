@@ -1,0 +1,2 @@
+# JSON intermedio del parseo (~10 MB, regenerable con `python tools/parse_4000_questions.py`)
+4000_questions.json
