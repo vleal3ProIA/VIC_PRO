@@ -1030,7 +1030,10 @@ export function renderEmail(params: {
   const textBody = [
     greeting.trim(),
     plainBody,
-    ctaUrl ? `${ctaLabel.trim()}: ${ctaUrl}` : "",
+    // URL en linea propia: si va en la misma linea que ctaLabel, la
+    // concatenacion supera 76 chars y denomailer mete `=20` como
+    // continuacion en quoted-printable (visible literal en Gmail).
+    ctaUrl ? `${ctaLabel.trim()}:\n${ctaUrl}` : "",
     footerNote.trim(),
   ]
     .filter((line) => line.length > 0)
