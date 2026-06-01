@@ -248,13 +248,24 @@ Deno.serve(withSentry("notify-error-report", async (req) => {
     }
 
     // ── 2) Email body HTML ──
+    // TEASER ONLY. El email NO debe leakear el mensaje tecnico del error
+    // (los detalles los ve el admin en /admin/errors/<id> tras pulsar el
+    // CTA). Asi:
+    //   - Privacy: el mensaje puede contener PII (ej. emails, IDs, urls
+    //     internas con tokens) y enviarlo por SMTP es leak.
+    //   - Spam: contenido tipo "all_providers_failed: gemini: ..."
+    //     dispara filtros antifraude de Gmail.
+    //   - =20: lineas largas con tokens caracteres especiales acaban
+    //     wrapped por QP a 76 chars y aparece "=20" literal.
+    //
+    // Solo decimos: hay error, en X funcion, con Y severidad, pincha
+    // para verlo. El usuario va al admin y ve todo el detalle.
     const bodyParts: string[] = [];
     bodyParts.push(`<p>${escHtml(introText)}</p>`);
     bodyParts.push(
       `<p><strong>${escHtml(report.fn)}</strong> &mdash; ` +
       `<em>${escHtml(report.severity)}</em></p>`,
     );
-    bodyParts.push(`<p>${escHtml(report.error_message.slice(0, 480))}</p>`);
     const bodyHtmlAlert = bodyParts.join("");
 
     try {
