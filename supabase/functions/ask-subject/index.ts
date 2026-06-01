@@ -16,6 +16,7 @@ import { withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
 import { gatherMaterial } from "../_shared/ai/material.ts";
 import type { AiAttachment } from "../_shared/ai/types.ts";
+import { reportError } from "../_shared/error_reporter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -201,9 +202,21 @@ Deno.serve(withSentry("ask-subject", async (req) => {
     });
     return json({ ok: true, answer: result.text }, 200);
   } catch (e) {
-    const detail = e instanceof AiGatewayError
-      ? e.message
-      : (e as Error).message;
-    return json({ ok: false, error: "generation_failed", detail }, 200);
+    const errorId = await reportError(admin, {
+      userId: user.id,
+      fn: "ask-subject",
+      error: e,
+      errorCode: e instanceof AiGatewayError ? "ai_gateway" : "generation_failed",
+      context: {
+        subject_id: subject.id,
+        node_id: nodeId,
+        question_len: question.length,
+      },
+      severity: "high",
+    });
+    return json(
+      { ok: false, error_code: "generic_error", error_id: errorId },
+      200,
+    );
   }
 }));

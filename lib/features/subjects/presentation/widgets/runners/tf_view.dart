@@ -96,6 +96,9 @@ class _TfViewState extends ConsumerState<TfView> {
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     final errBg = Theme.of(context).colorScheme.error;
+    // Capturamos el mensaje generico ANTES del await: si el widget se
+    // desmonta o el context cambia, ya no podemos llamar `context.l10n`.
+    final genericMsg = l.errorGeneric;
     try {
       final r = await ref.read(subjectsDataSourceProvider).generateTfBank(
             subjectId: widget.subjectId,
@@ -112,19 +115,19 @@ class _TfViewState extends ConsumerState<TfView> {
           SnackBar(duration: const Duration(seconds: 6), content: Text(msg)),
         );
       }
-    } on SubjectsException catch (e) {
-      final detail =
-          e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
+    } on SubjectsException catch (_) {
+      // No filtramos `e.code` / `e.detail` al user: solo el mensaje canonico.
+      // El detalle tecnico esta ya en `error_reports` (admin /admin/errors).
       messenger.showSnackBar(
         SnackBar(
           backgroundColor: errBg,
           duration: const Duration(seconds: 8),
-          content: Text('${l.studyViewError} (${e.code})$detail'),
+          content: Text(genericMsg),
         ),
       );
     } catch (_) {
       messenger.showSnackBar(
-        SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+        SnackBar(backgroundColor: errBg, content: Text(genericMsg)),
       );
     } finally {
       if (mounted) setState(() => _busy = false);

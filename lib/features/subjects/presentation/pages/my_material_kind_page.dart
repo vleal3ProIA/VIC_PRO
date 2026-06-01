@@ -169,8 +169,7 @@ class _KindBody extends ConsumerWidget {
       loading: () => const Center(child: AppLoadingState()),
       error: (e, _) => Center(
         child: AppErrorState(
-          message: l.myMaterialSubjectLoadError,
-          detail: e.toString(),
+          message: l.errorGeneric,
           onRetry: () => ref.invalidate(subjectsListProvider),
           retryLabel: l.actionRetry,
         ),
@@ -350,8 +349,7 @@ class _AsyncWrap<T> extends ConsumerWidget {
       loading: () => const Center(child: AppLoadingState()),
       error: (e, _) => Center(
         child: AppErrorState(
-          message: l.studyViewError,
-          detail: e.toString(),
+          message: l.errorGeneric,
         ),
       ),
       data: (d) => isEmpty(d) ? onEmpty : builder(d),
@@ -584,7 +582,7 @@ class _NodeContentPane extends ConsumerWidget {
       loading: () => const Center(child: AppLoadingState()),
       error: (e, _) => Center(
         child: Text(
-          e.toString(),
+          l.errorGeneric,
           style: TextStyle(color: context.colors.error),
         ),
       ),

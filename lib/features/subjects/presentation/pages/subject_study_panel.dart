@@ -1182,8 +1182,7 @@ class _RootOriginalViewState extends ConsumerState<_RootOriginalView> {
       body: async.when(
         loading: () => const Center(child: AppLoadingState()),
         error: (e, _) => AppErrorState(
-          message: l.studyViewError,
-          detail: e.toString(),
+          message: l.errorGeneric,
           onRetry: () =>
               ref.invalidate(subjectFullTextProvider(widget.subjectId)),
           retryLabel: l.actionRetry,
@@ -1447,18 +1446,16 @@ class _ChatViewState extends ConsumerState<_ChatView> {
         fromUser: false,
         content: answer,
       );
-    } on SubjectsException catch (e) {
-      final detail =
-          e.detail != null && e.detail!.isNotEmpty ? ' (${e.detail})' : '';
+    } on SubjectsException catch (_) {
       if (mounted) {
         setState(() => _messages.add(
-              (fromUser: false, text: '⚠️ ${l.studyViewError}$detail'),
+              (fromUser: false, text: '⚠️ ${l.errorGeneric}'),
             ),);
       }
     } catch (_) {
       if (mounted) {
         setState(() =>
-            _messages.add((fromUser: false, text: '⚠️ ${l.studyViewError}')),);
+            _messages.add((fromUser: false, text: '⚠️ ${l.errorGeneric}')),);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -1699,14 +1696,14 @@ class _NodeViewState extends ConsumerState<_NodeView> {
           nodeContentProvider((nodeId: widget.nodeId, kind: 'summary')),
         )
         ..invalidate(aiContentNodeIdsProvider(widget.subjectId));
-    } on SubjectsException catch (e) {
-      final detail =
-          e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
+    } on SubjectsException catch (_) {
+      // No filtramos detalle tecnico al user: solo el mensaje canonico.
+      // El detalle ya esta en `error_reports` (admin /admin/errors).
       messenger.showSnackBar(
         SnackBar(
           backgroundColor: errBg,
           duration: const Duration(seconds: 8),
-          content: Text('${l.studyViewError} (${e.code})$detail'),
+          content: Text(l.errorGeneric),
         ),
       );
     } catch (_) {
@@ -1753,8 +1750,7 @@ class _NodeViewState extends ConsumerState<_NodeView> {
     return async.when(
       loading: () => const Center(child: AppLoadingState()),
       error: (e, _) => AppErrorState(
-        message: l.studyViewError,
-        detail: e.toString(),
+        message: l.errorGeneric,
         onRetry: () => ref.invalidate(nodeContentProvider(_key)),
         retryLabel: l.actionRetry,
       ),
@@ -2597,14 +2593,14 @@ class _ExamViewState extends ConsumerState<_ExamView> {
     try {
       await ref.read(subjectsDataSourceProvider).generateCram(widget.subjectId);
       ref.invalidate(cramProvider(widget.subjectId));
-    } on SubjectsException catch (e) {
-      final detail =
-          e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
+    } on SubjectsException catch (_) {
+      // No filtramos detalle tecnico al user: solo el mensaje canonico.
+      // El detalle ya esta en `error_reports` (admin /admin/errors).
       messenger.showSnackBar(
         SnackBar(
           backgroundColor: errBg,
           duration: const Duration(seconds: 8),
-          content: Text('${l.studyViewError} (${e.code})$detail'),
+          content: Text(l.errorGeneric),
         ),
       );
     } catch (_) {
@@ -2711,8 +2707,7 @@ class _ExamViewState extends ConsumerState<_ExamView> {
               child: Center(child: AppLoadingState()),
             ),
             error: (e, _) => AppErrorState(
-              message: l.studyViewError,
-              detail: e.toString(),
+              message: l.errorGeneric,
               onRetry: () => ref.invalidate(cramProvider(widget.subjectId)),
               retryLabel: l.actionRetry,
             ),
@@ -2809,14 +2804,14 @@ class _GuideViewState extends ConsumerState<_GuideView> {
           .read(subjectsDataSourceProvider)
           .generateStudyGuide(widget.subjectId);
       ref.invalidate(studyGuideProvider(widget.subjectId));
-    } on SubjectsException catch (e) {
-      final detail =
-          e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
+    } on SubjectsException catch (_) {
+      // No filtramos detalle tecnico al user: solo el mensaje canonico.
+      // El detalle ya esta en `error_reports` (admin /admin/errors).
       messenger.showSnackBar(
         SnackBar(
           backgroundColor: errBg,
           duration: const Duration(seconds: 8),
-          content: Text('${l.studyViewError} (${e.code})$detail'),
+          content: Text(l.errorGeneric),
         ),
       );
     } catch (_) {
@@ -2847,8 +2842,7 @@ class _GuideViewState extends ConsumerState<_GuideView> {
     return async.when(
       loading: () => const Center(child: AppLoadingState()),
       error: (e, _) => AppErrorState(
-        message: l.studyViewError,
-        detail: e.toString(),
+        message: l.errorGeneric,
         onRetry: () => ref.invalidate(studyGuideProvider(widget.subjectId)),
         retryLabel: l.actionRetry,
       ),
@@ -3005,14 +2999,14 @@ class _QuizViewState extends ConsumerState<_QuizView> {
         ..invalidate(quizQuestionsScopedProvider(
           (subjectId: widget.subjectId, nodeId: null),
         ),);
-    } on SubjectsException catch (e) {
-      final detail =
-          e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
+    } on SubjectsException catch (_) {
+      // No filtramos detalle tecnico al user: solo el mensaje canonico.
+      // El detalle ya esta en `error_reports` (admin /admin/errors).
       messenger.showSnackBar(
         SnackBar(
           backgroundColor: errBg,
           duration: const Duration(seconds: 8),
-          content: Text('${l.studyViewError} (${e.code})$detail'),
+          content: Text(l.errorGeneric),
         ),
       );
     } catch (_) {
@@ -3066,8 +3060,7 @@ class _QuizViewState extends ConsumerState<_QuizView> {
           child: async.when(
             loading: () => const Center(child: AppLoadingState()),
             error: (e, _) => AppErrorState(
-              message: l.studyViewError,
-              detail: e.toString(),
+              message: l.errorGeneric,
               onRetry: () =>
                   ref.invalidate(quizQuestionsScopedProvider(scope)),
               retryLabel: l.actionRetry,
@@ -3412,14 +3405,14 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
         ..invalidate(flashcardsScopedProvider(
           (subjectId: widget.subjectId, nodeId: null),
         ),);
-    } on SubjectsException catch (e) {
-      final detail =
-          e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
+    } on SubjectsException catch (_) {
+      // No filtramos detalle tecnico al user: solo el mensaje canonico.
+      // El detalle ya esta en `error_reports` (admin /admin/errors).
       messenger.showSnackBar(
         SnackBar(
           backgroundColor: errBg,
           duration: const Duration(seconds: 8),
-          content: Text('${l.studyViewError} (${e.code})$detail'),
+          content: Text(l.errorGeneric),
         ),
       );
     } catch (_) {
@@ -3472,8 +3465,7 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
           child: async.when(
             loading: () => const Center(child: AppLoadingState()),
             error: (e, _) => AppErrorState(
-              message: l.studyViewError,
-              detail: e.toString(),
+              message: l.errorGeneric,
               onRetry: () => ref.invalidate(flashcardsScopedProvider(scope)),
               retryLabel: l.actionRetry,
             ),
@@ -3831,8 +3823,7 @@ class _NotesViewState extends ConsumerState<_NotesView> {
           child: async.when(
             loading: () => const Center(child: AppLoadingState()),
             error: (e, _) => AppErrorState(
-              message: l.studyViewError,
-              detail: e.toString(),
+              message: l.errorGeneric,
               onRetry: () =>
                   ref.invalidate(annotationsProvider(widget.nodeId)),
               retryLabel: l.actionRetry,
@@ -4007,14 +3998,14 @@ class _EssayViewState extends ConsumerState<_EssayView> {
           SnackBar(duration: const Duration(seconds: 6), content: Text(msg)),
         );
       }
-    } on SubjectsException catch (e) {
-      final detail =
-          e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
+    } on SubjectsException catch (_) {
+      // No filtramos detalle tecnico al user: solo el mensaje canonico.
+      // El detalle ya esta en `error_reports` (admin /admin/errors).
       messenger.showSnackBar(
         SnackBar(
           backgroundColor: errBg,
           duration: const Duration(seconds: 8),
-          content: Text('${l.studyViewError} (${e.code})$detail'),
+          content: Text(l.errorGeneric),
         ),
       );
     } catch (_) {

@@ -44,6 +44,8 @@ class RouteNames {
   static const String adminAudit = 'admin_audit';
   static const String adminAuditDetail = 'admin_audit_detail';
   static const String adminAdmins = 'admin_admins';
+  static const String adminErrors = 'admin_errors';
+  static const String adminErrorDetail = 'admin_error_detail';
   static const String adminAiProviders = 'admin_ai_providers';
   static const String adminPublicDomainSources = 'admin_public_domain_sources';
   static const String status = 'status';
@@ -142,6 +144,10 @@ class RoutePaths {
   // grant/revoke capability. Si un admin normal navega aqui, el guard
   // lo redirige a /admin.
   static const String adminAdmins = '/admin/admins';
+  // Pipeline de errores backend: lista + detalle. Solo admin/super_admin.
+  // Las RLS de `error_reports` (migracion 0082) ya rechazan a non-admin.
+  static const String adminErrors = '/admin/errors';
+  static const String adminErrorDetail = '/admin/errors/:id';
   static const String adminAiProviders = '/admin/ai-providers';
   // SOLO super admin. Gestion de patterns que marcan un material como
   // dominio publico (BOE, .gov, wikipedia.org). Habilita al super-admin

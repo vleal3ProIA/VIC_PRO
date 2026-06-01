@@ -77,8 +77,7 @@ class MyMaterialSubjectPage extends ConsumerWidget {
         loading: () => const Center(child: AppLoadingState()),
         error: (e, _) => Center(
           child: AppErrorState(
-            message: l.myMaterialSubjectLoadError,
-            detail: e.toString(),
+            message: l.errorGeneric,
             onRetry: () => ref.invalidate(subjectsListProvider),
             retryLabel: l.actionRetry,
           ),

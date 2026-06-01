@@ -22,6 +22,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
+import { reportError } from "../_shared/error_reporter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -310,12 +311,16 @@ Deno.serve(withSentry("generate-exam", async (req) => {
   }
 
   if (total === 0) {
+    const errorId = await reportError(admin, {
+      userId: user.id,
+      fn: "generate-exam",
+      error: lastError ?? "empty_result",
+      errorCode: "generation_failed",
+      context: { subject_id: subject.id, node_ids: nodeIds, sections: sections.length },
+      severity: "high",
+    });
     return json(
-      {
-        ok: false,
-        error: "generation_failed",
-        detail: lastError ?? "empty_result",
-      },
+      { ok: false, error_code: "generic_error", error_id: errorId },
       200,
     );
   }

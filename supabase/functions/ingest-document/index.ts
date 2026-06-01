@@ -19,6 +19,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { captureError, withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
+import { reportError } from "../_shared/error_reporter.ts";
 
 // NOTA: ya NO usamos `unpdf` para extraer texto de PDFs. Parsear un PDF en el
 // Edge Function consume demasiada CPU y el runtime lo mata ("CPU Time
@@ -117,7 +118,20 @@ Deno.serve(withSentry("ingest-document", async (req) => {
     .select("id, subject_id, user_id, storage_path, mime_type")
     .eq("id", documentId)
     .maybeSingle();
-  if (docErr) return json({ error: "db_error", detail: docErr.message }, 500);
+  if (docErr) {
+    const errorId = await reportError(admin, {
+      userId: user.id,
+      fn: "ingest-document",
+      error: docErr,
+      errorCode: "db_error",
+      context: { document_id: documentId, op: "select_documents" },
+      severity: "high",
+    });
+    return json(
+      { ok: false, error_code: "generic_error", error_id: errorId },
+      200,
+    );
+  }
   if (!doc) return json({ error: "document_not_found" }, 404);
   if ((doc as DocumentRow).user_id !== user.id) {
     return json({ error: "forbidden" }, 403);
@@ -246,5 +260,17 @@ async function processDocument(
       error: msg.slice(0, 500),
     }).eq("id", document.id);
     captureError(e, { fn: "ingest-document", document: document.id });
+    await reportError(admin, {
+      userId: document.user_id,
+      fn: "ingest-document",
+      error: e,
+      errorCode: e instanceof AiGatewayError ? "ai_gateway" : "ingest_failed",
+      context: {
+        document_id: document.id,
+        subject_id: document.subject_id,
+        mime_type: mime,
+      },
+      severity: "high",
+    });
   }
 }

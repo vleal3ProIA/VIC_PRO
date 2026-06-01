@@ -14,6 +14,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { withSentry } from "../_shared/sentry.ts";
 import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
+import { reportError } from "../_shared/error_reporter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -222,9 +223,17 @@ Deno.serve(withSentry("generate-quiz", async (req) => {
 
     return json({ ok: true, count: rows.length }, 200);
   } catch (e) {
-    const detail = e instanceof AiGatewayError
-      ? e.message
-      : (e as Error).message;
-    return json({ ok: false, error: "generation_failed", detail }, 200);
+    const errorId = await reportError(admin, {
+      userId: user.id,
+      fn: "generate-quiz",
+      error: e,
+      errorCode: e instanceof AiGatewayError ? "ai_gateway" : "generation_failed",
+      context: { subject_id: subject.id, node_id: nodeId, count },
+      severity: "high",
+    });
+    return json(
+      { ok: false, error_code: "generic_error", error_id: errorId },
+      200,
+    );
   }
 }));

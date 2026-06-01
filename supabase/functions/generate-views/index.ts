@@ -18,6 +18,7 @@ import { gatherMaterial } from "../_shared/ai/material.ts";
 import { contentHash } from "../_shared/ai/hash.ts";
 import { findSimilarHash } from "../_shared/ai/pool.ts";
 import type { AiAttachment } from "../_shared/ai/types.ts";
+import { reportError } from "../_shared/error_reporter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -217,7 +218,21 @@ Deno.serve(withSentry("generate-views", async (req) => {
     .select("id, subject_id, user_id, title")
     .eq("id", nodeId)
     .maybeSingle();
-  if (nErr) return json({ error: "db_error", detail: nErr.message }, 500);
+  if (nErr) {
+    // Detalle BD -> error_reports (admin), cliente solo `generic_error`.
+    const errorId = await reportError(admin, {
+      userId: user.id,
+      fn: "generate-views",
+      error: nErr,
+      errorCode: "db_error",
+      context: { node_id: nodeId, kind, op: "select_index_nodes" },
+      severity: "high",
+    });
+    return json(
+      { ok: false, error_code: "generic_error", error_id: errorId },
+      200,
+    );
+  }
   if (!nodeData) return json({ error: "node_not_found" }, 404);
   const node = nodeData as NodeRow;
   if (node.user_id !== user.id) return json({ error: "forbidden" }, 403);
@@ -427,9 +442,23 @@ Deno.serve(withSentry("generate-views", async (req) => {
 
     return json({ ok: true, cached: false, content }, 200);
   } catch (e) {
-    const detail = e instanceof AiGatewayError
-      ? e.message
-      : (e as Error).message;
-    return json({ ok: false, error: "generation_failed", detail }, 200);
+    // Detalle tecnico -> tabla error_reports (admin la ve en /admin/errors).
+    // El cliente recibe SOLO `generic_error` + el id para correlacionar.
+    const errorId = await reportError(admin, {
+      userId: user?.id,
+      fn: "generate-views",
+      error: e,
+      errorCode: e instanceof AiGatewayError ? "ai_gateway" : "generation_failed",
+      context: {
+        node_id: nodeId,
+        kind,
+        subject_id: node?.subject_id,
+      },
+      severity: "high",
+    });
+    return json(
+      { ok: false, error_code: "generic_error", error_id: errorId },
+      200,
+    );
   }
 }));

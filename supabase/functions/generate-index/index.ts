@@ -18,6 +18,7 @@ import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
 import { gatherMaterial } from "../_shared/ai/material.ts";
 import { cloneIndexFromPool } from "../_shared/ai/pool.ts";
 import { docFingerprint } from "../_shared/ai/hash.ts";
+import { reportError } from "../_shared/error_reporter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -159,7 +160,20 @@ Deno.serve(withSentry("generate-index", async (req) => {
     .select("id, user_id, title, index_locked, shareable, language")
     .eq("id", subjectId)
     .maybeSingle();
-  if (sErr) return json({ error: "db_error", detail: sErr.message }, 500);
+  if (sErr) {
+    const errorId = await reportError(admin, {
+      userId: user.id,
+      fn: "generate-index",
+      error: sErr,
+      errorCode: "db_error",
+      context: { subject_id: subjectId, op: "select_subject" },
+      severity: "high",
+    });
+    return json(
+      { ok: false, error_code: "generic_error", error_id: errorId },
+      200,
+    );
+  }
   if (!subj) return json({ error: "subject_not_found" }, 404);
   if ((subj as SubjectRow).user_id !== user.id) {
     return json({ error: "forbidden" }, 403);
@@ -465,6 +479,15 @@ async function buildIndex(admin: any, subject: SubjectRow): Promise<void> {
       .update({ index_status: "failed", index_error: msg.slice(0, 500) })
       .eq("id", subject.id);
     captureError(e, { fn: "generate-index", subject: subject.id, detail: msg });
+    // Y ademas al pipeline in-app de errores (admin /admin/errors).
+    await reportError(admin, {
+      userId: subject.user_id,
+      fn: "generate-index",
+      error: e,
+      errorCode: e instanceof AiGatewayError ? "ai_gateway" : "index_failed",
+      context: { subject_id: subject.id },
+      severity: "high",
+    });
   }
 }
 

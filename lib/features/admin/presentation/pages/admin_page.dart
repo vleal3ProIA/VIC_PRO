@@ -433,6 +433,15 @@ class _AdminDestinations {
           capability: AdminCapability.runAudits,
           embeddedBuilder: (_) => const AdminAuditView(embedded: true),
         ),
+        // Pipeline de errores backend. Sin capability gate -- TODO admin
+        // (y super) la ve. RLS de error_reports ya bloquea a non-admin.
+        _AdminDestination(
+          icon: Icons.bug_report_outlined,
+          colorSeed: const Color(0xFFDC2626), // red-600
+          title: l.adminErrorsTitle,
+          hint: l.adminErrorsHint,
+          route: RouteNames.adminErrors,
+        ),
         _AdminDestination(
           icon: Icons.health_and_safety_outlined,
           colorSeed: const Color(0xFFF59E0B), // amber-500

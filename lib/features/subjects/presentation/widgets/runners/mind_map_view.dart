@@ -56,8 +56,7 @@ class _MindMapViewState extends ConsumerState<MindMapView> {
     return async.when(
       loading: () => const Center(child: AppLoadingState()),
       error: (e, _) => AppErrorState(
-        message: l.studyViewError,
-        detail: e.toString(),
+        message: l.errorGeneric,
         onRetry: () => ref.invalidate(indexNodesProvider(widget.subjectId)),
         retryLabel: l.actionRetry,
       ),

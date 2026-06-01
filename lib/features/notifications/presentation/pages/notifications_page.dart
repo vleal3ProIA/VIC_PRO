@@ -71,8 +71,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
           child: async.when(
             loading: () => const AppLoadingState(),
             error: (e, _) => AppErrorState(
-              message: l.notificationsLoadError,
-              detail: e.toString(),
+              message: l.errorGeneric,
               onRetry: () => ref.invalidate(notificationsListProvider),
               retryLabel: l.actionRetry,
             ),

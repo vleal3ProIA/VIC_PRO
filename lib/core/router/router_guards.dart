@@ -61,6 +61,7 @@ const privateRoutes = <String>{
   RoutePaths.adminAudit,
   RoutePaths.adminAiProviders,
   RoutePaths.adminPublicDomainSources,
+  RoutePaths.adminErrors,
   RoutePaths.changelog,
   RoutePaths.mfaSetup,
   RoutePaths.accountSettings,
@@ -111,6 +112,7 @@ const adminRoutes = <String>{
   RoutePaths.adminAdmins,
   RoutePaths.adminAiProviders,
   RoutePaths.adminPublicDomainSources,
+  RoutePaths.adminErrors,
 };
 
 /// Mapeo route -> capability requerida (post migracion 0044). Si una
@@ -152,6 +154,9 @@ String? requiredCapability(String loc) {
   if (loc.startsWith('/admin/users/'))      return 'manage_users';
   if (loc.startsWith('/admin/broadcasts/')) return 'manage_broadcasts';
   if (loc.startsWith('/admin/audit/'))      return 'run_audits';
+  // `/admin/errors` no requiere capability concreta -- cualquier admin
+  // (o super) puede acceder. La RLS de `error_reports` ya rechaza al
+  // resto. No anyadimos entrada a `kRouteToCapability` por eso.
   return null;
 }
 
@@ -191,6 +196,7 @@ bool isPrivateRoute(String loc) {
   if (loc.startsWith('/admin/users/')) return true;
   if (loc.startsWith('/admin/broadcasts/')) return true;
   if (loc.startsWith('/admin/audit/')) return true;
+  if (loc.startsWith('/admin/errors/')) return true;
   if (loc.startsWith('/admin/material-library/')) return true;
   return false;
 }
@@ -201,6 +207,7 @@ bool isAdminRoute(String loc) {
   if (loc.startsWith('/admin/users/')) return true;
   if (loc.startsWith('/admin/broadcasts/')) return true;
   if (loc.startsWith('/admin/audit/')) return true;
+  if (loc.startsWith('/admin/errors/')) return true;
   if (loc.startsWith('/admin/material-library/')) return true;
   return false;
 }

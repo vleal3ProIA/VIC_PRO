@@ -111,6 +111,9 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     final errBg = Theme.of(context).colorScheme.error;
+    // Mensaje generico capturado pre-await: NO filtramos detalle tecnico
+    // al usuario; el admin lo ve en /admin/errors.
+    final genericMsg = l.errorGeneric;
     try {
       final r = await ref.read(subjectsDataSourceProvider).generateExam(
             subjectId: widget.subjectId,
@@ -127,19 +130,17 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
           SnackBar(duration: const Duration(seconds: 6), content: Text(msg)),
         );
       }
-    } on SubjectsException catch (e) {
-      final detail =
-          e.detail != null && e.detail!.isNotEmpty ? ': ${e.detail}' : '';
+    } on SubjectsException catch (_) {
       messenger.showSnackBar(
         SnackBar(
           backgroundColor: errBg,
           duration: const Duration(seconds: 8),
-          content: Text('${l.studyViewError} (${e.code})$detail'),
+          content: Text(genericMsg),
         ),
       );
     } catch (_) {
       messenger.showSnackBar(
-        SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
+        SnackBar(backgroundColor: errBg, content: Text(genericMsg)),
       );
     } finally {
       if (mounted) setState(() => _busy = false);

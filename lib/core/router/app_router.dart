@@ -9,6 +9,8 @@ import 'package:myapp/core/router/router_guards.dart';
 import 'package:myapp/features/account/application/profile_providers.dart';
 import 'package:myapp/features/account/presentation/pages/account_sessions_page.dart';
 import 'package:myapp/features/account/presentation/pages/account_settings_page.dart';
+import 'package:myapp/features/admin/presentation/pages/admin_error_detail_page.dart';
+import 'package:myapp/features/admin/presentation/pages/admin_errors_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_material_library_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_page.dart';
 import 'package:myapp/features/admin/presentation/pages/admin_public_domain_sources_page.dart';
@@ -456,6 +458,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: RoutePaths.adminAudit,
         name: RouteNames.adminAudit,
         builder: (_, __) => const AdminAuditPage(),
+      ),
+      // Pipeline de errores backend (admin + super_admin). El detalle
+      // muestra el unico sitio de la app donde se exponen detalles
+      // tecnicos sin pasar por `mapBackendError`.
+      GoRoute(
+        path: RoutePaths.adminErrors,
+        name: RouteNames.adminErrors,
+        builder: (_, __) => const AdminErrorsPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.adminErrorDetail,
+        name: RouteNames.adminErrorDetail,
+        builder: (_, state) => AdminErrorDetailPage(
+          errorId: state.pathParameters['id'] ?? '',
+        ),
       ),
       GoRoute(
         path: RoutePaths.adminAuditDetail,

@@ -205,8 +205,7 @@ class _SubjectsHomeState extends ConsumerState<SubjectsHome> {
       loading: () => const Center(child: AppLoadingState()),
       error: (e, _) => Center(
         child: AppErrorState(
-          message: l.subjectsLoadError,
-          detail: e.toString(),
+          message: l.errorGeneric,
           onRetry: () => ref.invalidate(subjectsListProvider),
           retryLabel: l.actionRetry,
         ),
