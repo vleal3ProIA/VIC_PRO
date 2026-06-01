@@ -67,9 +67,60 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
   String? _reviewPromptedFor;
   bool _reviewing = false;
 
+  // ─────────────── "Resume last Panel" persistence (migracion 0085) ──────
+  // Cada vez que el user abre un Panel o cambia de nodo, mandamos un RPC
+  // `set_last_panel` (fire-and-forget) para que su proximo login vuelva
+  // aqui. Debouncing 500 ms para no spamear si hace varios clicks rapidos
+  // por el indice. La ultima escritura "ganadora" se guarda en
+  // `_lastPersistedKey` para skipear si no cambio nada.
+  Timer? _lastPanelDebounce;
+  String? _lastPersistedKey; // "<subjectId>|<nodeId>" del ultimo write
+  static const _kLastPanelDebounce = Duration(milliseconds: 500);
+
+  @override
+  void initState() {
+    super.initState();
+    // Persistir "user entro al Panel X" sin esperar a que seleccione nada.
+    _scheduleLastPanelPersist(widget.subject.id, _selectedNodeId);
+  }
+
+  @override
+  void didUpdateWidget(covariant SubjectStudyPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Si el padre cambia de subject (cambio en el selector superior), el
+    // nodo seleccionado deja de tener sentido -- pero el widget en la
+    // practica viene con `key: ValueKey(study_<id>)` desde subjects_home,
+    // asi que normalmente se reconstruye con state limpio. Igualmente,
+    // tras un cambio de subject, repersistimos la nueva ubicacion.
+    if (oldWidget.subject.id != widget.subject.id) {
+      _scheduleLastPanelPersist(widget.subject.id, _selectedNodeId);
+    }
+  }
+
+  void _scheduleLastPanelPersist(String subjectId, String? nodeId) {
+    final key = '$subjectId|${nodeId ?? ''}';
+    if (key == _lastPersistedKey) return;
+    _lastPanelDebounce?.cancel();
+    _lastPanelDebounce = Timer(_kLastPanelDebounce, () {
+      if (!mounted) return;
+      // Fire-and-forget: best-effort, NO bloquea la UI ni propaga errores.
+      // Si el RPC falla (red caida, RLS, etc.) seguimos navegando normal.
+      // ignore: discarded_futures
+      ref
+          .read(subjectsDataSourceProvider)
+          .setLastPanel(subjectId: subjectId, nodeId: nodeId)
+          .then((_) {
+        _lastPersistedKey = key;
+      }).catchError((_) {
+        // swallow: persistencia es best-effort.
+      });
+    });
+  }
+
   @override
   void dispose() {
     _poll?.cancel();
+    _lastPanelDebounce?.cancel();
     super.dispose();
   }
 
@@ -265,7 +316,11 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
               .valueOrNull ??
           const <String>{},
       busy: _busy,
-      onSelect: (id) => setState(() => _selectedNodeId = id),
+      onSelect: (id) {
+        setState(() => _selectedNodeId = id);
+        // Persistir "ultimo nodo abierto" (fire-and-forget, debounced).
+        _scheduleLastPanelPersist(widget.subject.id, id);
+      },
       onGenerate: _generateIndex,
       onValidate: _validateIndex,
     );

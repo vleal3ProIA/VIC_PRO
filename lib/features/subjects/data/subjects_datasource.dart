@@ -1181,4 +1181,48 @@ class SubjectsDataSource {
       (data.first as Map).cast<String, dynamic>(),
     );
   }
+
+  // ─────────────────── "Resume last Panel" (migracion 0085) ────────────────
+  // Persiste el ultimo Panel del user (subject + nodo) en profiles, para
+  // que el siguiente login le devuelva directo a donde lo dejo.
+  //
+  // El call site (SubjectStudyPanel) lo llama fire-and-forget: si falla,
+  // la UI no se entera (best-effort). La RPC valida ownership server-side
+  // y hace silent ignore si el subject no es del caller (defensivo).
+
+  /// Persiste el ultimo Panel del user (subject + nodo seleccionado). Si
+  /// el subject no pertenece al user actual, la RPC silenciosamente no
+  /// hace nada (no lanza). [nodeId] puede ser null si todavia no hay nodo
+  /// seleccionado (acaba de abrir el Panel).
+  Future<void> setLastPanel({
+    required String subjectId,
+    String? nodeId,
+  }) async {
+    await _client.rpc<dynamic>(
+      'set_last_panel',
+      params: {'p_subject_id': subjectId, 'p_node_id': nodeId},
+    );
+  }
+
+  /// Lee el ultimo Panel (subject + nodo) del user actual desde `profiles`.
+  /// Devuelve `(null, null)` si no hay sesion previa (user nuevo) o si el
+  /// FK `on delete set null` ya limpio el subject (material borrado).
+  ///
+  /// Esta lectura va a la tabla profiles (RLS: `auth.uid() = id`), sin RPC,
+  /// para que el provider `lastPanelLocationProvider` la pueda watch-ear
+  /// con minimo overhead al cambiar el authState.
+  Future<({String? subjectId, String? nodeId})> getLastPanel() async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return (subjectId: null, nodeId: null);
+    final data = await _client
+        .from('profiles')
+        .select('last_subject_id, last_node_id')
+        .eq('id', uid)
+        .maybeSingle();
+    if (data == null) return (subjectId: null, nodeId: null);
+    return (
+      subjectId: data['last_subject_id'] as String?,
+      nodeId: data['last_node_id'] as String?,
+    );
+  }
 }

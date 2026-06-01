@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/core/providers/supabase_providers.dart';
+import 'package:myapp/core/router/last_panel_provider.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/router/router_guards.dart';
 import 'package:myapp/features/account/application/profile_providers.dart';
@@ -604,7 +605,7 @@ String? appRouterRedirect(Ref ref, GoRouterState state) {
   final caps =
       ref.read(myCapabilitiesProvider).valueOrNull ?? const <String>{};
   final isSuper = ref.read(isSuperAdminProvider).valueOrNull ?? false;
-  return evaluateRouterRedirect(
+  final result = evaluateRouterRedirect(
     matchedLocation: state.matchedLocation,
     isAuthenticated: ref.read(routerIsAuthenticatedProvider),
     branding: ref.read(appBrandingProvider).valueOrNull,
@@ -614,6 +615,42 @@ String? appRouterRedirect(Ref ref, GoRouterState state) {
     isSuperAdmin: isSuper,
     capabilities: caps,
   );
+
+  // ─────────────── "Resume last Panel" override (migracion 0085) ─────────
+  // Si el guard puro mandaria al user autenticado a /home porque acaba de
+  // entrar via login/welcome, y el user tiene un last Panel guardado,
+  // sustituimos el destino por `/home?subjectId=<id>&nodeId=<id>` para
+  // abrir directo el ultimo Panel donde lo dejo.
+  //
+  // - Solo aplicamos cuando el destino es /home (asi no interferimos con
+  //   /admin/*, MFA challenge, setup, etc.).
+  // - Solo aplicamos cuando el origen es una ruta "post-login" (welcome,
+  //   login, register, magic-link, etc.) -- evitamos el caso "el user esta
+  //   navegando dentro de la app y pulsa Home".
+  // - Si el provider del last-panel aun no resolvio (`valueOrNull == null`),
+  //   no overrideamos -- el _AuthRefreshNotifier escucha el provider y
+  //   re-evalua cuando llegue el dato, asi el destino correcto se aplica
+  //   con un re-route en cuanto la query resuelva.
+  if (result == RoutePaths.home && _isPostLoginEntry(state.matchedLocation)) {
+    final lp = ref.read(lastPanelLocationProvider).valueOrNull;
+    if (lp != null && lp.hasPanel) {
+      final qp = <String, String>{'subjectId': lp.subjectId!};
+      if (lp.nodeId != null) qp['nodeId'] = lp.nodeId!;
+      return Uri(path: RoutePaths.home, queryParameters: qp).toString();
+    }
+  }
+
+  return result;
+}
+
+/// `true` si la ruta de origen es una "puerta de entrada" tipica post-login:
+/// welcome (root), login, register y los flujos publicOnly. Solo en estos
+/// casos sustituimos /home por el ultimo Panel — un user navegando dentro
+/// de la app (p.ej. clicando "Home" desde /admin) NO debe ser redirigido.
+bool _isPostLoginEntry(String loc) {
+  if (loc == RoutePaths.welcome) return true;
+  if (publicOnly.contains(loc)) return true;
+  return false;
 }
 
 /// Adaptador entre el `StreamProvider<AuthState>` y el `Listenable` que
@@ -650,6 +687,17 @@ class _AuthRefreshNotifier extends ChangeNotifier {
       myCapabilitiesProvider,
       (_, __) => _scheduleNotify(),
     );
+    // "Resume last Panel" (migracion 0085): el provider que lee
+    // `profiles.last_subject_id` es async. Justo despues del login, el
+    // redirect sincronos ve `valueOrNull == null` y cae al /home por
+    // defecto. Cuando la query resuelve, necesitamos re-evaluar para
+    // sustituir el destino por el Panel — _isPostLoginEntry sigue
+    // matcheando el origen (matchedLocation es /login o welcome), asi que
+    // el override se aplica con un re-route en cuanto los datos llegan.
+    _lastPanelSub = _ref.listen(
+      lastPanelLocationProvider,
+      (_, __) => _scheduleNotify(),
+    );
   }
 
   final Ref _ref;
@@ -657,6 +705,7 @@ class _AuthRefreshNotifier extends ChangeNotifier {
   late final ProviderSubscription<dynamic> _roleSub;
   late final ProviderSubscription<dynamic> _brandingSub;
   late final ProviderSubscription<dynamic> _capsSub;
+  late final ProviderSubscription<dynamic> _lastPanelSub;
 
   bool _disposed = false;
   bool _notifyScheduled = false;
@@ -691,6 +740,7 @@ class _AuthRefreshNotifier extends ChangeNotifier {
     _roleSub.close();
     _brandingSub.close();
     _capsSub.close();
+    _lastPanelSub.close();
     super.dispose();
   }
 }
