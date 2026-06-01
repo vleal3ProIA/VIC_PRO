@@ -85,7 +85,7 @@ export async function gatherMaterial(
     const mime = normalizeMime(d.mime_type, d.storage_path);
     const isDoc = mime === "application/pdf" || mime.startsWith("image/");
     if (isDoc) {
-      let attached = false;
+      // Atachamos el PDF para proveedores con vision (Gemini, Anthropic).
       try {
         const { data: blob, error } = await admin.storage
           .from("temarios")
@@ -95,13 +95,17 @@ export async function gatherMaterial(
           if (attachBytes + bytes.length <= MAX_ATTACH_BYTES) {
             attachments.push({ mimeType: mime, dataBase64: toBase64(bytes) });
             attachBytes += bytes.length;
-            attached = true;
           }
         }
       } catch (_) {
-        // cae al extracted_text de abajo
+        // Si falla el atach, no pasa nada: el extracted_text de abajo cubre.
       }
-      if (!attached && d.extracted_text) textParts.push(d.extracted_text);
+      // SIEMPRE incluir el extracted_text si existe (no solo cuando el atach
+      // falla). Razon: proveedores SIN vision (Groq, OpenAI-compat) tambien
+      // necesitan el texto para servir como fallback. Antes solo se incluia
+      // como respaldo del atach -> Groq nunca recibia material -> el filtro
+      // DOCUMENT_CAPABLE dejaba a Gemini como unico proveedor disponible.
+      if (d.extracted_text) textParts.push(d.extracted_text);
     } else if (d.extracted_text) {
       textParts.push(d.extracted_text);
     }
