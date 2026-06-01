@@ -73,7 +73,12 @@ interface AuditReportRow {
   summary: Record<string, unknown> | null;
 }
 
-type ProfileRow = { id: string; locale: string | null };
+type ProfileRow = {
+  id: string;
+  locale: string | null;
+  display_name: string | null;
+  username: string | null;
+};
 
 // Orden de severidad (critical primero). Usado para ordenar el top-5.
 const SEVERITY_RANK: Record<Severity, number> = {
@@ -152,7 +157,6 @@ Deno.serve(withSentry("send-audit-digest", async (req) => {
 
   // ─────────────── Auth: X-Internal-Auth obligatorio ───────────────
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 
   const internalAuth = req.headers.get("X-Internal-Auth");
   if (internalAuth !== serviceRoleKey) {
@@ -202,7 +206,7 @@ Deno.serve(withSentry("send-audit-digest", async (req) => {
   // de-dup natural lo hace el SELECT (cada profile aparece UNA vez).
   const { data: profilesRaw, error: pErr } = await admin
     .from("profiles")
-    .select("id, locale")
+    .select("id, locale, display_name, username")
     .or("is_super_admin.eq.true,role.eq.admin");
 
   if (pErr) {
@@ -245,9 +249,13 @@ Deno.serve(withSentry("send-audit-digest", async (req) => {
   const notifType = severityToNotifType(bySeverity);
 
   const actionUrl = `/admin/audit/${report.id}`;
-  // URL absoluta para el boton CTA del email (links internos no son
-  // clicables en clientes de correo).
-  const fullActionUrl = `${supabaseUrl}${actionUrl}`;
+  // URL absoluta para el boton CTA del email. Apunta al FRONTEND (SITE_URL),
+  // NO a la URL de Supabase API (esa devuelve "No API key found"). Mismo
+  // patron que `stripe-webhook/index.ts` (line ~352).
+  const siteUrl = (Deno.env.get("SITE_URL")
+    ?? Deno.env.get("PUBLIC_SITE_URL")
+    ?? "").replace(/\/$/, "");
+  const fullActionUrl = siteUrl ? `${siteUrl}${actionUrl}` : actionUrl;
 
   // Params i18n compartidos por todos los recipients.
   const baseParams: Record<string, string> = {
@@ -271,14 +279,17 @@ Deno.serve(withSentry("send-audit-digest", async (req) => {
     }
     const locale = p.locale ?? "en";
 
+    // Resuelve un nombre legible para el saludo del email:
+    //   display_name -> username -> parte local del email.
+    const name = (p.display_name && p.display_name.trim())
+      || (p.username && p.username.trim())
+      || (email.split("@")[0]);
+
     const title = t(locale, "audit_digest.title", baseParams);
     const bodyText = total === 0
       ? t(locale, "audit_digest.no_issues", baseParams)
       : t(locale, "audit_digest.body", baseParams);
     const subjectStr = t(locale, "audit_digest.subject", baseParams);
-    const greeting = t(locale, "audit_digest.greeting", baseParams);
-    const intro = t(locale, "audit_digest.intro", baseParams);
-    const reportLinkLabel = t(locale, "audit_digest.report_link", baseParams);
     const topFindingsLabel = t(locale, "audit_digest.top_findings", baseParams);
 
     // ── 1) In-app notification ──
@@ -301,44 +312,38 @@ Deno.serve(withSentry("send-audit-digest", async (req) => {
     }
 
     // ── 2) Email body HTML ──
-    // Patron MINIMO -- mismo formato que `notify-super-admins` (que si
-    // llega a Gmail sin filtrarse). HTML rico (tablas, botones con
-    // background-color, badges con <code>) hace que Gmail descarte
-    // silenciosamente los digests aunque el SMTP devuelva 250 OK.
+    // El wrapper (`email_templates.ts:wrapHtml`) ya pinta:
+    //   - greeting ("Hola, {{name}},") como <h1>
+    //   - CTA button nativo via ctaUrl/ctaLabel del template
+    //   - footerNote
+    // Aqui solo construimos el RESUMEN (texto + top-5 si aplica), sin
+    // saludo ni enlace, para evitar que aparezcan duplicados.
     //
-    // El detalle visual rico lo ve el admin EN la pagina
-    // /admin/audit/<id> -- el email es solo un trigger para abrirla.
-    const lines: string[] = [
-      `<p>${escHtml(greeting)}</p>`,
-      `<p>${escHtml(intro)}</p>`,
-    ];
+    // IMPORTANTE: join con cadena vacia (NO \n) — los saltos de linea
+    // dentro de HTML quoted-printable se codifican como `=20\n` cuando
+    // hay espacios trailing y aparecen literales en Gmail.
+    const bodyParts: string[] = [];
     if (total === 0) {
-      lines.push(`<p>${escHtml(t(locale, "audit_digest.no_issues", baseParams))}</p>`);
+      bodyParts.push(
+        `<p>${escHtml(t(locale, "audit_digest.no_issues", baseParams))}</p>`,
+      );
     } else {
-      // Breakdown en texto plano dentro de <p>. Mas ligero que tabla.
-      lines.push(
+      bodyParts.push(
         `<p>${escHtml(t(locale, "audit_digest.body", baseParams))}</p>`,
       );
       if (top5.length > 0) {
-        const topLine = top5.map((f) => {
+        const topItems = top5.map((f) => {
           const label = (f.title && f.title.trim().length > 0)
             ? f.title
             : f.check_id;
-          return `${f.severity}: ${label}`;
-        }).join("; ");
-        lines.push(
-          `<p><strong>${escHtml(topFindingsLabel)}:</strong> ${
-            escHtml(topLine)
-          }</p>`,
+          return `<li>${escHtml(f.severity)}: ${escHtml(label)}</li>`;
+        }).join("");
+        bodyParts.push(
+          `<p><strong>${escHtml(topFindingsLabel)}:</strong></p><ul>${topItems}</ul>`,
         );
       }
     }
-    lines.push(
-      `<p style="margin-top:16px;"><a href="${
-        escHtml(fullActionUrl)
-      }" style="color:#2563EB;">${escHtml(reportLinkLabel)}</a></p>`,
-    );
-    const bodyHtmlAlert = lines.join("\n");
+    const bodyHtmlAlert = bodyParts.join("");
 
     try {
       const rendered = renderEmail({
@@ -346,8 +351,10 @@ Deno.serve(withSentry("send-audit-digest", async (req) => {
         locale,
         appName,
         data: {
-          subject: subjectStr,
-          body_html: bodyHtmlAlert,
+          name,                   // {{name}} en greeting del template
+          subject: subjectStr,    // {{subject}} en template subject
+          body_html: bodyHtmlAlert, // {{body_html}} en template bodyHtml
+          cta_url: fullActionUrl, // {{cta_url}} -> ctaUrl -> wrapper CTA button
         },
       });
       const result = await sendEmail(admin, {

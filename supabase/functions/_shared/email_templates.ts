@@ -788,64 +788,80 @@ const STR: Record<EmailType, Partial<TypeI18n> & { en: TypeI18nEntry }> = {
     en: {
       subject: "{{subject}}",
       preheader: "Daily audit digest from {{app_name}}.",
-      greeting: "",
+      greeting: "Hello, {{name}},",
       bodyHtml: "{{body_html}}",
+      ctaLabel: "View full report",
+      ctaUrl: "{{cta_url}}",
       footerNote:
         "You are receiving this because you are an admin of {{app_name}}.",
     },
     es: {
       subject: "{{subject}}",
       preheader: "Resumen de auditoria diaria de {{app_name}}.",
-      greeting: "",
+      greeting: "Hola, {{name}},",
       bodyHtml: "{{body_html}}",
+      ctaLabel: "Ver informe completo",
+      ctaUrl: "{{cta_url}}",
       footerNote:
         "Recibes este aviso porque eres admin de {{app_name}}.",
     },
     de: {
       subject: "{{subject}}",
       preheader: "Taegliche Audit-Zusammenfassung von {{app_name}}.",
-      greeting: "",
+      greeting: "Hallo {{name}},",
       bodyHtml: "{{body_html}}",
+      ctaLabel: "Vollstaendigen Bericht ansehen",
+      ctaUrl: "{{cta_url}}",
       footerNote:
         "Du erhaeltst diese Nachricht, weil du Admin von {{app_name}} bist.",
     },
     fr: {
       subject: "{{subject}}",
       preheader: "Resume d'audit quotidien de {{app_name}}.",
-      greeting: "",
+      greeting: "Bonjour {{name}},",
       bodyHtml: "{{body_html}}",
+      ctaLabel: "Voir le rapport complet",
+      ctaUrl: "{{cta_url}}",
       footerNote:
         "Tu recois cet email parce que tu es admin de {{app_name}}.",
     },
     it: {
       subject: "{{subject}}",
       preheader: "Riepilogo audit giornaliero da {{app_name}}.",
-      greeting: "",
+      greeting: "Ciao {{name}},",
       bodyHtml: "{{body_html}}",
+      ctaLabel: "Vedi il report completo",
+      ctaUrl: "{{cta_url}}",
       footerNote:
         "Ricevi questo messaggio perche sei admin di {{app_name}}.",
     },
     pt: {
       subject: "{{subject}}",
       preheader: "Resumo de auditoria diaria de {{app_name}}.",
-      greeting: "",
+      greeting: "Ola, {{name}},",
       bodyHtml: "{{body_html}}",
+      ctaLabel: "Ver relatorio completo",
+      ctaUrl: "{{cta_url}}",
       footerNote:
         "Recebes esta mensagem porque es admin de {{app_name}}.",
     },
     ru: {
       subject: "{{subject}}",
       preheader: "Ежедневная сводка аудита от {{app_name}}.",
-      greeting: "",
+      greeting: "Здравствуйте, {{name}},",
       bodyHtml: "{{body_html}}",
+      ctaLabel: "Открыть полный отчёт",
+      ctaUrl: "{{cta_url}}",
       footerNote:
         "Вы получили это письмо, так как являетесь админом {{app_name}}.",
     },
     uk: {
       subject: "{{subject}}",
       preheader: "Щоденне зведення аудиту від {{app_name}}.",
-      greeting: "",
+      greeting: "Вітаємо, {{name}},",
       bodyHtml: "{{body_html}}",
+      ctaLabel: "Переглянути повний звіт",
+      ctaUrl: "{{cta_url}}",
       footerNote:
         "Ви отримали цей лист, бо ви адмін {{app_name}}.",
     },

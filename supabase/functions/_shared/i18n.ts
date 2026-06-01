@@ -75,12 +75,8 @@ const CATALOG: Catalog = {
       "Summary: {{critical}} critical, {{high}} high, {{medium}} medium, {{low}} low, {{info}} info.",
     "audit_digest.subject":
       "Daily audit report from {{app_name}} ({{count}} findings)",
-    "audit_digest.greeting": "Hello,",
-    "audit_digest.report_link": "View full report",
     "audit_digest.no_issues": "All clear. No issues detected.",
     "audit_digest.top_findings": "Top findings",
-    "audit_digest.intro":
-      "An automatic audit run completed on {{app_name}}. Here is the summary:",
   },
   es: {
     "super_admin_alert.user_registered.title": "Nuevo registro",
@@ -109,12 +105,8 @@ const CATALOG: Catalog = {
       "Resumen: {{critical}} criticos, {{high}} altos, {{medium}} medios, {{low}} bajos, {{info}} info.",
     "audit_digest.subject":
       "Informe de auditoria diaria de {{app_name}} ({{count}} hallazgos)",
-    "audit_digest.greeting": "Hola,",
-    "audit_digest.report_link": "Ver informe completo",
     "audit_digest.no_issues": "Todo en orden. Sin problemas detectados.",
     "audit_digest.top_findings": "Principales hallazgos",
-    "audit_digest.intro":
-      "Se ha completado una auditoría automática en {{app_name}}. Este es el resumen:",
   },
   de: {
     "super_admin_alert.user_registered.title": "Neue Anmeldung",
@@ -143,12 +135,8 @@ const CATALOG: Catalog = {
       "Zusammenfassung: {{critical}} kritisch, {{high}} hoch, {{medium}} mittel, {{low}} niedrig, {{info}} info.",
     "audit_digest.subject":
       "Taeglicher Audit-Bericht von {{app_name}} ({{count}} Findings)",
-    "audit_digest.greeting": "Hallo,",
-    "audit_digest.report_link": "Vollstaendigen Bericht ansehen",
     "audit_digest.no_issues": "Alles in Ordnung. Keine Probleme erkannt.",
     "audit_digest.top_findings": "Wichtigste Findings",
-    "audit_digest.intro":
-      "Ein automatisches Audit auf {{app_name}} wurde abgeschlossen. Hier die Zusammenfassung:",
   },
   fr: {
     "super_admin_alert.user_registered.title": "Nouvelle inscription",
@@ -178,12 +166,8 @@ const CATALOG: Catalog = {
       "Resume : {{critical}} critiques, {{high}} eleves, {{medium}} moyens, {{low}} faibles, {{info}} info.",
     "audit_digest.subject":
       "Rapport d'audit quotidien de {{app_name}} ({{count}} resultats)",
-    "audit_digest.greeting": "Bonjour,",
-    "audit_digest.report_link": "Voir le rapport complet",
     "audit_digest.no_issues": "Tout va bien. Aucun probleme detecte.",
     "audit_digest.top_findings": "Principaux resultats",
-    "audit_digest.intro":
-      "Un audit automatique sur {{app_name}} est termine. Voici le resume :",
   },
   it: {
     "super_admin_alert.user_registered.title": "Nuova registrazione",
@@ -213,12 +197,8 @@ const CATALOG: Catalog = {
       "Riepilogo: {{critical}} critici, {{high}} alti, {{medium}} medi, {{low}} bassi, {{info}} info.",
     "audit_digest.subject":
       "Report audit giornaliero di {{app_name}} ({{count}} risultati)",
-    "audit_digest.greeting": "Ciao,",
-    "audit_digest.report_link": "Vedi il report completo",
     "audit_digest.no_issues": "Tutto a posto. Nessun problema rilevato.",
     "audit_digest.top_findings": "Risultati principali",
-    "audit_digest.intro":
-      "Un audit automatico su {{app_name}} e stato completato. Ecco il riepilogo:",
   },
   pt: {
     "super_admin_alert.user_registered.title": "Novo registo",
@@ -250,12 +230,8 @@ const CATALOG: Catalog = {
       "Resumo: {{critical}} criticos, {{high}} altos, {{medium}} medios, {{low}} baixos, {{info}} info.",
     "audit_digest.subject":
       "Relatorio de auditoria diaria de {{app_name}} ({{count}} achados)",
-    "audit_digest.greeting": "Ola,",
-    "audit_digest.report_link": "Ver relatorio completo",
     "audit_digest.no_issues": "Tudo bem. Nenhum problema detetado.",
     "audit_digest.top_findings": "Principais achados",
-    "audit_digest.intro":
-      "Uma auditoria automatica em {{app_name}} foi concluida. Este e o resumo:",
   },
   ru: {
     "super_admin_alert.user_registered.title": "Новая регистрация",
@@ -285,12 +261,8 @@ const CATALOG: Catalog = {
       "Сводка: {{critical}} критических, {{high}} высоких, {{medium}} средних, {{low}} низких, {{info}} информационных.",
     "audit_digest.subject":
       "Ежедневный отчёт аудита от {{app_name}} ({{count}} находок)",
-    "audit_digest.greeting": "Здравствуйте,",
-    "audit_digest.report_link": "Открыть полный отчёт",
     "audit_digest.no_issues": "Всё в порядке. Проблем не обнаружено.",
     "audit_digest.top_findings": "Главные находки",
-    "audit_digest.intro":
-      "Автоматический аудит на {{app_name}} завершён. Вот сводка:",
   },
   uk: {
     "super_admin_alert.user_registered.title": "Нова реєстрація",
@@ -320,12 +292,8 @@ const CATALOG: Catalog = {
       "Підсумок: {{critical}} критичних, {{high}} високих, {{medium}} середніх, {{low}} низьких, {{info}} інформаційних.",
     "audit_digest.subject":
       "Щоденний звіт аудиту від {{app_name}} ({{count}} знахідок)",
-    "audit_digest.greeting": "Вітаємо,",
-    "audit_digest.report_link": "Переглянути повний звіт",
     "audit_digest.no_issues": "Усе гаразд. Проблем не виявлено.",
     "audit_digest.top_findings": "Головні знахідки",
-    "audit_digest.intro":
-      "Автоматичний аудит на {{app_name}} завершено. Ось підсумок:",
   },
 };
 
