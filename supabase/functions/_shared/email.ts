@@ -53,7 +53,13 @@ export type EmailType =
   // `super_admin_alert` HTML wrapper for rendering; this is a
   // distinct EmailType only so we can filter / count digests in
   // email_log separately from generic super-admin alerts.
-  | "audit_digest";
+  | "audit_digest"
+  // Error-report notification (PR 0083). Fired by `notify-error-report`
+  // EF after an AFTER INSERT trigger on `error_reports`. One email per
+  // super-admin / admin with capability `view_error_reports`. Same
+  // wrapper as audit_digest; separate EmailType to enable filter /
+  // count in `email_log`.
+  | "error_report";
 
 export interface SendEmailParams {
   type: EmailType;

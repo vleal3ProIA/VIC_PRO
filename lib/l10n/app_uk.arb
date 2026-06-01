@@ -1723,8 +1723,13 @@
   "@adminPublicDomainSourcesDeleteBody": {"placeholders": {"label": {"type": "String"}}},
 
   "errorGeneric": "Сталася помилка, спробуйте пізніше.",
+  "errorTitle": "Сталася помилка",
+  "actionOk": "ОК",
+  "adminErrorReportsTitle": "Звіт про помилки",
+  "adminCapViewErrorReports": "Перегляд звітів про помилки",
   "adminErrorsTitle": "Звіти про помилки",
   "adminErrorsHint": "Помилки бекенду, зафіксовані для діагностики.",
+  "adminErrorsOpenAction": "Відкрити",
   "adminErrorsSubtitle": "Помилки бекенду, зафіксовані під час активності користувачів. Технічні деталі бачать лише адміністратори.",
   "adminErrorsFilterStatus": "Статус",
   "adminErrorsFilterSeverity": "Серйозність",

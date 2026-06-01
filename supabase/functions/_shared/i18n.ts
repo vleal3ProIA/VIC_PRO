@@ -79,6 +79,15 @@ const CATALOG: Catalog = {
     "audit_digest.top_findings": "Top findings",
     "audit_digest.intro":
       "An automatic audit on {{app_name}} has just completed. Summary:",
+
+    // ─── Error report (PR 0083) ───
+    "error_report.title": "New error in {{fn}}",
+    "error_report.body": "{{severity}}: {{message}}",
+    "error_report.subject":
+      "New error registered in {{app_name}} ({{severity}})",
+    "error_report.intro":
+      "A new backend error has been registered in {{app_name}}.",
+    "error_report.cta_label": "View error",
   },
   es: {
     "super_admin_alert.user_registered.title": "Nuevo registro",
@@ -111,6 +120,14 @@ const CATALOG: Catalog = {
     "audit_digest.top_findings": "Principales hallazgos",
     "audit_digest.intro":
       "Se ha completado una auditoria automatica en {{app_name}}. Este es el resumen:",
+
+    "error_report.title": "Nuevo error en {{fn}}",
+    "error_report.body": "{{severity}}: {{message}}",
+    "error_report.subject":
+      "Nuevo error registrado en {{app_name}} ({{severity}})",
+    "error_report.intro":
+      "Se ha registrado un nuevo error en {{app_name}}.",
+    "error_report.cta_label": "Ver error",
   },
   de: {
     "super_admin_alert.user_registered.title": "Neue Anmeldung",
@@ -143,6 +160,14 @@ const CATALOG: Catalog = {
     "audit_digest.top_findings": "Wichtigste Findings",
     "audit_digest.intro":
       "Ein automatischer Audit auf {{app_name}} wurde abgeschlossen. Zusammenfassung:",
+
+    "error_report.title": "Neuer Fehler in {{fn}}",
+    "error_report.body": "{{severity}}: {{message}}",
+    "error_report.subject":
+      "Neuer Fehler in {{app_name}} registriert ({{severity}})",
+    "error_report.intro":
+      "Ein neuer Backend-Fehler wurde in {{app_name}} registriert.",
+    "error_report.cta_label": "Fehler ansehen",
   },
   fr: {
     "super_admin_alert.user_registered.title": "Nouvelle inscription",
@@ -176,6 +201,14 @@ const CATALOG: Catalog = {
     "audit_digest.top_findings": "Principaux resultats",
     "audit_digest.intro":
       "Un audit automatique sur {{app_name}} vient de se terminer. Voici le resume :",
+
+    "error_report.title": "Nouvelle erreur dans {{fn}}",
+    "error_report.body": "{{severity}} : {{message}}",
+    "error_report.subject":
+      "Nouvelle erreur enregistree dans {{app_name}} ({{severity}})",
+    "error_report.intro":
+      "Une nouvelle erreur backend a ete enregistree dans {{app_name}}.",
+    "error_report.cta_label": "Voir l'erreur",
   },
   it: {
     "super_admin_alert.user_registered.title": "Nuova registrazione",
@@ -209,6 +242,14 @@ const CATALOG: Catalog = {
     "audit_digest.top_findings": "Risultati principali",
     "audit_digest.intro":
       "E stato completato un audit automatico su {{app_name}}. Questo e il riepilogo:",
+
+    "error_report.title": "Nuovo errore in {{fn}}",
+    "error_report.body": "{{severity}}: {{message}}",
+    "error_report.subject":
+      "Nuovo errore registrato in {{app_name}} ({{severity}})",
+    "error_report.intro":
+      "Un nuovo errore backend e stato registrato in {{app_name}}.",
+    "error_report.cta_label": "Vedi errore",
   },
   pt: {
     "super_admin_alert.user_registered.title": "Novo registo",
@@ -244,6 +285,14 @@ const CATALOG: Catalog = {
     "audit_digest.top_findings": "Principais achados",
     "audit_digest.intro":
       "Foi concluida uma auditoria automatica em {{app_name}}. Este e o resumo:",
+
+    "error_report.title": "Novo erro em {{fn}}",
+    "error_report.body": "{{severity}}: {{message}}",
+    "error_report.subject":
+      "Novo erro registado em {{app_name}} ({{severity}})",
+    "error_report.intro":
+      "Foi registado um novo erro backend em {{app_name}}.",
+    "error_report.cta_label": "Ver erro",
   },
   ru: {
     "super_admin_alert.user_registered.title": "Новая регистрация",
@@ -277,6 +326,14 @@ const CATALOG: Catalog = {
     "audit_digest.top_findings": "Главные находки",
     "audit_digest.intro":
       "Автоматический аудит {{app_name}} только что завершился. Сводка:",
+
+    "error_report.title": "Новая ошибка в {{fn}}",
+    "error_report.body": "{{severity}}: {{message}}",
+    "error_report.subject":
+      "Новая ошибка зарегистрирована в {{app_name}} ({{severity}})",
+    "error_report.intro":
+      "В {{app_name}} зарегистрирована новая ошибка бэкенда.",
+    "error_report.cta_label": "Открыть ошибку",
   },
   uk: {
     "super_admin_alert.user_registered.title": "Нова реєстрація",
@@ -310,6 +367,14 @@ const CATALOG: Catalog = {
     "audit_digest.top_findings": "Головні знахідки",
     "audit_digest.intro":
       "Автоматичний аудит {{app_name}} щойно завершився. Підсумок:",
+
+    "error_report.title": "Нова помилка в {{fn}}",
+    "error_report.body": "{{severity}}: {{message}}",
+    "error_report.subject":
+      "Нову помилку зареєстровано в {{app_name}} ({{severity}})",
+    "error_report.intro":
+      "У {{app_name}} зареєстровано нову помилку бекенду.",
+    "error_report.cta_label": "Відкрити помилку",
   },
 };
 

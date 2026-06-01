@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
+import 'package:myapp/core/widgets/app_error_dialog.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../../application/subjects_providers.dart';
@@ -110,10 +111,6 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
     setState(() => _busy = true);
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
-    final errBg = Theme.of(context).colorScheme.error;
-    // Mensaje generico capturado pre-await: NO filtramos detalle tecnico
-    // al usuario; el admin lo ve en /admin/errors.
-    final genericMsg = l.errorGeneric;
     try {
       final r = await ref.read(subjectsDataSourceProvider).generateExam(
             subjectId: widget.subjectId,
@@ -131,17 +128,14 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
         );
       }
     } on SubjectsException catch (_) {
-      messenger.showSnackBar(
-        SnackBar(
-          backgroundColor: errBg,
-          duration: const Duration(seconds: 8),
-          content: Text(genericMsg),
-        ),
-      );
+      // PR 0083: modal central en lugar de snackbar para errores genericos.
+      if (mounted) {
+        await showAppErrorDialog(context);
+      }
     } catch (_) {
-      messenger.showSnackBar(
-        SnackBar(backgroundColor: errBg, content: Text(genericMsg)),
-      );
+      if (mounted) {
+        await showAppErrorDialog(context);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

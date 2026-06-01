@@ -1723,8 +1723,13 @@
   "@adminPublicDomainSourcesDeleteBody": {"placeholders": {"label": {"type": "String"}}},
 
   "errorGeneric": "Произошла ошибка, повторите попытку позже.",
+  "errorTitle": "Произошла ошибка",
+  "actionOk": "ОК",
+  "adminErrorReportsTitle": "Отчёты об ошибках",
+  "adminCapViewErrorReports": "Просмотр отчётов об ошибках",
   "adminErrorsTitle": "Отчёты об ошибках",
   "adminErrorsHint": "Ошибки бэкенда, зафиксированные для диагностики.",
+  "adminErrorsOpenAction": "Открыть",
   "adminErrorsSubtitle": "Ошибки бэкенда, зафиксированные во время активности пользователей. Технические детали видят только администраторы.",
   "adminErrorsFilterStatus": "Статус",
   "adminErrorsFilterSeverity": "Серьёзность",

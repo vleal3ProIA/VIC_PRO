@@ -866,6 +866,91 @@ const STR: Record<EmailType, Partial<TypeI18n> & { en: TypeI18nEntry }> = {
         "Ви отримали цей лист, бо ви адмін {{app_name}}.",
     },
   },
+  // PR 0083: error_report. Mismo patron que audit_digest: el EF
+  // `notify-error-report` ya construye el bodyHtml; aqui el template
+  // solo aporta el wrapper i18n (preheader/greeting/CTA/footer).
+  error_report: {
+    en: {
+      subject: "{{subject}}",
+      preheader: "New backend error registered in {{app_name}}.",
+      greeting: "Hello, {{name}},",
+      bodyHtml: "{{body_html}}",
+      ctaLabel: "View error",
+      ctaUrl: "{{cta_url}}",
+      footerNote:
+        "You are receiving this because you can view error reports in {{app_name}}.",
+    },
+    es: {
+      subject: "{{subject}}",
+      preheader: "Nuevo error backend registrado en {{app_name}}.",
+      greeting: "Hola, {{name}},",
+      bodyHtml: "{{body_html}}",
+      ctaLabel: "Ver error",
+      ctaUrl: "{{cta_url}}",
+      footerNote:
+        "Recibes este aviso porque puedes ver los reportes de errores de {{app_name}}.",
+    },
+    de: {
+      subject: "{{subject}}",
+      preheader: "Neuer Backend-Fehler in {{app_name}} registriert.",
+      greeting: "Hallo {{name}},",
+      bodyHtml: "{{body_html}}",
+      ctaLabel: "Fehler ansehen",
+      ctaUrl: "{{cta_url}}",
+      footerNote:
+        "Du erhaeltst diese Nachricht, weil du Fehlerberichte in {{app_name}} einsehen kannst.",
+    },
+    fr: {
+      subject: "{{subject}}",
+      preheader: "Nouvelle erreur backend enregistree dans {{app_name}}.",
+      greeting: "Bonjour {{name}},",
+      bodyHtml: "{{body_html}}",
+      ctaLabel: "Voir l'erreur",
+      ctaUrl: "{{cta_url}}",
+      footerNote:
+        "Tu recois cet email parce que tu peux consulter les rapports d'erreurs de {{app_name}}.",
+    },
+    it: {
+      subject: "{{subject}}",
+      preheader: "Nuovo errore backend registrato in {{app_name}}.",
+      greeting: "Ciao {{name}},",
+      bodyHtml: "{{body_html}}",
+      ctaLabel: "Vedi errore",
+      ctaUrl: "{{cta_url}}",
+      footerNote:
+        "Ricevi questo messaggio perche puoi visualizzare i report degli errori di {{app_name}}.",
+    },
+    pt: {
+      subject: "{{subject}}",
+      preheader: "Novo erro backend registado em {{app_name}}.",
+      greeting: "Ola, {{name}},",
+      bodyHtml: "{{body_html}}",
+      ctaLabel: "Ver erro",
+      ctaUrl: "{{cta_url}}",
+      footerNote:
+        "Recebes esta mensagem porque podes ver os relatorios de erros de {{app_name}}.",
+    },
+    ru: {
+      subject: "{{subject}}",
+      preheader: "Новая ошибка бэкенда в {{app_name}}.",
+      greeting: "Здравствуйте, {{name}},",
+      bodyHtml: "{{body_html}}",
+      ctaLabel: "Открыть ошибку",
+      ctaUrl: "{{cta_url}}",
+      footerNote:
+        "Вы получили это письмо, потому что можете просматривать отчёты об ошибках {{app_name}}.",
+    },
+    uk: {
+      subject: "{{subject}}",
+      preheader: "Нова помилка бекенду в {{app_name}}.",
+      greeting: "Вітаємо, {{name}},",
+      bodyHtml: "{{body_html}}",
+      ctaLabel: "Відкрити помилку",
+      ctaUrl: "{{cta_url}}",
+      footerNote:
+        "Ви отримали цей лист, оскільки можете переглядати звіти про помилки {{app_name}}.",
+    },
+  },
   test: {
     en: {
       subject: "Test email from {{app_name}}",

@@ -142,6 +142,7 @@ const Map<String, String> kRouteToCapability = {
   RoutePaths.adminIncidents:    'manage_incidents',
   RoutePaths.adminAudit:        'run_audits',
   RoutePaths.adminAiProviders:  'manage_ai',
+  RoutePaths.adminErrors:       'view_error_reports',
 };
 
 /// Devuelve la capability requerida por una ruta, o `null` si la ruta
@@ -154,9 +155,8 @@ String? requiredCapability(String loc) {
   if (loc.startsWith('/admin/users/'))      return 'manage_users';
   if (loc.startsWith('/admin/broadcasts/')) return 'manage_broadcasts';
   if (loc.startsWith('/admin/audit/'))      return 'run_audits';
-  // `/admin/errors` no requiere capability concreta -- cualquier admin
-  // (o super) puede acceder. La RLS de `error_reports` ya rechaza al
-  // resto. No anyadimos entrada a `kRouteToCapability` por eso.
+  // `/admin/errors/:id` requiere la misma capability que la lista.
+  if (loc.startsWith('/admin/errors/'))     return 'view_error_reports';
   return null;
 }
 

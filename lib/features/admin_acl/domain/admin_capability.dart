@@ -27,6 +27,7 @@ abstract class AdminCapability {
   static const String runAudits         = 'run_audits';
   static const String manageAi          = 'manage_ai';
   static const String viewAiContent     = 'view_ai_content';
+  static const String viewErrorReports  = 'view_error_reports';
 
   /// Set inmutable con TODAS las capacidades. El super admin las
   /// tiene todas implicitamente. Util para tests y validacion.
@@ -46,5 +47,6 @@ abstract class AdminCapability {
     runAudits,
     manageAi,
     viewAiContent,
+    viewErrorReports,
   };
 }

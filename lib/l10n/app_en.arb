@@ -1871,8 +1871,13 @@
   "@adminPublicDomainSourcesDeleteBody": {"placeholders": {"label": {"type": "String"}}},
 
   "errorGeneric": "An error occurred, please try again later.",
+  "errorTitle": "An error occurred",
+  "actionOk": "OK",
+  "adminErrorReportsTitle": "Error reporting",
+  "adminCapViewErrorReports": "View error reports",
   "adminErrorsTitle": "Error reports",
   "adminErrorsHint": "Backend errors captured for diagnosis.",
+  "adminErrorsOpenAction": "Open",
   "adminErrorsSubtitle": "Backend errors captured during user activity. Only admins see the technical details.",
   "adminErrorsFilterStatus": "Status",
   "adminErrorsFilterSeverity": "Severity",

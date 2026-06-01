@@ -687,6 +687,8 @@ IconData _capabilityIcon(String cap) {
       return Icons.smart_toy_outlined;
     case AdminCapability.viewAiContent:
       return Icons.auto_stories_outlined;
+    case AdminCapability.viewErrorReports:
+      return Icons.bug_report_outlined;
     default:
       return Icons.help_outline;
   }
@@ -725,6 +727,8 @@ String _capabilityLabel(AppLocalizations l, String cap) {
       return l.adminCapManageAi;
     case AdminCapability.viewAiContent:
       return l.adminCapViewAiContent;
+    case AdminCapability.viewErrorReports:
+      return l.adminCapViewErrorReports;
     default:
       return cap;
   }

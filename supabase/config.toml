@@ -61,3 +61,11 @@ verify_jwt = false
 # Validacion interna: header `X-Internal-Auth` debe match SERVICE_ROLE_KEY.
 [functions.send-audit-digest]
 verify_jwt = false
+
+# notify-error-report (PR 0083) lo invoca exclusivamente el trigger SQL
+# `fire_error_report_notify_trg` via pg_net.http_post cuando un nuevo
+# error_report es insertado por una Edge Function (error_reporter.ts).
+# SIN JWT. Validacion interna: header `X-Internal-Auth` debe match
+# SERVICE_ROLE_KEY.
+[functions.notify-error-report]
+verify_jwt = false

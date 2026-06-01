@@ -1,12 +1,20 @@
 // ============================================================================
-// /admin/errors -- Lista de error reports
+// /admin/errors -- "Reporte de errores" (list)
 // ----------------------------------------------------------------------------
-// Muestra la tabla de `public.error_reports` con filtros de estado y severidad.
-// El admin ve fecha, usuario (id corto), funcion, severidad, estado y mensaje
-// corto. Click -> detalle (/admin/errors/:id).
+// Muestra `public.error_reports` con filtros de estado y severidad. Layout
+// de cards en grid responsive:
+//   - mobile: 1 columna
+//   - tablet: 2 columnas
+//   - desktop: 3 columnas
 //
-// Por defecto el filtro arranca con status='open' (lo accionable). El admin
-// puede pasar a 'all' o cualquier otro estado.
+// Cada card muestra:
+//   - Top: status badge + severity chip + fecha relativa.
+//   - Middle: fn name (mono) + error message (max 2 lines, truncate).
+//   - Bottom: boton "Abrir" -> detalle (/admin/errors/:id).
+//
+// Por defecto el filtro arranca con status='open' (lo accionable). PR 0083:
+// la pagina queda gated por capability `view_error_reports` (router) y la
+// RLS de `error_reports` (migracion 0083).
 // ============================================================================
 
 import 'package:flutter/material.dart';
@@ -39,7 +47,7 @@ class AdminErrorsPage extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.popOrGo(RouteNames.admin),
         ),
-        title: Text(l.adminErrorsTitle),
+        title: Text(l.adminErrorReportsTitle),
       ),
       body: const _AdminErrorsView(),
     );
@@ -79,14 +87,23 @@ class _AdminErrorsView extends ConsumerWidget {
             ),
           );
         }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final r in rows) ...[
-              _ErrorRow(report: r),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-          ],
+        // PR 0083: grid responsive de cards (1/2/3 cols). El umbral
+        // 700/1100 px alinea con el resto de pantallas admin.
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final w = constraints.maxWidth;
+            final cols = w >= 1100 ? 3 : (w >= 700 ? 2 : 1);
+            const gap = AppSpacing.md;
+            final cellW = (w - gap * (cols - 1)) / cols;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (final r in rows)
+                  SizedBox(width: cellW, child: _ErrorCard(report: r)),
+              ],
+            );
+          },
         );
       },
     );
@@ -229,15 +246,15 @@ class _Filters extends ConsumerWidget {
   }
 }
 
-class _ErrorRow extends StatelessWidget {
-  const _ErrorRow({required this.report});
+/// Card vertical de un error report: badge + chip + fecha relativa arriba;
+/// fn (mono) + mensaje truncado en medio; boton "Abrir" abajo.
+class _ErrorCard extends StatelessWidget {
+  const _ErrorCard({required this.report});
   final ErrorReport report;
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final localeCode = Localizations.localeOf(context).languageCode;
-    final fmt = DateFormat.yMMMd(localeCode).add_Hm();
     final scheme = context.colors;
 
     return PremiumCard(
@@ -246,95 +263,97 @@ class _ErrorRow extends StatelessWidget {
         pathParameters: {'id': report.id},
       ),
       padding: const EdgeInsets.all(AppSpacing.md),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.bug_report_outlined,
-            color: _severityColor(scheme, report.severity),
-            size: 22,
+          // ─── Top: status badge + severity chip + fecha relativa ───
+          Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _StatusBadge(status: report.status),
+              _SeverityBadge(severity: report.severity),
+              Text(
+                _relativeDate(context, report.createdAt),
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: AppSpacing.sm + 4),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        report.fn,
-                        style: context.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    _SeverityBadge(severity: report.severity),
-                    const SizedBox(width: AppSpacing.xs),
-                    _StatusBadge(status: report.status),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  report.errorMessage,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: 2,
-                  children: [
-                    Text(
-                      fmt.format(report.createdAt.toLocal()),
-                      style: context.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    if (report.userId != null)
-                      Text(
-                        '${l.adminErrorsColumnUser}: ${report.userId!.substring(0, 8)}…',
-                        style: context.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    if (report.errorCode != null)
-                      Text(
-                        report.errorCode!,
-                        style: context.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                  ],
-                ),
-              ],
+          const SizedBox(height: AppSpacing.sm),
+          // ─── Middle: fn (mono) + mensaje truncado ───
+          Text(
+            report.fn,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontFamily: 'monospace',
             ),
           ),
-          const SizedBox(width: AppSpacing.xs),
-          Icon(
-            Icons.chevron_right_rounded,
-            color: scheme.onSurfaceVariant,
+          const SizedBox(height: 4),
+          Text(
+            report.errorMessage,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: context.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          // ─── Bottom: boton "Abrir" ───
+          Align(
+            alignment: Alignment.centerRight,
+            child: PremiumButton(
+              label: l.adminErrorsOpenAction,
+              size: PremiumButtonSize.sm,
+              trailingIcon: Icons.arrow_forward_rounded,
+              onPressed: () => context.pushNamed(
+                RouteNames.adminErrorDetail,
+                pathParameters: {'id': report.id},
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Color _severityColor(ColorScheme scheme, ErrorReportSeverity s) {
-    switch (s) {
-      case ErrorReportSeverity.low:
-        return scheme.onSurfaceVariant;
-      case ErrorReportSeverity.medium:
-        return const Color(0xFFF59E0B); // amber-500
-      case ErrorReportSeverity.high:
-        return const Color(0xFFEF4444); // red-500
-      case ErrorReportSeverity.critical:
-        return scheme.error;
+  /// Fecha relativa simple ("hace 2 m / 3 h / 5 d") en el locale del user.
+  /// Para fechas viejas (>30 d) cae a yMMMd para no decir "hace 90 d".
+  String _relativeDate(BuildContext context, DateTime created) {
+    final localeCode = Localizations.localeOf(context).languageCode;
+    final now = DateTime.now();
+    final diff = now.difference(created.toLocal());
+    if (diff.inMinutes < 1) return _justNow(localeCode);
+    if (diff.inHours < 1) return '${diff.inMinutes} min';
+    if (diff.inDays < 1) return '${diff.inHours} h';
+    if (diff.inDays < 30) return '${diff.inDays} d';
+    return DateFormat.yMMMd(localeCode).format(created.toLocal());
+  }
+
+  String _justNow(String localeCode) {
+    switch (localeCode) {
+      case 'es':
+        return 'ahora';
+      case 'de':
+        return 'jetzt';
+      case 'fr':
+        return 'maintenant';
+      case 'it':
+        return 'ora';
+      case 'pt':
+        return 'agora';
+      case 'ru':
+        return 'сейчас';
+      case 'uk':
+        return 'зараз';
+      default:
+        return 'now';
     }
   }
 }

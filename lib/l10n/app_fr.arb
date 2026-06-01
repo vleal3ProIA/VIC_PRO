@@ -1723,8 +1723,13 @@
   "@adminPublicDomainSourcesDeleteBody": {"placeholders": {"label": {"type": "String"}}},
 
   "errorGeneric": "Une erreur s'est produite, veuillez réessayer plus tard.",
+  "errorTitle": "Une erreur s'est produite",
+  "actionOk": "OK",
+  "adminErrorReportsTitle": "Rapport d'erreurs",
+  "adminCapViewErrorReports": "Voir les rapports d'erreurs",
   "adminErrorsTitle": "Rapports d'erreurs",
   "adminErrorsHint": "Erreurs backend capturées pour diagnostic.",
+  "adminErrorsOpenAction": "Ouvrir",
   "adminErrorsSubtitle": "Erreurs backend capturées pendant l'activité des utilisateurs. Seuls les admins voient les détails techniques.",
   "adminErrorsFilterStatus": "Statut",
   "adminErrorsFilterSeverity": "Gravité",

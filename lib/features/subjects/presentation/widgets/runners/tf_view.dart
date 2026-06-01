@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
+import 'package:myapp/core/widgets/app_error_dialog.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 
 import '../../../application/subjects_providers.dart';
@@ -95,10 +96,6 @@ class _TfViewState extends ConsumerState<TfView> {
     setState(() => _busy = true);
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
-    final errBg = Theme.of(context).colorScheme.error;
-    // Capturamos el mensaje generico ANTES del await: si el widget se
-    // desmonta o el context cambia, ya no podemos llamar `context.l10n`.
-    final genericMsg = l.errorGeneric;
     try {
       final r = await ref.read(subjectsDataSourceProvider).generateTfBank(
             subjectId: widget.subjectId,
@@ -116,19 +113,15 @@ class _TfViewState extends ConsumerState<TfView> {
         );
       }
     } on SubjectsException catch (_) {
-      // No filtramos `e.code` / `e.detail` al user: solo el mensaje canonico.
+      // PR 0083: modal central en lugar de snackbar para errores genericos.
       // El detalle tecnico esta ya en `error_reports` (admin /admin/errors).
-      messenger.showSnackBar(
-        SnackBar(
-          backgroundColor: errBg,
-          duration: const Duration(seconds: 8),
-          content: Text(genericMsg),
-        ),
-      );
+      if (mounted) {
+        await showAppErrorDialog(context);
+      }
     } catch (_) {
-      messenger.showSnackBar(
-        SnackBar(backgroundColor: errBg, content: Text(genericMsg)),
-      );
+      if (mounted) {
+        await showAppErrorDialog(context);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

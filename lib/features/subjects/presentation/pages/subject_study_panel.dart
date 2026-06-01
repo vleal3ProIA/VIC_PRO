@@ -22,6 +22,7 @@ import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/providers/preferences_provider.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_confirm_dialog.dart';
+import 'package:myapp/core/widgets/app_error_dialog.dart';
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
 import 'package:myapp/core/widgets/markdown_text.dart';
@@ -1699,13 +1700,10 @@ class _NodeViewState extends ConsumerState<_NodeView> {
     } on SubjectsException catch (_) {
       // No filtramos detalle tecnico al user: solo el mensaje canonico.
       // El detalle ya esta en `error_reports` (admin /admin/errors).
-      messenger.showSnackBar(
-        SnackBar(
-          backgroundColor: errBg,
-          duration: const Duration(seconds: 8),
-          content: Text(l.errorGeneric),
-        ),
-      );
+      // PR 0083: modal central en lugar de snackbar para errores genericos.
+      if (mounted) {
+        await showAppErrorDialog(context);
+      }
     } catch (_) {
       messenger.showSnackBar(
         SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
@@ -2596,13 +2594,10 @@ class _ExamViewState extends ConsumerState<_ExamView> {
     } on SubjectsException catch (_) {
       // No filtramos detalle tecnico al user: solo el mensaje canonico.
       // El detalle ya esta en `error_reports` (admin /admin/errors).
-      messenger.showSnackBar(
-        SnackBar(
-          backgroundColor: errBg,
-          duration: const Duration(seconds: 8),
-          content: Text(l.errorGeneric),
-        ),
-      );
+      // PR 0083: modal central en lugar de snackbar para errores genericos.
+      if (mounted) {
+        await showAppErrorDialog(context);
+      }
     } catch (_) {
       messenger.showSnackBar(
         SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
@@ -2807,13 +2802,10 @@ class _GuideViewState extends ConsumerState<_GuideView> {
     } on SubjectsException catch (_) {
       // No filtramos detalle tecnico al user: solo el mensaje canonico.
       // El detalle ya esta en `error_reports` (admin /admin/errors).
-      messenger.showSnackBar(
-        SnackBar(
-          backgroundColor: errBg,
-          duration: const Duration(seconds: 8),
-          content: Text(l.errorGeneric),
-        ),
-      );
+      // PR 0083: modal central en lugar de snackbar para errores genericos.
+      if (mounted) {
+        await showAppErrorDialog(context);
+      }
     } catch (_) {
       messenger.showSnackBar(
         SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
@@ -3002,13 +2994,10 @@ class _QuizViewState extends ConsumerState<_QuizView> {
     } on SubjectsException catch (_) {
       // No filtramos detalle tecnico al user: solo el mensaje canonico.
       // El detalle ya esta en `error_reports` (admin /admin/errors).
-      messenger.showSnackBar(
-        SnackBar(
-          backgroundColor: errBg,
-          duration: const Duration(seconds: 8),
-          content: Text(l.errorGeneric),
-        ),
-      );
+      // PR 0083: modal central en lugar de snackbar para errores genericos.
+      if (mounted) {
+        await showAppErrorDialog(context);
+      }
     } catch (_) {
       messenger.showSnackBar(
         SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
@@ -3408,13 +3397,10 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
     } on SubjectsException catch (_) {
       // No filtramos detalle tecnico al user: solo el mensaje canonico.
       // El detalle ya esta en `error_reports` (admin /admin/errors).
-      messenger.showSnackBar(
-        SnackBar(
-          backgroundColor: errBg,
-          duration: const Duration(seconds: 8),
-          content: Text(l.errorGeneric),
-        ),
-      );
+      // PR 0083: modal central en lugar de snackbar para errores genericos.
+      if (mounted) {
+        await showAppErrorDialog(context);
+      }
     } catch (_) {
       messenger.showSnackBar(
         SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
@@ -4001,13 +3987,10 @@ class _EssayViewState extends ConsumerState<_EssayView> {
     } on SubjectsException catch (_) {
       // No filtramos detalle tecnico al user: solo el mensaje canonico.
       // El detalle ya esta en `error_reports` (admin /admin/errors).
-      messenger.showSnackBar(
-        SnackBar(
-          backgroundColor: errBg,
-          duration: const Duration(seconds: 8),
-          content: Text(l.errorGeneric),
-        ),
-      );
+      // PR 0083: modal central en lugar de snackbar para errores genericos.
+      if (mounted) {
+        await showAppErrorDialog(context);
+      }
     } catch (_) {
       messenger.showSnackBar(
         SnackBar(backgroundColor: errBg, content: Text(l.studyViewError)),
