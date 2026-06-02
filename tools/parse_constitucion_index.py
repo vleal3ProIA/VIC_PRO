@@ -423,10 +423,16 @@ begin
 
         # Si tiene content (article, preamble, disposition con texto), insertar node_content kind='original'
         if n["content"] and len(n["content"].strip()) > 20:
-            content_esc = sql_escape(n["content"])
+            # Usamos dollar-quoting $c{i}$ con tag UNICO por nodo para evitar
+            # colisiones internas si el texto del articulo contiene literalmente
+            # algun otro tag dollar-quoted. Tag corto pero unico.
+            tag = f"c{i + 1}"
+            # Asegurar que el tag no aparezca dentro del content (extremadamente
+            # improbable en un texto legal).
+            safe_content = n["content"].replace(f"${tag}$", f"$ {tag} $")
             parts.append(
                 f"    insert into public.node_content (node_id, user_id, kind, content)\n"
-                f"    values (v_node_ids[{i + 1}], v_user_id, 'original', '{content_esc}');\n"
+                f"    values (v_node_ids[{i + 1}], v_user_id, 'original', ${tag}${safe_content}${tag}$);\n"
             )
 
     parts.append("  end;\n\n")
