@@ -11,8 +11,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
+import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_error_dialog.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
@@ -22,6 +24,7 @@ import '../../../data/subjects_datasource.dart';
 import '../../../domain/subject.dart';
 import 'count_picker_dialog.dart';
 import 'index_tree_picker.dart';
+import 'saved_test_picker_dialog.dart';
 import 'show_test_modal.dart';
 import 'tf_runner_dialog.dart';
 
@@ -81,18 +84,60 @@ class _TfViewState extends ConsumerState<TfView> {
         .toList();
   }
 
-  Future<void> _open(List<TfQuestion> pool) async {
-    if (pool.isEmpty) return;
+  /// "Realizar test" V/F: abre picker de saved_tests kind=tf, multi-select →
+  /// combinar y arrancar. Modal cantidad → TfRunnerDialog.
+  Future<void> _open() async {
+    final pick = await showSavedTestPicker(
+      context,
+      subjectId: widget.subjectId,
+      kind: SavedTestKind.tf,
+    );
+    if (pick == null || !mounted) return;
+    final l = context.l10n;
+    final ds = ref.read(subjectsDataSourceProvider);
+    SavedTest? saved;
+    try {
+      if (pick.isSingle) {
+        saved = await ds.getSavedTest(pick.singleId!);
+      } else if (pick.isCombine) {
+        final newId = await ds.combineSavedTests(
+          sourceIds: pick.combineIds,
+          title: l.studyTestSavedCombineTitle(pick.combineIds.length, 0),
+        );
+        saved = await ds.getSavedTest(newId);
+        if (saved != null) {
+          final fixed = l.studyTestSavedCombineTitle(
+            pick.combineIds.length,
+            saved.questionCount,
+          );
+          await ds.renameSavedTest(saved.id, fixed);
+        }
+        ref.invalidate(savedTestsProvider(
+          (subjectId: widget.subjectId, kind: SavedTestKind.tf),
+        ),);
+      }
+    } catch (_) {
+      if (mounted) await showAppErrorDialog(context);
+      return;
+    }
+    if (saved == null || !mounted) return;
+    final qs = await ds.getSavedTfTestQuestions(saved);
+    if (qs.isEmpty || !mounted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(l.studyTestNoBank)));
+      }
+      return;
+    }
     final count =
-        await showCountPickerDialog(context, available: pool.length);
-    if (count == null) return; // cancelado
-    if (!mounted) return;
-    final qs = List.of(pool)..shuffle();
-    final take = count <= 0 || count >= qs.length ? qs.length : count;
+        await showCountPickerDialog(context, available: qs.length);
+    if (count == null || !mounted) return;
+    final shuffled = List.of(qs)..shuffle();
+    final take = count <= 0 || count >= shuffled.length ? shuffled.length : count;
     await showTestModal(
       context,
       TfRunnerDialog(
-        questions: qs.sublist(0, take),
+        questions: shuffled.sublist(0, take),
         timed: _timed,
         minutes: _minutes,
         penalty: _penalty,
@@ -100,40 +145,78 @@ class _TfViewState extends ConsumerState<TfView> {
     );
   }
 
-  Future<void> _generate({bool force = false}) async {
+  /// "Generar test" V/F: rellena el banco para la selección y crea un
+  /// SavedTest kind=tf con todas las preguntas del ámbito.
+  Future<void> _generate() async {
     if (_busy) return;
     setState(() => _busy = true);
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final r = await ref.read(subjectsDataSourceProvider).generateTfBank(
-            subjectId: widget.subjectId,
-            nodeIds: _all ? const [] : _scopeNodeIds().toList(),
-            force: force,
-          );
+      final ds = ref.read(subjectsDataSourceProvider);
+      await ds.generateTfBank(
+        subjectId: widget.subjectId,
+        nodeIds: _all ? const [] : _scopeNodeIds().toList(),
+      );
       ref.invalidate(tfQuestionsProvider(widget.subjectId));
+      final bank = await ds.listTfBank(widget.subjectId);
+      final pool = _pool(bank);
+      if (pool.isEmpty) {
+        if (mounted) {
+          messenger.showSnackBar(SnackBar(content: Text(l.studyTestNoBank)));
+        }
+        return;
+      }
+      final qIds = pool.map((q) => q.id).toList(growable: false);
+      final nIds = _all
+          ? widget.nodes.map((n) => n.id).toList()
+          : _scopeNodeIds().toList();
+      final title = _autoTitle(nIds, qIds.length);
+      final saved = await ds.createSavedTest(
+        subjectId: widget.subjectId,
+        title: title,
+        questionIds: qIds,
+        nodeIds: nIds,
+        kind: SavedTestKind.tf,
+      );
+      ref.invalidate(savedTestsProvider(
+        (subjectId: widget.subjectId, kind: SavedTestKind.tf),
+      ),);
       if (mounted) {
-        final msg = r.pending > 0
-            ? '${l.studyBankProgress(r.total, r.generated)} · '
-                '${l.studyBankPending(r.pending)}'
-            : l.studyBankProgress(r.total, r.generated);
         messenger.showSnackBar(
-          SnackBar(duration: const Duration(seconds: 6), content: Text(msg)),
+          SnackBar(
+            duration: const Duration(seconds: 5),
+            content: Text(l.studyTestSavedCreated(saved.title, qIds.length)),
+          ),
         );
       }
     } on SubjectsException catch (_) {
-      // PR 0083: modal central en lugar de snackbar para errores genericos.
-      // El detalle tecnico esta ya en `error_reports` (admin /admin/errors).
-      if (mounted) {
-        await showAppErrorDialog(context);
-      }
+      if (mounted) await showAppErrorDialog(context);
     } catch (_) {
-      if (mounted) {
-        await showAppErrorDialog(context);
-      }
+      if (mounted) await showAppErrorDialog(context);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  String _autoTitle(List<String> nodeIds, int qCount) {
+    final l = context.l10n;
+    final allNodes = {for (final n in widget.nodes) n.id: n};
+    final picked =
+        nodeIds.map((id) => allNodes[id]).whereType<IndexNode>().toList();
+    final tops = picked.where((n) => n.depth == 1).toList();
+    String scope;
+    if (_all || tops.isEmpty && picked.length == widget.nodes.length) {
+      scope = l.studyTestScopeAll;
+    } else if (tops.isNotEmpty) {
+      final names = tops.take(2).map((n) => n.title).join(' + ');
+      scope = tops.length > 2 ? '$names + ${tops.length - 2}' : names;
+    } else {
+      final first = picked.first;
+      scope =
+          picked.length > 1 ? '${first.title} + ${picked.length - 1}' : first.title;
+    }
+    return '$scope · $qCount';
   }
 
   @override
@@ -233,19 +316,27 @@ class _TfViewState extends ConsumerState<TfView> {
           spacing: AppSpacing.sm,
           runSpacing: AppSpacing.sm,
           children: [
-            // 1) Generar test V/F: rellena lo que falte en el banco.
+            // 1) Generar test V/F: rellena el banco + crea saved_test kind=tf.
             PremiumButton(
               label: l.studyTestGenerate,
               leadingIcon: Icons.auto_awesome_outlined,
               onPressed: canGenerate ? _generate : null,
             ),
-            // 2) Realizar test: pide cantidad y arranca el runner.
-            if (pool.isNotEmpty)
-              FilledButton.icon(
-                onPressed: () => _open(pool),
-                icon: const Icon(Icons.play_arrow, size: 16),
-                label: Text(l.studyTestStart),
+            // 2) Realizar test: picker de saved_tests del temario (kind=tf).
+            FilledButton.icon(
+              onPressed: _open,
+              icon: const Icon(Icons.play_arrow, size: 16),
+              label: Text(l.studyTestStart),
+            ),
+            // 3) Ver mis tests V/F: biblioteca en /mis-temarios/<id>/tf.
+            OutlinedButton.icon(
+              onPressed: () => context.goNamed(
+                RouteNames.myMaterialSubjectKind,
+                pathParameters: {'id': widget.subjectId, 'kind': 'tf'},
               ),
+              icon: const Icon(Icons.history, size: 16),
+              label: Text(l.studyTestViewHistory),
+            ),
           ],
         ),
       ],

@@ -308,11 +308,35 @@ class EssayQuestion {
 /// del banco) y metadatos. El usuario lo realiza N veces; cada vez se crea un
 /// [ExamAttempt] enlazado por [savedTestId]. Permite "repetir el mismo test",
 /// ver el progreso a lo largo del tiempo, y combinar varios en uno nuevo.
+/// Tipos de test que admite la tabla `saved_tests`. Define qué tabla de
+/// preguntas referencian los `question_ids` del snapshot.
+enum SavedTestKind {
+  mock('mock'),
+  tf('tf'),
+  essay('essay');
+
+  const SavedTestKind(this.slug);
+  final String slug;
+
+  static SavedTestKind fromSlug(String? s) {
+    switch (s) {
+      case 'tf':
+        return SavedTestKind.tf;
+      case 'essay':
+        return SavedTestKind.essay;
+      case 'mock':
+      default:
+        return SavedTestKind.mock;
+    }
+  }
+}
+
 class SavedTest {
   const SavedTest({
     required this.id,
     required this.subjectId,
     required this.title,
+    required this.kind,
     required this.questionIds,
     required this.nodeIds,
     required this.questionCount,
@@ -333,6 +357,7 @@ class SavedTest {
       id: m['id'] as String,
       subjectId: (m['subject_id'] as String?) ?? '',
       title: (m['title'] as String?) ?? '',
+      kind: SavedTestKind.fromSlug(m['kind'] as String?),
       questionIds: qIds,
       nodeIds: nIds,
       questionCount: (m['question_count'] as num?)?.toInt() ?? qIds.length,
@@ -347,6 +372,7 @@ class SavedTest {
   final String id;
   final String subjectId;
   final String title;
+  final SavedTestKind kind;
   final List<String> questionIds;
   final List<String> nodeIds;
   final int questionCount;

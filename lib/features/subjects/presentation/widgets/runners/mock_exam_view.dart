@@ -100,6 +100,7 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
     final pick = await showSavedTestPicker(
       context,
       subjectId: widget.subjectId,
+      kind: SavedTestKind.mock,
     );
     if (pick == null || !mounted) return;
     final l = context.l10n;
@@ -125,6 +126,7 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
             id: saved.id,
             subjectId: saved.subjectId,
             title: fixed,
+            kind: saved.kind,
             questionIds: saved.questionIds,
             nodeIds: saved.nodeIds,
             questionCount: saved.questionCount,
@@ -132,7 +134,7 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
             updatedAt: DateTime.now(),
           );
         }
-        ref.invalidate(savedTestsProvider(widget.subjectId));
+        ref.invalidate(savedTestsProvider((subjectId: widget.subjectId, kind: SavedTestKind.mock)));
       }
     } catch (_) {
       if (mounted) await showAppErrorDialog(context);
@@ -208,7 +210,7 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
         questionIds: qIds,
         nodeIds: nIds,
       );
-      ref.invalidate(savedTestsProvider(widget.subjectId));
+      ref.invalidate(savedTestsProvider((subjectId: widget.subjectId, kind: SavedTestKind.mock)));
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(

@@ -875,13 +875,15 @@ class SubjectsDataSource {
 
   // ─────────────────────── Tests guardados (Fase F) ───────────────────────
 
-  /// Crea un nuevo test plantilla con un snapshot de question_ids del banco.
+  /// Crea un nuevo test plantilla con un snapshot de question_ids del banco
+  /// correspondiente al [kind] (mock=question_bank, tf=tf_bank, essay=essay_bank).
   /// Devuelve el [SavedTest] persistido.
   Future<SavedTest> createSavedTest({
     required String subjectId,
     required String title,
     required List<String> questionIds,
     required List<String> nodeIds,
+    SavedTestKind kind = SavedTestKind.mock,
   }) async {
     final uid = _uid;
     final data = await _client
@@ -890,6 +892,7 @@ class SubjectsDataSource {
           'user_id': uid,
           'subject_id': subjectId,
           'title': title,
+          'kind': kind.slug,
           'question_ids': questionIds,
           'node_ids': nodeIds,
           'question_count': questionIds.length,
@@ -899,12 +902,16 @@ class SubjectsDataSource {
     return SavedTest.fromMap(data);
   }
 
-  /// Lista de tests plantilla del temario (recientes primero).
-  Future<List<SavedTest>> listSavedTests(String subjectId) async {
+  /// Lista de tests plantilla del temario filtrada por [kind].
+  Future<List<SavedTest>> listSavedTests(
+    String subjectId, {
+    SavedTestKind kind = SavedTestKind.mock,
+  }) async {
     final data = await _client
         .from('saved_tests')
         .select()
         .eq('subject_id', subjectId)
+        .eq('kind', kind.slug)
         .order('created_at', ascending: false);
     return (data as List)
         .cast<Map<String, dynamic>>()
@@ -950,13 +957,11 @@ class SubjectsDataSource {
     return rpcRes.toString();
   }
 
-  /// Resuelve las preguntas reales (del banco) de un saved_test.
-  /// Las preguntas borradas del banco se omiten silenciosamente: la UI
-  /// muestra el count real vs el esperado.
+  /// Resuelve las preguntas (multi-choice) de un saved_test kind=mock.
+  /// Las preguntas borradas del banco se omiten silenciosamente.
   Future<List<QuizQuestion>> getSavedTestQuestions(SavedTest s) async {
     if (s.questionIds.isEmpty) return const [];
     final out = <QuizQuestion>[];
-    // chunks de 200 para no superar el limite del IN.
     for (var i = 0; i < s.questionIds.length; i += 200) {
       final chunk = s.questionIds.sublist(
         i,
@@ -966,7 +971,6 @@ class SubjectsDataSource {
           .from('question_bank')
           .select('id, content_hash, question, options, correct_index, explanation')
           .inFilter('id', chunk);
-      // Mapeamos por id para preservar el orden original del snapshot.
       final byId = <String, Map<String, dynamic>>{};
       for (final r in (data as List).cast<Map<String, dynamic>>()) {
         byId[r['id'] as String] = r;
@@ -986,6 +990,58 @@ class SubjectsDataSource {
           correctIndex: (row['correct_index'] as num?)?.toInt() ?? 0,
           explanation: row['explanation'] as String?,
         ),);
+      }
+    }
+    return out;
+  }
+
+  /// Resuelve las afirmaciones V/F de un saved_test kind=tf.
+  Future<List<TfQuestion>> getSavedTfTestQuestions(SavedTest s) async {
+    if (s.questionIds.isEmpty) return const [];
+    final out = <TfQuestion>[];
+    for (var i = 0; i < s.questionIds.length; i += 200) {
+      final chunk = s.questionIds.sublist(
+        i,
+        i + 200 > s.questionIds.length ? s.questionIds.length : i + 200,
+      );
+      final data = await _client
+          .from('tf_bank')
+          .select('id, content_hash, statement, is_true, explanation')
+          .inFilter('id', chunk);
+      final byId = <String, Map<String, dynamic>>{};
+      for (final r in (data as List).cast<Map<String, dynamic>>()) {
+        byId[r['id'] as String] = r;
+      }
+      for (final id in chunk) {
+        final row = byId[id];
+        if (row == null) continue;
+        out.add(TfQuestion.fromMap(row));
+      }
+    }
+    return out;
+  }
+
+  /// Resuelve las preguntas de desarrollo (ensayo) de un saved_test kind=essay.
+  Future<List<EssayQuestion>> getSavedEssayTestQuestions(SavedTest s) async {
+    if (s.questionIds.isEmpty) return const [];
+    final out = <EssayQuestion>[];
+    for (var i = 0; i < s.questionIds.length; i += 200) {
+      final chunk = s.questionIds.sublist(
+        i,
+        i + 200 > s.questionIds.length ? s.questionIds.length : i + 200,
+      );
+      final data = await _client
+          .from('essay_bank')
+          .select('id, content_hash, question, answer')
+          .inFilter('id', chunk);
+      final byId = <String, Map<String, dynamic>>{};
+      for (final r in (data as List).cast<Map<String, dynamic>>()) {
+        byId[r['id'] as String] = r;
+      }
+      for (final id in chunk) {
+        final row = byId[id];
+        if (row == null) continue;
+        out.add(EssayQuestion.fromMap(row));
       }
     }
     return out;

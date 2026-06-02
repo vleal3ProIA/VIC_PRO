@@ -38,17 +38,20 @@ class SavedTestPickResult {
 Future<SavedTestPickResult?> showSavedTestPicker(
   BuildContext context, {
   required String subjectId,
+  SavedTestKind kind = SavedTestKind.mock,
 }) {
   return showDialog<SavedTestPickResult>(
     context: context,
     barrierDismissible: true,
-    builder: (ctx) => _SavedTestPickerDialog(subjectId: subjectId),
+    builder: (ctx) =>
+        _SavedTestPickerDialog(subjectId: subjectId, kind: kind),
   );
 }
 
 class _SavedTestPickerDialog extends ConsumerStatefulWidget {
-  const _SavedTestPickerDialog({required this.subjectId});
+  const _SavedTestPickerDialog({required this.subjectId, required this.kind});
   final String subjectId;
+  final SavedTestKind kind;
 
   @override
   ConsumerState<_SavedTestPickerDialog> createState() =>
@@ -62,7 +65,9 @@ class _SavedTestPickerDialogState
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final async = ref.watch(savedTestsProvider(widget.subjectId));
+    final async = ref.watch(
+      savedTestsProvider((subjectId: widget.subjectId, kind: widget.kind)),
+    );
     return AlertDialog(
       title: Text(l.studyTestSavedListTitle),
       content: SizedBox(

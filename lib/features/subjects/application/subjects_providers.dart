@@ -114,9 +114,13 @@ final examAttemptsProvider =
 });
 
 /// Tests guardados (plantillas reutilizables) de un temario.
+typedef SavedTestsQuery = ({String subjectId, SavedTestKind kind});
+
 final savedTestsProvider =
-    FutureProvider.family<List<SavedTest>, String>((ref, subjectId) {
-  return ref.watch(subjectsDataSourceProvider).listSavedTests(subjectId);
+    FutureProvider.family<List<SavedTest>, SavedTestsQuery>((ref, q) {
+  return ref
+      .watch(subjectsDataSourceProvider)
+      .listSavedTests(q.subjectId, kind: q.kind);
 });
 
 /// Attempts (intentos) de un saved_test concreto, ordenados de más reciente

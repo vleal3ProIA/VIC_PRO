@@ -161,7 +161,9 @@ class _TestRunnerDialogState extends ConsumerState<TestRunnerDialog> {
       ref.invalidate(examAttemptsProvider(widget.subjectId));
       if (widget.savedTestId != null) {
         ref.invalidate(savedTestAttemptsProvider(widget.savedTestId!));
-        ref.invalidate(savedTestsProvider(widget.subjectId));
+        ref.invalidate(savedTestsProvider(
+          (subjectId: widget.subjectId, kind: SavedTestKind.mock),
+        ),);
       }
     }
     if (mounted) setState(() => _done = true);

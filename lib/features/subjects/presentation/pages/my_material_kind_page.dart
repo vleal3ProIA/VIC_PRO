@@ -238,9 +238,15 @@ class _KindContent extends StatelessWidget {
       case MyMaterialKind.quiz:
         return _QuizRunnerCard(subjectId: subject.id);
       case MyMaterialKind.tf:
-        return _TfRunnerCard(subjectId: subject.id);
+        return SavedTestsLibrary(
+          subjectId: subject.id,
+          kind: SavedTestKind.tf,
+        );
       case MyMaterialKind.essay:
-        return _EssayListCard(subjectId: subject.id);
+        return SavedTestsLibrary(
+          subjectId: subject.id,
+          kind: SavedTestKind.essay,
+        );
       case MyMaterialKind.flashcards:
         return _FlashcardsListCard(subjectId: subject.id);
       case MyMaterialKind.notes:
@@ -640,6 +646,7 @@ class _QuizRunnerCard extends ConsumerWidget {
 }
 
 /// Verdadero/Falso: configurador inline + [TfRunnerDialog] vía [TfView].
+// ignore: unused_element
 class _TfRunnerCard extends ConsumerWidget {
   const _TfRunnerCard({required this.subjectId});
   final String subjectId;
@@ -663,6 +670,7 @@ class _TfRunnerCard extends ConsumerWidget {
 
 /// Para essay mostramos la lista con pregunta + respuesta colapsable (la
 /// respuesta modelo puede ser larga). Read-only — el user no edita aqui.
+// ignore: unused_element
 class _EssayListCard extends StatelessWidget {
   const _EssayListCard({required this.subjectId});
   final String subjectId;
@@ -897,7 +905,7 @@ class _MockRunnerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SavedTestsLibrary(subjectId: subjectId);
+    return SavedTestsLibrary(subjectId: subjectId, kind: SavedTestKind.mock);
   }
 }
 
