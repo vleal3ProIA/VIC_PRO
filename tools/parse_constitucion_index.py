@@ -400,7 +400,14 @@ begin
 
     # Inicializamos el array con array_fill para evitar "out of bounds" en
     # PL/pgSQL al asignar v_node_ids[N] := uuid.
-    parts.append(f"\n  declare\n    v_node_ids uuid[] := array_fill(null::uuid, ARRAY[{len(nodes) + 10}]);\n  begin\n")
+    # NOTA: PL/pgSQL no permite `RETURNING ... INTO array[N]` directamente.
+    # Usamos una variable temp `v_tmp_id` y luego asignamos al array.
+    parts.append(
+        f"\n  declare\n"
+        f"    v_node_ids uuid[] := array_fill(null::uuid, ARRAY[{len(nodes) + 10}]);\n"
+        f"    v_tmp_id uuid;\n"
+        f"  begin\n"
+    )
 
     # Now insert one by one with proper parent resolution
     for i, n in enumerate(nodes):
@@ -418,7 +425,8 @@ begin
         parts.append(
             f"    insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)\n"
             f"    values (v_subject_id, v_user_id, {parent_sql}, '{label_esc}', {position}, {depth}, md5('{label_esc}'))\n"
-            f"    returning id into v_node_ids[{i + 1}];\n"
+            f"    returning id into v_tmp_id;\n"
+            f"    v_node_ids[{i + 1}] := v_tmp_id;\n"
         )
 
         # Si tiene content (article, preamble, disposition con texto), insertar node_content kind='original'

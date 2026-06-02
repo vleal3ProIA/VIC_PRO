@@ -6440,10 +6440,12 @@ MIL NOVECIENTOS SETENTA Y OCHO.
 
   declare
     v_node_ids uuid[] := array_fill(null::uuid, ARRAY[204]);
+    v_tmp_id uuid;
   begin
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_root_id, 'Preámbulo', 0, 1, md5('Preámbulo'))
-    returning id into v_node_ids[1];
+    returning id into v_tmp_id;
+    v_node_ids[1] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[1], v_user_id, 'original', $c1$La Nación española, deseando establecer la justicia, la liber-
 tad y la seguridad y promover el bien de cuantos la integran,
@@ -6473,10 +6475,12 @@ ratifica la siguiente
                       CONSTITUCIÓN$c1$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_root_id, 'TÍTULO PRELIMINAR', 1, 1, md5('TÍTULO PRELIMINAR'))
-    returning id into v_node_ids[2];
+    returning id into v_tmp_id;
+    v_node_ids[2] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[2], 'Artículo 1', 0, 2, md5('Artículo 1'))
-    returning id into v_node_ids[3];
+    returning id into v_tmp_id;
+    v_node_ids[3] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[3], v_user_id, 'original', $c3$1. España se constituye en un Estado social y democrático
 
@@ -6491,7 +6495,8 @@ emanan los poderes del Estado.
 lamentaria.$c3$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[2], 'Artículo 2', 1, 2, md5('Artículo 2'))
-    returning id into v_node_ids[4];
+    returning id into v_tmp_id;
+    v_node_ids[4] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[4], v_user_id, 'original', $c4$La Constitución se fundamenta en la indisoluble unidad de
 
@@ -6501,7 +6506,8 @@ de las nacionalidades y regiones que la integran y la solidaridad
 entre todas ellas.$c4$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[2], 'Artículo 3', 2, 2, md5('Artículo 3'))
-    returning id into v_node_ids[5];
+    returning id into v_tmp_id;
+    v_node_ids[5] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[5], v_user_id, 'original', $c5$1. El castellano es la lengua española oficial del Estado. To-
 
@@ -6517,7 +6523,8 @@ paña es un patrimonio cultural que será objeto de especial
 respeto y protección.$c5$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[2], 'Artículo 4', 3, 2, md5('Artículo 4'))
-    returning id into v_node_ids[6];
+    returning id into v_tmp_id;
+    v_node_ids[6] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[6], v_user_id, 'original', $c6$1. La bandera de España está formada por tres franjas hori-
 
@@ -6531,12 +6538,14 @@ a la bandera de España en sus edificios públicos y en sus actos
 oficiales.$c6$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[2], 'Artículo 5', 4, 2, md5('Artículo 5'))
-    returning id into v_node_ids[7];
+    returning id into v_tmp_id;
+    v_node_ids[7] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[7], v_user_id, 'original', $c7$La capital del Estado es la villa de Madrid.$c7$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[2], 'Artículo 6', 5, 2, md5('Artículo 6'))
-    returning id into v_node_ids[8];
+    returning id into v_tmp_id;
+    v_node_ids[8] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[8], v_user_id, 'original', $c8$Los partidos políticos expresan el pluralismo político, con-
 curren a la formación y manifestación de la voluntad popular
@@ -6546,7 +6555,8 @@ respeto a la Constitución y a la ley. Su estructura interna y
 funcionamiento deberán ser democráticos.$c8$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[2], 'Artículo 7', 6, 2, md5('Artículo 7'))
-    returning id into v_node_ids[9];
+    returning id into v_tmp_id;
+    v_node_ids[9] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[9], v_user_id, 'original', $c9$Los sindicatos de trabajadores y las asociaciones empresa-
 riales contribuyen a la defensa y promoción de los intereses
@@ -6556,7 +6566,8 @@ Constitución y a la ley. Su estructura interna y funcionamiento
 deberán ser democráticos.$c9$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[2], 'Artículo 8', 7, 2, md5('Artículo 8'))
-    returning id into v_node_ids[10];
+    returning id into v_tmp_id;
+    v_node_ids[10] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[10], v_user_id, 'original', $c10$1. Las Fuerzas Armadas, constituidas por el Ejército de Tierra,
 la Armada y el Ejército del Aire, tienen como misión garantizar
@@ -6567,7 +6578,8 @@ dad territorial y el ordenamiento constitucional.
 militar conforme a los principios de la presente Constitución.$c10$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[2], 'Artículo 9', 8, 2, md5('Artículo 9'))
-    returning id into v_node_ids[11];
+    returning id into v_tmp_id;
+    v_node_ids[11] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[11], v_user_id, 'original', $c11$1. Los ciudadanos y los poderes públicos están sujetos a la
 Constitución y al resto del ordenamiento jurídico.
@@ -6588,10 +6600,12 @@ de derechos individuales, la seguridad jurídica, la responsabili-
 dad y la interdicción de la arbitrariedad de los poderes públicos.$c11$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_root_id, 'TÍTULO I', 2, 1, md5('TÍTULO I'))
-    returning id into v_node_ids[12];
+    returning id into v_tmp_id;
+    v_node_ids[12] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[12], 'Artículo 10', 0, 2, md5('Artículo 10'))
-    returning id into v_node_ids[13];
+    returning id into v_tmp_id;
+    v_node_ids[13] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[13], v_user_id, 'original', $c13$1. La dignidad de la persona, los derechos inviolables que le
 son inherentes, el libre desarrollo de la personalidad, el respe-
@@ -6605,10 +6619,12 @@ manos y los tratados y acuerdos internacionales sobre las mis-
 mas materias ratificados por España.$c13$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[12], 'CAPÍTULO PRIMERO', 1, 2, md5('CAPÍTULO PRIMERO'))
-    returning id into v_node_ids[14];
+    returning id into v_tmp_id;
+    v_node_ids[14] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[14], 'Artículo 11', 0, 3, md5('Artículo 11'))
-    returning id into v_node_ids[15];
+    returning id into v_tmp_id;
+    v_node_ids[15] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[15], v_user_id, 'original', $c15$1. La nacionalidad española se adquiere, se conserva y se
 pierde de acuerdo con lo establecido por la ley.
@@ -6624,14 +6640,16 @@ un derecho recíproco, podrán naturalizarse los españoles sin
 perder su nacionalidad de origen.$c15$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[14], 'Artículo 12', 1, 3, md5('Artículo 12'))
-    returning id into v_node_ids[16];
+    returning id into v_tmp_id;
+    v_node_ids[16] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[16], v_user_id, 'original', $c16$Los españoles son mayores de edad a los dieciocho años.
 
 8$c16$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[14], 'Artículo 13', 2, 3, md5('Artículo 13'))
-    returning id into v_node_ids[17];
+    returning id into v_tmp_id;
+    v_node_ids[17] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[17], v_user_id, 'original', $c17$1. Los extranjeros gozarán en España de las libertades públi-
 cas que garantiza el presente Título en los términos que esta-
@@ -6653,10 +6671,12 @@ otros países y los apátridas podrán gozar del derecho de asilo
 en España.$c17$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[12], 'CAPÍTULO SEGUNDO', 2, 2, md5('CAPÍTULO SEGUNDO'))
-    returning id into v_node_ids[18];
+    returning id into v_tmp_id;
+    v_node_ids[18] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[18], 'Artículo 14', 0, 3, md5('Artículo 14'))
-    returning id into v_node_ids[19];
+    returning id into v_tmp_id;
+    v_node_ids[19] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[19], v_user_id, 'original', $c19$Los españoles son iguales ante la ley, sin que pueda preva-
 lecer discriminación alguna por razón de nacimiento, raza,
@@ -6664,10 +6684,12 @@ sexo, religión, opinión o cualquier otra condición o circuns-
 tancia personal o social.$c19$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[18], 'Sección 1.ª De los derechos fundamentales y de las libertades', 1, 3, md5('Sección 1.ª De los derechos fundamentales y de las libertades'))
-    returning id into v_node_ids[20];
+    returning id into v_tmp_id;
+    v_node_ids[20] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[20], 'Artículo 15', 0, 4, md5('Artículo 15'))
-    returning id into v_node_ids[21];
+    returning id into v_tmp_id;
+    v_node_ids[21] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[21], v_user_id, 'original', $c21$Todos tienen derecho a la vida y a la integridad física y mo-
 ral, sin que, en ningún caso, puedan ser sometidos a tortura ni
@@ -6676,7 +6698,8 @@ pena de muerte, salvo lo que puedan disponer las leyes pena-
 les militares para tiempos de guerra.$c21$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[20], 'Artículo 16', 1, 4, md5('Artículo 16'))
-    returning id into v_node_ids[22];
+    returning id into v_tmp_id;
+    v_node_ids[22] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[22], v_user_id, 'original', $c22$1. Se garantiza la libertad ideológica, religiosa y de culto de
 los individuos y las comunidades sin más limitación, en sus
@@ -6694,7 +6717,8 @@ dad española y mantendrán las consiguientes relaciones de
 cooperación con la Iglesia Católica y las demás confesiones.$c22$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[20], 'Artículo 17', 2, 4, md5('Artículo 17'))
-    returning id into v_node_ids[23];
+    returning id into v_tmp_id;
+    v_node_ids[23] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[23], v_user_id, 'original', $c23$1. Toda persona tiene derecho a la libertad y a la seguridad.
 Nadie puede ser privado de su libertad, sino con la observancia
@@ -6721,7 +6745,8 @@ persona detenida ilegalmente. Asimismo, por ley se determi-
 nará el plazo máximo de duración de la prisión provisional.$c23$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[20], 'Artículo 18', 3, 4, md5('Artículo 18'))
-    returning id into v_node_ids[24];
+    returning id into v_tmp_id;
+    v_node_ids[24] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[24], v_user_id, 'original', $c24$1. Se garantiza el derecho al honor, a la intimidad personal y
 familiar y a la propia imagen.
@@ -6740,7 +6765,8 @@ honor y la intimidad personal y familiar de los ciudadanos y el
 pleno ejercicio de sus derechos.$c24$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[20], 'Artículo 19', 4, 4, md5('Artículo 19'))
-    returning id into v_node_ids[25];
+    returning id into v_tmp_id;
+    v_node_ids[25] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[25], v_user_id, 'original', $c25$Los españoles tienen derecho a elegir libremente su resi-
 dencia y a circular por el territorio nacional.
@@ -6750,7 +6776,8 @@ paña en los términos que la ley establezca. Este derecho no
 podrá ser limitado por motivos políticos o ideológicos.$c25$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[20], 'Artículo 20', 5, 4, md5('Artículo 20'))
-    returning id into v_node_ids[26];
+    returning id into v_tmp_id;
+    v_node_ids[26] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[26], v_user_id, 'original', $c26$1. Se reconocen y protegen los derechos:
 
@@ -6791,7 +6818,8 @@ ción judicial.
                                                                                                       11$c26$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[20], 'Artículo 21', 6, 4, md5('Artículo 21'))
-    returning id into v_node_ids[27];
+    returning id into v_tmp_id;
+    v_node_ids[27] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[27], v_user_id, 'original', $c27$1. Se reconoce el derecho de reunión pacífica y sin armas. El
 ejercicio de este derecho no necesitará autorización previa.
@@ -6803,7 +6831,8 @@ de alteración del orden público, con peligro para personas o
 bienes.$c27$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[20], 'Artículo 22', 7, 4, md5('Artículo 22'))
-    returning id into v_node_ids[28];
+    returning id into v_tmp_id;
+    v_node_ids[28] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[28], v_user_id, 'original', $c28$1. Se reconoce el derecho de asociación.
    2. Las asociaciones que persigan fines o utilicen medios ti-
@@ -6817,7 +6846,8 @@ en sus actividades en virtud de resolución judicial motivada.
 paramilitar.$c28$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[20], 'Artículo 23', 8, 4, md5('Artículo 23'))
-    returning id into v_node_ids[29];
+    returning id into v_tmp_id;
+    v_node_ids[29] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[29], v_user_id, 'original', $c29$1. Los ciudadanos tienen el derecho a participar en los asun-
 tos públicos, directamente o por medio de representantes, li-
@@ -6829,7 +6859,8 @@ igualdad a las funciones y cargos públicos, con los requisitos
 que señalen las leyes.$c29$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[20], 'Artículo 24', 9, 4, md5('Artículo 24'))
-    returning id into v_node_ids[30];
+    returning id into v_tmp_id;
+    v_node_ids[30] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[30], v_user_id, 'original', $c30$1. Todas las personas tienen derecho a obtener la tutela
 efectiva de los jueces y tribunales en el ejercicio de sus dere-
@@ -6851,7 +6882,8 @@ de secreto profesional, no se estará obligado a declarar sobre
 hechos presuntamente delictivos.$c30$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[20], 'Artículo 25', 10, 4, md5('Artículo 25'))
-    returning id into v_node_ids[31];
+    returning id into v_tmp_id;
+    v_node_ids[31] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[31], v_user_id, 'original', $c31$1. Nadie puede ser condenado o sancionado por acciones u
 omisiones que en el momento de producirse no constituyan
@@ -6874,13 +6906,15 @@ dad.
 directa o subsidiariamente, impliquen privación de libertad.$c31$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[20], 'Artículo 26', 11, 4, md5('Artículo 26'))
-    returning id into v_node_ids[32];
+    returning id into v_tmp_id;
+    v_node_ids[32] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[32], v_user_id, 'original', $c32$Se prohíben los Tribunales de Honor en el ámbito de la Ad-
 ministración civil y de las organizaciones profesionales.$c32$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[20], 'Artículo 27', 12, 4, md5('Artículo 27'))
-    returning id into v_node_ids[33];
+    returning id into v_tmp_id;
+    v_node_ids[33] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[33], v_user_id, 'original', $c33$1. Todos tienen el derecho a la educación. Se reconoce la
 libertad de enseñanza.
@@ -6921,7 +6955,8 @@ que reúnan los requisitos que la ley establezca.
 términos que la ley establezca.$c33$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[20], 'Artículo 28', 13, 4, md5('Artículo 28'))
-    returning id into v_node_ids[34];
+    returning id into v_tmp_id;
+    v_node_ids[34] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[34], v_user_id, 'original', $c34$1. Todos tienen derecho a sindicarse libremente. La ley po-
 drá limitar o exceptuar el ejercicio de este derecho a las Fuer-
@@ -6940,7 +6975,8 @@ derecho establecerá las garantías precisas para asegurar el
 mantenimiento de los servicios esenciales de la comunidad.$c34$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[20], 'Artículo 29', 14, 4, md5('Artículo 29'))
-    returning id into v_node_ids[35];
+    returning id into v_tmp_id;
+    v_node_ids[35] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[35], v_user_id, 'original', $c35$1. Todos los españoles tendrán el derecho de petición indi-
 vidual y colectiva, por escrito, en la forma y con los efectos
@@ -6954,10 +6990,12 @@ Cuerpos sometidos a disciplina militar podrán ejercer este de-
 legislación específica.$c35$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[18], 'Sección 2.ª De los derechos y deberes de los ciudadanos', 2, 3, md5('Sección 2.ª De los derechos y deberes de los ciudadanos'))
-    returning id into v_node_ids[36];
+    returning id into v_tmp_id;
+    v_node_ids[36] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[36], 'Artículo 30', 0, 4, md5('Artículo 30'))
-    returning id into v_node_ids[37];
+    returning id into v_tmp_id;
+    v_node_ids[37] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[37], v_user_id, 'original', $c37$1. Los españoles tienen el derecho y el deber de defender a
 España.
@@ -6976,7 +7014,8 @@ danos en los casos de grave riesgo, catástrofe o calamidad
 pública.$c37$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[36], 'Artículo 31', 1, 4, md5('Artículo 31'))
-    returning id into v_node_ids[38];
+    returning id into v_tmp_id;
+    v_node_ids[38] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[38], v_user_id, 'original', $c38$1. Todos contribuirán al sostenimiento de los gastos públicos
 de acuerdo con su capacidad económica mediante un sistema
@@ -6991,7 +7030,8 @@ a los criterios de eficiencia y economía.
 moniales de carácter público con arreglo a la ley.$c38$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[36], 'Artículo 32', 2, 4, md5('Artículo 32'))
-    returning id into v_node_ids[39];
+    returning id into v_tmp_id;
+    v_node_ids[39] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[39], v_user_id, 'original', $c39$1. El hombre y la mujer tienen derecho a contraer matrimo-
 nio con plena igualdad jurídica.
@@ -7001,7 +7041,8 @@ cidad para contraerlo, los derechos y deberes de los cónyuges,
 las causas de separación y disolución y sus efectos.$c39$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[36], 'Artículo 33', 3, 4, md5('Artículo 33'))
-    returning id into v_node_ids[40];
+    returning id into v_tmp_id;
+    v_node_ids[40] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[40], v_user_id, 'original', $c40$1. Se reconoce el derecho a la propiedad privada y a la he-
 rencia.
@@ -7016,7 +7057,8 @@ la correspondiente indemnización y de conformidad con lo
 dispuesto por las leyes.$c40$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[36], 'Artículo 34', 4, 4, md5('Artículo 34'))
-    returning id into v_node_ids[41];
+    returning id into v_tmp_id;
+    v_node_ids[41] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[41], v_user_id, 'original', $c41$1. Se reconoce el derecho de fundación para fines de interés
 general, con arreglo a la ley.
@@ -7025,7 +7067,8 @@ general, con arreglo a la ley.
 apartados 2 y 4 del artículo 22.$c41$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[36], 'Artículo 35', 5, 4, md5('Artículo 35'))
-    returning id into v_node_ids[42];
+    returning id into v_tmp_id;
+    v_node_ids[42] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[42], v_user_id, 'original', $c42$1. Todos los españoles tienen el deber de trabajar y el dere-
 cho al trabajo, a la libre elección de profesión u oficio, a la
@@ -7036,7 +7079,8 @@ ningún caso pueda hacerse discriminación por razón de sexo.
    2. La ley regulará un estatuto de los trabajadores.$c42$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[36], 'Artículo 36', 6, 4, md5('Artículo 36'))
-    returning id into v_node_ids[43];
+    returning id into v_tmp_id;
+    v_node_ids[43] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[43], v_user_id, 'original', $c43$La ley regulará las peculiaridades propias del régimen jurídi-
 co de los Colegios Profesionales y el ejercicio de las profesio-
@@ -7044,7 +7088,8 @@ nes tituladas. La estructura interna y el funcionamiento de los
 Colegios deberán ser democráticos.$c43$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[36], 'Artículo 37', 7, 4, md5('Artículo 37'))
-    returning id into v_node_ids[44];
+    returning id into v_tmp_id;
+    v_node_ids[44] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[44], v_user_id, 'original', $c44$1. La ley garantizará el derecho a la negociación colectiva
 laboral entre los representantes de los trabajadores y empre-
@@ -7057,7 +7102,8 @@ puedan establecer, incluirá las garantías precisas para asegurar
 el funcionamiento de los servicios esenciales de la comunidad.$c44$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[36], 'Artículo 38', 8, 4, md5('Artículo 38'))
-    returning id into v_node_ids[45];
+    returning id into v_tmp_id;
+    v_node_ids[45] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[45], v_user_id, 'original', $c45$Se reconoce la libertad de empresa en el marco de la eco-
 
@@ -7069,10 +7115,12 @@ con las exigencias de la economía general y, en su caso, de la
 planificación.$c45$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[12], 'CAPÍTULO TERCERO', 3, 2, md5('CAPÍTULO TERCERO'))
-    returning id into v_node_ids[46];
+    returning id into v_tmp_id;
+    v_node_ids[46] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[46], 'Artículo 39', 0, 3, md5('Artículo 39'))
-    returning id into v_node_ids[47];
+    returning id into v_tmp_id;
+    v_node_ids[47] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[47], v_user_id, 'original', $c47$1. Los poderes públicos aseguran la protección social, eco-
 nómica y jurídica de la familia.
@@ -7090,7 +7138,8 @@ ría de edad y en los demás casos en que legalmente proceda.
 dos internacionales que velan por sus derechos.$c47$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[46], 'Artículo 40', 1, 3, md5('Artículo 40'))
-    returning id into v_node_ids[48];
+    returning id into v_tmp_id;
+    v_node_ids[48] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[48], v_user_id, 'original', $c48$1. Los poderes públicos promoverán las condiciones favora-
 
@@ -7107,7 +7156,8 @@ ral, las vacaciones periódicas retribuidas y la promoción de
 centros adecuados.$c48$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[46], 'Artículo 41', 2, 3, md5('Artículo 41'))
-    returning id into v_node_ids[49];
+    returning id into v_tmp_id;
+    v_node_ids[49] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[49], v_user_id, 'original', $c49$Los poderes públicos mantendrán un régimen público de
 
@@ -7119,14 +7169,16 @@ tencia y prestaciones complementarias serán libres.
                                                                                                      17$c49$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[46], 'Artículo 42', 3, 3, md5('Artículo 42'))
-    returning id into v_node_ids[50];
+    returning id into v_tmp_id;
+    v_node_ids[50] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[50], v_user_id, 'original', $c50$El Estado velará especialmente por la salvaguardia de los
 derechos económicos y sociales de los trabajadores españoles
 en el extranjero y orientará su política hacia su retorno.$c50$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[46], 'Artículo 43', 4, 3, md5('Artículo 43'))
-    returning id into v_node_ids[51];
+    returning id into v_tmp_id;
+    v_node_ids[51] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[51], v_user_id, 'original', $c51$1. Se reconoce el derecho a la protección de la salud.
    2. Compete a los poderes públicos organizar y tutelar la sa-
@@ -7138,7 +7190,8 @@ la educación física y el deporte. Asimismo facilitarán la ade-
 cuada utilización del ocio.$c51$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[46], 'Artículo 44', 5, 3, md5('Artículo 44'))
-    returning id into v_node_ids[52];
+    returning id into v_tmp_id;
+    v_node_ids[52] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[52], v_user_id, 'original', $c52$1. Los poderes públicos promoverán y tutelarán el acceso a
 la cultura, a la que todos tienen derecho.
@@ -7147,7 +7200,8 @@ la cultura, a la que todos tienen derecho.
 gación científica y técnica en beneficio del interés general.$c52$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[46], 'Artículo 45', 6, 3, md5('Artículo 45'))
-    returning id into v_node_ids[53];
+    returning id into v_tmp_id;
+    v_node_ids[53] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[53], v_user_id, 'original', $c53$1. Todos tienen el derecho a disfrutar de un medio ambiente
 adecuado para el desarrollo de la persona, así como el deber
@@ -7164,7 +7218,8 @@ les o, en su caso, administrativas, así como la obligación de
 reparar el daño causado.$c53$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[46], 'Artículo 46', 7, 3, md5('Artículo 46'))
-    returning id into v_node_ids[54];
+    returning id into v_tmp_id;
+    v_node_ids[54] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[54], v_user_id, 'original', $c54$Los poderes públicos garantizarán la conservación y promo-
 verán el enriquecimiento del patrimonio histórico, cultural y
@@ -7175,7 +7230,8 @@ ley penal sancionará los atentados contra este patrimonio.
 18$c54$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[46], 'Artículo 47', 8, 3, md5('Artículo 47'))
-    returning id into v_node_ids[55];
+    returning id into v_tmp_id;
+    v_node_ids[55] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[55], v_user_id, 'original', $c55$Todos los españoles tienen derecho a disfrutar de una vi-
 vienda digna y adecuada. Los poderes públicos promoverán
@@ -7186,14 +7242,16 @@ especulación. La comunidad participará en las plusvalías que
 genere la acción urbanística de los entes públicos.$c55$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[46], 'Artículo 48', 9, 3, md5('Artículo 48'))
-    returning id into v_node_ids[56];
+    returning id into v_tmp_id;
+    v_node_ids[56] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[56], v_user_id, 'original', $c56$Los poderes públicos promoverán las condiciones para la
 participación libre y eficaz de la juventud en el desarrollo polí-
 tico, social, económico y cultural.$c56$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[46], 'Artículo 49', 10, 3, md5('Artículo 49'))
-    returning id into v_node_ids[57];
+    returning id into v_tmp_id;
+    v_node_ids[57] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[57], v_user_id, 'original', $c57$1. Las personas con discapacidad ejercen los derechos pre-
 vistos en este Título en condiciones de libertad e igualdad
@@ -7209,7 +7267,8 @@ particularmente las necesidades específicas de las mujeres y
 los menores con discapacidad.$c57$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[46], 'Artículo 50', 11, 3, md5('Artículo 50'))
-    returning id into v_node_ids[58];
+    returning id into v_tmp_id;
+    v_node_ids[58] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[58], v_user_id, 'original', $c58$Los poderes públicos garantizarán, mediante pensiones ade-
 cuadas y periódicamente actualizadas, la suficiencia económica
@@ -7219,7 +7278,8 @@ estar mediante un sistema de servicios sociales que atenderán
 sus problemas específicos de salud, vivienda, cultura y ocio.$c58$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[46], 'Artículo 51', 12, 3, md5('Artículo 51'))
-    returning id into v_node_ids[59];
+    returning id into v_tmp_id;
+    v_node_ids[59] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[59], v_user_id, 'original', $c59$1. Los poderes públicos garantizarán la defensa de los con-
 sumidores y usuarios, protegiendo, mediante procedimientos
@@ -7237,7 +7297,8 @@ la ley regulará el comercio interior y el régimen de autoriza-
 ción de productos comerciales.$c59$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[46], 'Artículo 52', 13, 3, md5('Artículo 52'))
-    returning id into v_node_ids[60];
+    returning id into v_tmp_id;
+    v_node_ids[60] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[60], v_user_id, 'original', $c60$La ley regulará las organizaciones profesionales que contri-
 buyan a la defensa de los intereses económicos que les sean
@@ -7245,10 +7306,12 @@ propios. Su estructura interna y funcionamiento deberán ser
 democráticos.$c60$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[12], 'CAPÍTULO CUARTO', 4, 2, md5('CAPÍTULO CUARTO'))
-    returning id into v_node_ids[61];
+    returning id into v_tmp_id;
+    v_node_ids[61] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[61], 'Artículo 53', 0, 3, md5('Artículo 53'))
-    returning id into v_node_ids[62];
+    returning id into v_tmp_id;
+    v_node_ids[62] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[62], v_user_id, 'original', $c62$1. Los derechos y libertades reconocidos en el Capítulo segun-
 do del presente Título vinculan a todos los poderes públicos. Sólo
@@ -7271,7 +7334,8 @@ públicos. Sólo podrán ser alegados ante la Jurisdicción ordinaria
 de acuerdo con lo que dispongan las leyes que los desarrollen.$c62$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[61], 'Artículo 54', 1, 3, md5('Artículo 54'))
-    returning id into v_node_ids[63];
+    returning id into v_tmp_id;
+    v_node_ids[63] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[63], v_user_id, 'original', $c63$Una ley orgánica regulará la institución del Defensor del
 Pueblo, como alto comisionado de las Cortes Generales, de-
@@ -7282,10 +7346,12 @@ dos en este Título, a cuyo efecto podrá supervisar la actividad
 de la Administración, dando cuenta a las Cortes Generales.$c63$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[12], 'CAPÍTULO QUINTO', 5, 2, md5('CAPÍTULO QUINTO'))
-    returning id into v_node_ids[64];
+    returning id into v_tmp_id;
+    v_node_ids[64] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[64], 'Artículo 55', 0, 3, md5('Artículo 55'))
-    returning id into v_node_ids[65];
+    returning id into v_tmp_id;
+    v_node_ids[65] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[65], v_user_id, 'original', $c65$1. Los derechos reconocidos en los artículos 17, 18, apartados
 2 y 3, artículos 19, 20, apartados 1, a) y d), y 5, artículos 21, 28,
@@ -7309,10 +7375,12 @@ como violación de los derechos y libertades reconocidos por
 las leyes.$c65$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_root_id, 'TÍTULO II', 3, 1, md5('TÍTULO II'))
-    returning id into v_node_ids[66];
+    returning id into v_tmp_id;
+    v_node_ids[66] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[66], 'Artículo 56', 0, 2, md5('Artículo 56'))
-    returning id into v_node_ids[67];
+    returning id into v_tmp_id;
+    v_node_ids[67] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[67], v_user_id, 'original', $c67$1. El Rey es el Jefe del Estado, símbolo de su unidad y per-
 manencia, arbitra y modera el funcionamiento regular de las
@@ -7331,7 +7399,8 @@ establecida en el artículo 64, careciendo de validez sin dicho
 refrendo, salvo lo dispuesto en el artículo 65, 2.$c67$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[66], 'Artículo 57', 1, 2, md5('Artículo 57'))
-    returning id into v_node_ids[68];
+    returning id into v_tmp_id;
+    v_node_ids[68] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[68], v_user_id, 'original', $c68$1. La Corona de España es hereditaria en los sucesores de S.
 M. Don Juan Carlos I de Borbón, legítimo heredero de la di-
@@ -7361,14 +7430,16 @@ o de derecho que ocurra en el orden de sucesión a la Corona
 se resolverán por una ley orgánica.$c68$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[66], 'Artículo 58', 2, 2, md5('Artículo 58'))
-    returning id into v_node_ids[69];
+    returning id into v_tmp_id;
+    v_node_ids[69] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[69], v_user_id, 'original', $c69$La Reina consorte o el consorte de la Reina no podrán asu-
 mir funciones constitucionales, salvo lo dispuesto para la Re-
 gencia.$c69$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[66], 'Artículo 59', 3, 2, md5('Artículo 59'))
-    returning id into v_node_ids[70];
+    returning id into v_tmp_id;
+    v_node_ids[70] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[70], v_user_id, 'original', $c70$1. Cuando el Rey fuere menor de edad, el padre o la madre
 del Rey y, en su defecto, el pariente mayor de edad más próxi-
@@ -7395,7 +7466,8 @@ edad.
 siempre en nombre del Rey.$c70$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[66], 'Artículo 60', 4, 2, md5('Artículo 60'))
-    returning id into v_node_ids[71];
+    returning id into v_tmp_id;
+    v_node_ids[71] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[71], v_user_id, 'original', $c71$1. Será tutor del Rey menor la persona que en su testamen-
 to hubiese nombrado el Rey difunto, siempre que sea mayor
@@ -7409,7 +7481,8 @@ padre, madre o ascendientes directos del Rey.
 todo cargo o representación política.$c71$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[66], 'Artículo 61', 5, 2, md5('Artículo 61'))
-    returning id into v_node_ids[72];
+    returning id into v_tmp_id;
+    v_node_ids[72] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[72], v_user_id, 'original', $c72$1. El Rey, al ser proclamado ante las Cortes Generales,
 prestará juramento de desempeñar fielmente sus funciones,
@@ -7422,7 +7495,8 @@ Regente o Regentes al hacerse cargo de sus funciones, pres-
 tarán el mismo juramento, así como el de fidelidad al Rey.$c72$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[66], 'Artículo 62', 6, 2, md5('Artículo 62'))
-    returning id into v_node_ids[73];
+    returning id into v_tmp_id;
+    v_node_ids[73] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[73], v_user_id, 'original', $c73$Corresponde al Rey:
 
@@ -7457,7 +7531,8 @@ tarán el mismo juramento, así como el de fidelidad al Rey.$c72$);
    j) El Alto Patronazgo de las Reales Academias.$c73$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[66], 'Artículo 63', 7, 2, md5('Artículo 63'))
-    returning id into v_node_ids[74];
+    returning id into v_tmp_id;
+    v_node_ids[74] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[74], v_user_id, 'original', $c74$1. El Rey acredita a los embajadores y otros representantes
 diplomáticos. Los representantes extranjeros en España están
@@ -7471,7 +7546,8 @@ de conformidad con la Constitución y las leyes.
 nerales, declarar la guerra y hacer la paz.$c74$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[66], 'Artículo 64', 8, 2, md5('Artículo 64'))
-    returning id into v_node_ids[75];
+    returning id into v_tmp_id;
+    v_node_ids[75] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[75], v_user_id, 'original', $c75$1. Los actos del Rey serán refrendados por el Presidente del
 Gobierno y, en su caso, por los Ministros competentes. La pro-
@@ -7483,7 +7559,8 @@ Presidente del Congreso.
 los refrenden.$c75$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[66], 'Artículo 65', 9, 2, md5('Artículo 65'))
-    returning id into v_node_ids[76];
+    returning id into v_tmp_id;
+    v_node_ids[76] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[76], v_user_id, 'original', $c76$1. El Rey recibe de los Presupuestos del Estado una cantidad
 global para el sostenimiento de su Familia y Casa, y distribuye
@@ -7494,13 +7571,16 @@ libremente la misma.
 y militares de su Casa.$c76$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_root_id, 'TÍTULO III', 4, 1, md5('TÍTULO III'))
-    returning id into v_node_ids[77];
+    returning id into v_tmp_id;
+    v_node_ids[77] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[77], 'CAPÍTULO PRIMERO', 0, 2, md5('CAPÍTULO PRIMERO'))
-    returning id into v_node_ids[78];
+    returning id into v_tmp_id;
+    v_node_ids[78] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[78], 'Artículo 66', 0, 3, md5('Artículo 66'))
-    returning id into v_node_ids[79];
+    returning id into v_tmp_id;
+    v_node_ids[79] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[79], v_user_id, 'original', $c79$1. Las Cortes Generales representan al pueblo español y es-
 tán formadas por el Congreso de los Diputados y el Senado.
@@ -7513,7 +7593,8 @@ Constitución.
    3. Las Cortes Generales son inviolables.$c79$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[78], 'Artículo 67', 1, 3, md5('Artículo 67'))
-    returning id into v_node_ids[80];
+    returning id into v_tmp_id;
+    v_node_ids[80] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[80], v_user_id, 'original', $c80$1. Nadie podrá ser miembro de las dos Cámaras simultánea-
 
@@ -7528,7 +7609,8 @@ vocatoria reglamentaria no vincularán a las Cámaras, y no po-
 drán ejercer sus funciones ni ostentar sus privilegios.$c80$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[78], 'Artículo 68', 2, 3, md5('Artículo 68'))
-    returning id into v_node_ids[81];
+    returning id into v_tmp_id;
+    v_node_ids[81] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[81], v_user_id, 'original', $c81$1. El Congreso se compone de un mínimo de 300 y un máxi-
 
@@ -7562,7 +7644,8 @@ electo deberá ser convocado dentro de los veinticinco días
 siguientes a la celebración de las elecciones.$c81$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[78], 'Artículo 69', 3, 3, md5('Artículo 69'))
-    returning id into v_node_ids[82];
+    returning id into v_tmp_id;
+    v_node_ids[82] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[82], v_user_id, 'original', $c82$1. El Senado es la Cámara de representación territorial.
    2. En cada provincia se elegirán cuatro Senadores por sufra-
@@ -7588,7 +7671,8 @@ Senadores termina cuatro años después de su elección o el día
 de la disolución de la Cámara.$c82$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[78], 'Artículo 70', 4, 3, md5('Artículo 70'))
-    returning id into v_node_ids[83];
+    returning id into v_tmp_id;
+    v_node_ids[83] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[83], v_user_id, 'original', $c83$1. La ley electoral determinará las causas de inelegibilidad e
 incompatibilidad de los Diputados y Senadores, que compren-
@@ -7611,7 +7695,8 @@ ambas Cámaras estará sometida al control judicial, en los tér-
 minos que establezca la ley electoral.$c83$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[78], 'Artículo 71', 5, 3, md5('Artículo 71'))
-    returning id into v_node_ids[84];
+    returning id into v_tmp_id;
+    v_node_ids[84] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[84], v_user_id, 'original', $c84$1. Los Diputados y Senadores gozarán de inviolabilidad por
 las opiniones manifestadas en el ejercicio de sus funciones.
@@ -7629,7 +7714,8 @@ tente la Sala de lo Penal del Tribunal Supremo.
 será fijada por las respectivas Cámaras.$c84$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[78], 'Artículo 72', 6, 3, md5('Artículo 72'))
-    returning id into v_node_ids[85];
+    returning id into v_tmp_id;
+    v_node_ids[85] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[85], v_user_id, 'original', $c85$1. Las Cámaras establecen sus propios Reglamentos, aprue-
 ban autónomamente sus presupuestos y, de común acuerdo,
@@ -7650,7 +7736,8 @@ licía en el interior de sus respectivas sedes.
                                                                                                      27$c85$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[78], 'Artículo 73', 7, 3, md5('Artículo 73'))
-    returning id into v_node_ids[86];
+    returning id into v_tmp_id;
+    v_node_ids[86] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[86], v_user_id, 'original', $c86$1. Las Cámaras se reunirán anualmente en dos períodos or-
 dinarios de sesiones: el primero, de septiembre a diciembre, y
@@ -7664,7 +7751,8 @@ orden del día determinado y serán clausuradas una vez que
 éste haya sido agotado.$c86$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[78], 'Artículo 74', 8, 3, md5('Artículo 74'))
-    returning id into v_node_ids[87];
+    returning id into v_tmp_id;
+    v_node_ids[87] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[87], v_user_id, 'original', $c87$1. Las Cámaras se reunirán en sesión conjunta para ejercer
 las competencias no legislativas que el Título II atribuye expre-
@@ -7681,7 +7769,8 @@ que será votado por ambas Cámaras. Si no se aprueba en la forma
 establecida, decidirá el Congreso por mayoría absoluta.$c87$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[78], 'Artículo 75', 9, 3, md5('Artículo 75'))
-    returning id into v_node_ids[88];
+    returning id into v_tmp_id;
+    v_node_ids[88] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[88], v_user_id, 'original', $c88$1. Las Cámaras funcionarán en Pleno y por Comisiones.
    2. Las Cámaras podrán delegar en las Comisiones Legislati-
@@ -7695,7 +7784,8 @@ las leyes orgánicas y de bases y los Presupuestos Generales del
 Estado.$c88$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[78], 'Artículo 76', 10, 3, md5('Artículo 76'))
-    returning id into v_node_ids[89];
+    returning id into v_tmp_id;
+    v_node_ids[89] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[89], v_user_id, 'original', $c89$1. El Congreso y el Senado, y, en su caso, ambas Cámaras
 conjuntamente, podrán nombrar Comisiones de investigación
@@ -7712,7 +7802,8 @@ maras. La ley regulará las sanciones que puedan imponerse
 por incumplimiento de esta obligación.$c89$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[78], 'Artículo 77', 11, 3, md5('Artículo 77'))
-    returning id into v_node_ids[90];
+    returning id into v_tmp_id;
+    v_node_ids[90] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[90], v_user_id, 'original', $c90$1. Las Cámaras pueden recibir peticiones individuales y co-
 lectivas, siempre por escrito, quedando prohibida la presenta-
@@ -7723,7 +7814,8 @@ que reciban. El Gobierno está obligado a explicarse sobre su
 contenido, siempre que las Cámaras lo exijan.$c90$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[78], 'Artículo 78', 12, 3, md5('Artículo 78'))
-    returning id into v_node_ids[91];
+    returning id into v_tmp_id;
+    v_node_ids[91] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[91], v_user_id, 'original', $c91$1. En cada Cámara habrá una Diputación Permanente com-
 puesta por un mínimo de veintiún miembros, que representa-
@@ -7747,7 +7839,8 @@ manente dará cuenta de los asuntos tratados y de sus decisio-
 nes.$c91$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[78], 'Artículo 79', 13, 3, md5('Artículo 79'))
-    returning id into v_node_ids[92];
+    returning id into v_tmp_id;
+    v_node_ids[92] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[92], v_user_id, 'original', $c92$1. Para adoptar acuerdos, las Cámaras deben estar reunidas
 reglamentariamente y con asistencia de la mayoría de sus
@@ -7764,17 +7857,20 @@ los Reglamentos de las Cámaras.
 ble.$c92$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[78], 'Artículo 80', 14, 3, md5('Artículo 80'))
-    returning id into v_node_ids[93];
+    returning id into v_tmp_id;
+    v_node_ids[93] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[93], v_user_id, 'original', $c93$Las sesiones plenarias de las Cámaras serán públicas, salvo
 acuerdo en contrario de cada Cámara, adoptado por mayoría
 absoluta o con arreglo al Reglamento.$c93$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[77], 'CAPÍTULO SEGUNDO', 1, 2, md5('CAPÍTULO SEGUNDO'))
-    returning id into v_node_ids[94];
+    returning id into v_tmp_id;
+    v_node_ids[94] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[94], 'Artículo 81', 0, 3, md5('Artículo 81'))
-    returning id into v_node_ids[95];
+    returning id into v_tmp_id;
+    v_node_ids[95] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[95], v_user_id, 'original', $c95$1. Son leyes orgánicas las relativas al desarrollo de los dere-
 chos fundamentales y de las libertades públicas, las que aprue-
@@ -7786,7 +7882,8 @@ orgánicas exigirá mayoría absoluta del Congreso, en una vota-
 ción final sobre el conjunto del proyecto.$c95$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[94], 'Artículo 82', 1, 3, md5('Artículo 82'))
-    returning id into v_node_ids[96];
+    returning id into v_tmp_id;
+    v_node_ids[96] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[96], v_user_id, 'original', $c96$1. Las Cortes Generales podrán delegar en el Gobierno la
 
@@ -7822,7 +7919,8 @@ las leyes de delegación podrán establecer en cada caso fór-
 mulas adicionales de control.$c96$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[94], 'Artículo 83', 2, 3, md5('Artículo 83'))
-    returning id into v_node_ids[97];
+    returning id into v_tmp_id;
+    v_node_ids[97] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[97], v_user_id, 'original', $c97$Las leyes de bases no podrán en ningún caso:
 
@@ -7830,7 +7928,8 @@ mulas adicionales de control.$c96$);
    b) Facultar para dictar normas con carácter retroactivo.$c97$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[94], 'Artículo 84', 3, 3, md5('Artículo 84'))
-    returning id into v_node_ids[98];
+    returning id into v_tmp_id;
+    v_node_ids[98] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[98], v_user_id, 'original', $c98$Cuando una proposición de ley o una enmienda fuere con-
 traria a una delegación legislativa en vigor, el Gobierno está
@@ -7839,13 +7938,15 @@ podrá presentarse una proposición de ley para la derogación
 total o parcial de la ley de delegación.$c98$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[94], 'Artículo 85', 4, 3, md5('Artículo 85'))
-    returning id into v_node_ids[99];
+    returning id into v_tmp_id;
+    v_node_ids[99] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[99], v_user_id, 'original', $c99$Las disposiciones del Gobierno que contengan legislación
 delegada recibirán el título de Decretos Legislativos.$c99$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[94], 'Artículo 86', 5, 3, md5('Artículo 86'))
-    returning id into v_node_ids[100];
+    returning id into v_tmp_id;
+    v_node_ids[100] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[100], v_user_id, 'original', $c100$1. En caso de extraordinaria y urgente necesidad, el Gobier-
 no podrá dictar disposiciones legislativas provisionales que
@@ -7870,7 +7971,8 @@ Cortes podrán tramitarlos como proyectos de ley por el pro-
 cedimiento de urgencia.$c100$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[94], 'Artículo 87', 6, 3, md5('Artículo 87'))
-    returning id into v_node_ids[101];
+    returning id into v_tmp_id;
+    v_node_ids[101] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[101], v_user_id, 'original', $c101$1. La iniciativa legislativa corresponde al Gobierno, al Con-
 greso y al Senado, de acuerdo con la Constitución y los Regla-
@@ -7890,7 +7992,8 @@ propias de ley orgánica, tributarias o de carácter internacional,
 ni en lo relativo a la prerrogativa de gracia.$c101$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[94], 'Artículo 88', 7, 3, md5('Artículo 88'))
-    returning id into v_node_ids[102];
+    returning id into v_tmp_id;
+    v_node_ids[102] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[102], v_user_id, 'original', $c102$Los proyectos de ley serán aprobados en Consejo de Minis-
 tros, que los someterá al Congreso, acompañados de una ex-
@@ -7898,7 +8001,8 @@ posición de motivos y de los antecedentes necesarios para
 pronunciarse sobre ellos.$c102$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[94], 'Artículo 89', 8, 3, md5('Artículo 89'))
-    returning id into v_node_ids[103];
+    returning id into v_tmp_id;
+    v_node_ids[103] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[103], v_user_id, 'original', $c103$1. La tramitación de las proposiciones de ley se regulará por
 los Reglamentos de las Cámaras, sin que la prioridad debida a
@@ -7910,7 +8014,8 @@ tiva en los términos regulados por el artículo 87.
 para su trámite en éste como tal proposición.$c103$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[94], 'Artículo 90', 9, 3, md5('Artículo 90'))
-    returning id into v_node_ids[104];
+    returning id into v_tmp_id;
+    v_node_ids[104] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[104], v_user_id, 'original', $c104$1. Aprobado un proyecto de ley ordinaria u orgánica por el
 Congreso de los Diputados, su Presidente dará inmediata
@@ -7935,14 +8040,16 @@ turales en los proyectos declarados urgentes por el Gobierno
 o por el Congreso de los Diputados.$c104$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[94], 'Artículo 91', 10, 3, md5('Artículo 91'))
-    returning id into v_node_ids[105];
+    returning id into v_tmp_id;
+    v_node_ids[105] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[105], v_user_id, 'original', $c105$El Rey sancionará en el plazo de quince días las leyes apro-
 badas por las Cortes Generales, y las promulgará y ordenará su
 inmediata publicación.$c105$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[94], 'Artículo 92', 11, 3, md5('Artículo 92'))
-    returning id into v_node_ids[106];
+    returning id into v_tmp_id;
+    v_node_ids[106] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[106], v_user_id, 'original', $c106$1. Las decisiones políticas de especial trascendencia podrán
 ser sometidas a referéndum consultivo de todos los ciudada-
@@ -7957,10 +8064,12 @@ miento de las distintas modalidades de referéndum previstas
 en esta Constitución.$c106$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[77], 'CAPÍTULO TERCERO', 2, 2, md5('CAPÍTULO TERCERO'))
-    returning id into v_node_ids[107];
+    returning id into v_tmp_id;
+    v_node_ids[107] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[107], 'Artículo 93', 0, 3, md5('Artículo 93'))
-    returning id into v_node_ids[108];
+    returning id into v_tmp_id;
+    v_node_ids[108] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[108], v_user_id, 'original', $c108$Mediante ley orgánica se podrá autorizar la celebración de
 tratados por los que se atribuya a una organización o institu-
@@ -7973,7 +8082,8 @@ tratados y de las resoluciones emanadas de los organismos
 internacionales o supranacionales titulares de la cesión.$c108$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[107], 'Artículo 94', 1, 3, md5('Artículo 94'))
-    returning id into v_node_ids[109];
+    returning id into v_tmp_id;
+    v_node_ids[109] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[109], v_user_id, 'original', $c109$1. La prestación del consentimiento del Estado para obligar-
 se por medio de tratados o convenios requerirá la previa auto-
@@ -7995,7 +8105,8 @@ rización de las Cortes Generales, en los siguientes casos:
 dos de la conclusión de los restantes tratados o convenios.$c109$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[107], 'Artículo 95', 2, 3, md5('Artículo 95'))
-    returning id into v_node_ids[110];
+    returning id into v_tmp_id;
+    v_node_ids[110] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[110], v_user_id, 'original', $c110$1. La celebración de un tratado internacional que contenga
 estipulaciones contrarias a la Constitución exigirá la previa re-
@@ -8006,7 +8117,8 @@ al Tribunal Constitucional para que declare si existe o no esa
 contradicción.$c110$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[107], 'Artículo 96', 3, 3, md5('Artículo 96'))
-    returning id into v_node_ids[111];
+    returning id into v_tmp_id;
+    v_node_ids[111] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[111], v_user_id, 'original', $c111$1. Los tratados internacionales válidamente celebrados, una
 vez publicados oficialmente en España, formarán parte del or-
@@ -8022,10 +8134,12 @@ aprobación en el artículo 94.
 34$c111$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_root_id, 'TÍTULO IV', 5, 1, md5('TÍTULO IV'))
-    returning id into v_node_ids[112];
+    returning id into v_tmp_id;
+    v_node_ids[112] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[112], 'Artículo 97', 0, 2, md5('Artículo 97'))
-    returning id into v_node_ids[113];
+    returning id into v_tmp_id;
+    v_node_ids[113] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[113], v_user_id, 'original', $c113$El Gobierno dirige la política interior y exterior, la Adminis-
 tración civil y militar y la defensa del Estado. Ejerce la función
@@ -8033,7 +8147,8 @@ ejecutiva y la potestad reglamentaria de acuerdo con la Cons-
 titución y las leyes.$c113$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[112], 'Artículo 98', 1, 2, md5('Artículo 98'))
-    returning id into v_node_ids[114];
+    returning id into v_tmp_id;
+    v_node_ids[114] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[114], v_user_id, 'original', $c114$1. El Gobierno se compone del Presidente, de los Vicepresi-
 dentes, en su caso, de los Ministros y de los demás miembros
@@ -8052,7 +8167,8 @@ cargo, ni actividad profesional o mercantil alguna.
 miembros del Gobierno.$c114$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[112], 'Artículo 99', 2, 2, md5('Artículo 99'))
-    returning id into v_node_ids[115];
+    returning id into v_tmp_id;
+    v_node_ids[115] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[115], v_user_id, 'original', $c115$1. Después de cada renovación del Congreso de los Diputa-
 dos, y en los demás supuestos constitucionales en que así
@@ -8085,13 +8201,15 @@ convocará nuevas elecciones con el refrendo del Presidente
 del Congreso.$c115$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[112], 'Artículo 100', 3, 2, md5('Artículo 100'))
-    returning id into v_node_ids[116];
+    returning id into v_tmp_id;
+    v_node_ids[116] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[116], v_user_id, 'original', $c116$Los demás miembros del Gobierno serán nombrados y se-
 parados por el Rey, a propuesta de su Presidente.$c116$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[112], 'Artículo 101', 4, 2, md5('Artículo 101'))
-    returning id into v_node_ids[117];
+    returning id into v_tmp_id;
+    v_node_ids[117] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[117], v_user_id, 'original', $c117$1. El Gobierno cesa tras la celebración de elecciones gene-
 rales, en los casos de pérdida de la confianza parlamentaria
@@ -8102,7 +8220,8 @@ su Presidente.
 toma de posesión del nuevo Gobierno.$c117$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[112], 'Artículo 102', 5, 2, md5('Artículo 102'))
-    returning id into v_node_ids[118];
+    returning id into v_tmp_id;
+    v_node_ids[118] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[118], v_user_id, 'original', $c118$1. La responsabilidad criminal del Presidente y los demás
 miembros del Gobierno será exigible, en su caso, ante la Sala
@@ -8118,7 +8237,8 @@ absoluta del mismo.
 de los supuestos del presente artículo.$c118$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[112], 'Artículo 103', 6, 2, md5('Artículo 103'))
-    returning id into v_node_ids[119];
+    returning id into v_tmp_id;
+    v_node_ids[119] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[119], v_user_id, 'original', $c119$1. La Administración Pública sirve con objetividad los intere-
 ses generales y actúa de acuerdo con los principios de eficacia,
@@ -8137,7 +8257,8 @@ las garantías para la imparcialidad en el ejercicio de sus fun-
 ciones.$c119$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[112], 'Artículo 104', 7, 2, md5('Artículo 104'))
-    returning id into v_node_ids[120];
+    returning id into v_tmp_id;
+    v_node_ids[120] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[120], v_user_id, 'original', $c120$1. Las Fuerzas y Cuerpos de seguridad, bajo la dependencia
 del Gobierno, tendrán como misión proteger el libre ejercicio
@@ -8148,7 +8269,8 @@ básicos de actuación y estatutos de las Fuerzas y Cuerpos de
 seguridad.$c120$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[112], 'Artículo 105', 8, 2, md5('Artículo 105'))
-    returning id into v_node_ids[121];
+    returning id into v_tmp_id;
+    v_node_ids[121] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[121], v_user_id, 'original', $c121$La ley regulará:
 
@@ -8167,7 +8289,8 @@ seguridad.$c120$);
       audiencia del interesado.$c121$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[112], 'Artículo 106', 9, 2, md5('Artículo 106'))
-    returning id into v_node_ids[122];
+    returning id into v_tmp_id;
+    v_node_ids[122] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[122], v_user_id, 'original', $c122$1. Los Tribunales controlan la potestad reglamentaria y la
 legalidad de la actuación administrativa, así como el someti-
@@ -8182,7 +8305,8 @@ funcionamiento de los servicios públicos.
                                                                                                      37$c122$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[112], 'Artículo 107', 10, 2, md5('Artículo 107'))
-    returning id into v_node_ids[123];
+    returning id into v_tmp_id;
+    v_node_ids[123] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[123], v_user_id, 'original', $c123$El Consejo de Estado es el supremo órgano consultivo del
 
@@ -8190,17 +8314,20 @@ Gobierno. Una ley orgánica regulará su composición y com-
 petencia.$c123$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_root_id, 'TÍTULO V', 6, 1, md5('TÍTULO V'))
-    returning id into v_node_ids[124];
+    returning id into v_tmp_id;
+    v_node_ids[124] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[124], 'Artículo 108', 0, 2, md5('Artículo 108'))
-    returning id into v_node_ids[125];
+    returning id into v_tmp_id;
+    v_node_ids[125] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[125], v_user_id, 'original', $c125$El Gobierno responde solidariamente en su gestión política
 
 ante el Congreso de los Diputados.$c125$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[124], 'Artículo 109', 1, 2, md5('Artículo 109'))
-    returning id into v_node_ids[126];
+    returning id into v_tmp_id;
+    v_node_ids[126] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[126], v_user_id, 'original', $c126$Las Cámaras y sus Comisiones podrán recabar, a través de
 
@@ -8209,7 +8336,8 @@ sen del Gobierno y de sus Departamentos y de cualesquiera
 autoridades del Estado y de las Comunidades Autónomas.$c126$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[124], 'Artículo 110', 2, 2, md5('Artículo 110'))
-    returning id into v_node_ids[127];
+    returning id into v_tmp_id;
+    v_node_ids[127] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[127], v_user_id, 'original', $c127$1. Las Cámaras y sus Comisiones pueden reclamar la pre-
 
@@ -8221,7 +8349,8 @@ en ellas, y podrán solicitar que informen ante las mismas fun-
 cionarios de sus Departamentos.$c127$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[124], 'Artículo 111', 3, 2, md5('Artículo 111'))
-    returning id into v_node_ids[128];
+    returning id into v_tmp_id;
+    v_node_ids[128] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[128], v_user_id, 'original', $c128$1. El Gobierno y cada uno de sus miembros están sometidos
 
@@ -8233,7 +8362,8 @@ cerán un tiempo mínimo semanal.
 que la Cámara manifieste su posición.$c128$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[124], 'Artículo 112', 4, 2, md5('Artículo 112'))
-    returning id into v_node_ids[129];
+    returning id into v_tmp_id;
+    v_node_ids[129] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[129], v_user_id, 'original', $c129$El Presidente del Gobierno, previa deliberación del Consejo
 
@@ -8246,7 +8376,8 @@ declaración de política general. La confianza se entenderá
 de los Diputados.$c129$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[124], 'Artículo 113', 5, 2, md5('Artículo 113'))
-    returning id into v_node_ids[130];
+    returning id into v_tmp_id;
+    v_node_ids[130] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[130], v_user_id, 'original', $c130$1. El Congreso de los Diputados puede exigir la responsabi-
 lidad política del Gobierno mediante la adopción por mayoría
@@ -8266,7 +8397,8 @@ greso, sus signatarios no podrán presentar otra durante el mis-
 mo período de sesiones.$c130$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[124], 'Artículo 114', 6, 2, md5('Artículo 114'))
-    returning id into v_node_ids[131];
+    returning id into v_tmp_id;
+    v_node_ids[131] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[131], v_user_id, 'original', $c131$1. Si el Congreso niega su confianza al Gobierno, éste pre-
 sentará su dimisión al Rey, procediéndose a continuación a la
@@ -8280,7 +8412,8 @@ los efectos previstos en el artículo 99. El Rey le nombrará Pre-
 sidente del Gobierno.$c131$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[124], 'Artículo 115', 7, 2, md5('Artículo 115'))
-    returning id into v_node_ids[132];
+    returning id into v_tmp_id;
+    v_node_ids[132] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[132], v_user_id, 'original', $c132$1. El Presidente del Gobierno, previa deliberación del Con-
 sejo de Ministros, y bajo su exclusiva responsabilidad, podrá
@@ -8298,7 +8431,8 @@ apartado 5.
                                                                                                      39$c132$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[124], 'Artículo 116', 8, 2, md5('Artículo 116'))
-    returning id into v_node_ids[133];
+    returning id into v_tmp_id;
+    v_node_ids[133] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[133], v_user_id, 'original', $c133$1. Una ley orgánica regulará los estados de alarma, de ex-
 cepción y de sitio, y las competencias y limitaciones corres-
@@ -8347,10 +8481,12 @@ las leyes.
 40$c133$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_root_id, 'TÍTULO VI', 7, 1, md5('TÍTULO VI'))
-    returning id into v_node_ids[134];
+    returning id into v_tmp_id;
+    v_node_ids[134] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[134], 'Artículo 117', 0, 2, md5('Artículo 117'))
-    returning id into v_node_ids[135];
+    returning id into v_tmp_id;
+    v_node_ids[135] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[135], v_user_id, 'original', $c135$1. La justicia emana del pueblo y se administra en nombre
 del Rey por Jueces y Magistrados integrantes del poder judi-
@@ -8380,7 +8516,8 @@ con los principios de la Constitución.
    6. Se prohíben los Tribunales de excepción.$c135$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[134], 'Artículo 118', 1, 2, md5('Artículo 118'))
-    returning id into v_node_ids[136];
+    returning id into v_tmp_id;
+    v_node_ids[136] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[136], v_user_id, 'original', $c136$Es obligado cumplir las sentencias y demás resoluciones
 firmes de los Jueces y Tribunales, así como prestar la colabo-
@@ -8388,14 +8525,16 @@ ración requerida por éstos en el curso del proceso y en la eje-
 cución de lo resuelto.$c136$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[134], 'Artículo 119', 2, 2, md5('Artículo 119'))
-    returning id into v_node_ids[137];
+    returning id into v_tmp_id;
+    v_node_ids[137] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[137], v_user_id, 'original', $c137$La justicia será gratuita cuando así lo disponga la ley y, en
 todo caso, respecto de quienes acrediten insuficiencia de re-
 cursos para litigar.$c137$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[134], 'Artículo 120', 3, 2, md5('Artículo 120'))
-    returning id into v_node_ids[138];
+    returning id into v_tmp_id;
+    v_node_ids[138] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[138], v_user_id, 'original', $c138$1. Las actuaciones judiciales serán públicas, con las excep-
 ciones que prevean las leyes de procedimiento.
@@ -8408,7 +8547,8 @@ todo en materia criminal.
 en audiencia pública.$c138$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[134], 'Artículo 121', 4, 2, md5('Artículo 121'))
-    returning id into v_node_ids[139];
+    returning id into v_tmp_id;
+    v_node_ids[139] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[139], v_user_id, 'original', $c139$Los daños causados por error judicial, así como los que sean
 consecuencia del funcionamiento anormal de la Administra-
@@ -8416,7 +8556,8 @@ ción de Justicia, darán derecho a una indemnización a cargo
 del Estado, conforme a la ley.$c139$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[134], 'Artículo 122', 5, 2, md5('Artículo 122'))
-    returning id into v_node_ids[140];
+    returning id into v_tmp_id;
+    v_node_ids[140] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[140], v_user_id, 'original', $c140$1. La ley orgánica del poder judicial determinará la constitu-
 ción, funcionamiento y gobierno de los Juzgados y Tribunales,
@@ -8442,7 +8583,8 @@ otros juristas, todos ellos de reconocida competencia y con
 más de quince años de ejercicio en su profesión.$c140$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[134], 'Artículo 123', 6, 2, md5('Artículo 123'))
-    returning id into v_node_ids[141];
+    returning id into v_tmp_id;
+    v_node_ids[141] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[141], v_user_id, 'original', $c141$1. El Tribunal Supremo, con jurisdicción en toda España, es
 el órgano jurisdiccional superior en todos los órdenes, salvo lo
@@ -8455,7 +8597,8 @@ forma que determine la ley.
 42$c141$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[134], 'Artículo 124', 7, 2, md5('Artículo 124'))
-    returning id into v_node_ids[142];
+    returning id into v_tmp_id;
+    v_node_ids[142] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[142], v_user_id, 'original', $c142$1. El Ministerio Fiscal, sin perjuicio de las funciones enco-
 mendadas a otros órganos, tiene por misión promover la ac-
@@ -8476,7 +8619,8 @@ propuesta del Gobierno, oído el Consejo General del Poder
 Judicial.$c142$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[134], 'Artículo 125', 8, 2, md5('Artículo 125'))
-    returning id into v_node_ids[143];
+    returning id into v_tmp_id;
+    v_node_ids[143] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[143], v_user_id, 'original', $c143$Los ciudadanos podrán ejercer la acción popular y participar
 en la Administración de Justicia mediante la institución del
@@ -8485,7 +8629,8 @@ les que la ley determine, así como en los Tribunales consuetu-
 dinarios y tradicionales.$c143$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[134], 'Artículo 126', 9, 2, md5('Artículo 126'))
-    returning id into v_node_ids[144];
+    returning id into v_tmp_id;
+    v_node_ids[144] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[144], v_user_id, 'original', $c144$La policía judicial depende de los Jueces, de los Tribunales y
 del Ministerio Fiscal en sus funciones de averiguación del de-
@@ -8493,7 +8638,8 @@ lito y descubrimiento y aseguramiento del delincuente, en los
 términos que la ley establezca.$c144$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[134], 'Artículo 127', 10, 2, md5('Artículo 127'))
-    returning id into v_node_ids[145];
+    returning id into v_tmp_id;
+    v_node_ids[145] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[145], v_user_id, 'original', $c145$1. Los Jueces y Magistrados así como los Fiscales, mientras
 se hallen en activo, no podrán desempeñar otros cargos públi-
@@ -8508,10 +8654,12 @@ pendencia de los mismos.
                                                                                                      43$c145$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_root_id, 'TÍTULO VII', 8, 1, md5('TÍTULO VII'))
-    returning id into v_node_ids[146];
+    returning id into v_tmp_id;
+    v_node_ids[146] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[146], 'Artículo 128', 0, 2, md5('Artículo 128'))
-    returning id into v_node_ids[147];
+    returning id into v_tmp_id;
+    v_node_ids[147] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[147], v_user_id, 'original', $c147$1. Toda la riqueza del país en sus distintas formas y sea cual
 fuere su titularidad está subordinada al interés general.
@@ -8523,7 +8671,8 @@ asimismo acordar la intervención de empresas cuando así lo
 exigiere el interés general.$c147$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[146], 'Artículo 129', 1, 2, md5('Artículo 129'))
-    returning id into v_node_ids[148];
+    returning id into v_tmp_id;
+    v_node_ids[148] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[148], v_user_id, 'original', $c148$1. La ley establecerá las formas de participación de los inte-
 resados en la Seguridad Social y en la actividad de los organis-
@@ -8537,7 +8686,8 @@ También establecerán los medios que faciliten el acceso de los
 trabajadores a la propiedad de los medios de producción.$c148$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[146], 'Artículo 130', 2, 2, md5('Artículo 130'))
-    returning id into v_node_ids[149];
+    returning id into v_tmp_id;
+    v_node_ids[149] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[149], v_user_id, 'original', $c149$1. Los poderes públicos atenderán a la modernización y de-
 sarrollo de todos los sectores económicos y, en particular, de
@@ -8548,7 +8698,8 @@ fin de equiparar el nivel de vida de todos los españoles.
 las zonas de montaña.$c149$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[146], 'Artículo 131', 3, 2, md5('Artículo 131'))
-    returning id into v_node_ids[150];
+    returning id into v_tmp_id;
+    v_node_ids[150] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[150], v_user_id, 'original', $c150$1. El Estado, mediante ley, podrá planificar la actividad econó-
 mica general para atender a las necesidades colectivas, equilibrar
@@ -8565,7 +8716,8 @@ de los sindicatos y otras organizaciones profesionales, empre-
 composición y funciones se desarrollarán por ley.$c150$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[146], 'Artículo 132', 4, 2, md5('Artículo 132'))
-    returning id into v_node_ids[151];
+    returning id into v_tmp_id;
+    v_node_ids[151] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[151], v_user_id, 'original', $c151$1. La ley regulará el régimen jurídico de los bienes de domi-
 nio público y de los comunales, inspirándose en los principios
@@ -8581,7 +8733,8 @@ la plataforma continental.
 nio Nacional, su administración, defensa y conservación.$c151$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[146], 'Artículo 133', 5, 2, md5('Artículo 133'))
-    returning id into v_node_ids[152];
+    returning id into v_tmp_id;
+    v_node_ids[152] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[152], v_user_id, 'original', $c152$1. La potestad originaria para establecer los tributos corres-
 ponde exclusivamente al Estado, mediante ley.
@@ -8597,7 +8750,8 @@ deberá establecerse en virtud de ley.
 gaciones financieras y realizar gastos de acuerdo con las leyes.$c152$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[146], 'Artículo 134', 6, 2, md5('Artículo 134'))
-    returning id into v_node_ids[153];
+    returning id into v_tmp_id;
+    v_node_ids[153] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[153], v_user_id, 'original', $c153$1. Corresponde al Gobierno la elaboración de los Presu-
 puestos Generales del Estado y a las Cortes Generales, su exa-
@@ -8631,7 +8785,8 @@ querirá la conformidad del Gobierno para su tramitación.
 modificarlos cuando una ley tributaria sustantiva así lo prevea.$c153$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[146], 'Artículo 135', 7, 2, md5('Artículo 135'))
-    returning id into v_node_ids[154];
+    returning id into v_tmp_id;
+    v_node_ids[154] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[154], v_user_id, 'original', $c154$1. Todas las Administraciones Públicas adecuarán sus actua-
 ciones al principio de estabilidad presupuestaria.
@@ -8697,7 +8852,8 @@ aplicación efectiva del principio de estabilidad en sus normas
 y decisiones presupuestarias.$c154$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[146], 'Artículo 136', 8, 2, md5('Artículo 136'))
-    returning id into v_node_ids[155];
+    returning id into v_tmp_id;
+    v_node_ids[155] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[155], v_user_id, 'original', $c155$1. El Tribunal de Cuentas es el supremo órgano fiscalizador
 de las cuentas y de la gestión económica de Estado, así como
@@ -8725,13 +8881,16 @@ funciones del Tribunal de Cuentas.
                                                                                                      47$c155$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_root_id, 'TÍTULO VIII', 9, 1, md5('TÍTULO VIII'))
-    returning id into v_node_ids[156];
+    returning id into v_tmp_id;
+    v_node_ids[156] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[156], 'CAPÍTULO PRIMERO', 0, 2, md5('CAPÍTULO PRIMERO'))
-    returning id into v_node_ids[157];
+    returning id into v_tmp_id;
+    v_node_ids[157] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[157], 'Artículo 137', 0, 3, md5('Artículo 137'))
-    returning id into v_node_ids[158];
+    returning id into v_tmp_id;
+    v_node_ids[158] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[158], v_user_id, 'original', $c158$El Estado se organiza territorialmente en municipios, en pro-
 
@@ -8740,7 +8899,8 @@ Todas estas entidades gozan de autonomía para la gestión de
 sus respectivos intereses.$c158$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[157], 'Artículo 138', 1, 3, md5('Artículo 138'))
-    returning id into v_node_ids[159];
+    returning id into v_tmp_id;
+    v_node_ids[159] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[159], v_user_id, 'original', $c159$1. El Estado garantiza la realización efectiva del principio de
 
@@ -8755,7 +8915,8 @@ nidades Autónomas no podrán implicar, en ningún caso, privi-
 legios económicos o sociales.$c159$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[157], 'Artículo 139', 2, 3, md5('Artículo 139'))
-    returning id into v_node_ids[160];
+    returning id into v_tmp_id;
+    v_node_ids[160] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[160], v_user_id, 'original', $c160$1. Todos los españoles tienen los mismos derechos y obliga-
 
@@ -8767,10 +8928,12 @@ blecimiento de las personas y la libre circulación de bienes en
 todo el territorio español.$c160$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[156], 'CAPÍTULO SEGUNDO', 1, 2, md5('CAPÍTULO SEGUNDO'))
-    returning id into v_node_ids[161];
+    returning id into v_tmp_id;
+    v_node_ids[161] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[161], 'Artículo 140', 0, 3, md5('Artículo 140'))
-    returning id into v_node_ids[162];
+    returning id into v_tmp_id;
+    v_node_ids[162] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[162], v_user_id, 'original', $c162$La Constitución garantiza la autonomía de los municipios.
 
@@ -8786,7 +8949,8 @@ los vecinos. La ley regulará las condiciones en las que proceda
 el régimen del concejo abierto.$c162$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[161], 'Artículo 141', 1, 3, md5('Artículo 141'))
-    returning id into v_node_ids[163];
+    returning id into v_tmp_id;
+    v_node_ids[163] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[163], v_user_id, 'original', $c163$1. La provincia es una entidad local con personalidad jurídica
 propia, determinada por la agrupación de municipios y división
@@ -8805,7 +8969,8 @@ la provincia.
 tración propia en forma de Cabildos o Consejos.$c163$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[161], 'Artículo 142', 2, 3, md5('Artículo 142'))
-    returning id into v_node_ids[164];
+    returning id into v_tmp_id;
+    v_node_ids[164] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[164], v_user_id, 'original', $c164$Las Haciendas locales deberán disponer de los medios sufi-
 cientes para el desempeño de las funciones que la ley atribuye
@@ -8814,10 +8979,12 @@ mente de tributos propios y de participación en los del Estado
 y de las Comunidades Autónomas.$c164$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[156], 'CAPÍTULO TERCERO', 2, 2, md5('CAPÍTULO TERCERO'))
-    returning id into v_node_ids[165];
+    returning id into v_tmp_id;
+    v_node_ids[165] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 143', 0, 3, md5('Artículo 143'))
-    returning id into v_node_ids[166];
+    returning id into v_tmp_id;
+    v_node_ids[166] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[166], v_user_id, 'original', $c166$1. En el ejercicio del derecho a la autonomía reconocido en
 el artículo 2 de la Constitución, las provincias limítrofes con
@@ -8840,7 +9007,8 @@ respecto por alguna de las Corporaciones locales interesadas.
 reiterarse pasados cinco años.$c166$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 144', 1, 3, md5('Artículo 144'))
-    returning id into v_node_ids[167];
+    returning id into v_tmp_id;
+    v_node_ids[167] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[167], v_user_id, 'original', $c167$Las Cortes Generales, mediante ley orgánica, podrán, por
 motivos de interés nacional:
@@ -8857,7 +9025,8 @@ motivos de interés nacional:
       refiere el apartado 2 del artículo 143.$c167$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 145', 2, 3, md5('Artículo 145'))
-    returning id into v_node_ids[168];
+    returning id into v_tmp_id;
+    v_node_ids[168] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[168], v_user_id, 'original', $c168$1. En ningún caso se admitirá la federación de Comunidades
 Autónomas.
@@ -8872,7 +9041,8 @@ munidades Autónomas necesitarán la autorización de las Cor-
 tes Generales.$c168$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 146', 3, 3, md5('Artículo 146'))
-    returning id into v_node_ids[169];
+    returning id into v_tmp_id;
+    v_node_ids[169] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[169], v_user_id, 'original', $c169$El proyecto de Estatuto será elaborado por una asamblea
 compuesta por los miembros de la Diputación u órgano inter­
@@ -8883,7 +9053,8 @@ para su tramitación como ley.
 50$c169$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 147', 4, 3, md5('Artículo 147'))
-    returning id into v_node_ids[170];
+    returning id into v_tmp_id;
+    v_node_ids[170] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[170], v_user_id, 'original', $c170$1. Dentro de los términos de la presente Constitución, los
 Estatutos serán la norma institucional básica de cada Comuni-
@@ -8909,7 +9080,8 @@ establecido en los mismos y requerirá, en todo caso, la apro-
 bación por las Cortes Generales, mediante ley orgánica.$c170$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 148', 5, 3, md5('Artículo 148'))
-    returning id into v_node_ids[171];
+    returning id into v_tmp_id;
+    v_node_ids[171] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[171], v_user_id, 'original', $c171$1. Las Comunidades Autónomas podrán asumir competen-
 cias en las siguientes materias:
@@ -8970,7 +9142,8 @@ sivamente sus competencias dentro del marco establecido en
 el artículo 149.$c171$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 149', 6, 3, md5('Artículo 149'))
-    returning id into v_node_ids[172];
+    returning id into v_tmp_id;
+    v_node_ids[172] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[172], v_user_id, 'original', $c172$1. El Estado tiene competencia exclusiva sobre las siguientes
 materias:
@@ -9107,7 +9280,8 @@ todo caso, supletorio del derecho de las Comunidades Autó-
 nomas.$c172$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 150', 7, 3, md5('Artículo 150'))
-    returning id into v_node_ids[173];
+    returning id into v_tmp_id;
+    v_node_ids[173] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[173], v_user_id, 'original', $c173$1. Las Cortes Generales, en materias de competencia estatal,
 podrán atribuir a todas o a alguna de las Comunidades Autó-
@@ -9136,7 +9310,8 @@ general. Corresponde a las Cortes Generales, por mayoría ab-
 soluta de cada Cámara, la apreciación de esta necesidad.$c173$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 151', 8, 3, md5('Artículo 151'))
-    returning id into v_node_ids[174];
+    returning id into v_tmp_id;
+    v_node_ids[174] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[174], v_user_id, 'original', $c174$1. No será preciso dejar transcurrir el plazo de cinco años, a
 que se refiere el apartado 2 del artículo 148, cuando la inicia-
@@ -9194,7 +9369,8 @@ Comunidad Autónoma proyectada, en la forma que establezca
 la ley orgánica prevista en el apartado 1 de este artículo.$c174$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 152', 9, 3, md5('Artículo 152'))
-    returning id into v_node_ids[175];
+    returning id into v_tmp_id;
+    v_node_ids[175] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[175], v_user_id, 'original', $c175$1. En los Estatutos aprobados por el procedimiento a que se
 refiere el artículo anterior, la organización institucional auto-
@@ -9238,7 +9414,8 @@ tutos podrán establecer circunscripciones territoriales propias,
 que gozarán de plena personalidad jurídica.$c175$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 153', 10, 3, md5('Artículo 153'))
-    returning id into v_node_ids[176];
+    returning id into v_tmp_id;
+    v_node_ids[176] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[176], v_user_id, 'original', $c176$El control de la actividad de los órganos de las Comunidades
 Autónomas se ejercerá:
@@ -9256,7 +9433,8 @@ Autónomas se ejercerá:
    d) Por el Tribunal de Cuentas, el económico y presupuestario.$c176$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 154', 11, 3, md5('Artículo 154'))
-    returning id into v_node_ids[177];
+    returning id into v_tmp_id;
+    v_node_ids[177] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[177], v_user_id, 'original', $c177$Un Delegado nombrado por el Gobierno dirigirá la Adminis-
 tración del Estado en el territorio de la Comunidad Autónoma
@@ -9264,7 +9442,8 @@ y la coordinará, cuando proceda, con la administración propia
 de la Comunidad.$c177$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 155', 12, 3, md5('Artículo 155'))
-    returning id into v_node_ids[178];
+    returning id into v_tmp_id;
+    v_node_ids[178] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[178], v_user_id, 'original', $c178$1. Si una Comunidad Autónoma no cumpliere las obligacio-
 nes que la Constitución u otras leyes le impongan, o actuare
@@ -9283,7 +9462,8 @@ anterior, el Gobierno podrá dar instrucciones a todas las auto-
 ridades de las Comunidades Autónomas.$c178$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 156', 13, 3, md5('Artículo 156'))
-    returning id into v_node_ids[179];
+    returning id into v_tmp_id;
+    v_node_ids[179] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[179], v_user_id, 'original', $c179$1. Las Comunidades Autónomas gozarán de autonomía fi-
 nanciera para el desarrollo y ejecución de sus competencias
@@ -9296,7 +9476,8 @@ tión y la liquidación de los recursos tributarios de aquél, de
 acuerdo con las leyes y los Estatutos.$c179$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 157', 14, 3, md5('Artículo 157'))
-    returning id into v_node_ids[180];
+    returning id into v_tmp_id;
+    v_node_ids[180] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[180], v_user_id, 'original', $c180$1. Los recursos de las Comunidades Autónomas estarán
 constituidos por:
@@ -9331,7 +9512,8 @@ las Comunidades Autónomas y el Estado.
                                                                                                      59$c180$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[165], 'Artículo 158', 15, 3, md5('Artículo 158'))
-    returning id into v_node_ids[181];
+    returning id into v_tmp_id;
+    v_node_ids[181] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[181], v_user_id, 'original', $c181$1. En los Presupuestos Generales del Estado podrá estable-
 cerse una asignación a las Comunidades Autónomas en fun-
@@ -9347,10 +9529,12 @@ sión, cuyos recursos serán distribuidos por las Cortes Generales
 entre las Comunidades Autónomas y provincias, en su caso.$c181$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_root_id, 'TÍTULO IX', 10, 1, md5('TÍTULO IX'))
-    returning id into v_node_ids[182];
+    returning id into v_tmp_id;
+    v_node_ids[182] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[182], 'Artículo 159', 0, 2, md5('Artículo 159'))
-    returning id into v_node_ids[183];
+    returning id into v_tmp_id;
+    v_node_ids[183] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[183], v_user_id, 'original', $c183$1. El Tribunal Constitucional se compone de 12 miembros
 nombrados por el Rey; de ellos, cuatro a propuesta del Con-
@@ -9385,14 +9569,16 @@ judicial.
 dientes e inamovibles en el ejercicio de su mandato.$c183$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[182], 'Artículo 160', 1, 2, md5('Artículo 160'))
-    returning id into v_node_ids[184];
+    returning id into v_tmp_id;
+    v_node_ids[184] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[184], v_user_id, 'original', $c184$El Presidente del Tribunal Constitucional será nombrado en-
 tre sus miembros por el Rey, a propuesta del mismo Tribunal
 en pleno y por un período de tres años.$c184$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[182], 'Artículo 161', 2, 2, md5('Artículo 161'))
-    returning id into v_node_ids[185];
+    returning id into v_tmp_id;
+    v_node_ids[185] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[185], v_user_id, 'original', $c185$1. El Tribunal Constitucional tiene jurisdicción en todo el te-
 rritorio español y es competente para conocer:
@@ -9422,7 +9608,8 @@ Tribunal, en su caso, deberá ratificarla o levantarla en un plazo
 no superior a cinco meses.$c185$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[182], 'Artículo 162', 3, 2, md5('Artículo 162'))
-    returning id into v_node_ids[186];
+    returning id into v_tmp_id;
+    v_node_ids[186] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[186], v_user_id, 'original', $c186$1. Están legitimados:
 
@@ -9441,7 +9628,8 @@ no superior a cinco meses.$c185$);
 sonas y órganos legitimados.$c186$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[182], 'Artículo 163', 4, 2, md5('Artículo 163'))
-    returning id into v_node_ids[187];
+    returning id into v_tmp_id;
+    v_node_ids[187] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[187], v_user_id, 'original', $c187$Cuando un órgano judicial considere, en algún proceso, que
 
@@ -9452,7 +9640,8 @@ tos, en la forma y con los efectos que establezca la ley, que en
 ningún caso serán suspensivos.$c187$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[182], 'Artículo 164', 5, 2, md5('Artículo 164'))
-    returning id into v_node_ids[188];
+    returning id into v_tmp_id;
+    v_node_ids[188] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[188], v_user_id, 'original', $c188$1. Las sentencias del Tribunal Constitucional se publicarán
 
@@ -9469,7 +9658,8 @@ vigencia de la ley en la parte no afectada por la inconstitucio-
 nalidad.$c188$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[182], 'Artículo 165', 6, 2, md5('Artículo 165'))
-    returning id into v_node_ids[189];
+    returning id into v_tmp_id;
+    v_node_ids[189] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[189], v_user_id, 'original', $c189$Una ley orgánica regulará el funcionamiento del Tribunal
 
@@ -9478,10 +9668,12 @@ ante el mismo y las condiciones para el ejercicio de las accio-
 nes.$c189$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_root_id, 'TÍTULO X', 11, 1, md5('TÍTULO X'))
-    returning id into v_node_ids[190];
+    returning id into v_tmp_id;
+    v_node_ids[190] := v_tmp_id;
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[190], 'Artículo 166', 0, 2, md5('Artículo 166'))
-    returning id into v_node_ids[191];
+    returning id into v_tmp_id;
+    v_node_ids[191] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[191], v_user_id, 'original', $c191$La iniciativa de reforma constitucional se ejercerá en los tér-
 
@@ -9490,7 +9682,8 @@ minos previstos en los apartados 1 y 2 del artículo 87.
 62$c191$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[190], 'Artículo 167', 1, 2, md5('Artículo 167'))
-    returning id into v_node_ids[192];
+    returning id into v_tmp_id;
+    v_node_ids[192] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[192], v_user_id, 'original', $c192$1. Los proyectos de reforma constitucional deberán ser
 aprobados por una mayoría de tres quintos de cada una de las
@@ -9510,7 +9703,8 @@ dentro de los quince días siguientes a su aprobación, una dé-
 cima parte de los miembros de cualquiera de las Cámaras.$c192$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[190], 'Artículo 168', 2, 2, md5('Artículo 168'))
-    returning id into v_node_ids[193];
+    returning id into v_tmp_id;
+    v_node_ids[193] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[193], v_user_id, 'original', $c193$1. Cuando se propusiere la revisión total de la Constitución
 o una parcial que afecte al Título preliminar, al Capítulo segun-
@@ -9526,7 +9720,8 @@ aprobado por mayoría de dos tercios de ambas Cámaras.
 tida a referéndum para su ratificación.$c193$);
     insert into public.index_nodes (subject_id, user_id, parent_id, title, position, depth, content_hash)
     values (v_subject_id, v_user_id, v_node_ids[190], 'Artículo 169', 3, 2, md5('Artículo 169'))
-    returning id into v_node_ids[194];
+    returning id into v_tmp_id;
+    v_node_ids[194] := v_tmp_id;
     insert into public.node_content (node_id, user_id, kind, content)
     values (v_node_ids[194], v_user_id, 'original', $c194$No podrá iniciarse la reforma constitucional en tiempo de
 guerra o de vigencia de alguno de los estados previstos en el
