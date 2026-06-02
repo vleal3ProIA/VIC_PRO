@@ -60,21 +60,23 @@ interface Classification {
 }
 
 const SYSTEM_PROMPT = (
-  "Eres un experto en la Constitucion Espanola de 1978 (TEXTO CONSOLIDADO, " +
-  "BOE-A-1978-31229). Te paso preguntas de oposicion con 4 opciones y la " +
-  "letra correcta. Para cada una IDENTIFICA el ARTICULO concreto (numero " +
-  "1-169) que regula la materia de la respuesta correcta. Si la pregunta " +
-  "es claramente del PREAMBULO, una DISPOSICION (adicional/transitoria/" +
-  "derogatoria/final) o NO se basa en un articulo unico, usa null.\n\n" +
-  "Devuelve SIEMPRE JSON minificado con esta forma exacta:\n" +
-  '{"items":[{"idx":0,"article":14,"confidence":"high"},' +
-  '{"idx":1,"article":null,"confidence":"low"}]}\n\n' +
-  "REGLAS:\n" +
-  " - `idx` corresponde al indice 0-based del item dentro del lote.\n" +
-  " - `article` es entero 1..169 o null.\n" +
-  " - `confidence`: 'high' si tienes certeza absoluta del articulo; " +
-  "'medium' si crees pero podria ser otro; 'low' si dudas o es transversal.\n" +
-  " - NO incluyas explicaciones, solo el JSON.\n"
+  "Eres experto en la Constitucion Espanola de 1978. Te paso preguntas " +
+  "de oposicion con 4 opciones y la letra correcta. Identifica QUE " +
+  "ARTICULO (1-169) trata el tema central de la respuesta correcta. " +
+  "Eres asertivo: eliges el articulo MAS PROBABLE, no exiges certeza " +
+  "absoluta.\n\n" +
+  "Devuelve JSON minificado:\n" +
+  '{"items":[{"idx":0,"article":14,"confidence":"high"}]}\n\n' +
+  "CONFIDENCE:\n" +
+  " - 'high' = estado NORMAL. La mayoria deben ser 'high'.\n" +
+  " - 'medium' = duda entre 2-3 articulos (raro).\n" +
+  " - 'low' + article=null SOLO si la pregunta es sobre la Constitucion " +
+  "como objeto historico (aprobacion, fecha, redactores, estructura " +
+  "general). Maximo 5-10% de casos.\n\n" +
+  "FORMATO:\n" +
+  " - idx: 0-based del item en el lote.\n" +
+  " - article: entero 1-169, o null SOLO si confidence='low'.\n" +
+  " - Solo JSON, sin explicaciones."
 );
 
 const LETTERS = ["A", "B", "C", "D"];
@@ -99,18 +101,50 @@ function buildUserMessage(batch: Question[]): string {
 }
 
 function parseClassifications(text: string): Classification[] {
-  // Extrae el primer JSON valido. El gateway puede envolver con texto, etc.
-  const m = text.match(/\{[\s\S]*\}/);
-  const raw = m ? m[0] : text;
-  let obj: unknown;
-  try {
-    obj = JSON.parse(raw);
-  } catch {
-    return [];
+  // 1. Strip eventuales code fences markdown (Gemini suele envolver con
+  //    ```json ... ``` aunque le pidas JSON puro).
+  let cleaned = text.trim();
+  const fence = cleaned.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```\s*$/i);
+  if (fence) {
+    cleaned = fence[1].trim();
   }
+
+  // 2. Intentar parse directo.
+  let obj: unknown = null;
+  try {
+    obj = JSON.parse(cleaned);
+  } catch (e1) {
+    // 3. Fallback: extraer el primer bloque {...} balanceado.
+    const m = cleaned.match(/\{[\s\S]*\}/);
+    if (m) {
+      try {
+        obj = JSON.parse(m[0]);
+      } catch (e2) {
+        console.error(
+          `[classify] JSON.parse failed (both direct and regex). ` +
+            `direct=${(e1 as Error).message}, regex=${(e2 as Error).message}`,
+        );
+        return [];
+      }
+    } else {
+      console.error(
+        `[classify] no JSON structure found in response (first 200 chars: ` +
+          `${JSON.stringify(cleaned.slice(0, 200))})`,
+      );
+      return [];
+    }
+  }
+
   if (!obj || typeof obj !== "object") return [];
   const items = (obj as { items?: unknown }).items;
-  if (!Array.isArray(items)) return [];
+  if (!Array.isArray(items)) {
+    console.error(
+      `[classify] items not an array (typeof=${typeof items}, ` +
+        `keys=${Object.keys(obj as object).join(",")})`,
+    );
+    return [];
+  }
+
   const out: Classification[] = [];
   for (const it of items) {
     if (!it || typeof it !== "object") continue;
@@ -217,19 +251,29 @@ Deno.serve(withSentry("classify-question-bank", async (req) => {
 
   // ─── Llamada IA ───
   let answers: Classification[] = [];
+  let rawSample = "";
+  let llmModel: string | undefined;
   try {
     const result = await runCompletion(admin, {
       task: "classify",
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: buildUserMessage(batch) }],
-      maxOutputTokens: 4096,
+      maxOutputTokens: 8192,
       temperature: 0,
       userId: user.id,
       subjectId,
     });
-    answers = parseClassifications(result.text ?? "");
+    const text = result.text ?? "";
+    rawSample = text.slice(0, 800);
+    llmModel = (result as { model?: string }).model;
+    answers = parseClassifications(text);
+    console.log(
+      `[classify] batch_size=${batch.length} parsed=${answers.length} ` +
+      `model=${llmModel ?? "?"} sample=${JSON.stringify(rawSample.slice(0, 300))}`,
+    );
   } catch (e) {
     const msg = e instanceof AiGatewayError ? e.message : (e as Error).message;
+    console.error(`[classify] AI call failed: ${msg}`);
     return json({ ok: false, error: "ai_failed", detail: msg }, 502);
   }
 
@@ -274,6 +318,16 @@ Deno.serve(withSentry("classify-question-bank", async (req) => {
     .select("id", { count: "exact", head: true })
     .eq("content_hash", rootHash);
 
+  // Si errors es alto (>= mitad del batch), incluir muestra del response
+  // para diagnostico desde el cliente sin tener que ir al log de la EF.
+  const debug = errors >= batch.length / 2
+    ? {
+        sample_response: rawSample,
+        parsed_items: answers.length,
+        model: llmModel,
+      }
+    : undefined;
+
   return json({
     ok: true,
     processed: batch.length,
@@ -281,5 +335,6 @@ Deno.serve(withSentry("classify-question-bank", async (req) => {
     classified_other: classifiedOther,
     errors,
     remaining: remaining ?? 0,
+    debug,
   }, 200);
 }));

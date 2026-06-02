@@ -11,8 +11,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
+import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_error_dialog.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
@@ -21,6 +23,7 @@ import '../../../application/subjects_providers.dart';
 import '../../../data/subjects_datasource.dart';
 import '../../../domain/subject.dart';
 import 'count_picker_dialog.dart';
+import 'index_tree_picker.dart';
 import 'show_test_modal.dart';
 import 'test_runner_dialog.dart';
 
@@ -174,7 +177,6 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
     final bank =
         ref.watch(examQuestionsProvider(widget.subjectId)).valueOrNull ??
             const <QuizQuestion>[];
-    final sections = widget.nodes.where((n) => n.parentId != null).toList();
     final canGenerate = _all || _selected.isNotEmpty;
     final pool = _pool(bank);
 
@@ -196,21 +198,15 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
           ],
         ),
         if (!_all)
-          for (final s in sections)
-            CheckboxListTile(
-              dense: true,
-              contentPadding: EdgeInsets.only(left: 4 + s.depth * 12.0),
-              controlAffinity: ListTileControlAffinity.leading,
-              value: _selected.contains(s.id),
-              title: Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-              onChanged: (v) => setState(() {
-                if (v ?? false) {
-                  _selected.add(s.id);
-                } else {
-                  _selected.remove(s.id);
-                }
-              }),
-            ),
+          IndexTreePicker(
+            nodes: widget.nodes,
+            selected: _selected,
+            onSelectionChanged: (next) => setState(() {
+              _selected
+                ..clear()
+                ..addAll(next);
+            }),
+          ),
         const Divider(height: AppSpacing.lg),
         // El selector "Nº de preguntas" se elige al pulsar "Empezar"
         // (showCountPickerDialog). En este config solo quedan opciones
@@ -254,23 +250,30 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
           spacing: AppSpacing.sm,
           runSpacing: AppSpacing.sm,
           children: [
+            // 1) Generar test: rellena lo que falte en el banco (no regenera
+            //    lo ya existente; sin gasto de IA si todo esta cubierto).
+            PremiumButton(
+              label: l.studyTestGenerate,
+              leadingIcon: Icons.auto_awesome_outlined,
+              onPressed: canGenerate ? _generate : null,
+            ),
+            // 2) Realizar test: pide cantidad en el modal y arranca el runner
+            //    con preguntas del banco para la seleccion.
             if (pool.isNotEmpty)
               FilledButton.icon(
                 onPressed: () => _open(pool, _scopeNodeIds().toList()),
                 icon: const Icon(Icons.play_arrow, size: 16),
                 label: Text(l.studyTestStart),
               ),
-            PremiumButton(
-              label: l.studyTestGenerate,
-              leadingIcon: Icons.auto_awesome_outlined,
-              onPressed: canGenerate ? _generate : null,
-            ),
-            if (pool.isNotEmpty)
-              OutlinedButton.icon(
-                onPressed: canGenerate ? () => _generate(force: true) : null,
-                icon: const Icon(Icons.refresh, size: 16),
-                label: Text(l.studyTestRegenerate),
+            // 3) Ver mis tests: navega al historial dentro de /mis-temarios.
+            OutlinedButton.icon(
+              onPressed: () => context.goNamed(
+                RouteNames.myMaterialSubjectKind,
+                pathParameters: {'id': widget.subjectId, 'kind': 'mock'},
               ),
+              icon: const Icon(Icons.history, size: 16),
+              label: Text(l.studyTestViewHistory),
+            ),
           ],
         ),
       ],

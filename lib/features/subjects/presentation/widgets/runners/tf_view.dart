@@ -21,6 +21,7 @@ import '../../../application/subjects_providers.dart';
 import '../../../data/subjects_datasource.dart';
 import '../../../domain/subject.dart';
 import 'count_picker_dialog.dart';
+import 'index_tree_picker.dart';
 import 'show_test_modal.dart';
 import 'tf_runner_dialog.dart';
 
@@ -159,7 +160,6 @@ class _TfViewState extends ConsumerState<TfView> {
     final bank =
         ref.watch(tfQuestionsProvider(widget.subjectId)).valueOrNull ??
             const <TfQuestion>[];
-    final sections = widget.nodes.where((n) => n.parentId != null).toList();
     final canGenerate = _all || _selected.isNotEmpty;
     final pool = _pool(bank);
 
@@ -181,22 +181,15 @@ class _TfViewState extends ConsumerState<TfView> {
           ],
         ),
         if (!_all)
-          for (final s in sections)
-            CheckboxListTile(
-              dense: true,
-              contentPadding: EdgeInsets.only(left: 4 + s.depth * 12.0),
-              controlAffinity: ListTileControlAffinity.leading,
-              value: _selected.contains(s.id),
-              title:
-                  Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-              onChanged: (v) => setState(() {
-                if (v ?? false) {
-                  _selected.add(s.id);
-                } else {
-                  _selected.remove(s.id);
-                }
-              }),
-            ),
+          IndexTreePicker(
+            nodes: widget.nodes,
+            selected: _selected,
+            onSelectionChanged: (next) => setState(() {
+              _selected
+                ..clear()
+                ..addAll(next);
+            }),
+          ),
         const Divider(height: AppSpacing.lg),
         // El selector "Nº de afirmaciones" se elige al pulsar "Empezar"
         // (showCountPickerDialog). En este config solo quedan opciones
@@ -240,22 +233,18 @@ class _TfViewState extends ConsumerState<TfView> {
           spacing: AppSpacing.sm,
           runSpacing: AppSpacing.sm,
           children: [
-            if (pool.isNotEmpty)
-              FilledButton.icon(
-                onPressed: () => _open(pool),
-                icon: const Icon(Icons.play_arrow, size: 16),
-                label: Text(l.studyTestStart),
-              ),
+            // 1) Generar test V/F: rellena lo que falte en el banco.
             PremiumButton(
               label: l.studyTestGenerate,
               leadingIcon: Icons.auto_awesome_outlined,
               onPressed: canGenerate ? _generate : null,
             ),
+            // 2) Realizar test: pide cantidad y arranca el runner.
             if (pool.isNotEmpty)
-              OutlinedButton.icon(
-                onPressed: canGenerate ? () => _generate(force: true) : null,
-                icon: const Icon(Icons.refresh, size: 16),
-                label: Text(l.studyTestRegenerate),
+              FilledButton.icon(
+                onPressed: () => _open(pool),
+                icon: const Icon(Icons.play_arrow, size: 16),
+                label: Text(l.studyTestStart),
               ),
           ],
         ),
