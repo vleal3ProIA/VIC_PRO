@@ -20,6 +20,7 @@ import 'package:myapp/core/widgets/premium/premium.dart';
 import '../../../application/subjects_providers.dart';
 import '../../../data/subjects_datasource.dart';
 import '../../../domain/subject.dart';
+import 'count_picker_dialog.dart';
 import 'show_test_modal.dart';
 import 'tf_runner_dialog.dart';
 
@@ -39,9 +40,11 @@ class _TfViewState extends ConsumerState<TfView> {
   bool _busy = false;
 
   // Configuración del test.
+  // El selector de cantidad ya NO esta aqui: se elige al pulsar "Empezar"
+  // mediante [showCountPickerDialog] (presets 10/25/50/75/100/TODAS) sobre
+  // el banco real disponible.
   bool _all = true;
   final Set<String> _selected = {};
-  int _count = 10;
   bool _timed = false;
   int _minutes = 20;
   bool _penalty = true;
@@ -78,8 +81,13 @@ class _TfViewState extends ConsumerState<TfView> {
   }
 
   Future<void> _open(List<TfQuestion> pool) async {
+    if (pool.isEmpty) return;
+    final count =
+        await showCountPickerDialog(context, available: pool.length);
+    if (count == null) return; // cancelado
+    if (!mounted) return;
     final qs = List.of(pool)..shuffle();
-    final take = _count <= 0 || _count >= qs.length ? qs.length : _count;
+    final take = count <= 0 || count >= qs.length ? qs.length : count;
     await showTestModal(
       context,
       TfRunnerDialog(
@@ -190,22 +198,9 @@ class _TfViewState extends ConsumerState<TfView> {
               }),
             ),
         const Divider(height: AppSpacing.lg),
-        // ─── Nº de afirmaciones ───
-        Row(
-          children: [
-            Expanded(child: Text(l.studyTestCount)),
-            DropdownButton<int>(
-              value: _count,
-              items: [10, 25, 50, 75, 100, 0]
-                  .map((n) => DropdownMenuItem(
-                        value: n,
-                        child: Text(n == 0 ? l.studyTestAllQuestions : '$n'),
-                      ),)
-                  .toList(),
-              onChanged: (v) => setState(() => _count = v ?? 10),
-            ),
-          ],
-        ),
+        // El selector "Nº de afirmaciones" se elige al pulsar "Empezar"
+        // (showCountPickerDialog). En este config solo quedan opciones
+        // que afectan al test en si (tiempo, penalizacion).
         // ─── Tiempo ───
         SwitchListTile(
           contentPadding: EdgeInsets.zero,

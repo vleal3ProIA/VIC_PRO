@@ -83,6 +83,7 @@ async function sha256Hex(s: string): Promise<string> {
 interface NodeRow {
   id: string;
   title: string;
+  content_hash: string | null;
 }
 
 Deno.serve(withSentry("generate-essay", async (req) => {
@@ -144,7 +145,7 @@ Deno.serve(withSentry("generate-essay", async (req) => {
   {
     const { data } = await admin
       .from("index_nodes")
-      .select("id, title")
+      .select("id, title, content_hash")
       .eq("subject_id", subjectId)
       .order("depth")
       .order("position")
@@ -194,13 +195,18 @@ Deno.serve(withSentry("generate-essay", async (req) => {
 
   for (const sec of sections) {
     const text = textByNode.get(sec.id)!;
-    const hash = await sha256Hex(normText(text).slice(0, 100_000));
-
-    // Guarda el hash en el nodo (para que el cliente mapee nodo -> preguntas).
-    await admin
-      .from("index_nodes")
-      .update({ content_hash: hash })
-      .eq("id", sec.id);
+    // PRESERVAR content_hash existente del nodo. Solo asignar uno nuevo
+    // (sha256 del texto) si el nodo nunca tuvo. Asi no destruimos hashes
+    // canonicos seedeados por migraciones (p.ej. md5(title) en Constitucion)
+    // y mantenemos el matching estable con essay_bank.
+    let hash = (sec.content_hash ?? "").trim();
+    if (hash.length === 0) {
+      hash = await sha256Hex(normText(text).slice(0, 100_000));
+      await admin
+        .from("index_nodes")
+        .update({ content_hash: hash })
+        .eq("id", sec.id);
+    }
 
     // ¿Ya hay preguntas para este contenido (de cualquiera)?
     const { data: ex } = await admin

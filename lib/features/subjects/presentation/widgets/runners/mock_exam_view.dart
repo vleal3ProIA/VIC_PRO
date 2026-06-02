@@ -20,6 +20,7 @@ import 'package:myapp/core/widgets/premium/premium.dart';
 import '../../../application/subjects_providers.dart';
 import '../../../data/subjects_datasource.dart';
 import '../../../domain/subject.dart';
+import 'count_picker_dialog.dart';
 import 'show_test_modal.dart';
 import 'test_runner_dialog.dart';
 
@@ -46,9 +47,11 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
   bool _busy = false;
 
   // Configuración del test.
+  // El selector de cantidad ya NO esta aqui: se elige al pulsar "Empezar"
+  // mediante [showCountPickerDialog] (presets 10/25/50/75/100/TODAS) sobre
+  // el banco real disponible.
   bool _all = true;
   final Set<String> _selected = {};
-  int _count = 10;
   bool _timed = false;
   int _minutes = 20;
   bool _penalty = true;
@@ -84,12 +87,18 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
         .toList();
   }
 
-  /// Abre el test: muestrea `count` preguntas del banco (del ámbito elegido),
-  /// barajadas. "TODAS" (count 0) usa todas las disponibles. El resto de la app
-  /// queda difuminada para no distraer.
+  /// Abre el test: primero pide cuantas preguntas mediante
+  /// [showCountPickerDialog] (sobre el numero real disponible) y luego abre el
+  /// runner con esas preguntas barajadas. "TODAS" (count 0) usa todas las
+  /// disponibles. Si el usuario cancela el selector, no se abre el test.
   Future<void> _open(List<QuizQuestion> pool, List<String> scopeIds) async {
+    if (pool.isEmpty) return;
+    final count =
+        await showCountPickerDialog(context, available: pool.length);
+    if (count == null) return; // cancelado
+    if (!mounted) return;
     final qs = List.of(pool)..shuffle();
-    final take = _count <= 0 || _count >= qs.length ? qs.length : _count;
+    final take = count <= 0 || count >= qs.length ? qs.length : count;
     await showTestModal(
       context,
       TestRunnerDialog(
@@ -203,22 +212,9 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
               }),
             ),
         const Divider(height: AppSpacing.lg),
-        // ─── Nº de preguntas ───
-        Row(
-          children: [
-            Expanded(child: Text(l.studyTestCount)),
-            DropdownButton<int>(
-              value: _count,
-              items: [10, 25, 50, 75, 100, 0]
-                  .map((n) => DropdownMenuItem(
-                        value: n,
-                        child: Text(n == 0 ? l.studyTestAllQuestions : '$n'),
-                      ),)
-                  .toList(),
-              onChanged: (v) => setState(() => _count = v ?? 10),
-            ),
-          ],
-        ),
+        // El selector "Nº de preguntas" se elige al pulsar "Empezar"
+        // (showCountPickerDialog). En este config solo quedan opciones
+        // que afectan al test en si (tiempo, penalizacion).
         // ─── Tiempo ───
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
