@@ -44,7 +44,15 @@ OUTPUT_SQL = Path(
 )
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+# Orden de preferencia: primero el mas potente; si la cuenta no tiene
+# permisos para ese modelo (403), prueba el siguiente. Override con
+# env var GROQ_MODEL ("llama-3.3-70b-versatile" | "llama-3.1-8b-instant"
+# | "llama-3.1-70b-versatile" | ...).
+GROQ_MODELS_FALLBACK = [
+    "llama-3.3-70b-versatile",
+    "llama-3.1-70b-versatile",
+    "llama-3.1-8b-instant",
+]
 BATCH_SIZE = 25  # Equilibrio entre tokens y throughput.
 MAX_RETRIES = 3
 SLEEP_BETWEEN_BATCHES_SEC = 1.0
@@ -101,9 +109,13 @@ def build_user_msg(batch: list[dict]) -> str:
     return "".join(parts)
 
 
-def call_groq(api_key: str, user_msg: str) -> str:
+# Modelo activo (se ajusta dinamicamente al primer que la cuenta acepte).
+_active_model: str | None = None
+
+
+def call_groq(api_key: str, user_msg: str, model: str) -> str:
     body = json.dumps({
-        "model": GROQ_MODEL,
+        "model": model,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_msg},
@@ -121,8 +133,18 @@ def call_groq(api_key: str, user_msg: str) -> str:
             "Content-Type": "application/json",
         },
     )
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        # Lee el body para dar diagnostico util.
+        try:
+            err_body = e.read().decode("utf-8", errors="replace")[:500]
+        except Exception:
+            err_body = ""
+        raise urllib.error.HTTPError(
+            e.url, e.code, f"{e.reason} | body: {err_body}", e.headers, None
+        ) from None
     return data["choices"][0]["message"]["content"]
 
 
@@ -153,11 +175,51 @@ def parse_response(text: str) -> list[dict]:
     return out
 
 
+def _pick_model(api_key: str) -> str:
+    """Prueba GROQ_MODELS_FALLBACK con una llamada minima y devuelve el
+    primero que devuelva 200. Override por env GROQ_MODEL."""
+    override = os.environ.get("GROQ_MODEL", "").strip()
+    candidates = [override] if override else list(GROQ_MODELS_FALLBACK)
+    last_err: Exception | None = None
+    for m in candidates:
+        try:
+            call_groq(api_key, "Devuelve {\"items\":[]}", m)
+            print(f"  Modelo activo: {m}")
+            return m
+        except urllib.error.HTTPError as e:
+            last_err = e
+            print(f"  Modelo {m} no disponible (HTTP {e.code}): "
+                  f"{e.reason}", file=sys.stderr)
+            if e.code == 401:
+                raise RuntimeError(
+                    "API key invalida o revocada. Crea una nueva en "
+                    "https://console.groq.com/keys y vuelve a definir "
+                    "GROQ_API_KEY."
+                )
+            # 403/404 -> probamos siguiente candidato.
+            continue
+        except Exception as e:
+            last_err = e
+            continue
+    raise RuntimeError(
+        f"Ningun modelo de la lista funciono. Ultimo error: {last_err}\n"
+        "Posibles causas:\n"
+        "  - cuenta de Groq sin verificar (verifica email/telefono en "
+        "https://console.groq.com),\n"
+        "  - terms del modelo no aceptados (entra a la consola y haz una "
+        "llamada de prueba en el playground),\n"
+        "  - tier restringido."
+    )
+
+
 def call_with_retries(api_key: str, batch: list[dict]) -> list[dict]:
+    global _active_model
+    if _active_model is None:
+        _active_model = _pick_model(api_key)
     last_err: Exception | None = None
     for attempt in range(MAX_RETRIES):
         try:
-            text = call_groq(api_key, build_user_msg(batch))
+            text = call_groq(api_key, build_user_msg(batch), _active_model)
             return parse_response(text)
         except urllib.error.HTTPError as e:
             last_err = e

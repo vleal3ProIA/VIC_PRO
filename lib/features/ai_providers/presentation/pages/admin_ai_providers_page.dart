@@ -57,6 +57,20 @@ class AdminAiProvidersView extends ConsumerStatefulWidget {
 class _AdminAiProvidersViewState extends ConsumerState<AdminAiProvidersView> {
   bool _working = false;
 
+  // ─── Estado para la clasificacion masiva del banco (Constitucion) ───
+  static const String _kConstitucionSubjectId =
+      '942f19b7-e60c-4e58-bde4-629ded718b96';
+
+  bool _classifying = false;
+  int _classifyTotalProcessed = 0;
+  int _classifyTotalHigh = 0;
+  int _classifyTotalOther = 0;
+  int _classifyTotalErrors = 0;
+  int _classifyRemaining = 0;
+  // El total inicial se fija en la primera respuesta (processed+remaining).
+  int _classifyInitial = 0;
+  String? _classifyLastError;
+
   AiAdminDataSource get _ds => ref.read(aiAdminDataSourceProvider);
 
   void _refresh() => ref.invalidate(aiAdminListProvider);
@@ -145,6 +159,8 @@ class _AdminAiProvidersViewState extends ConsumerState<AdminAiProvidersView> {
               ),
             ),
             AppSpacing.gapMd,
+            _classifyBankCard(),
+            const SizedBox(height: AppSpacing.md),
             for (final p in sorted) ...[
               _providerCard(p, data.credentialsFor(p.id)),
               const SizedBox(height: AppSpacing.md),
@@ -185,6 +201,191 @@ class _AdminAiProvidersViewState extends ConsumerState<AdminAiProvidersView> {
         ),
       ),
     );
+  }
+
+  /// Card de mantenimiento del banco de preguntas. Boton "Clasificar banco"
+  /// que llama a la EF `classify-question-bank` en bucle hasta procesar
+  /// todas las preguntas asignadas al nodo raiz del subject. Muestra
+  /// progreso en tiempo real (lote a lote).
+  Widget _classifyBankCard() {
+    final l = context.l10n;
+    final scheme = context.colors;
+    final progress = _classifyInitial > 0
+        ? (1.0 - _classifyRemaining / _classifyInitial).clamp(0.0, 1.0)
+        : 0.0;
+    return PremiumCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_fix_high_outlined, color: scheme.primary),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  l.aiClassifyBankTitle,
+                  style: context.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            l.aiClassifyBankHint,
+            style: context.textTheme.bodySmall
+                ?.copyWith(color: scheme.onSurfaceVariant, height: 1.4),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (_classifying || _classifyTotalProcessed > 0) ...[
+            LinearProgressIndicator(
+              value: _classifying && _classifyInitial == 0 ? null : progress,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              l.aiClassifyBankProgress(
+                _classifyTotalProcessed,
+                _classifyInitial,
+                _classifyRemaining,
+              ),
+              style: context.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              l.aiClassifyBankStats(
+                _classifyTotalHigh,
+                _classifyTotalOther,
+                _classifyTotalErrors,
+              ),
+              style: context.textTheme.labelSmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+            if (_classifyLastError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  _classifyLastError!,
+                  style: context.textTheme.labelSmall
+                      ?.copyWith(color: scheme.error),
+                ),
+              ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          Align(
+            alignment: Alignment.centerRight,
+            child: PremiumButton(
+              label: _classifying
+                  ? l.aiClassifyBankRunning
+                  : l.aiClassifyBankAction,
+              leadingIcon: Icons.auto_awesome_outlined,
+              onPressed: (_classifying || _working) ? null : _confirmAndClassify,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmAndClassify() async {
+    final l = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.aiClassifyBankConfirmTitle),
+        content: Text(l.aiClassifyBankConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.actionCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.aiClassifyBankAction),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await _classifyLoop();
+  }
+
+  Future<void> _classifyLoop() async {
+    if (_classifying) return;
+    setState(() {
+      _classifying = true;
+      _classifyTotalProcessed = 0;
+      _classifyTotalHigh = 0;
+      _classifyTotalOther = 0;
+      _classifyTotalErrors = 0;
+      _classifyRemaining = 0;
+      _classifyInitial = 0;
+      _classifyLastError = null;
+    });
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    int consecutiveNoProgress = 0;
+    try {
+      while (true) {
+        if (!mounted) return;
+        final r = await _ds.classifyQuestionBank(
+          subjectId: _kConstitucionSubjectId,
+          limit: 30,
+        );
+        if (!mounted) return;
+        setState(() {
+          if (_classifyInitial == 0) {
+            // primera respuesta: total inicial = procesadas + lo que queda.
+            _classifyInitial = r.processed + r.remaining;
+          }
+          _classifyTotalProcessed += r.processed;
+          _classifyTotalHigh += r.classifiedHigh;
+          _classifyTotalOther += r.classifiedOther;
+          _classifyTotalErrors += r.errors;
+          _classifyRemaining = r.remaining;
+        });
+        if (r.remaining == 0) break;
+        if (r.processed == 0) {
+          consecutiveNoProgress++;
+          if (consecutiveNoProgress >= 2) {
+            // Algo no avanza (limit hit, etc.) — paramos para no llover.
+            break;
+          }
+        } else {
+          consecutiveNoProgress = 0;
+        }
+        // Pequena pausa para no saturar el proveedor.
+        await Future<void>.delayed(const Duration(milliseconds: 800));
+      }
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text(l.aiClassifyBankDone)));
+      }
+    } on AiAdminException catch (e) {
+      if (mounted) {
+        setState(
+          () => _classifyLastError =
+              '${e.code}${e.detail != null ? ': ${e.detail}' : ''}',
+        );
+        messenger.showSnackBar(
+          SnackBar(
+            backgroundColor: Theme.of(context).colorScheme.error,
+            content: Text('${l.aiLoadError} (${e.code})'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _classifyLastError = e.toString());
+        messenger.showSnackBar(
+          SnackBar(
+            backgroundColor: Theme.of(context).colorScheme.error,
+            content: Text(l.aiLoadError),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _classifying = false);
+    }
   }
 
   Widget _providerCard(AiProvider p, List<AiCredential> creds) {

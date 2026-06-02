@@ -39,6 +39,15 @@ typedef AiTestResult = ({
   String? detail
 });
 
+/// Resultado de un lote de la EF `classify-question-bank`.
+typedef ClassifyBatchResult = ({
+  int processed,
+  int classifiedHigh,
+  int classifiedOther,
+  int errors,
+  int remaining,
+});
+
 class AiAdminDataSource {
   const AiAdminDataSource(this._client);
 
@@ -120,6 +129,48 @@ class AiAdminDataSource {
 
   Future<void> deleteCredential(String id) async {
     await _invoke({'action': 'delete_credential', 'id': id});
+  }
+
+  /// Invoca un lote de clasificacion de `question_bank` (mueve preguntas
+  /// asignadas a la raiz del subject al nodo `Articulo N` que el LLM
+  /// identifique con confidence='high'). Pensado para llamarse en bucle
+  /// hasta `remaining = 0`.
+  ///
+  /// Lanza [AiAdminException] si la EF rechaza la peticion.
+  Future<ClassifyBatchResult> classifyQuestionBank({
+    required String subjectId,
+    int limit = 30,
+  }) async {
+    try {
+      final res = await _client.functions.invoke(
+        'classify-question-bank',
+        body: {'subject_id': subjectId, 'limit': limit},
+      );
+      final data = res.data;
+      if (data is! Map) {
+        throw const AiAdminException('invalid_response');
+      }
+      final p = data.cast<String, dynamic>();
+      if (p['ok'] != true) {
+        throw AiAdminException(
+          (p['error'] as String?) ?? 'classify_failed',
+          detail: p['detail'] as String?,
+        );
+      }
+      return (
+        processed: (p['processed'] as int?) ?? 0,
+        classifiedHigh: (p['classified_high'] as int?) ?? 0,
+        classifiedOther: (p['classified_other'] as int?) ?? 0,
+        errors: (p['errors'] as int?) ?? 0,
+        remaining: (p['remaining'] as int?) ?? 0,
+      );
+    } on FunctionException catch (e) {
+      final d = e.details;
+      if (d is Map && d['error'] is String) {
+        throw AiAdminException(d['error'] as String);
+      }
+      throw AiAdminException('server_error', detail: d?.toString());
+    }
   }
 
   /// Hace una mini-llamada real para validar proveedor+key. No lanza: el
