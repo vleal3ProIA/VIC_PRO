@@ -26,21 +26,37 @@ declare
   v_doc_id     uuid;
   v_storage_path text;
 begin
-  -- 1) Localizar subject Constitucion del super-admin.
-  select s.id, s.user_id into v_subject_id, v_user_id
+  -- 1) Localizar (o crear) subject Constitucion del super-admin.
+  -- Localizar primero el user_id del super-admin.
+  select id into v_user_id
+  from public.profiles
+  where is_super_admin = true
+  order by created_at asc
+  limit 1;
+
+  if v_user_id is null then
+    raise exception '[0090] no super-admin encontrado, no puedo crear subject';
+  end if;
+
+  -- Buscar subject existente.
+  select s.id into v_subject_id
   from public.subjects s
-  join public.profiles p on p.id = s.user_id
-  where p.is_super_admin = true
+  where s.user_id = v_user_id
     and s.title ilike '%constituci%espa%'
   order by s.created_at desc
   limit 1;
 
   if v_subject_id is null then
-    raise notice '[0089] subject no encontrado. Skipping.';
-    return;
+    -- Crearlo.
+    insert into public.subjects (user_id, title, language, shareable)
+    values (v_user_id, 'Constitución Española', 'es', true)
+    returning id into v_subject_id;
+    raise notice '[0090] subject CREADO: %', v_subject_id;
+  else
+    raise notice '[0090] subject existente: %', v_subject_id;
   end if;
 
-  raise notice '[0089] subject=%, user=%', v_subject_id, v_user_id;
+  raise notice '[0090] subject=%, user=%', v_subject_id, v_user_id;
 
   -- 2) UPSERT document. Buscamos el ultimo doc del subject (si hay) y lo
   -- updateamos. Si no, insertamos uno nuevo.
