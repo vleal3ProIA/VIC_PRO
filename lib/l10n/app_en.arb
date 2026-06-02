@@ -144,6 +144,43 @@
   "studyTestStart": "Take test",
   "studyTestViewHistory": "View my tests",
   "studyTestViewInMaterial": "View in material",
+  "studyTestNoBank": "No questions available for this selection.",
+  "studyTestScopeAll": "Whole subject",
+  "studyTestSavedCreated": "Test created: \"{title}\" with {count} questions.",
+  "@studyTestSavedCreated": {
+    "placeholders": {
+      "title": {"type": "String"},
+      "count": {"type": "int"}
+    }
+  },
+  "studyTestSavedListTitle": "My saved tests",
+  "studyTestSavedEmpty": "No saved tests yet. Generate one first.",
+  "studyTestSavedQuestionCount": "{count} questions",
+  "@studyTestSavedQuestionCount": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "studyTestSavedLastScore": "Last score: {grade}/10",
+  "@studyTestSavedLastScore": {
+    "placeholders": {"grade": {"type": "String"}}
+  },
+  "studyTestSavedNeverTaken": "Not taken yet",
+  "studyTestSavedCombine": "Combine selected",
+  "studyTestSavedCombineTitle": "Combined ({count} sources) · {qcount} questions",
+  "@studyTestSavedCombineTitle": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "qcount": {"type": "int"}
+    }
+  },
+  "studyTestSavedRename": "Rename",
+  "studyTestSavedRenameTitle": "Rename test",
+  "studyTestSavedDelete": "Delete test",
+  "studyTestSavedDeleteConfirm": "Delete this saved test? Past attempts will keep their score history.",
+  "studyTestBankTotal": "{count} questions in the bank",
+  "@studyTestBankTotal": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "studyTestRunAll": "Take a test with everything",
   "studyTestYourAnswer": "Your answer",
   "studyFolderStructure": "Subsections",
   "studioHistory": "History",

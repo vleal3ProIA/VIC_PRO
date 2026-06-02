@@ -304,9 +304,62 @@ class EssayQuestion {
   final String? nodeId;
 }
 
+/// Test PLANTILLA reutilizable: nombre, lista FIJA de question_ids (snapshot
+/// del banco) y metadatos. El usuario lo realiza N veces; cada vez se crea un
+/// [ExamAttempt] enlazado por [savedTestId]. Permite "repetir el mismo test",
+/// ver el progreso a lo largo del tiempo, y combinar varios en uno nuevo.
+class SavedTest {
+  const SavedTest({
+    required this.id,
+    required this.subjectId,
+    required this.title,
+    required this.questionIds,
+    required this.nodeIds,
+    required this.questionCount,
+    required this.createdAt,
+    this.updatedAt,
+  });
+
+  factory SavedTest.fromMap(Map<String, dynamic> m) {
+    final rawQ = m['question_ids'];
+    final qIds = rawQ is List
+        ? rawQ.map((e) => e.toString()).toList(growable: false)
+        : const <String>[];
+    final rawN = m['node_ids'];
+    final nIds = rawN is List
+        ? rawN.map((e) => e.toString()).toList(growable: false)
+        : const <String>[];
+    return SavedTest(
+      id: m['id'] as String,
+      subjectId: (m['subject_id'] as String?) ?? '',
+      title: (m['title'] as String?) ?? '',
+      questionIds: qIds,
+      nodeIds: nIds,
+      questionCount: (m['question_count'] as num?)?.toInt() ?? qIds.length,
+      createdAt:
+          DateTime.tryParse(m['created_at']?.toString() ?? '')?.toLocal() ??
+              DateTime.now(),
+      updatedAt:
+          DateTime.tryParse(m['updated_at']?.toString() ?? '')?.toLocal(),
+    );
+  }
+
+  final String id;
+  final String subjectId;
+  final String title;
+  final List<String> questionIds;
+  final List<String> nodeIds;
+  final int questionCount;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+}
+
 /// Un test COMPLETADO (historial). Guarda nota, desglose, configuración y un
 /// SNAPSHOT de las preguntas con la respuesta que marcó el usuario, para poder
 /// revisarlo o repetirlo con las mismas preguntas y comparar la evolución.
+///
+/// Si [savedTestId] != null, el attempt es un intento de un [SavedTest]
+/// concreto (permite agrupar intentos del mismo test, ver progreso, etc).
 class ExamAttempt {
   const ExamAttempt({
     required this.id,
@@ -325,6 +378,7 @@ class ExamAttempt {
     required this.questions,
     required this.answers,
     required this.createdAt,
+    this.savedTestId,
   });
 
   factory ExamAttempt.fromMap(Map<String, dynamic> m) {
@@ -375,6 +429,7 @@ class ExamAttempt {
       createdAt:
           DateTime.tryParse(m['created_at']?.toString() ?? '')?.toLocal() ??
               DateTime.now(),
+      savedTestId: m['saved_test_id'] as String?,
     );
   }
 
@@ -394,6 +449,7 @@ class ExamAttempt {
   final List<QuizQuestion> questions;
   final List<int?> answers;
   final DateTime createdAt;
+  final String? savedTestId;
 }
 
 class SubjectDocument {

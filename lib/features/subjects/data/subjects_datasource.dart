@@ -795,6 +795,8 @@ class SubjectsDataSource {
 
   /// Guarda en el historial un test COMPLETADO (snapshot de preguntas +
   /// respuestas marcadas + desglose). Best-effort: no rompe el flujo del test.
+  /// Si [savedTestId] != null, el attempt queda enlazado al test plantilla
+  /// (permite agrupar intentos del mismo test, gráfica de evolución, etc.).
   Future<void> recordExamAttempt({
     required String subjectId,
     required List<QuizQuestion> questions,
@@ -805,6 +807,7 @@ class SubjectsDataSource {
     required int minutes,
     required int elapsedSeconds,
     required List<String> nodeIds,
+    String? savedTestId,
   }) async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) return;
@@ -849,6 +852,7 @@ class SubjectsDataSource {
         'elapsed_seconds': elapsedSeconds,
         'node_ids': nodeIds,
         'questions': snapshot,
+        if (savedTestId != null) 'saved_test_id': savedTestId,
       });
     } catch (_) {
       // best-effort
@@ -861,6 +865,139 @@ class SubjectsDataSource {
         .from('exam_attempts')
         .select()
         .eq('subject_id', subjectId)
+        .order('created_at', ascending: false)
+        .limit(100);
+    return (data as List)
+        .cast<Map<String, dynamic>>()
+        .map(ExamAttempt.fromMap)
+        .toList(growable: false);
+  }
+
+  // ─────────────────────── Tests guardados (Fase F) ───────────────────────
+
+  /// Crea un nuevo test plantilla con un snapshot de question_ids del banco.
+  /// Devuelve el [SavedTest] persistido.
+  Future<SavedTest> createSavedTest({
+    required String subjectId,
+    required String title,
+    required List<String> questionIds,
+    required List<String> nodeIds,
+  }) async {
+    final uid = _uid;
+    final data = await _client
+        .from('saved_tests')
+        .insert({
+          'user_id': uid,
+          'subject_id': subjectId,
+          'title': title,
+          'question_ids': questionIds,
+          'node_ids': nodeIds,
+          'question_count': questionIds.length,
+        })
+        .select()
+        .single();
+    return SavedTest.fromMap(data);
+  }
+
+  /// Lista de tests plantilla del temario (recientes primero).
+  Future<List<SavedTest>> listSavedTests(String subjectId) async {
+    final data = await _client
+        .from('saved_tests')
+        .select()
+        .eq('subject_id', subjectId)
+        .order('created_at', ascending: false);
+    return (data as List)
+        .cast<Map<String, dynamic>>()
+        .map(SavedTest.fromMap)
+        .toList(growable: false);
+  }
+
+  /// Recupera un saved_test por id.
+  Future<SavedTest?> getSavedTest(String id) async {
+    final data =
+        await _client.from('saved_tests').select().eq('id', id).maybeSingle();
+    if (data == null) return null;
+    return SavedTest.fromMap(Map<String, dynamic>.from(data));
+  }
+
+  /// Renombra un saved_test.
+  Future<void> renameSavedTest(String id, String title) async {
+    await _client
+        .from('saved_tests')
+        .update({'title': title})
+        .eq('id', id);
+  }
+
+  /// Borra un saved_test. Los `exam_attempts` enlazados quedan con
+  /// `saved_test_id = NULL` (la FK tiene ON DELETE SET NULL).
+  Future<void> deleteSavedTest(String id) async {
+    await _client.from('saved_tests').delete().eq('id', id);
+  }
+
+  /// Combina varios saved_tests en uno nuevo via RPC. Devuelve el id del
+  /// saved_test creado.
+  Future<String> combineSavedTests({
+    required List<String> sourceIds,
+    required String title,
+  }) async {
+    final rpcRes = await _client.rpc<dynamic>(
+      'combine_saved_tests',
+      params: {
+        'p_source_ids': sourceIds,
+        'p_title': title,
+      },
+    );
+    return rpcRes.toString();
+  }
+
+  /// Resuelve las preguntas reales (del banco) de un saved_test.
+  /// Las preguntas borradas del banco se omiten silenciosamente: la UI
+  /// muestra el count real vs el esperado.
+  Future<List<QuizQuestion>> getSavedTestQuestions(SavedTest s) async {
+    if (s.questionIds.isEmpty) return const [];
+    final out = <QuizQuestion>[];
+    // chunks de 200 para no superar el limite del IN.
+    for (var i = 0; i < s.questionIds.length; i += 200) {
+      final chunk = s.questionIds.sublist(
+        i,
+        i + 200 > s.questionIds.length ? s.questionIds.length : i + 200,
+      );
+      final data = await _client
+          .from('question_bank')
+          .select('id, content_hash, question, options, correct_index, explanation')
+          .inFilter('id', chunk);
+      // Mapeamos por id para preservar el orden original del snapshot.
+      final byId = <String, Map<String, dynamic>>{};
+      for (final r in (data as List).cast<Map<String, dynamic>>()) {
+        byId[r['id'] as String] = r;
+      }
+      for (final id in chunk) {
+        final row = byId[id];
+        if (row == null) continue;
+        out.add(QuizQuestion(
+          id: id,
+          subjectId: s.subjectId,
+          question: (row['question'] as String?) ?? '',
+          options: row['options'] is List
+              ? (row['options'] as List)
+                  .map((e) => e.toString())
+                  .toList(growable: false)
+              : const <String>[],
+          correctIndex: (row['correct_index'] as num?)?.toInt() ?? 0,
+          explanation: row['explanation'] as String?,
+        ),);
+      }
+    }
+    return out;
+  }
+
+  /// Attempts (intentos) realizados de un saved_test concreto, ordenados de
+  /// más reciente a más antiguo. Para mostrar progreso y gráfica.
+  Future<List<ExamAttempt>> listAttemptsForSavedTest(String savedTestId) async {
+    final data = await _client
+        .from('exam_attempts')
+        .select()
+        .eq('saved_test_id', savedTestId)
         .order('created_at', ascending: false)
         .limit(100);
     return (data as List)

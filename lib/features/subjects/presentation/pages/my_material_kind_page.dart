@@ -35,6 +35,7 @@ import '../../domain/subject.dart';
 import '../widgets/runners/mind_map_view.dart';
 import '../widgets/runners/mock_exam_view.dart';
 import '../widgets/runners/tf_view.dart';
+import '../widgets/saved_tests_library.dart';
 
 /// Alto fijo (en lógicas) reservado al runner inline (test, V-F, mapa mental,
 /// simulacro). Los runners usan `ListView`/`Stack` internamente y necesitan
@@ -879,35 +880,24 @@ class _CramCard extends StatelessWidget {
   }
 }
 
-/// Mock exam = simulacro cronometrado. Es el MISMO configurador que `quiz`
-/// ([MockExamView]) porque ambos abren el [TestRunnerDialog]; la diferencia
-/// es semantica: aqui el user llega con la intencion de hacer un simulacro
-/// completo cronometrado. Compartimos widget para no duplicar logica.
-class _MockRunnerCard extends ConsumerWidget {
+/// Mock = biblioteca de tests guardados del temario.
+///
+/// Muestra:
+///   1. Banner con el total de preguntas en el banco + botón "Hacer test de
+///      TODAS las preguntas" (crea un SavedTest con todas y arranca).
+///   2. Lista de SavedTest del usuario para este temario, con título, fecha,
+///      número de preguntas y última nota. Click = arrancar (modal cantidad
+///      → runner). Cada fila tiene popmenu Renombrar / Borrar.
+///
+/// El configurador con selección de secciones para CREAR un nuevo test
+/// (MockExamView) sigue viviendo en el Panel `/home` (con subjectId).
+class _MockRunnerCard extends StatelessWidget {
   const _MockRunnerCard({required this.subjectId});
   final String subjectId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return PremiumCard(
-      padding: EdgeInsets.zero,
-      child: SizedBox(
-        height: _kRunnerHeight,
-        child: _AsyncWrap<List<IndexNode>>(
-          provider: indexNodesProvider(subjectId),
-          isEmpty: (v) => v.where((n) => n.parentId != null).isEmpty,
-          onEmpty: _KindEmpty(
-            subjectId: subjectId,
-            icon: Icons.fact_check_outlined,
-          ),
-          builder: (nodes) => MockExamView(
-            subjectId: subjectId,
-            nodes: nodes,
-            onSelectNode: (_) {},
-          ),
-        ),
-      ),
-    );
+  Widget build(BuildContext context) {
+    return SavedTestsLibrary(subjectId: subjectId);
   }
 }
 

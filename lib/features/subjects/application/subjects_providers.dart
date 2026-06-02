@@ -113,6 +113,21 @@ final examAttemptsProvider =
   return ref.watch(subjectsDataSourceProvider).listExamAttempts(subjectId);
 });
 
+/// Tests guardados (plantillas reutilizables) de un temario.
+final savedTestsProvider =
+    FutureProvider.family<List<SavedTest>, String>((ref, subjectId) {
+  return ref.watch(subjectsDataSourceProvider).listSavedTests(subjectId);
+});
+
+/// Attempts (intentos) de un saved_test concreto, ordenados de más reciente
+/// a más antiguo. Para la gráfica de evolución y la lista de intentos.
+final savedTestAttemptsProvider =
+    FutureProvider.family<List<ExamAttempt>, String>((ref, savedTestId) {
+  return ref
+      .watch(subjectsDataSourceProvider)
+      .listAttemptsForSavedTest(savedTestId);
+});
+
 /// Material reutilizable del temario contra la biblioteca global (por hash).
 typedef SubjectMatch = ({
   int totalSections,

@@ -40,6 +40,7 @@ class TestRunnerDialog extends ConsumerStatefulWidget {
     this.initialAnswers,
     this.startInReview = false,
     this.record = true,
+    this.savedTestId,
     super.key,
   });
 
@@ -53,6 +54,10 @@ class TestRunnerDialog extends ConsumerStatefulWidget {
   final List<int?>? initialAnswers;
   final bool startInReview;
   final bool record;
+
+  /// Si se rellena, el [ExamAttempt] resultante se enlaza al saved_test
+  /// para que aparezca en su histórico/gráfica.
+  final String? savedTestId;
 
   @override
   ConsumerState<TestRunnerDialog> createState() => _TestRunnerDialogState();
@@ -151,8 +156,13 @@ class _TestRunnerDialogState extends ConsumerState<TestRunnerDialog> {
         minutes: widget.minutes,
         elapsedSeconds: _elapsed,
         nodeIds: widget.nodeIds,
+        savedTestId: widget.savedTestId,
       ),);
       ref.invalidate(examAttemptsProvider(widget.subjectId));
+      if (widget.savedTestId != null) {
+        ref.invalidate(savedTestAttemptsProvider(widget.savedTestId!));
+        ref.invalidate(savedTestsProvider(widget.subjectId));
+      }
     }
     if (mounted) setState(() => _done = true);
   }
