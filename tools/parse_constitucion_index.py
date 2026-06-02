@@ -344,7 +344,7 @@ begin
     parts.append("  select d.id, d.storage_path into v_doc_id, v_storage_path\n")
     parts.append("  from public.documents d\n")
     parts.append("  where d.subject_id = v_subject_id\n")
-    parts.append("  order by d.uploaded_at desc nulls last, d.created_at desc nulls last\n")
+    parts.append("  order by d.created_at desc nulls last\n")
     parts.append("  limit 1;\n\n")
     parts.append("  if v_doc_id is not null then\n")
     parts.append("    update public.documents set\n")

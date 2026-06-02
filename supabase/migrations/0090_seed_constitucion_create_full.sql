@@ -63,7 +63,7 @@ begin
   select d.id, d.storage_path into v_doc_id, v_storage_path
   from public.documents d
   where d.subject_id = v_subject_id
-  order by d.uploaded_at desc nulls last, d.created_at desc nulls last
+  order by d.created_at desc nulls last
   limit 1;
 
   if v_doc_id is not null then
