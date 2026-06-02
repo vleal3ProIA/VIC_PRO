@@ -17,6 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_confirm_dialog.dart';
+import 'package:myapp/core/widgets/markdown_text.dart';
 
 import '../../../application/subjects_providers.dart';
 import '../../../domain/subject.dart';
@@ -48,6 +49,10 @@ class _TfRunnerDialogState extends ConsumerState<TfRunnerDialog> {
   bool _done = false;
   bool _review = false;
   int _reviewCur = 0;
+
+  /// Indices de las preguntas (en review) cuyo bloque "Ver en temario"
+  /// esta desplegado mostrando original + explicado de su seccion.
+  final Set<int> _expanded = <int>{};
 
   int get _totalSecs => widget.minutes * 60;
   int get _answered => _answers.where((a) => a != null).length;
@@ -533,10 +538,38 @@ class _TfRunnerDialogState extends ConsumerState<TfRunnerDialog> {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Text(
-            '${l.studyMockCorrect}: $correctLabel',
-            style: context.textTheme.labelMedium
-                ?.copyWith(fontWeight: FontWeight.w700),
+          // Linea "Correcta: X" + boton "Ver en temario" cuando la pregunta
+          // tiene nodo enlazado (q.nodeId != null). Al desplegar muestra el
+          // texto original + el explicado IA de esa seccion.
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${l.studyMockCorrect}: $correctLabel',
+                  style: context.textTheme.labelMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              if (q.nodeId != null)
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: l.studyTestViewInMaterial,
+                  icon: Icon(
+                    _expanded.contains(i)
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 18,
+                    color: Colors.green.shade700,
+                  ),
+                  onPressed: () => setState(() {
+                    if (_expanded.contains(i)) {
+                      _expanded.remove(i);
+                    } else {
+                      _expanded.add(i);
+                    }
+                  }),
+                ),
+            ],
           ),
           if (q.explanation?.isNotEmpty ?? false)
             Padding(
@@ -554,8 +587,83 @@ class _TfRunnerDialogState extends ConsumerState<TfRunnerDialog> {
                 ),
               ),
             ),
+          if (_expanded.contains(i) && q.nodeId != null)
+            _reviewDetail(context, q.nodeId!),
         ],
       ),
+    );
+  }
+
+  /// Panel desplegable bajo una pregunta en revision: muestra el ORIGINAL del
+  /// temario + el EXPLICADO de la IA de la seccion enlazada (`nodeId`).
+  /// Sigue el mismo patron que `TestRunnerDialog._reviewDetail`.
+  Widget _reviewDetail(BuildContext context, String nodeId) {
+    final l = context.l10n;
+    final scheme = context.colors;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _detailBlock(context, nodeId, 'original', l.studyTabOriginal),
+          _detailBlock(context, nodeId, 'explained', l.studyTabExplained),
+        ],
+      ),
+    );
+  }
+
+  /// Un bloque (Original o Explicado) del contenido de la seccion, leido
+  /// del provider de contenido de nodos. Se omite si esta vacio.
+  Widget _detailBlock(
+    BuildContext context,
+    String nodeId,
+    String kind,
+    String label,
+  ) {
+    final scheme = context.colors;
+    final async = ref.watch(
+      nodeContentProvider((nodeId: nodeId, kind: kind)),
+    );
+    return async.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        child: SizedBox(
+          height: 18,
+          width: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (content) {
+        if (content == null || content.trim().isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label.toUpperCase(),
+                style: context.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: scheme.primary,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              MarkdownText(content),
+            ],
+          ),
+        );
+      },
     );
   }
 
