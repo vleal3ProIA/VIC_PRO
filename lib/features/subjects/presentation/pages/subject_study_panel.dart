@@ -29,6 +29,7 @@ import 'package:myapp/core/widgets/markdown_text.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
 import 'package:myapp/core/widgets/readable_text.dart';
 import 'package:myapp/core/widgets/reader_frame.dart';
+import 'package:myapp/features/billing/application/plan_gates.dart';
 
 import '../../application/subjects_providers.dart';
 import '../../data/subjects_datasource.dart';
@@ -2001,7 +2002,7 @@ class _StudioColumnState extends State<_StudioColumn> {
 
     final Widget body;
     if (inNotes) {
-      body = _NotesView(nodeId: widget.nodeId!, subjectId: widget.subjectId);
+      body = _NotesView(nodeId: widget.nodeId, subjectId: widget.subjectId);
     } else if (inFlash) {
       body = _FlashcardsView(
         subjectId: widget.subjectId,
@@ -2986,10 +2987,6 @@ class _QuizViewState extends ConsumerState<_QuizView> {
   bool _answered = false;
   int _correct = 0;
 
-  /// `true` = solo esta sección, `false` = todo el temario.
-  bool _scopeSection = true;
-  String? get _scopedNodeId => _scopeSection ? widget.activeNodeId : null;
-
   /// IDs de las preguntas falladas en la ronda actual (para "practicar
   /// falladas").
   final Set<String> _wrong = {};
@@ -3022,7 +3019,14 @@ class _QuizViewState extends ConsumerState<_QuizView> {
   Future<void> _generate() async {
     if (_busy) return;
     final nodeId = widget.activeNodeId;
-    if (nodeId == null) return;
+    // GATE plan Max: con raiz seleccionada generar para TODO el temario
+    // requiere Max. Generar para una seccion concreta es libre.
+    if (nodeId == null) {
+      if (!ref.read(isMaxPlanProvider)) {
+        await showMaxOnlyDialog(context);
+      }
+      return;
+    }
     setState(() => _busy = true);
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
@@ -3033,10 +3037,7 @@ class _QuizViewState extends ConsumerState<_QuizView> {
             nodeId: nodeId,
           );
       if (mounted) {
-        setState(() {
-          _scopeSection = true;
-          _reset();
-        });
+        setState(_reset);
       }
       ref
         ..invalidate(quizQuestionsProvider(widget.subjectId))
@@ -3093,7 +3094,10 @@ class _QuizViewState extends ConsumerState<_QuizView> {
         ),
       );
     }
-    final scope = (subjectId: widget.subjectId, nodeId: _scopedNodeId);
+    // Sin toggle: el scope sigue siempre al nodeId del indice. Raiz -> todo
+    // el subject (read-only); seccion -> preguntas de esa seccion.
+    final scope =
+        (subjectId: widget.subjectId, nodeId: widget.activeNodeId);
     final async = ref.watch(quizQuestionsScopedProvider(scope));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -3119,6 +3123,8 @@ class _QuizViewState extends ConsumerState<_QuizView> {
   Widget _scopeBar(BuildContext context) {
     final l = context.l10n;
     final hasActive = widget.activeNodeId != null;
+    final scopeLabel =
+        hasActive ? (widget.activeNodeTitle ?? '') : l.studyTestScopeAll;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
@@ -3129,25 +3135,19 @@ class _QuizViewState extends ConsumerState<_QuizView> {
       child: Row(
         children: [
           Expanded(
-            child: SegmentedButton<bool>(
-              showSelectedIcon: false,
-              segments: [
-                ButtonSegment(value: true, label: Text(l.studyScopeSection)),
-                ButtonSegment(value: false, label: Text(l.studyScopeAll)),
-              ],
-              selected: {_scopeSection},
-              onSelectionChanged: (s) => setState(() {
-                _scopeSection = s.first;
-                _reset();
-              }),
+            child: Text(
+              scopeLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.textTheme.labelLarge
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
-          const SizedBox(width: AppSpacing.xs),
           IconButton(
-            tooltip: hasActive ? l.studyRegenerate : l.studyPickSectionTooltip,
+            tooltip: l.studyRegenerate,
             visualDensity: VisualDensity.compact,
             icon: const Icon(Icons.refresh, size: 18),
-            onPressed: hasActive ? _generate : null,
+            onPressed: _generate,
           ),
         ],
       ),
@@ -3185,7 +3185,7 @@ class _QuizViewState extends ConsumerState<_QuizView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                _scopeSection
+                widget.activeNodeId != null
                     ? l.studioQuizEmptyForSection(widget.activeNodeTitle ?? '')
                     : l.studioQuizEmpty,
                 textAlign: TextAlign.center,
@@ -3411,12 +3411,6 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
   bool _flipped = false;
   int _index = 0;
 
-  /// `true` = solo esta sección, `false` = todo el temario.
-  bool _scopeSection = true;
-
-  String? get _scopedNodeId =>
-      _scopeSection ? widget.activeNodeId : null;
-
   void _resetReview() {
     _index = 0;
     _flipped = false;
@@ -3425,7 +3419,15 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
   Future<void> _generate() async {
     if (_busy) return;
     final nodeId = widget.activeNodeId;
-    if (nodeId == null) return; // botón estará deshabilitado
+    // GATE plan Max: con raiz seleccionada, generar de TODO el temario
+    // requiere Max. Botones de la lista ya estan ocultos en ese caso, pero
+    // este check defensivo evita una llamada IA accidental si llega aqui.
+    if (nodeId == null) {
+      if (!ref.read(isMaxPlanProvider)) {
+        await showMaxOnlyDialog(context);
+      }
+      return;
+    }
     setState(() => _busy = true);
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
@@ -3436,10 +3438,7 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
             nodeId: nodeId,
           );
       if (mounted) {
-        setState(() {
-          _scopeSection = true; // tras generar, mostramos la sección recién creada
-          _resetReview();
-        });
+        setState(_resetReview);
       }
       ref
         ..invalidate(flashcardsProvider(widget.subjectId))
@@ -3495,7 +3494,10 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
       );
     }
 
-    final scope = (subjectId: widget.subjectId, nodeId: _scopedNodeId);
+    // Sin toggle: el scope sigue al nodeId del indice. Raiz -> todas;
+    // seccion -> las de esa seccion.
+    final scope =
+        (subjectId: widget.subjectId, nodeId: widget.activeNodeId);
     final async = ref.watch(flashcardsScopedProvider(scope));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -3517,11 +3519,14 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
     );
   }
 
-  /// Barra superior: chip de scope (Esta sección / Todo el temario) +
-  /// botón de regenerar (solo activo si hay sección activa).
+  /// Barra superior: indicador de scope (la seccion activa o "todo el
+  /// temario") + boton regenerar. Sin toggle: el scope es siempre el del
+  /// indice. Si esta seleccionada la raiz, regenerar dispara el gate Max.
   Widget _scopeBar(BuildContext context) {
     final l = context.l10n;
     final hasActive = widget.activeNodeId != null;
+    final scopeLabel =
+        hasActive ? (widget.activeNodeTitle ?? '') : l.studyTestScopeAll;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
@@ -3532,25 +3537,19 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
       child: Row(
         children: [
           Expanded(
-            child: SegmentedButton<bool>(
-              showSelectedIcon: false,
-              segments: [
-                ButtonSegment(value: true, label: Text(l.studyScopeSection)),
-                ButtonSegment(value: false, label: Text(l.studyScopeAll)),
-              ],
-              selected: {_scopeSection},
-              onSelectionChanged: (s) => setState(() {
-                _scopeSection = s.first;
-                _resetReview();
-              }),
+            child: Text(
+              scopeLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.textTheme.labelLarge
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
-          const SizedBox(width: AppSpacing.xs),
           IconButton(
-            tooltip: hasActive ? l.studyRegenerate : l.studyPickSectionTooltip,
+            tooltip: l.studyRegenerate,
             visualDensity: VisualDensity.compact,
             icon: const Icon(Icons.refresh, size: 18),
-            onPressed: hasActive ? _generate : null,
+            onPressed: _generate,
           ),
         ],
       ),
@@ -3559,9 +3558,12 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
 
   Widget _content(BuildContext context, List<Flashcard> cards) {
     final l = context.l10n;
+    final hasActive = widget.activeNodeId != null;
     if (cards.isEmpty) {
-      // Sin sección activa → CTA pidiendo seleccionarla.
-      if (widget.activeNodeId == null) {
+      // En raiz: no hay flashcards en TODO el subject. Invitamos a
+      // seleccionar una seccion para generar (la generacion masiva esta
+      // detras del gate Max).
+      if (!hasActive) {
         return Center(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -3582,6 +3584,7 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
           ),
         );
       }
+      // En seccion: empty state con boton "Generar flashcards" libre.
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
@@ -3589,11 +3592,7 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                _scopeSection
-                    ? l.studioFlashEmptyForSection(
-                        widget.activeNodeTitle ?? '',
-                      )
-                    : l.studioFlashEmpty,
+                l.studioFlashEmptyForSection(widget.activeNodeTitle ?? ''),
                 textAlign: TextAlign.center,
                 style: context.textTheme.bodyMedium
                     ?.copyWith(color: context.colors.onSurfaceVariant),
@@ -3652,7 +3651,7 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
             onPressed: () {
               setState(_resetReview);
               ref.invalidate(flashcardsScopedProvider(
-                (subjectId: widget.subjectId, nodeId: _scopedNodeId),
+                (subjectId: widget.subjectId, nodeId: widget.activeNodeId),
               ),);
             },
           ),
@@ -3739,9 +3738,13 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
 
 /// Notas del usuario sobre la sección seleccionada (añadir / editar / borrar).
 class _NotesView extends ConsumerStatefulWidget {
-  const _NotesView({required this.nodeId, required this.subjectId});
+  const _NotesView({required this.subjectId, this.nodeId});
 
-  final String nodeId;
+  /// `null` cuando esta seleccionada la raiz del indice: la vista muestra
+  /// TODAS las notas del subject en modo solo-lectura (no se puede crear ni
+  /// editar). Si tiene valor, se comporta como antes: CRUD sobre las notas
+  /// de esa seccion.
+  final String? nodeId;
   final String subjectId;
 
   @override
@@ -3770,19 +3773,31 @@ class _NotesViewState extends ConsumerState<_NotesView> {
     );
   }
 
+  /// Invalida ambos providers (el de la seccion concreta y el agregado del
+  /// subject) tras un cambio: asi la vista raiz y la vista por seccion se
+  /// mantienen sincronizadas.
+  void _invalidateAfterChange() {
+    final nodeId = widget.nodeId;
+    if (nodeId != null) {
+      ref.invalidate(annotationsProvider(nodeId));
+    }
+    ref.invalidate(annotationsForSubjectProvider(widget.subjectId));
+  }
+
   Future<void> _add() async {
     final body = _newCtrl.text.trim();
-    if (body.isEmpty || _busy) return;
+    final nodeId = widget.nodeId;
+    if (body.isEmpty || _busy || nodeId == null) return;
     setState(() => _busy = true);
     final l = context.l10n;
     try {
       await ref.read(subjectsDataSourceProvider).createAnnotation(
             subjectId: widget.subjectId,
-            nodeId: widget.nodeId,
+            nodeId: nodeId,
             body: body,
           );
       _newCtrl.clear();
-      ref.invalidate(annotationsProvider(widget.nodeId));
+      _invalidateAfterChange();
     } catch (_) {
       _toast(l.studyViewError);
     } finally {
@@ -3798,7 +3813,7 @@ class _NotesViewState extends ConsumerState<_NotesView> {
     try {
       await ref.read(subjectsDataSourceProvider).updateAnnotation(id, body);
       if (mounted) setState(() => _editingId = null);
-      ref.invalidate(annotationsProvider(widget.nodeId));
+      _invalidateAfterChange();
     } catch (_) {
       _toast(l.studyViewError);
     } finally {
@@ -3819,7 +3834,7 @@ class _NotesViewState extends ConsumerState<_NotesView> {
     setState(() => _busy = true);
     try {
       await ref.read(subjectsDataSourceProvider).deleteAnnotation(id);
-      ref.invalidate(annotationsProvider(widget.nodeId));
+      _invalidateAfterChange();
     } catch (_) {
       _toast(l.studyViewError);
     } finally {
@@ -3830,43 +3845,55 @@ class _NotesViewState extends ConsumerState<_NotesView> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final async = ref.watch(annotationsProvider(widget.nodeId));
+    final nodeId = widget.nodeId;
+    final isRoot = nodeId == null;
+    // Raiz seleccionada → todas las notas del subject (read-only).
+    // Seccion seleccionada → notas de esa seccion con CRUD.
+    final async = isRoot
+        ? ref.watch(annotationsForSubjectProvider(widget.subjectId))
+        : ref.watch(annotationsProvider(nodeId));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              TextField(
-                controller: _newCtrl,
-                minLines: 2,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: l.studyNoteHint,
-                  border: const OutlineInputBorder(),
-                  isDense: true,
+        // Creacion solo visible cuando hay seccion concreta seleccionada.
+        if (!isRoot) ...[
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                TextField(
+                  controller: _newCtrl,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: l.studyNoteHint,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              PremiumButton(
-                label: l.studyNoteAdd,
-                leadingIcon: Icons.add,
-                loading: _busy && _editingId == null,
-                onPressed: _busy ? null : _add,
-              ),
-            ],
+                const SizedBox(height: AppSpacing.xs),
+                PremiumButton(
+                  label: l.studyNoteAdd,
+                  leadingIcon: Icons.add,
+                  loading: _busy && _editingId == null,
+                  onPressed: _busy ? null : _add,
+                ),
+              ],
+            ),
           ),
-        ),
-        const Divider(height: 1),
+          const Divider(height: 1),
+        ],
         Expanded(
           child: async.when(
             loading: () => const Center(child: AppLoadingState()),
             error: (e, _) => AppErrorState(
               message: l.errorGeneric,
-              onRetry: () =>
-                  ref.invalidate(annotationsProvider(widget.nodeId)),
+              onRetry: () => isRoot
+                  ? ref.invalidate(
+                      annotationsForSubjectProvider(widget.subjectId),
+                    )
+                  : ref.invalidate(annotationsProvider(nodeId)),
               retryLabel: l.actionRetry,
             ),
             data: (notes) {
@@ -3886,7 +3913,7 @@ class _NotesViewState extends ConsumerState<_NotesView> {
               return ListView.separated(
                 padding: const EdgeInsets.all(AppSpacing.sm),
                 itemCount: notes.length,
-                itemBuilder: (ctx, i) => _noteTile(notes[i]),
+                itemBuilder: (ctx, i) => _noteTile(notes[i], readOnly: isRoot),
                 separatorBuilder: (_, __) =>
                     const SizedBox(height: AppSpacing.xs),
               );
@@ -3897,9 +3924,9 @@ class _NotesViewState extends ConsumerState<_NotesView> {
     );
   }
 
-  Widget _noteTile(Annotation note) {
+  Widget _noteTile(Annotation note, {bool readOnly = false}) {
     final l = context.l10n;
-    final editing = _editingId == note.id;
+    final editing = !readOnly && _editingId == note.id;
     return PremiumCard(
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: editing
@@ -3944,23 +3971,27 @@ class _NotesViewState extends ConsumerState<_NotesView> {
                     style: context.textTheme.bodyMedium?.copyWith(height: 1.4),
                   ),
                 ),
-                IconButton(
-                  tooltip: l.studyNoteEdit,
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  onPressed: _busy
-                      ? null
-                      : () => setState(() {
-                            _editingId = note.id;
-                            _editCtrl.text = note.body;
-                          }),
-                ),
-                IconButton(
-                  tooltip: l.studyNoteDelete,
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  onPressed: _busy ? null : () => _delete(note.id),
-                ),
+                // En raiz (readOnly) ocultamos editar/borrar: las acciones
+                // CRUD viven en la vista por seccion concreta.
+                if (!readOnly) ...[
+                  IconButton(
+                    tooltip: l.studyNoteEdit,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() {
+                              _editingId = note.id;
+                              _editCtrl.text = note.body;
+                            }),
+                  ),
+                  IconButton(
+                    tooltip: l.studyNoteDelete,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    onPressed: _busy ? null : () => _delete(note.id),
+                  ),
+                ],
               ],
             ),
     );
@@ -4019,6 +4050,12 @@ class _EssayViewState extends ConsumerState<_EssayView> {
 
   Future<void> _generate({bool force = false}) async {
     if (_busy) return;
+    // GATE plan Max: generar para TODO el temario requiere plan Max.
+    // Generar para una selección concreta de secciones es libre.
+    if (_all && !ref.read(isMaxPlanProvider)) {
+      await showMaxOnlyDialog(context);
+      return;
+    }
     setState(() => _busy = true);
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
