@@ -181,6 +181,9 @@
     "placeholders": {"count": {"type": "int"}}
   },
   "studyTestRunAll": "Take a test with everything",
+  "studyMaxOnlyTitle": "Available on plan Max",
+  "studyMaxOnlyBody": "Generating from the whole subject is an exclusive feature of plan Max. You can still generate from each section while you study.",
+  "studyMaxOnlyAction": "See plan Max",
   "studyTestYourAnswer": "Your answer",
   "studyFolderStructure": "Subsections",
   "studioHistory": "History",

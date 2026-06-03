@@ -18,6 +18,7 @@ import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_error_dialog.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
+import 'package:myapp/features/billing/application/plan_gates.dart';
 
 import '../../../application/subjects_providers.dart';
 import '../../../data/subjects_datasource.dart';
@@ -149,6 +150,11 @@ class _TfViewState extends ConsumerState<TfView> {
   /// SavedTest kind=tf con todas las preguntas del ámbito.
   Future<void> _generate() async {
     if (_busy) return;
+    // GATE plan Max: generar de TODO el temario requiere Max.
+    if (_all && !ref.read(isMaxPlanProvider)) {
+      await showMaxOnlyDialog(context);
+      return;
+    }
     setState(() => _busy = true);
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);

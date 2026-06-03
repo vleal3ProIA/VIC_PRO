@@ -25,6 +25,7 @@ import 'package:myapp/core/widgets/app_empty_state.dart';
 import 'package:myapp/core/widgets/app_error_dialog.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
 import 'package:myapp/core/widgets/premium/premium.dart';
+import 'package:myapp/features/billing/application/plan_gates.dart';
 
 import '../../application/subjects_providers.dart';
 import '../../domain/subject.dart';
@@ -55,6 +56,11 @@ class _SavedTestsLibraryState extends ConsumerState<SavedTestsLibrary> {
 
   Future<void> _runAll() async {
     if (_busy) return;
+    // GATE plan Max: "Hacer test de todo el temario" requiere Max.
+    if (!ref.read(isMaxPlanProvider)) {
+      await showMaxOnlyDialog(context);
+      return;
+    }
     setState(() => _busy = true);
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
