@@ -38,6 +38,7 @@ import '../util/file_picker_web.dart';
 import '../util/study_export.dart';
 import '../util/study_tts.dart';
 import '../widgets/collapsible_index_tree.dart';
+import '../widgets/runners/index_leaf_picker.dart';
 import '../widgets/runners/mind_map_view.dart';
 import '../widgets/runners/mock_exam_view.dart';
 import '../widgets/runners/show_test_modal.dart';
@@ -4018,44 +4019,18 @@ class _EssayView extends ConsumerStatefulWidget {
 
 class _EssayViewState extends ConsumerState<_EssayView> {
   bool _busy = false;
-  bool _all = true;
-  final Set<String> _selected = {};
-
-  Set<String> _scopeNodeIds() {
-    if (_all) return widget.nodes.map((n) => n.id).toSet();
-    final byParent = <String?, List<IndexNode>>{};
-    for (final n in widget.nodes) {
-      byParent.putIfAbsent(n.parentId, () => []).add(n);
-    }
-    final out = <String>{};
-    void add(String id) {
-      if (!out.add(id)) return;
-      for (final c in byParent[id] ?? const <IndexNode>[]) {
-        add(c.id);
-      }
-    }
-    for (final id in _selected) {
-      add(id);
-    }
-    return out;
-  }
+  String? _selectedNodeId;
 
   List<EssayQuestion> _pool(List<EssayQuestion> bank) {
-    if (_all) return bank;
-    final scope = _scopeNodeIds();
-    return bank
-        .where((q) => q.nodeId != null && scope.contains(q.nodeId))
-        .toList();
+    final id = _selectedNodeId;
+    if (id == null) return const [];
+    return bank.where((q) => q.nodeId == id).toList();
   }
 
   Future<void> _generate({bool force = false}) async {
     if (_busy) return;
-    // GATE plan Max: generar para TODO el temario requiere plan Max.
-    // Generar para una selección concreta de secciones es libre.
-    if (_all && !ref.read(isMaxPlanProvider)) {
-      await showMaxOnlyDialog(context);
-      return;
-    }
+    final nodeId = _selectedNodeId;
+    if (nodeId == null) return;
     setState(() => _busy = true);
     final l = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
@@ -4063,7 +4038,7 @@ class _EssayViewState extends ConsumerState<_EssayView> {
     try {
       final r = await ref.read(subjectsDataSourceProvider).generateEssayBank(
             subjectId: widget.subjectId,
-            nodeIds: _all ? const [] : _scopeNodeIds().toList(),
+            nodeIds: [nodeId],
             force: force,
           );
       ref.invalidate(essayQuestionsProvider(widget.subjectId));
@@ -4112,8 +4087,7 @@ class _EssayViewState extends ConsumerState<_EssayView> {
     final bank =
         ref.watch(essayQuestionsProvider(widget.subjectId)).valueOrNull ??
             const <EssayQuestion>[];
-    final sections = widget.nodes.where((n) => n.parentId != null).toList();
-    final canGenerate = _all || _selected.isNotEmpty;
+    final canGenerate = _selectedNodeId != null;
     final pool = _pool(bank);
 
     // Agrupar por sección, en el orden del índice (preservamos posición).
@@ -4138,35 +4112,16 @@ class _EssayViewState extends ConsumerState<_EssayView> {
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
         // ─── Secciones ───
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                l.studyTestSections,
-                style: context.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
-            Text(l.studyTestAll, style: context.textTheme.bodySmall),
-            Switch(value: _all, onChanged: (v) => setState(() => _all = v)),
-          ],
+        // Solo seleccion unica de hoja del indice. Sin toggle "Todo".
+        Text(
+          l.studyTestSections,
+          style: context.textTheme.titleSmall
+              ?.copyWith(fontWeight: FontWeight.w700),
         ),
-        if (!_all)
-          for (final s in sections)
-            CheckboxListTile(
-              dense: true,
-              contentPadding: EdgeInsets.only(left: 4 + s.depth * 12.0),
-              controlAffinity: ListTileControlAffinity.leading,
-              value: _selected.contains(s.id),
-              title:
-                  Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-              onChanged: (v) => setState(() {
-                if (v ?? false) {
-                  _selected.add(s.id);
-                } else {
-                  _selected.remove(s.id);
-                }
-              }),
+        IndexLeafPicker(
+          nodes: widget.nodes,
+          selectedNodeId: _selectedNodeId,
+          onChanged: (v) => setState(() => _selectedNodeId = v),
             ),
         const Divider(height: AppSpacing.lg),
         // ─── Acciones ───
