@@ -241,7 +241,8 @@ class _DashboardBody extends ConsumerWidget {
       ),
     ];
 
-    return Center(
+    return Align(
+      alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: AppMaxWidths.wide),
         child: SingleChildScrollView(

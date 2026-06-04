@@ -160,7 +160,8 @@ class _MyMaterialPageState extends ConsumerState<MyMaterialPage> {
               .toSet()
               .toList()
             ..sort();
-          return Center(
+          return Align(
+            alignment: Alignment.topCenter,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: AppMaxWidths.wide),
               child: SingleChildScrollView(
