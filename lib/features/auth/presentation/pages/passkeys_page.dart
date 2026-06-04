@@ -74,7 +74,8 @@ class _PasskeysViewState extends ConsumerState<PasskeysView> {
       await notifier.register(friendlyName: name.isEmpty ? null : name);
     }
 
-    return Center(
+    return Align(
+      alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 600),
         child: ListView(

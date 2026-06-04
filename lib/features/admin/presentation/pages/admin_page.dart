@@ -200,7 +200,8 @@ class _AdminDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    return Center(
+    return Align(
+      alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: AppMaxWidths.wide),
         child: SingleChildScrollView(
@@ -256,7 +257,8 @@ class _AdminMasterDetailState extends State<_AdminMasterDetail> {
     final l = context.l10n;
     final allItems = [for (final s in widget.sections) ...s.items];
 
-    return Center(
+    return Align(
+      alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: AppMaxWidths.wide),
         child: SingleChildScrollView(

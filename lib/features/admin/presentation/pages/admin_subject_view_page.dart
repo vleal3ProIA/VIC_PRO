@@ -116,7 +116,8 @@ class _AdminSubjectBodyState extends ConsumerState<_AdminSubjectBody> {
     final guideAsync = ref.watch(studyGuideProvider(s.id));
     final cramAsync = ref.watch(cramProvider(s.id));
 
-    return Center(
+    return Align(
+      alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: AppMaxWidths.wide),
         child: SingleChildScrollView(

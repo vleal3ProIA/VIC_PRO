@@ -180,7 +180,8 @@ class _AdminAiProvidersViewState extends ConsumerState<AdminAiProvidersView> {
     return Scaffold(
       // Caso página completa fuera del shell (no debería ocurrir, pero por
       // robustez damos un fondo).
-      body: Center(
+      body: Align(
+        alignment: Alignment.topCenter,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
           child: SingleChildScrollView(

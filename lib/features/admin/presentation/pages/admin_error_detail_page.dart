@@ -93,7 +93,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     final scheme = context.colors;
     final hasAi = report.aiDiagnosis != null && report.aiDiagnosis!.isComplete;
 
-    return Center(
+    return Align(
+      alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: AppMaxWidths.wide),
         child: SingleChildScrollView(

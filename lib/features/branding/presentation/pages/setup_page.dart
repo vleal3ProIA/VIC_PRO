@@ -81,7 +81,8 @@ class _SetupPageState extends ConsumerState<SetupPage> {
         automaticallyImplyLeading: false,
         title: Text(l.setupTitle),
       ),
-      body: Center(
+      body: Align(
+        alignment: Alignment.topCenter,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
           child: SingleChildScrollView(

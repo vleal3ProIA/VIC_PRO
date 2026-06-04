@@ -72,7 +72,8 @@ class TeamView extends ConsumerWidget {
         ) ??
         false;
 
-    return Center(
+    return Align(
+      alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: double.infinity),
         child: ListView(

@@ -299,7 +299,8 @@ class _AdminAuditViewState extends ConsumerState<AdminAuditView> {
     }
 
     // Página completa.
-    return Center(
+    return Align(
+      alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
         child: SingleChildScrollView(

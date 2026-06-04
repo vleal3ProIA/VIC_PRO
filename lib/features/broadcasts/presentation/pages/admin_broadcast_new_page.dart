@@ -115,7 +115,8 @@ class _AdminBroadcastNewPageState
         ),
         title: Text(l.broadcastsNew),
       ),
-      body: Center(
+      body: Align(
+        alignment: Alignment.topCenter,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: AppMaxWidths.content),
           child: SingleChildScrollView(
