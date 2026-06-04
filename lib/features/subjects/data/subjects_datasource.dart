@@ -36,10 +36,18 @@ class SubjectsDataSource {
     return id;
   }
 
+  /// Lista los temarios del usuario actual ("Mis temarios"). Filtra
+  /// explicitamente por `user_id` porque la policy `subjects_super_select`
+  /// (migracion 0078) permite al super_admin leer TODOS los subjects para
+  /// la vista `/admin/material-library`. Sin este filtro, el super_admin
+  /// veria temarios ajenos mezclados en su panel personal.
   Future<List<Subject>> listSubjects() async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return const [];
     final data = await _client
         .from('subjects')
         .select()
+        .eq('user_id', uid)
         .order('created_at', ascending: false);
     return (data as List)
         .cast<Map<String, dynamic>>()
