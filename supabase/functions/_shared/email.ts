@@ -248,3 +248,162 @@ export function adminClient(): SupabaseClient {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 }
+
+// ============================================================================
+// ASYNC QUEUE (migracion 0102) — para hot paths que NO pueden permitirse
+// esperar al SMTP (caso paradigmatico: auth-email-hook dentro de la
+// transaccion de signup).
+// ----------------------------------------------------------------------------
+// El caller invoca `enqueueEmail()` que solo escribe en `email_log` con
+// status='queued' + cuerpo. La EF `email-drain` (llamada por pg_cron cada
+// minuto) procesa la cola en lotes con conexion SMTP reutilizada.
+// ============================================================================
+
+/**
+ * Encola un email para envio asincrono. Vuelve a llamar IDEMPOTENTE: no
+ * abre SMTP, no espera red. Si el insert en email_log falla, devuelve
+ * `{ok:false}` y el caller decide que hacer (en signup hook = devolver
+ * 500 para que Supabase use template default).
+ */
+export async function enqueueEmail(
+  admin: SupabaseClient,
+  params: SendEmailParams,
+): Promise<SendEmailResult> {
+  const {
+    type,
+    to,
+    toUserId = null,
+    locale,
+    subject,
+    htmlBody,
+    textBody,
+    meta = {},
+  } = params;
+  const { data, error } = await admin
+    .from("email_log")
+    .insert({
+      type,
+      to_email: to,
+      to_user_id: toUserId,
+      locale,
+      subject,
+      html_body: htmlBody,
+      text_body: textBody ?? null,
+      status: "queued",
+      provider: "smtp",
+      meta,
+    })
+    .select("id")
+    .single();
+  if (error || !data) {
+    return {
+      ok: false,
+      logId: null,
+      error: `enqueue_failed: ${error?.message ?? "unknown"}`,
+    };
+  }
+  return { ok: true, logId: data.id as string };
+}
+
+/**
+ * Procesa la cola de emails encolados. Lee hasta `batchSize` filas con
+ * status='queued' y next_try_at <= now() (o null), las envia via SMTP
+ * REUTILIZANDO una sola conexion, y marca cada una sent/failed.
+ *
+ * Reintentos: si falla, incrementa `attempts` y programa `next_try_at`
+ * con backoff (1min, 5min, 15min). Tras 3 intentos -> failed permanente.
+ *
+ * Llamado por `email-drain` EF (que a su vez la invoca pg_cron cada
+ * minuto). Idempotente y safe to call concurrently — el SELECT FOR UPDATE
+ * SKIP LOCKED garantiza que dos drainers en paralelo no procesen el
+ * mismo email.
+ */
+export async function processEmailQueue(
+  admin: SupabaseClient,
+  batchSize = 20,
+): Promise<{ sent: number; failed: number; skipped: number }> {
+  const host = Deno.env.get("SMTP_HOST");
+  const portStr = Deno.env.get("SMTP_PORT");
+  const user = Deno.env.get("SMTP_USER");
+  const password = Deno.env.get("SMTP_PASSWORD");
+  const from = Deno.env.get("SMTP_FROM");
+  const fromName = Deno.env.get("SMTP_FROM_NAME") ?? "myapp";
+  const useTls = (Deno.env.get("SMTP_USE_TLS") ?? "true") !== "false";
+
+  if (!host || !portStr || !user || !password || !from) {
+    return { sent: 0, failed: 0, skipped: 0 };
+  }
+  const port = Number.parseInt(portStr, 10);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    return { sent: 0, failed: 0, skipped: 0 };
+  }
+
+  // RPC SQL `claim_queued_emails` hace el SELECT FOR UPDATE SKIP LOCKED
+  // atomico para que multiples drainers no pisen filas. La RPC se define
+  // en la migracion 0102.
+  const { data: claimed, error: claimErr } = await admin
+    .rpc("claim_queued_emails", { p_batch: batchSize });
+  if (claimErr) {
+    console.error("[processEmailQueue] claim failed:", claimErr.message);
+    return { sent: 0, failed: 0, skipped: 0 };
+  }
+  const rows = (claimed ?? []) as Array<{
+    id: string;
+    to_email: string;
+    subject: string;
+    html_body: string | null;
+    text_body: string | null;
+    attempts: number;
+  }>;
+  if (rows.length === 0) return { sent: 0, failed: 0, skipped: 0 };
+
+  // Reutilizamos UNA conexion SMTP para todo el lote — clave para no
+  // saturar el pool del proveedor.
+  const client = new SMTPClient({
+    connection: {
+      hostname: host,
+      port,
+      tls: useTls,
+      auth: { username: user, password },
+    },
+  });
+
+  let sent = 0;
+  let failed = 0;
+  for (const row of rows) {
+    try {
+      await client.send({
+        from: `${encodeHeaderText(fromName)} <${from}>`,
+        to: row.to_email,
+        subject: encodeHeaderText(row.subject),
+        content: row.text_body ?? row.subject,
+        html: row.html_body ?? row.subject,
+      });
+      // Vaciamos cuerpos tras envio OK -> ahorra espacio.
+      await admin.from("email_log").update({
+        status: "sent",
+        sent_at: new Date().toISOString(),
+        html_body: null,
+        text_body: null,
+      }).eq("id", row.id);
+      sent++;
+    } catch (e) {
+      const msg = (e instanceof Error ? e.message : String(e)).slice(0, 500);
+      const attempts = row.attempts + 1;
+      const final = attempts >= 3;
+      const backoffMin = attempts === 1 ? 1 : attempts === 2 ? 5 : 15;
+      const nextTry = new Date(Date.now() + backoffMin * 60_000).toISOString();
+      await admin.from("email_log").update({
+        status: final ? "failed" : "queued",
+        attempts,
+        last_error: msg,
+        next_try_at: final ? null : nextTry,
+      }).eq("id", row.id);
+      failed++;
+    }
+  }
+  try {
+    await client.close();
+  } catch (_) { /* ignore close error */ }
+  return { sent, failed, skipped: 0 };
+}

@@ -1,0 +1,67 @@
+# ============================================================================
+# Email drain · cada minuto invoca la EF `email-drain` para vaciar la cola
+# ----------------------------------------------------------------------------
+# Parte del sprint M3 (escalabilidad signup). `auth-email-hook` solo encola
+# emails (status='queued') para que el signup termine en ~1ms sin abrir SMTP.
+# Este workflow drena la cola cada minuto: la EF reclama hasta 30 emails con
+# FOR UPDATE SKIP LOCKED (RPC `claim_queued_emails`), abre UNA conexion SMTP
+# y los envia reusandola. Marca sent/failed con backoff exponencial.
+#
+# **Throughput**: 30 emails/min = 1800/h. Margen 30x sobre los limites
+# tipicos de un SMTP custom (60/h sin reputacion, 600+/h con dominio caliente).
+# Para cuando ese techo se quede corto, subir batch en email-drain/index.ts.
+#
+# **Secrets requeridos** (Settings -> Secrets -> Actions):
+#   - SUPABASE_URL  (ya configurado).
+#   - CRON_SECRET   (ya configurado para maintenance-cron — mismo valor).
+#
+# **Concurrency**: 1 run a la vez. Si un drain corre cuando llega el
+# siguiente minuto, lo SALTAMOS (cancel-in-progress: false + concurrency
+# group). Asi no se acumulan jobs si el SMTP esta lento.
+#
+# **Coste GitHub Actions**: ~43k ejecuciones/mes (1/min). Free tier de
+# repos privados = 2000 min/mes. Cada job toma ~5-10s. 43k * 10s = ~120
+# horas. Si excede el plan, mover a pg_cron de Supabase (gratis en Pro).
+# ============================================================================
+
+name: Email drain
+
+on:
+  schedule:
+    # Cada minuto. Cron syntax UTC. GitHub puede retrasar el dispatch
+    # hasta 15min en momentos de alta carga; aceptable para email no
+    # urgente.
+    - cron: '* * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: email-drain
+  cancel-in-progress: false
+
+jobs:
+  drain:
+    name: Drain email queue
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Validate secrets
+        run: |
+          [ -z "${{ secrets.SUPABASE_URL }}" ] && echo "::error::SUPABASE_URL missing" && exit 1
+          [ -z "${{ secrets.CRON_SECRET }}" ] && echo "::error::CRON_SECRET missing" && exit 1
+          echo "✓ Secrets present"
+
+      - name: Invoke email-drain
+        run: |
+          response=$(curl -sS -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/email-drain" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          body=$(echo "$response" | sed '$d')
+          code=$(echo "$response" | tail -n 1)
+          echo "HTTP $code"
+          echo "$body"
+          if [ "$code" != "200" ]; then
+            echo "::error::email-drain failed (HTTP $code)"
+            exit 1
+          fi

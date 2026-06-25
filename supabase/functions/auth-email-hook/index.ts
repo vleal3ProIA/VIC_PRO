@@ -45,7 +45,7 @@
 
 import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
 import { withSentry, captureError } from "../_shared/sentry.ts";
-import { adminClient, EmailType, sendEmail } from "../_shared/email.ts";
+import { adminClient, EmailType, enqueueEmail } from "../_shared/email.ts";
 import { fetchAppName, renderEmail } from "../_shared/email_templates.ts";
 
 function json(body: unknown, status: number): Response {
@@ -206,15 +206,19 @@ Deno.serve(withSentry("auth-email-hook", async (req) => {
   // invite email, lo mejor es mandar tu propio invite via send-email
   // desde la Edge Function de tenant-invitations (que sabe el tenant).
 
-  // ─────────────── Render + send ───────────────
+  // ─────────────── Render + ENQUEUE (no SMTP aqui) ───────────────
+  // CAMBIO M3 (migracion 0102): ya no enviamos SMTP dentro de la transaccion
+  // del signup. Solo encolamos en email_log status='queued' (~1ms) y la EF
+  // `email-drain` (llamada por pg_cron cada minuto) lo enviara reusando
+  // conexion SMTP. Esto desatasca cientos de signups concurrentes que antes
+  // saturaban el pool de SMTP de Dondominio.
   const rendered = renderEmail({ type, locale, appName, data, mode: themeMode });
-  const result = await sendEmail(admin, {
+  const result = await enqueueEmail(admin, {
     type,
     to: payload.user.email,
-    // NO referenciamos al user por FK en email_log: en signup el row de
-    // auth.users AUN no esta commiteado cuando corre este hook (es sincrono,
-    // dentro de la transaccion del signup) -> insertar to_user_id violaria
-    // la FK email_log_to_user_id_fkey. Guardamos el id en meta para trazar.
+    // NO referenciamos al user por FK: en signup el row de auth.users AUN no
+    // esta commiteado cuando corre este hook -> insertar to_user_id violaria
+    // la FK. Guardamos el id en meta para trazar.
     toUserId: null,
     locale,
     subject: rendered.subject,
@@ -227,12 +231,18 @@ Deno.serve(withSentry("auth-email-hook", async (req) => {
     },
   });
 
-  // Si fallo el envio, devolvemos error -> Supabase usa su default.
+  // Si fallo el enqueue (BD caida, RLS, etc.) devolvemos error -> Supabase
+  // usa su template default como fallback.
   if (!result.ok) {
-    console.error("[auth-email-hook] send FAILED:", result.error);
-    return json({ error: result.error ?? "send_failed" }, 500);
+    console.error("[auth-email-hook] enqueue FAILED:", result.error);
+    return json({ error: result.error ?? "enqueue_failed" }, 500);
   }
-  console.log("[auth-email-hook] sent OK to", payload.user.email, "locale=", locale, "mode=", themeMode);
+  // Sin PII en logs (M-Sec): solo log_id + locale + accion.
+  console.log("[auth-email-hook] enqueued",
+    "log_id=", result.logId,
+    "action=", payload.email_data.email_action_type,
+    "locale=", locale,
+  );
 
   return json({}, 200);
 }));

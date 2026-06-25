@@ -286,6 +286,7 @@ A partir del PR `chore/cron-maintenance-auto` el mantenimiento está
 | Diario 04:00 UTC | `daily_purges` | Purga: `audit_reports` > 90d, `audit_logs` > 90d, `email_log` > 180d, `notifications` > 60d **leídas** (PR cron-purges-extended). |
 | Diario 04:00 UTC | `rescan_stuck_uploads` | Reintenta uploads con scan VirusTotal en `error` > 24h (reset → `pending` + reinvoca `scan-upload`, batch 20). Hace converger a 0 el finding `uploads.scan_errors`. Fail-safe: si la reinvocación falla, revierte a `error` con el timestamp original (sigue flaggeado). |
 | Diario 04:00 UTC | `run_audit` | Lanza un audit completo del sistema. El banner stale de `/admin/audit` desaparece si esto corre. |
+| **Cada 1 min** | **`email-drain`** (workflow propio) | Drena la cola de emails encolados por `auth-email-hook` y otros. Reclama hasta 30/lote vía RPC `claim_queued_emails` (FOR UPDATE SKIP LOCKED), abre UNA conexión SMTP y los envía. Backoff exponencial 1/5/15 min, 3 reintentos antes de marcar `failed`. Sprint M3. |
 
 Las cuatro son jobs independientes en el workflow — si una falla, las
 otras siguen.
