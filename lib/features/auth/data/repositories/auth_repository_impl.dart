@@ -26,6 +26,7 @@ class AuthRepositoryImpl implements AuthRepository {
         redirectTo: AuthRedirect.resolve(AuthRedirectType.signup),
         locale: request.locale,
         themeMode: request.themeMode,
+        captchaToken: request.captchaToken,
       );
       final needsConfirmation = res.session == null;
       return Right(

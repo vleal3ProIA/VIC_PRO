@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:formz/formz.dart';
 
+import 'package:myapp/core/config/env_config.dart';
 import 'package:myapp/core/observability/analytics_event.dart';
 import 'package:myapp/core/observability/analytics_service.dart';
 import 'package:myapp/core/providers/locale_provider.dart';
@@ -28,6 +30,7 @@ class RegisterState {
     this.failure,
     this.signedUpEmail,
     this.showErrors = false,
+    this.captchaToken,
   });
 
   final Username username;
@@ -43,9 +46,25 @@ class RegisterState {
   /// (se activa al pulsar Submit la primera vez).
   final bool showErrors;
 
+  /// Token devuelto por Cloudflare Turnstile cuando el usuario pasa el
+  /// reto. `null` mientras el captcha esté pendiente o haya caducado.
+  /// Solo gating en web con sitekey configurada — fuera de eso, el
+  /// signup procede sin él (ver [isCaptchaRequired]).
+  final String? captchaToken;
+
+  /// El captcha solo se exige en builds web reales con sitekey
+  /// configurada. En tests (VM) y entornos sin sitekey lo saltamos para
+  /// no romper el flujo ni los tests existentes — el server tampoco lo
+  /// validará si Bot protection no está activado.
+  bool get isCaptchaRequired =>
+      kIsWeb && EnvConfig.turnstileSitekey.isNotEmpty;
+
+  bool get hasCaptchaToken => captchaToken != null && captchaToken!.isNotEmpty;
+
   bool get isValid =>
       Formz.validate([username, email, password, passwordConfirmation]) &&
-      acceptTerms;
+      acceptTerms &&
+      (!isCaptchaRequired || hasCaptchaToken);
 
   bool get isSubmitting => status == RegisterStatus.submitting;
 
@@ -59,7 +78,9 @@ class RegisterState {
     AuthFailure? failure,
     String? signedUpEmail,
     bool? showErrors,
+    String? captchaToken,
     bool clearFailure = false,
+    bool clearCaptchaToken = false,
   }) {
     return RegisterState(
       username: username ?? this.username,
@@ -71,6 +92,8 @@ class RegisterState {
       failure: clearFailure ? null : (failure ?? this.failure),
       signedUpEmail: signedUpEmail ?? this.signedUpEmail,
       showErrors: showErrors ?? this.showErrors,
+      captchaToken:
+          clearCaptchaToken ? null : (captchaToken ?? this.captchaToken),
     );
   }
 }
@@ -121,6 +144,19 @@ class RegisterNotifier extends Notifier<RegisterState> {
     state = state.copyWith(acceptTerms: value, clearFailure: true);
   }
 
+  /// Llamado por `TurnstileWidget.onToken` cuando Cloudflare entrega el
+  /// token. Mientras este token sea no-null, el botón "Crear cuenta" se
+  /// habilita (si el resto del form es válido).
+  void captchaTokenChanged(String token) {
+    state = state.copyWith(captchaToken: token, clearFailure: true);
+  }
+
+  /// Llamado cuando el token caduca o el reto falla — vuelve a deshabilitar
+  /// el submit hasta que el usuario pase un nuevo reto.
+  void captchaTokenCleared() {
+    state = state.copyWith(clearCaptchaToken: true);
+  }
+
   Future<void> submit() async {
     state = state.copyWith(showErrors: true, clearFailure: true);
     if (!state.isValid) return;
@@ -165,6 +201,7 @@ class RegisterNotifier extends Notifier<RegisterState> {
             password: state.password.value,
             locale: locale,
             themeMode: themeMode,
+            captchaToken: state.captchaToken,
           ),
         );
         result.match(

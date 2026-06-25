@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
+import 'package:myapp/core/providers/locale_provider.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/validation/email.dart';
 import 'package:myapp/core/validation/validation_messages.dart';
@@ -12,6 +13,7 @@ import 'package:myapp/features/auth/application/oauth_notifier.dart';
 import 'package:myapp/features/auth/application/register_notifier.dart';
 import 'package:myapp/features/auth/presentation/widgets/auth_failure_message.dart';
 import 'package:myapp/features/auth/presentation/widgets/social_sign_in_button.dart';
+import 'package:myapp/features/auth/presentation/widgets/turnstile_widget.dart';
 
 class RegisterForm extends ConsumerStatefulWidget {
   const RegisterForm({super.key});
@@ -95,7 +97,10 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
       ),
     );
 
-    // General error: failure del backend o "debe aceptar términos" si pulsó submit.
+    // General error: failure del backend, captcha pendiente o "debe
+    // aceptar términos" si pulsó submit. Damos prioridad al failure del
+    // backend (es el más informativo); solo si no hay, sustituimos por
+    // la causa local que bloquea el submit.
     String? generalError;
     if (state.failure != null) {
       generalError = authFailureMessage(context, state.failure!);
@@ -103,7 +108,19 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
       generalError = authFailureMessage(context, oauthState.failure!);
     } else if (showErrors && !state.acceptTerms) {
       generalError = l.errorAcceptTerms;
+    } else if (showErrors &&
+        state.isCaptchaRequired &&
+        !state.hasCaptchaToken) {
+      generalError = l.registerCaptchaPending;
     }
+
+    // El botón se deshabilita mientras esté ocupado (envío en curso o
+    // OAuth en marcha) o, en web con sitekey configurada, mientras
+    // Turnstile no haya entregado token. Los tests (VM) saltan ese
+    // gating porque `isCaptchaRequired` es false fuera de web.
+    final captchaBlocks =
+        state.isCaptchaRequired && !state.hasCaptchaToken;
+    final submitDisabled = busy || captchaBlocks;
 
     return AutofillGroup(
       child: Column(
@@ -196,8 +213,18 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
             ],
           ),
           const SizedBox(height: 12),
+          // Captcha de Cloudflare Turnstile. Se renderiza SOLO en web
+          // con sitekey configurada; en tests devuelve SizedBox.shrink
+          // y el form no exige token (ver `isCaptchaRequired`).
+          TurnstileWidget(
+            languageCode: ref.watch(effectiveLocaleProvider).languageCode,
+            onToken: notifier.captchaTokenChanged,
+            onExpired: notifier.captchaTokenCleared,
+            onError: (_) => notifier.captchaTokenCleared(),
+          ),
+          if (state.isCaptchaRequired) const SizedBox(height: 8),
           FilledButton(
-            onPressed: busy ? null : notifier.submit,
+            onPressed: submitDisabled ? null : notifier.submit,
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
             ),

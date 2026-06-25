@@ -5,6 +5,7 @@ class SignUpRequest {
     required this.password,
     this.locale = 'en',
     this.themeMode = 'system',
+    this.captchaToken,
   });
 
   final String username;
@@ -18,6 +19,13 @@ class SignUpRequest {
 
   /// Tema activo al registrarse (`system`, `light`, `dark`).
   final String themeMode;
+
+  /// Token de captcha (Cloudflare Turnstile) que el cliente obtuvo al
+  /// pasar el reto en el formulario. Supabase Auth lo valida server-side
+  /// contra Cloudflare con la Secret Key configurada en el dashboard. Si
+  /// es `null`, el signUp procede sin captcha (entornos de test o si
+  /// `TURNSTILE_SITEKEY` está vacío).
+  final String? captchaToken;
 }
 
 /// Resultado de un signUp exitoso.

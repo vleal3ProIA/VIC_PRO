@@ -9,6 +9,12 @@ class AuthSupabaseDataSource {
   final SupabaseClient _client;
 
   /// Registro de usuario nuevo.
+  ///
+  /// [captchaToken]: token de Cloudflare Turnstile obtenido en el
+  /// cliente. Supabase Auth lo valida server-side con la Secret Key
+  /// configurada en Dashboard → Auth → Bot protection. Si Bot
+  /// protection está activado y este parámetro viaja vacío/null, gotrue
+  /// rechaza el signUp con `captcha_failed`.
   Future<AuthResponse> signUp({
     required String email,
     required String password,
@@ -16,11 +22,13 @@ class AuthSupabaseDataSource {
     required String redirectTo,
     required String locale,
     required String themeMode,
+    String? captchaToken,
   }) {
     return _client.auth.signUp(
       email: email,
       password: password,
       emailRedirectTo: redirectTo,
+      captchaToken: captchaToken,
       data: {
         // Llega al trigger handle_new_user → tabla profiles.
         'username': username,

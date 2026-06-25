@@ -589,6 +589,7 @@
   "errorPasswordMissingSpecial": "Must contain a special character",
   "errorPasswordMismatch": "Passwords do not match",
   "errorAcceptTerms": "You must accept the terms to continue",
+  "registerCaptchaPending": "Please complete the security verification",
 
   "authErrorUserExists": "An account with this email already exists.",
   "authErrorWeakPassword": "This password is too weak.",

@@ -513,6 +513,7 @@
   "errorPasswordMissingSpecial": "Muss ein Sonderzeichen enthalten",
   "errorPasswordMismatch": "Passwörter stimmen nicht überein",
   "errorAcceptTerms": "Du musst die Bedingungen akzeptieren, um fortzufahren",
+  "registerCaptchaPending": "Bitte schließe die Sicherheitsprüfung ab",
 
   "authErrorUserExists": "Ein Konto mit dieser E-Mail existiert bereits.",
   "authErrorWeakPassword": "Dieses Passwort ist zu schwach.",

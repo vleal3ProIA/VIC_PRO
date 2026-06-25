@@ -69,6 +69,17 @@ class EnvConfig {
     return n.clamp(4, 10);
   }
 
+  /// Cloudflare Turnstile site key (pública, segura en cliente). El
+  /// captcha del signup la usa para renderizar el widget; Supabase Auth
+  /// valida server-side con la Secret Key configurada en Dashboard →
+  /// Auth → Bot protection. Si está vacía, el widget no se monta y el
+  /// signup procede sin captcha (útil en entornos de test).
+  static String get turnstileSitekey => _read(
+        'TURNSTILE_SITEKEY',
+        dartDefine: _turnstileSitekeyDef,
+        fallback: '0x4AAAAAADq11OH9uWG7r6Z4',
+      );
+
   // ─────────────────────── Feature flags ───────────────────────
   static bool get enableLogging => _readBool(
         'ENABLE_LOGGING',
@@ -163,6 +174,8 @@ class EnvConfig {
       String.fromEnvironment('SENTRY_DSN');
   static const String _otpLengthDef =
       String.fromEnvironment('OTP_CODE_LENGTH');
+  static const String _turnstileSitekeyDef =
+      String.fromEnvironment('TURNSTILE_SITEKEY');
   static const String _enableLoggingDef =
       String.fromEnvironment('ENABLE_LOGGING');
   static const String _enableAnalyticsDef =

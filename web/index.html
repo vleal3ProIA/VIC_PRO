@@ -129,6 +129,23 @@
   -->
   <script src="https://js.stripe.com/v3/" async></script>
 
+  <!--
+    Cloudflare Turnstile — captcha invisible/visible que protege el signup
+    de bots. Expone `window.turnstile` con `.render(container, opts)`,
+    `.reset()`, `.remove()`. Lo invocamos desde Dart vía `dart:js_interop`
+    (ver `lib/features/auth/data/turnstile/turnstile_js.dart`).
+    El widget renderizado entrega un token al callback `onToken`, que
+    enviamos al backend; Supabase Auth lo valida server-side contra
+    Cloudflare con la Secret Key configurada en Dashboard → Auth → Bot
+    protection.
+
+    SEGURIDAD: igual que Stripe.js, NO se sirve con SRI A PROPÓSITO.
+    Cloudflare lo actualiza continuamente (anti-fraude / detección de
+    bots) y la guía oficial requiere cargarlo siempre desde
+    challenges.cloudflare.com sin pinning.
+  -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
   <style>
     /*
       Loading skeleton para que el usuario vea algo (no pantalla blanca)

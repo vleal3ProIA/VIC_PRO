@@ -513,6 +513,7 @@
   "errorPasswordMissingSpecial": "Deve contenere un carattere speciale",
   "errorPasswordMismatch": "Le password non corrispondono",
   "errorAcceptTerms": "Devi accettare i termini per continuare",
+  "registerCaptchaPending": "Completa la verifica di sicurezza",
 
   "authErrorUserExists": "Esiste già un account con questa email.",
   "authErrorWeakPassword": "Questa password è troppo debole.",

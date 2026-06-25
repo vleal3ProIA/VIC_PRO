@@ -513,6 +513,7 @@
   "errorPasswordMissingSpecial": "Должен содержать спецсимвол",
   "errorPasswordMismatch": "Пароли не совпадают",
   "errorAcceptTerms": "Для продолжения необходимо принять условия",
+  "registerCaptchaPending": "Пожалуйста, завершите проверку безопасности",
 
   "authErrorUserExists": "Аккаунт с этим email уже существует.",
   "authErrorWeakPassword": "Этот пароль слишком слабый.",
