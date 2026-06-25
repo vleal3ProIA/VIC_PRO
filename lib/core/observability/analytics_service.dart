@@ -7,6 +7,7 @@ import '../providers/supabase_providers.dart';
 import '../utils/app_logger.dart';
 import '../utils/log_context.dart';
 import 'analytics_event.dart';
+import 'posthog_analytics_backend.dart';
 
 /// Backend pluggable para `AnalyticsService`. Cada implementación decide
 /// adónde envía los eventos (consola, PostHog, GA4, Amplitude, etc.).
@@ -176,9 +177,18 @@ class AnalyticsService {
 /// Cuando integremos un backend real (PostHog, GA4…), basta con cambiar la
 /// implementación aquí — el resto de la app sigue llamando a `track(...)`.
 final analyticsServiceProvider = Provider<AnalyticsService>((ref) {
-  final backend = EnvConfig.enableAnalytics
-      ? const LoggingAnalyticsBackend()
-      : const NoopAnalyticsBackend();
+  // Backend ladder (mas potente -> mas debil):
+  //   1) PostHog si hay api key configurada (prod).
+  //   2) LoggingBackend si ENABLE_ANALYTICS=true sin posthog (dev / staging).
+  //   3) NoopBackend en CI / tests / explicit off.
+  final AnalyticsBackend backend;
+  if (EnvConfig.posthogApiKey.isNotEmpty) {
+    backend = PostHogAnalyticsBackend();
+  } else if (EnvConfig.enableAnalytics) {
+    backend = const LoggingAnalyticsBackend();
+  } else {
+    backend = const NoopAnalyticsBackend();
+  }
   return AnalyticsService(
     backend: backend,
     getUserId: () => ref.read(currentUserProvider)?.id,

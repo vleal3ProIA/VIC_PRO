@@ -10,6 +10,7 @@ import 'package:myapp/core/observability/sentry_service.dart';
 import 'package:myapp/core/providers/preferences_provider.dart';
 import 'package:myapp/core/storage/remember_aware_local_storage.dart';
 import 'package:myapp/core/utils/app_logger.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -34,6 +35,19 @@ Future<void> main() async {
       };
 
       await EnvConfig.load(env: env);
+
+      // PostHog: init solo si hay API key (prod). Sin key, el backend del
+      // AnalyticsService cae al LoggingBackend (consola) o Noop. Hacerlo
+      // antes de runApp para que los eventos del primer frame ya lleguen.
+      if (EnvConfig.posthogApiKey.isNotEmpty) {
+        final cfg = PostHogConfig(EnvConfig.posthogApiKey)
+          ..host = EnvConfig.posthogHost
+          ..captureApplicationLifecycleEvents = true
+          // Sin session replay por ahora (consentimiento GDPR pendiente).
+          ..sessionReplay = false
+          ..debug = !EnvConfig.isProduction;
+        await Posthog().setup(cfg);
+      }
 
       // Necesario ANTES de Supabase.initialize porque pasamos un
       // LocalStorage custom que lee de SharedPreferences.

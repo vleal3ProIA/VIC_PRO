@@ -58,6 +58,21 @@ class EnvConfig {
   static String get sentryDsn =>
       _read('SENTRY_DSN', dartDefine: _sentryDsnDef, fallback: '');
 
+  /// PostHog Project API Key (publica, segura en cliente). Si esta vacia,
+  /// el AnalyticsService usa el LoggingAnalyticsBackend (solo consola).
+  ///
+  /// **Configuracion prod**: secret `POSTHOG_API_KEY_PROD` en GitHub
+  /// Actions -> inyectado via `--dart-define=POSTHOG_API_KEY=...`.
+  static String get posthogApiKey =>
+      _read('POSTHOG_API_KEY', dartDefine: _posthogApiKeyDef, fallback: '');
+
+  /// Host PostHog (region). Default EU (testexamen.es esta en UE -> GDPR).
+  static String get posthogHost => _read(
+        'POSTHOG_HOST',
+        dartDefine: _posthogHostDef,
+        fallback: 'https://eu.i.posthog.com',
+      );
+
   // ─────────────────────── Auth ───────────────────────
   /// Tamaño del código OTP enviado por Supabase. Debe coincidir con
   /// Supabase Dashboard → Authentication → Email OTP Length.
@@ -175,6 +190,10 @@ class EnvConfig {
       String.fromEnvironment('SUPABASE_ANON_KEY');
   static const String _sentryDsnDef =
       String.fromEnvironment('SENTRY_DSN');
+  static const String _posthogApiKeyDef =
+      String.fromEnvironment('POSTHOG_API_KEY');
+  static const String _posthogHostDef =
+      String.fromEnvironment('POSTHOG_HOST');
   static const String _otpLengthDef =
       String.fromEnvironment('OTP_CODE_LENGTH');
   static const String _turnstileSitekeyDef =

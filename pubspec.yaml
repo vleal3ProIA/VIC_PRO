@@ -78,6 +78,7 @@ dependencies:
   # Environment config
   flutter_dotenv: ^5.2.1
   sentry_flutter: ^8.14.2
+  posthog_flutter: ^4.10.1
   meta: ^1.17.0
 
   # GDPR export (PDF + ZIP + CSV) — Google-Takeout-style multi-formato.
