@@ -45,6 +45,14 @@ verify_jwt = false
 [functions.maintenance-cron]
 verify_jwt = false
 
+# email-drain (sprint M3) lo invoca GitHub Actions cada minuto para vaciar
+# la cola de emails encolados por auth-email-hook. Mismo patron que
+# maintenance-cron: shared secret X-Cron-Secret. Sin verify_jwt=false, el
+# Supabase API gateway rechaza el request con 401 ANTES de llegar al
+# handler (no le da chance al check del shared secret).
+[functions.email-drain]
+verify_jwt = false
+
 # notify-super-admins (PR 0074) lo invocan:
 #   - pg_net.http_post desde un trigger SQL (signup) -> SIN JWT.
 #   - pg_net.http_post desde RPCs SECURITY DEFINER (role_changed) -> SIN JWT.
