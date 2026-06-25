@@ -170,6 +170,31 @@ jobs:
           test -f build/web/sitemap.xml
           echo "✓ Build artifacts present"
 
+      # ─── Sentry source maps upload (legible stack traces) ───
+      # SOLO si SENTRY_AUTH_TOKEN esta configurado. Sin ese secret,
+      # los errores capturados muestran nombres minificados (JI.gF) en
+      # vez de funciones reales. Con upload, Sentry symbolicates al vuelo.
+      #
+      # Auth token: Sentry.io -> Settings -> Account -> API -> Auth Tokens
+      # -> Create New Token. Scope minimo: project:releases + org:read.
+      # Pegar como secret SENTRY_AUTH_TOKEN en GitHub.
+      - name: Upload source maps to Sentry
+        if: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: app-victor
+          SENTRY_PROJECT: testexamen-web
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          sentry-cli releases new "${{ github.sha }}"
+          sentry-cli sourcemaps inject --release "${{ github.sha }}" build/web
+          sentry-cli sourcemaps upload \
+            --release "${{ github.sha }}" \
+            --url-prefix '~/' \
+            build/web
+          sentry-cli releases finalize "${{ github.sha }}"
+          echo "✓ Source maps uploaded for release ${{ github.sha }}"
+
       # ─── Forzar re-subida completa (SOLO ejecucion manual) ───
       # SOLO cuando se lanza a mano ("Run workflow" / workflow_dispatch):
       #   1. borra la carpeta stray /public_html (de un deploy antiguo).
