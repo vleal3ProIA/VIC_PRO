@@ -21,6 +21,8 @@ import 'package:myapp/features/admin_users/presentation/pages/admin_users_page.d
     show AdminUsersView;
 import 'package:myapp/features/ai_providers/presentation/pages/admin_ai_providers_page.dart'
     show AdminAiProvidersView;
+import 'package:myapp/features/ai_providers/presentation/pages/admin_ai_quotas_page.dart'
+    show AdminAiQuotasView;
 import 'package:myapp/features/audit_center/presentation/pages/admin_audit_page.dart'
     show AdminAuditView;
 import 'package:myapp/features/billing/presentation/pages/admin_branding_page.dart'
@@ -568,8 +570,9 @@ class _AdminDestinations {
         ),
       ];
 
-  /// Inteligencia artificial: proveedores/keys del gateway de IA. Gated
-  /// por la capability `manage_ai` (el super la tiene siempre).
+  /// Inteligencia artificial: proveedores/keys del gateway de IA y cuotas
+  /// de uso por plan/usuario. Gated por la capability `manage_ai` (el super
+  /// la tiene siempre).
   List<_AdminDestination> get ai => [
         _AdminDestination(
           icon: Icons.smart_toy_outlined,
@@ -579,6 +582,15 @@ class _AdminDestinations {
           route: RouteNames.adminAiProviders,
           capability: AdminCapability.manageAi,
           embeddedBuilder: (_) => const AdminAiProvidersView(embedded: true),
+        ),
+        _AdminDestination(
+          icon: Icons.speed_outlined,
+          colorSeed: const Color(0xFFEF4444), // red-500 (es un cap-rate)
+          title: l.adminAiQuotasTitle,
+          hint: l.adminAiQuotasSubtitle,
+          route: RouteNames.adminAiQuotas,
+          capability: AdminCapability.manageAi,
+          embeddedBuilder: (_) => const AdminAiQuotasView(embedded: true),
         ),
       ];
 

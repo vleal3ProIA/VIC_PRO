@@ -22,7 +22,8 @@ import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/providers/preferences_provider.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
 import 'package:myapp/core/widgets/app_confirm_dialog.dart';
-import 'package:myapp/core/widgets/app_error_dialog.dart';
+import 'package:myapp/core/widgets/app_error_dialog.dart'
+    show showAiQuotaExceededSnackBar, showAppErrorDialog;
 import 'package:myapp/core/widgets/app_error_state.dart';
 import 'package:myapp/core/widgets/app_loading_state.dart';
 import 'package:myapp/core/widgets/markdown_text.dart';
@@ -158,6 +159,8 @@ class _SubjectStudyPanelState extends ConsumerState<SubjectStudyPanel> {
           .read(subjectsDataSourceProvider)
           .generateIndex(widget.subject.id);
       ref.invalidate(subjectsListProvider);
+    } on AiQuotaExceededException catch (q) {
+      if (mounted) showAiQuotaExceededSnackBar(context, q.dailyLimit);
     } on SubjectsException catch (e) {
       messenger.showSnackBar(
         SnackBar(
@@ -1504,6 +1507,8 @@ class _ChatViewState extends ConsumerState<_ChatView> {
         fromUser: false,
         content: answer,
       );
+    } on AiQuotaExceededException catch (q) {
+      if (mounted) showAiQuotaExceededSnackBar(context, q.dailyLimit);
     } on SubjectsException catch (_) {
       if (mounted) {
         setState(() => _messages.add(
@@ -1754,6 +1759,8 @@ class _NodeViewState extends ConsumerState<_NodeView> {
           nodeContentProvider((nodeId: widget.nodeId, kind: 'summary')),
         )
         ..invalidate(aiContentNodeIdsProvider(widget.subjectId));
+    } on AiQuotaExceededException catch (q) {
+      if (mounted) showAiQuotaExceededSnackBar(context, q.dailyLimit);
     } on SubjectsException catch (_) {
       // No filtramos detalle tecnico al user: solo el mensaje canonico.
       // El detalle ya esta en `error_reports` (admin /admin/errors).
@@ -2648,6 +2655,8 @@ class _ExamViewState extends ConsumerState<_ExamView> {
     try {
       await ref.read(subjectsDataSourceProvider).generateCram(widget.subjectId);
       ref.invalidate(cramProvider(widget.subjectId));
+    } on AiQuotaExceededException catch (q) {
+      if (mounted) showAiQuotaExceededSnackBar(context, q.dailyLimit);
     } on SubjectsException catch (_) {
       // No filtramos detalle tecnico al user: solo el mensaje canonico.
       // El detalle ya esta en `error_reports` (admin /admin/errors).
@@ -2856,6 +2865,8 @@ class _GuideViewState extends ConsumerState<_GuideView> {
           .read(subjectsDataSourceProvider)
           .generateStudyGuide(widget.subjectId);
       ref.invalidate(studyGuideProvider(widget.subjectId));
+    } on AiQuotaExceededException catch (q) {
+      if (mounted) showAiQuotaExceededSnackBar(context, q.dailyLimit);
     } on SubjectsException catch (_) {
       // No filtramos detalle tecnico al user: solo el mensaje canonico.
       // El detalle ya esta en `error_reports` (admin /admin/errors).
@@ -3048,6 +3059,8 @@ class _QuizViewState extends ConsumerState<_QuizView> {
         ..invalidate(quizQuestionsScopedProvider(
           (subjectId: widget.subjectId, nodeId: null),
         ),);
+    } on AiQuotaExceededException catch (q) {
+      if (mounted) showAiQuotaExceededSnackBar(context, q.dailyLimit);
     } on SubjectsException catch (_) {
       // No filtramos detalle tecnico al user: solo el mensaje canonico.
       // El detalle ya esta en `error_reports` (admin /admin/errors).
@@ -3449,6 +3462,8 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
         ..invalidate(flashcardsScopedProvider(
           (subjectId: widget.subjectId, nodeId: null),
         ),);
+    } on AiQuotaExceededException catch (q) {
+      if (mounted) showAiQuotaExceededSnackBar(context, q.dailyLimit);
     } on SubjectsException catch (_) {
       // No filtramos detalle tecnico al user: solo el mensaje canonico.
       // El detalle ya esta en `error_reports` (admin /admin/errors).
@@ -4051,6 +4066,8 @@ class _EssayViewState extends ConsumerState<_EssayView> {
           SnackBar(duration: const Duration(seconds: 6), content: Text(msg)),
         );
       }
+    } on AiQuotaExceededException catch (q) {
+      if (mounted) showAiQuotaExceededSnackBar(context, q.dailyLimit);
     } on SubjectsException catch (_) {
       // No filtramos detalle tecnico al user: solo el mensaje canonico.
       // El detalle ya esta en `error_reports` (admin /admin/errors).

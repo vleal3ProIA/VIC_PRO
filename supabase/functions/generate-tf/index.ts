@@ -331,15 +331,29 @@ Deno.serve(withSentry("generate-tf", async (req) => {
   if (total === 0) {
     // Si todo fallo, reportamos al pipeline admin antes de devolver
     // `generic_error`. El cliente NO ve `lastError` (puede contener
-    // mensajes del proveedor IA).
+    // mensajes del proveedor IA). Excepcion: si el ultimo fallo fue por
+    // cuota IA (`ai_quota_exceeded:<N>`), si propagamos ese codigo para
+    // que el cliente muestre el snackbar especifico con el limite.
+    const quotaMatch = lastError?.match(/^ai_quota_exceeded:(\d+)/);
     const errorId = await reportError(admin, {
       userId: user.id,
       fn: "generate-tf",
       error: lastError ?? "empty_result",
-      errorCode: "generation_failed",
+      errorCode: quotaMatch ? "ai_quota_exceeded" : "generation_failed",
       context: { subject_id: subject.id, node_ids: nodeIds, sections: sections.length },
-      severity: "high",
+      severity: quotaMatch ? "low" : "high",
     });
+    if (quotaMatch) {
+      return json(
+        {
+          ok: false,
+          error_code: "ai_quota_exceeded",
+          daily_limit: parseInt(quotaMatch[1], 10),
+          error_id: errorId,
+        },
+        200,
+      );
+    }
     return json(
       { ok: false, error_code: "generic_error", error_id: errorId },
       200,

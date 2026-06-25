@@ -60,6 +60,7 @@ const privateRoutes = <String>{
   RoutePaths.adminIncidents,
   RoutePaths.adminAudit,
   RoutePaths.adminAiProviders,
+  RoutePaths.adminAiQuotas,
   RoutePaths.adminPublicDomainSources,
   RoutePaths.adminErrors,
   RoutePaths.changelog,
@@ -111,6 +112,7 @@ const adminRoutes = <String>{
   RoutePaths.adminAudit,
   RoutePaths.adminAdmins,
   RoutePaths.adminAiProviders,
+  RoutePaths.adminAiQuotas,
   RoutePaths.adminPublicDomainSources,
   RoutePaths.adminErrors,
 };
@@ -142,6 +144,7 @@ const Map<String, String> kRouteToCapability = {
   RoutePaths.adminIncidents:    'manage_incidents',
   RoutePaths.adminAudit:        'run_audits',
   RoutePaths.adminAiProviders:  'manage_ai',
+  RoutePaths.adminAiQuotas:     'manage_ai',
   RoutePaths.adminErrors:       'view_error_reports',
 };
 

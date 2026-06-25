@@ -52,6 +52,9 @@ class EnvConfig {
   /// y los errores siguen apareciendo en consola via `AppLogger` pero no
   /// se envían a Sentry. Útil para devs locales que no quieren
   /// contaminar el proyecto Sentry de la organización.
+  ///
+  /// **Configuración prod**: secret `SENTRY_DSN_PROD` en GitHub Actions ->
+  /// inyectado via `--dart-define=SENTRY_DSN=...` por `deploy.yml`.
   static String get sentryDsn =>
       _read('SENTRY_DSN', dartDefine: _sentryDsnDef, fallback: '');
 

@@ -16,7 +16,8 @@ import 'package:go_router/go_router.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/theme/app_tokens.dart';
-import 'package:myapp/core/widgets/app_error_dialog.dart';
+import 'package:myapp/core/widgets/app_error_dialog.dart'
+    show showAiQuotaExceededSnackBar, showAppErrorDialog;
 import 'package:myapp/core/widgets/premium/premium.dart';
 import '../../../application/subjects_providers.dart';
 import '../../../data/subjects_datasource.dart';
@@ -198,6 +199,8 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
           ),
         );
       }
+    } on AiQuotaExceededException catch (q) {
+      if (mounted) showAiQuotaExceededSnackBar(context, q.dailyLimit);
     } on SubjectsException catch (_) {
       if (mounted) {
         await showAppErrorDialog(context);

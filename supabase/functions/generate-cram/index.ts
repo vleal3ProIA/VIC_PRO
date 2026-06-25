@@ -9,7 +9,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { withSentry } from "../_shared/sentry.ts";
-import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
+import { AiGatewayError, AiQuotaExceededError, runCompletion } from "../_shared/ai/gateway.ts";
 import { gatherMaterial } from "../_shared/ai/material.ts";
 
 const corsHeaders = {
@@ -121,6 +121,13 @@ Deno.serve(withSentry("generate-cram", async (req) => {
 
     return json({ ok: true, content }, 200);
   } catch (e) {
+    if (e instanceof AiQuotaExceededError) {
+      return json({
+        ok: false,
+        error: "ai_quota_exceeded",
+        daily_limit: e.dailyLimit,
+      }, 200);
+    }
     const detail = e instanceof AiGatewayError
       ? e.message
       : (e as Error).message;

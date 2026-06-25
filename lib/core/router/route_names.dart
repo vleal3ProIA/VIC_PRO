@@ -47,6 +47,7 @@ class RouteNames {
   static const String adminErrors = 'admin_errors';
   static const String adminErrorDetail = 'admin_error_detail';
   static const String adminAiProviders = 'admin_ai_providers';
+  static const String adminAiQuotas = 'admin_ai_quotas';
   static const String adminPublicDomainSources = 'admin_public_domain_sources';
   static const String status = 'status';
   static const String accountSettings = 'account_settings';
@@ -149,6 +150,7 @@ class RoutePaths {
   static const String adminErrors = '/admin/errors';
   static const String adminErrorDetail = '/admin/errors/:id';
   static const String adminAiProviders = '/admin/ai-providers';
+  static const String adminAiQuotas = '/admin/ai-quotas';
   // SOLO super admin. Gestion de patterns que marcan un material como
   // dominio publico (BOE, .gov, wikipedia.org). Habilita al super-admin
   // para descargar los originales (storage policy en migracion 0079).

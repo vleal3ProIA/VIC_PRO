@@ -13,7 +13,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { withSentry } from "../_shared/sentry.ts";
-import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
+import { AiGatewayError, AiQuotaExceededError, runCompletion } from "../_shared/ai/gateway.ts";
 import { contentHash } from "../_shared/ai/hash.ts";
 import { findSimilarHash } from "../_shared/ai/pool.ts";
 import { reportError } from "../_shared/error_reporter.ts";
@@ -259,6 +259,17 @@ Deno.serve(withSentry("generate-flashcards", async (req) => {
       context: { subject_id: subject.id, node_id: nodeId, count },
       severity: "high",
     });
+    if (e instanceof AiQuotaExceededError) {
+      return json(
+        {
+          ok: false,
+          error_code: "ai_quota_exceeded",
+          daily_limit: e.dailyLimit,
+          error_id: errorId,
+        },
+        200,
+      );
+    }
     return json(
       { ok: false, error_code: "generic_error", error_id: errorId },
       200,

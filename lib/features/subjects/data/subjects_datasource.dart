@@ -23,6 +23,46 @@ class SubjectsException implements Exception {
   String toString() => 'SubjectsException($code)';
 }
 
+/// Lanzada cuando una llamada a IA es bloqueada por la cuota diaria del
+/// usuario (ver migracion 0105 + `consume_ai_quota`). El campo
+/// [dailyLimit] es el limite resuelto para ese user (segun su plan o el
+/// override admin) y se muestra en el snackbar i18n para que sepa cuanto
+/// le permitia su plan.
+///
+/// Heredada de [SubjectsException] para que los `on SubjectsException catch`
+/// existentes la sigan capturando como fallback — pero la UI deberia
+/// preferir `on AiQuotaExceededException catch` y mostrar el mensaje
+/// especifico.
+class AiQuotaExceededException extends SubjectsException {
+  const AiQuotaExceededException(this.dailyLimit)
+      : super('ai_quota_exceeded');
+
+  final int dailyLimit;
+
+  @override
+  String toString() => 'AiQuotaExceededException(daily=$dailyLimit)';
+}
+
+/// Cuota IA actual del usuario, devuelta por la RPC `get_my_ai_quota`.
+/// Util para mostrar "te quedan X llamadas hoy".
+class AiQuotaStatus {
+  const AiQuotaStatus({
+    required this.allowed,
+    required this.remaining,
+    required this.dailyLimit,
+  });
+
+  /// `true` si el user puede hacer al menos UNA llamada mas hoy.
+  final bool allowed;
+
+  /// Llamadas restantes hoy (despues de la actual). 0 = la actual seria la
+  /// ultima permitida o ya esta bloqueado.
+  final int remaining;
+
+  /// Limite diario resuelto para el user (override > plan > free).
+  final int dailyLimit;
+}
+
 class SubjectsDataSource {
   const SubjectsDataSource(this._client);
 
@@ -212,7 +252,15 @@ class SubjectsDataSource {
       if (data is! Map) throw const SubjectsException('invalid_response');
       final p = data.cast<String, dynamic>();
       if (p['ok'] != true) {
-        throw SubjectsException((p['error'] as String?) ?? 'match_failed');
+        // Caso especial: ai_quota_exceeded propaga su limite. Para los demas
+        // codigos usamos `match_failed` como fallback (no `generation_failed`).
+        final mapped = _mapEfPayloadToException(p);
+        if (mapped is AiQuotaExceededException) throw mapped;
+        throw SubjectsException(
+          (p['error_code'] as String?) ??
+              (p['error'] as String?) ??
+              'match_failed',
+        );
       }
       return (
         totalSections: (p['totalSections'] as num?)?.toInt() ?? 0,
@@ -244,7 +292,13 @@ class SubjectsDataSource {
       if (data is! Map) throw const SubjectsException('invalid_response');
       final p = data.cast<String, dynamic>();
       if (p['ok'] != true) {
-        throw SubjectsException((p['error'] as String?) ?? 'expand_failed');
+        final mapped = _mapEfPayloadToException(p);
+        if (mapped is AiQuotaExceededException) throw mapped;
+        throw SubjectsException(
+          (p['error_code'] as String?) ??
+              (p['error'] as String?) ??
+              'expand_failed',
+        );
       }
       return (p['added'] as num?)?.toInt() ?? 0;
     } on FunctionException catch (e) {
@@ -314,10 +368,7 @@ class SubjectsDataSource {
       if (data is! Map) throw const SubjectsException('invalid_response');
       final p = data.cast<String, dynamic>();
       if (p['ok'] != true) {
-        throw SubjectsException(
-          (p['error'] as String?) ?? 'generation_failed',
-          detail: p['detail'] as String?,
-        );
+        throw _mapEfPayloadToException(p);
       }
       return (p['content'] as String?) ?? '';
     } on FunctionException catch (e) {
@@ -406,10 +457,7 @@ class SubjectsDataSource {
       if (data is! Map) throw const SubjectsException('invalid_response');
       final p = data.cast<String, dynamic>();
       if (p['ok'] != true) {
-        throw SubjectsException(
-          (p['error'] as String?) ?? 'generation_failed',
-          detail: p['detail'] as String?,
-        );
+        throw _mapEfPayloadToException(p);
       }
       return (p['count'] as num?)?.toInt() ?? 0;
     } on FunctionException catch (e) {
@@ -529,10 +577,7 @@ class SubjectsDataSource {
       if (data is! Map) throw const SubjectsException('invalid_response');
       final p = data.cast<String, dynamic>();
       if (p['ok'] != true) {
-        throw SubjectsException(
-          (p['error'] as String?) ?? 'generation_failed',
-          detail: p['detail'] as String?,
-        );
+        throw _mapEfPayloadToException(p);
       }
       return (p['count'] as num?)?.toInt() ?? 0;
     } on FunctionException catch (e) {
@@ -589,10 +634,7 @@ class SubjectsDataSource {
       if (data is! Map) throw const SubjectsException('invalid_response');
       final p = data.cast<String, dynamic>();
       if (p['ok'] != true) {
-        throw SubjectsException(
-          (p['error'] as String?) ?? 'generation_failed',
-          detail: p['detail'] as String?,
-        );
+        throw _mapEfPayloadToException(p);
       }
       return (
         generated: (p['generated'] as num?)?.toInt() ?? 0,
@@ -676,10 +718,7 @@ class SubjectsDataSource {
       if (data is! Map) throw const SubjectsException('invalid_response');
       final p = data.cast<String, dynamic>();
       if (p['ok'] != true) {
-        throw SubjectsException(
-          (p['error'] as String?) ?? 'generation_failed',
-          detail: p['detail'] as String?,
-        );
+        throw _mapEfPayloadToException(p);
       }
       return (
         generated: (p['generated'] as num?)?.toInt() ?? 0,
@@ -750,10 +789,7 @@ class SubjectsDataSource {
       if (data is! Map) throw const SubjectsException('invalid_response');
       final p = data.cast<String, dynamic>();
       if (p['ok'] != true) {
-        throw SubjectsException(
-          (p['error'] as String?) ?? 'generation_failed',
-          detail: p['detail'] as String?,
-        );
+        throw _mapEfPayloadToException(p);
       }
       return (
         generated: (p['generated'] as num?)?.toInt() ?? 0,
@@ -1103,10 +1139,7 @@ class SubjectsDataSource {
       if (data is! Map) throw const SubjectsException('invalid_response');
       final p = data.cast<String, dynamic>();
       if (p['ok'] != true) {
-        throw SubjectsException(
-          (p['error'] as String?) ?? 'generation_failed',
-          detail: p['detail'] as String?,
-        );
+        throw _mapEfPayloadToException(p);
       }
       return (p['content'] as String?) ?? '';
     } on FunctionException catch (e) {
@@ -1138,10 +1171,7 @@ class SubjectsDataSource {
       if (data is! Map) throw const SubjectsException('invalid_response');
       final p = data.cast<String, dynamic>();
       if (p['ok'] != true) {
-        throw SubjectsException(
-          (p['error'] as String?) ?? 'generation_failed',
-          detail: p['detail'] as String?,
-        );
+        throw _mapEfPayloadToException(p);
       }
       return (p['content'] as String?) ?? '';
     } on FunctionException catch (e) {
@@ -1222,10 +1252,7 @@ class SubjectsDataSource {
       if (data is! Map) throw const SubjectsException('invalid_response');
       final p = data.cast<String, dynamic>();
       if (p['ok'] != true) {
-        throw SubjectsException(
-          (p['error'] as String?) ?? 'generation_failed',
-          detail: p['detail'] as String?,
-        );
+        throw _mapEfPayloadToException(p);
       }
       return (p['answer'] as String?) ?? '';
     } on FunctionException catch (e) {
@@ -1296,6 +1323,45 @@ class SubjectsDataSource {
     final d = e.details;
     if (d is Map && d['error'] is String) return d['error'] as String;
     return 'server_error';
+  }
+
+  /// Cuota IA actual del usuario (limite diario + restantes). Lee la RPC
+  /// `get_my_ai_quota` (security definer; usa `auth.uid()` server-side). Util
+  /// para chips "te quedan X llamadas hoy". Best-effort: si la RPC falla
+  /// (DB sin migrar, network), devolvemos `null` y la UI no muestra nada.
+  Future<AiQuotaStatus?> getMyAiQuota() async {
+    try {
+      final res = await _client.rpc<dynamic>('get_my_ai_quota');
+      if (res is! List || res.isEmpty) return null;
+      final row = (res.first as Map).cast<String, dynamic>();
+      return AiQuotaStatus(
+        allowed: (row['allowed'] as bool?) ?? false,
+        remaining: (row['remaining'] as num?)?.toInt() ?? 0,
+        dailyLimit: (row['daily_limit'] as num?)?.toInt() ?? 0,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Parsea una respuesta `{ok:false, error_code|error, daily_limit?}` de una
+  /// EF de IA y devuelve la excepcion apropiada. Si el codigo es
+  /// `ai_quota_exceeded`, devuelve `AiQuotaExceededException(N)`; en caso
+  /// contrario devuelve `SubjectsException(code, detail?)`. Usar despues de
+  /// detectar `data['ok'] != true`.
+  ///
+  /// El motivo de tener este helper centralizado: hoy las EFs son
+  /// inconsistentes — unas devuelven `error`, otras `error_code` (ver
+  /// migracion 0105 + refactor gateway). Aqui aceptamos los dos.
+  static Exception _mapEfPayloadToException(Map<String, dynamic> p) {
+    final code = (p['error_code'] as String?) ??
+        (p['error'] as String?) ??
+        'generation_failed';
+    if (code == 'ai_quota_exceeded') {
+      final limit = (p['daily_limit'] as num?)?.toInt() ?? 0;
+      return AiQuotaExceededException(limit);
+    }
+    return SubjectsException(code, detail: p['detail'] as String?);
   }
 
   // ─────────────────── Admin Material Library (super-admin only) ──────────────

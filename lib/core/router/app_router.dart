@@ -23,6 +23,7 @@ import 'package:myapp/features/admin_metrics/presentation/pages/admin_metrics_pa
 import 'package:myapp/features/admin_users/presentation/pages/admin_user_detail_page.dart';
 import 'package:myapp/features/admin_users/presentation/pages/admin_users_page.dart';
 import 'package:myapp/features/ai_providers/presentation/pages/admin_ai_providers_page.dart';
+import 'package:myapp/features/ai_providers/presentation/pages/admin_ai_quotas_page.dart';
 import 'package:myapp/features/audit/presentation/pages/activity_feed_page.dart';
 import 'package:myapp/features/audit/presentation/pages/audit_log_page.dart';
 import 'package:myapp/features/audit_center/presentation/pages/admin_audit_page.dart';
@@ -494,6 +495,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: RoutePaths.adminAiProviders,
         name: RouteNames.adminAiProviders,
         builder: (_, __) => const AdminAiProvidersPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.adminAiQuotas,
+        name: RouteNames.adminAiQuotas,
+        builder: (_, __) => const AdminAiQuotasPage(),
       ),
       // SOLO super admin. El guard del router (`isSuperAdminRoute`) ya
       // bloquea a admins normales antes de llegar. Defensa: la RPC

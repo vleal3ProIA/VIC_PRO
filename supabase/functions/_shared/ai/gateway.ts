@@ -41,6 +41,17 @@ export class AiGatewayError extends Error {
   }
 }
 
+/// Subclase de AiGatewayError lanzada cuando el usuario supero su cuota diaria.
+/// El mensaje sigue el formato `ai_quota_exceeded:<dailyLimit>` para que las
+/// EFs llamantes lo propaguen al cliente sin envoltorios genericos. Detectarla
+/// con `e instanceof AiQuotaExceededError` o `e.message.startsWith('ai_quota_exceeded:')`.
+export class AiQuotaExceededError extends AiGatewayError {
+  constructor(public readonly dailyLimit: number) {
+    super(`ai_quota_exceeded:${dailyLimit}`);
+    this.name = "AiQuotaExceededError";
+  }
+}
+
 /// Adaptador por slug. Anyadir un proveedor nuevo = anyadir su adaptador aquí
 /// + (si compatible OpenAI) reusar `openAiCompatibleAdapter`.
 const ADAPTERS: Record<string, ProviderAdapter> = {
@@ -82,6 +93,28 @@ export async function runCompletion(
   admin: SupabaseClient,
   req: AiCompletionRequest,
 ): Promise<AiCompletionResult> {
+  // ─── Gate de cuota diaria por usuario ─────────────────────────────────
+  // Lo hacemos PRIMERO para no leer providers/credenciales si el user ya
+  // supero su cap. Si `req.userId` esta vacio (admin probando proveedor via
+  // `onlyProviderSlug`, EF interna, etc.) se salta el chequeo. La RPC es
+  // atomica y NO inserta en `ai_usage` (eso lo sigue haciendo el gateway
+  // al exito de la llamada real, para no quemar cuota en proveedores caidos).
+  if (req.userId) {
+    const { data: quotaData, error: quotaErr } = await admin.rpc(
+      "consume_ai_quota",
+      { p_user_id: req.userId },
+    );
+    if (quotaErr) {
+      throw new AiGatewayError("quota_check_failed: " + quotaErr.message);
+    }
+    const row = (quotaData as Array<
+      { allowed: boolean; remaining: number; daily_limit: number }
+    > | null)?.[0];
+    if (!row?.allowed) {
+      throw new AiQuotaExceededError(row?.daily_limit ?? 0);
+    }
+  }
+
   // En modo TEST (onlyProviderSlug) NO exigimos `enabled`: así se puede probar
   // la clave de un proveedor ANTES de activarlo. En uso normal, solo enabled.
   let provQuery = admin.from("ai_providers").select("*");

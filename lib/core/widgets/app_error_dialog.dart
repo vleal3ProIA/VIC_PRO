@@ -13,6 +13,27 @@
 import 'package:flutter/material.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
 
+/// Muestra un snackbar centralizado cuando una llamada a IA es bloqueada por
+/// la cuota diaria del usuario. Texto i18n con el limite resuelto (segun
+/// plan / override admin) y CTA implicito "vuelve mañana o pasate al plan
+/// Max". Se llama desde los catch `on AiQuotaExceededException` en las
+/// pantallas que disparan generaciones (`generate-quiz`, `generate-flashcards`,
+/// `ask-subject`, etc.). Defensa server-side: la cuota la enforce la RPC
+/// `consume_ai_quota` (migracion 0105).
+void showAiQuotaExceededSnackBar(BuildContext context, int dailyLimit) {
+  final l = context.l10n;
+  final messenger = ScaffoldMessenger.of(context);
+  final scheme = Theme.of(context).colorScheme;
+  messenger.clearSnackBars();
+  messenger.showSnackBar(
+    SnackBar(
+      backgroundColor: scheme.error,
+      duration: const Duration(seconds: 6),
+      content: Text(l.aiQuotaExceededBody(dailyLimit)),
+    ),
+  );
+}
+
 /// Muestra un dialog modal centrado con titulo + mensaje + boton OK.
 /// Responsive: max 480px en desktop, full-width en mobile.
 ///

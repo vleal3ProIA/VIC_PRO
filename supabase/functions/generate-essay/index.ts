@@ -326,14 +326,29 @@ Deno.serve(withSentry("generate-essay", async (req) => {
   }
 
   if (total === 0) {
+    // Si el ultimo intento fue por cuota IA, propagar `ai_quota_exceeded`
+    // con el limite (formato: `ai_quota_exceeded:<N>`) para que el cliente
+    // muestre el snackbar especifico en lugar del modal generico.
+    const quotaMatch = lastError?.match(/^ai_quota_exceeded:(\d+)/);
     const errorId = await reportError(admin, {
       userId: user.id,
       fn: "generate-essay",
       error: lastError ?? "empty_result",
-      errorCode: "generation_failed",
+      errorCode: quotaMatch ? "ai_quota_exceeded" : "generation_failed",
       context: { subject_id: subject.id, node_ids: nodeIds, sections: sections.length },
-      severity: "high",
+      severity: quotaMatch ? "low" : "high",
     });
+    if (quotaMatch) {
+      return json(
+        {
+          ok: false,
+          error_code: "ai_quota_exceeded",
+          daily_limit: parseInt(quotaMatch[1], 10),
+          error_id: errorId,
+        },
+        200,
+      );
+    }
     return json(
       { ok: false, error_code: "generic_error", error_id: errorId },
       200,

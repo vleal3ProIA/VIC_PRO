@@ -13,7 +13,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rate_limit.ts";
 import { withSentry } from "../_shared/sentry.ts";
-import { AiGatewayError, runCompletion } from "../_shared/ai/gateway.ts";
+import { AiGatewayError, AiQuotaExceededError, runCompletion } from "../_shared/ai/gateway.ts";
 import { gatherMaterial } from "../_shared/ai/material.ts";
 import type { AiAttachment } from "../_shared/ai/types.ts";
 import { reportError } from "../_shared/error_reporter.ts";
@@ -214,6 +214,17 @@ Deno.serve(withSentry("ask-subject", async (req) => {
       },
       severity: "high",
     });
+    if (e instanceof AiQuotaExceededError) {
+      return json(
+        {
+          ok: false,
+          error_code: "ai_quota_exceeded",
+          daily_limit: e.dailyLimit,
+          error_id: errorId,
+        },
+        200,
+      );
+    }
     return json(
       { ok: false, error_code: "generic_error", error_id: errorId },
       200,
