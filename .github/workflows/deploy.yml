@@ -27,6 +27,9 @@
 #   - SUPABASE_URL_PROD  URL del proyecto Supabase de produccion
 #   - SUPABASE_ANON_KEY_PROD  anon key del proyecto Supabase de produccion
 #   - SENTRY_DSN_PROD    (opcional) DSN de Sentry para errores en prod
+#   - POSTHOG_API_KEY_PROD  (opcional) Project API Key de PostHog para analytics
+#                            (publica, va en el bundle JS). Sin esto el
+#                            AnalyticsService cae al LoggingBackend en consola.
 #
 # **Variables (no secrets)** en GitHub → Settings → Variables → Actions:
 #   - FLUTTER_VERSION    debe coincidir con el ci.yml (3.41.6)
@@ -153,7 +156,8 @@ jobs:
             --dart-define=APP_VERSION=${{ github.sha }} \
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL_PROD }} \
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY_PROD }} \
-            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN_PROD }}
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN_PROD }} \
+            --dart-define=POSTHOG_API_KEY=${{ secrets.POSTHOG_API_KEY_PROD }}
 
       # ─── Verificar que el build tiene los archivos esperados ───
       - name: Smoke check build output
