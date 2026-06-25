@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:myapp/core/extensions/context_extensions.dart';
+import 'package:myapp/core/observability/analytics_service.dart';
 import 'package:myapp/core/router/route_names.dart';
 
 import 'billing_providers.dart';
@@ -37,8 +38,23 @@ final isMaxPlanProvider = Provider<bool>((ref) {
 /// Llámalo cuando el usuario, en un plan menor a Max, intente disparar una
 /// acción de generación "de todo el temario" (notas, flashcards, quiz, test,
 /// tf, essay). NO lo llames para generación por sección — esa no tiene gate.
-Future<bool?> showMaxOnlyDialog(BuildContext context) {
+///
+/// Tracking: registra dos eventos en analytics:
+///   - `max_gate_shown`: cada vez que el modal se muestra (medir intención).
+///   - `max_gate_cta_clicked`: cuando el usuario pulsa "Ver plan Max"
+///     (medir conversion del upsell).
+/// El parámetro [source] etiqueta el origen del gate (ej. `mock_test_all`,
+/// `tf_panel`, `essay_panel`, `mock_my_material`).
+Future<bool?> showMaxOnlyDialog(
+  BuildContext context, {
+  String source = 'unknown',
+}) {
   final l = context.l10n;
+  // Tracking del impression: el gate apareció.
+  final container = ProviderScope.containerOf(context, listen: false);
+  container
+      .read(analyticsServiceProvider)
+      .trackSync('max_gate_shown', properties: {'source': source});
   return showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -53,6 +69,13 @@ Future<bool?> showMaxOnlyDialog(BuildContext context) {
         ),
         FilledButton.icon(
           onPressed: () {
+            // Tracking del click: conversion potencial.
+            container
+                .read(analyticsServiceProvider)
+                .trackSync(
+              'max_gate_cta_clicked',
+              properties: {'source': source},
+            );
             Navigator.of(ctx).pop(true);
             ctx.goNamed(RouteNames.plans);
           },

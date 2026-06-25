@@ -3024,7 +3024,7 @@ class _QuizViewState extends ConsumerState<_QuizView> {
     // requiere Max. Generar para una seccion concreta es libre.
     if (nodeId == null) {
       if (!ref.read(isMaxPlanProvider)) {
-        await showMaxOnlyDialog(context);
+        await showMaxOnlyDialog(context, source: 'quiz_panel_root');
       }
       return;
     }
@@ -3425,7 +3425,7 @@ class _FlashcardsViewState extends ConsumerState<_FlashcardsView> {
     // este check defensivo evita una llamada IA accidental si llega aqui.
     if (nodeId == null) {
       if (!ref.read(isMaxPlanProvider)) {
-        await showMaxOnlyDialog(context);
+        await showMaxOnlyDialog(context, source: 'flashcards_panel_root');
       }
       return;
     }

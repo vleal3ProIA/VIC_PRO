@@ -51,14 +51,42 @@ class SavedTestsLibrary extends ConsumerStatefulWidget {
 class _SavedTestsLibraryState extends ConsumerState<SavedTestsLibrary> {
   bool _busy = false;
 
+  /// Tests extra cargados via "Ver mas" (paginacion local). Los primeros 50
+  /// vienen del savedTestsProvider; cuando el usuario pulsa "Ver mas" se
+  /// fetchea offset 50, 100, etc. y se acumulan aqui.
+  final List<SavedTest> _extras = [];
+  bool _loadingMore = false;
+  bool _noMoreToLoad = false;
+
   SavedTestsQuery get _query =>
       (subjectId: widget.subjectId, kind: widget.kind);
+
+  Future<void> _loadMore(int currentTotal) async {
+    if (_loadingMore || _noMoreToLoad) return;
+    setState(() => _loadingMore = true);
+    try {
+      final more = await ref.read(subjectsDataSourceProvider).listSavedTests(
+            widget.subjectId,
+            kind: widget.kind,
+            offset: currentTotal,
+          );
+      if (!mounted) return;
+      setState(() {
+        _extras.addAll(more);
+        if (more.length < 50) _noMoreToLoad = true;
+      });
+    } catch (_) {
+      if (mounted) await showAppErrorDialog(context);
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
 
   Future<void> _runAll() async {
     if (_busy) return;
     // GATE plan Max: "Hacer test de todo el temario" requiere Max.
     if (!ref.read(isMaxPlanProvider)) {
-      await showMaxOnlyDialog(context);
+      await showMaxOnlyDialog(context, source: 'my_material_${widget.kind.slug}_run_all');
       return;
     }
     setState(() => _busy = true);
@@ -302,6 +330,12 @@ class _SavedTestsLibraryState extends ConsumerState<SavedTestsLibrary> {
                   ),
                 );
               }
+              // Concatenamos la primera pagina (50 del provider) con los
+              // extras cargados via "Ver mas". El boton solo aparece si la
+              // primera pagina llego al limite (= probablemente hay mas).
+              final all = [...tests, ..._extras];
+              final mightHaveMore =
+                  tests.length >= 50 && !_noMoreToLoad;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -313,12 +347,29 @@ class _SavedTestsLibraryState extends ConsumerState<SavedTestsLibrary> {
                           ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
-                  for (final t in tests)
+                  for (final t in all)
                     _SavedTestTile(
                       test: t,
                       onRun: () => _runSaved(t),
                       onRename: () => _rename(t),
                       onDelete: () => _delete(t),
+                    ),
+                  if (mightHaveMore)
+                    Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Center(
+                        child: _loadingMore
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : OutlinedButton.icon(
+                                onPressed: () => _loadMore(all.length),
+                                icon: const Icon(Icons.expand_more, size: 18),
+                                label: Text(l.actionLoadMore),
+                              ),
+                      ),
                     ),
                 ],
               );

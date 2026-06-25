@@ -213,10 +213,35 @@ class _IndexLeafPickerState extends State<IndexLeafPicker> {
             ),
           ),
         ),
-        if (hasChildren && isExpanded)
-          for (final c in _childrenByParent[n.id] ?? const <IndexNode>[])
-            _entry(c, depthIndent: depthIndent + 1),
+        if (hasChildren && isExpanded) _expandedChildren(n, depthIndent),
       ],
+    );
+  }
+
+  /// Renderiza los hijos de un nodo expandido. Si son muchos (>50) los
+  /// envuelve en un area scrollable con altura limitada para que no se
+  /// coma la pantalla cuando un Titulo tiene 30 articulos planos.
+  Widget _expandedChildren(IndexNode parent, int depthIndent) {
+    final kids = _childrenByParent[parent.id] ?? const <IndexNode>[];
+    final entries = [
+      for (final c in kids) _entry(c, depthIndent: depthIndent + 1),
+    ];
+    if (kids.length <= 50) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: entries,
+      );
+    }
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 480),
+      child: Scrollbar(
+        thumbVisibility: true,
+        child: ListView(
+          shrinkWrap: true,
+          padding: EdgeInsets.zero,
+          children: entries,
+        ),
+      ),
     );
   }
 

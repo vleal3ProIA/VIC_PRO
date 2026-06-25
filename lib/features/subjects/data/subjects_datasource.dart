@@ -910,17 +910,23 @@ class SubjectsDataSource {
     return SavedTest.fromMap(data);
   }
 
-  /// Lista de tests plantilla del temario filtrada por [kind].
+  /// Lista de tests plantilla del temario filtrada por [kind]. Pagina con
+  /// [limit] + [offset] para que la UI cargue por bloques (default: 50).
+  /// Devuelve maximo 200 por llamada como safety cap.
   Future<List<SavedTest>> listSavedTests(
     String subjectId, {
     SavedTestKind kind = SavedTestKind.mock,
+    int limit = 50,
+    int offset = 0,
   }) async {
+    final safe = limit.clamp(1, 200);
     final data = await _client
         .from('saved_tests')
         .select()
         .eq('subject_id', subjectId)
         .eq('kind', kind.slug)
-        .order('created_at', ascending: false);
+        .order('created_at', ascending: false)
+        .range(offset, offset + safe - 1);
     return (data as List)
         .cast<Map<String, dynamic>>()
         .map(SavedTest.fromMap)
