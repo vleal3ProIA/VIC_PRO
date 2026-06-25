@@ -82,6 +82,11 @@ export interface AdapterParams {
   maxOutputTokens: number;
   temperature: number;
   attachments?: AiAttachment[];
+  /// Si se proporciona, el adapter debe pasar `signal` al `fetch()` para
+  /// que el gateway pueda abortar la llamada al cumplirse el timeout. Sin
+  /// esto, una IA que se cuelga ocupa un slot de Edge Function hasta el
+  /// hard-kill del runtime (150s).
+  signal?: AbortSignal;
 }
 
 export type ProviderAdapter = (p: AdapterParams) => Promise<AdapterResult>;

@@ -23,6 +23,7 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { AiProviderError } from "./types.ts";
 import type {
   AdapterParams,
+  AdapterResult,
   AiCompletionRequest,
   AiCompletionResult,
   AiCredentialRow,
@@ -152,10 +153,22 @@ export async function runCompletion(
       // "high demand / UNAVAILABLE"): hasta 2 reintentos con backoff sobre la
       // MISMA credencial antes de pasar a la siguiente. Absorbe picos temporales
       // de saturación del proveedor en vez de fallar el flujo entero.
+      // Timeout duro por llamada: si el proveedor se cuelga (red caida,
+      // streaming detenido, etc.) abortamos a los 25s y pasamos al siguiente
+      // intento/credencial/proveedor. Sin esto, una IA muerta ocupa un slot
+      // de Edge Function hasta el hard-kill del runtime (150s).
+      const callTimeoutMs = 25_000;
       const maxTransientRetries = 2;
       for (let attempt = 0;; attempt++) {
         try {
-          const r = await adapter(params);
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), callTimeoutMs);
+          let r: AdapterResult;
+          try {
+            r = await adapter({ ...params, signal: controller.signal });
+          } finally {
+            clearTimeout(timer);
+          }
           const cost = estimateCost(r.model, r.inputTokens, r.outputTokens, prov.tier);
           await admin.from("ai_credentials")
             .update({ last_used_at: nowIso, disabled_reason: null })

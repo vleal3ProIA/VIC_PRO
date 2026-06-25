@@ -90,6 +90,7 @@ export const anthropicAdapter = async (
     method: "POST",
     headers,
     body: JSON.stringify(body),
+    signal: p.signal,
   });
 
   if (!res.ok) {

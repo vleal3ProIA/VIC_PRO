@@ -37,6 +37,7 @@ export const openAiCompatibleAdapter = async (
       temperature: p.temperature,
       messages,
     }),
+    signal: p.signal,
   });
 
   if (!res.ok) {

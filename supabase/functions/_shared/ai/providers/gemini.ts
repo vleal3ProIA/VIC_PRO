@@ -57,6 +57,7 @@ export const geminiAdapter = async (
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
+    signal: p.signal,
   });
 
   if (!res.ok) {
