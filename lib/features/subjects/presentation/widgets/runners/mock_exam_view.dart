@@ -211,30 +211,41 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
     }
   }
 
-  /// Construye un título descriptivo simple a partir del nodo elegido.
-  /// Ejemplo: "Artículo 14 · 24".
+  /// Construye un título descriptivo a partir del nodo elegido + fecha actual,
+  /// para que tests del mismo articulo en distintos dias no salgan iguales.
+  /// Ejemplo: "Artículo 14 · 12/03/2026 · 24".
   String _autoTitle(List<String> nodeIds, int qCount) {
     final allNodes = {for (final n in widget.nodes) n.id: n};
     final first = nodeIds.isEmpty ? null : allNodes[nodeIds.first];
     final scope = first?.title ?? '';
-    return '$scope · $qCount';
+    final d = DateTime.now();
+    String two(int n) => n.toString().padLeft(2, '0');
+    final date = '${two(d.day)}/${two(d.month)}/${d.year}';
+    return '$scope · $date · $qCount';
+  }
+
+  /// Breadcrumb desde el nodo padre raiz hasta el nodo elegido. Ejemplo:
+  /// "TÍTULO I › CAPÍTULO II › Sección 1ª › Artículo 14". Null si no hay
+  /// nodo seleccionado.
+  String? _breadcrumb() {
+    final id = _selectedNodeId;
+    if (id == null) return null;
+    final byId = {for (final n in widget.nodes) n.id: n};
+    final parts = <String>[];
+    var cur = byId[id];
+    while (cur != null) {
+      parts.insert(0, cur.title);
+      cur = cur.parentId == null ? null : byId[cur.parentId];
+    }
+    return parts.join(' › ');
   }
 
   @override
   Widget build(BuildContext context) {
-    final l = context.l10n;
-    if (_busy) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: AppSpacing.sm),
-            Text(l.studyGenerating, style: context.textTheme.bodySmall),
-          ],
-        ),
-      );
-    }
+    // Loading non-blocking: NO reemplazamos toda la vista cuando _busy=true.
+    // El usuario mantiene el contexto (su seleccion del indice + opciones).
+    // El LinearProgressIndicator dentro del config le da feedback visual
+    // sin esconder la pantalla.
     return _config(context);
   }
 
@@ -244,12 +255,25 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
     final bank =
         ref.watch(examQuestionsProvider(widget.subjectId)).valueOrNull ??
             const <QuizQuestion>[];
-    final canGenerate = _selectedNodeId != null;
+    final canGenerate = _selectedNodeId != null && !_busy;
     final pool = _pool(bank);
+    final crumb = _breadcrumb();
 
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
+        // Loading non-blocking: barra delgada arriba cuando se esta generando
+        // o consultando el banco, sin esconder la seleccion del indice.
+        if (_busy) ...[
+          const LinearProgressIndicator(),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            l.studyGenerating,
+            style: context.textTheme.bodySmall
+                ?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
         // ─── Secciones ───
         // Sin toggle "Todo el temario": el usuario solo puede elegir UNA
         // seccion hoja del indice. Para generar masivo de TODO existe la
@@ -259,6 +283,17 @@ class _MockExamViewState extends ConsumerState<MockExamView> {
           style: context.textTheme.titleSmall
               ?.copyWith(fontWeight: FontWeight.w700),
         ),
+        if (crumb != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 4),
+            child: Text(
+              crumb,
+              style: context.textTheme.labelSmall?.copyWith(
+                color: scheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         IndexLeafPicker(
           nodes: widget.nodes,
           selectedNodeId: _selectedNodeId,

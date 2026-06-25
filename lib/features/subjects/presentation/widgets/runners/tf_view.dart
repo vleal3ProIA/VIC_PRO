@@ -176,24 +176,30 @@ class _TfViewState extends ConsumerState<TfView> {
     final allNodes = {for (final n in widget.nodes) n.id: n};
     final first = nodeIds.isEmpty ? null : allNodes[nodeIds.first];
     final scope = first?.title ?? '';
-    return '$scope · $qCount';
+    final d = DateTime.now();
+    String two(int n) => n.toString().padLeft(2, '0');
+    final date = '${two(d.day)}/${two(d.month)}/${d.year}';
+    return '$scope · $date · $qCount';
+  }
+
+  /// Breadcrumb de la seleccion (TITULO › CAPITULO › Articulo X).
+  String? _breadcrumb() {
+    final id = _selectedNodeId;
+    if (id == null) return null;
+    final byId = {for (final n in widget.nodes) n.id: n};
+    final parts = <String>[];
+    var cur = byId[id];
+    while (cur != null) {
+      parts.insert(0, cur.title);
+      cur = cur.parentId == null ? null : byId[cur.parentId];
+    }
+    return parts.join(' › ');
   }
 
   @override
   Widget build(BuildContext context) {
-    final l = context.l10n;
-    if (_busy) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: AppSpacing.sm),
-            Text(l.studyGenerating, style: context.textTheme.bodySmall),
-          ],
-        ),
-      );
-    }
+    // Loading non-blocking: el _busy se renderiza dentro de _config como un
+    // LinearProgressIndicator arriba, sin esconder el indice.
     return _config(context);
   }
 
@@ -203,12 +209,23 @@ class _TfViewState extends ConsumerState<TfView> {
     final bank =
         ref.watch(tfQuestionsProvider(widget.subjectId)).valueOrNull ??
             const <TfQuestion>[];
-    final canGenerate = _selectedNodeId != null;
+    final canGenerate = _selectedNodeId != null && !_busy;
     final pool = _pool(bank);
+    final crumb = _breadcrumb();
 
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
+        if (_busy) ...[
+          const LinearProgressIndicator(),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            l.studyGenerating,
+            style: context.textTheme.bodySmall
+                ?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
         // ─── Secciones ───
         // Solo seleccion unica de hoja del indice. Sin toggle "Todo".
         Text(
@@ -216,6 +233,17 @@ class _TfViewState extends ConsumerState<TfView> {
           style: context.textTheme.titleSmall
               ?.copyWith(fontWeight: FontWeight.w700),
         ),
+        if (crumb != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 4),
+            child: Text(
+              crumb,
+              style: context.textTheme.labelSmall?.copyWith(
+                color: scheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         IndexLeafPicker(
           nodes: widget.nodes,
           selectedNodeId: _selectedNodeId,

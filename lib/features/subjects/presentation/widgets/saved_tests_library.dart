@@ -82,9 +82,12 @@ class _SavedTestsLibraryState extends ConsumerState<SavedTestsLibrary> {
         messenger.showSnackBar(SnackBar(content: Text(l.studyTestNoBank)));
         return;
       }
+      final d = DateTime.now();
+      String two(int n) => n.toString().padLeft(2, '0');
+      final date = '${two(d.day)}/${two(d.month)}/${d.year}';
       final saved = await ds.createSavedTest(
         subjectId: widget.subjectId,
-        title: '${l.studyTestScopeAll} · ${ids.length}',
+        title: '${l.studyTestScopeAll} · $date · ${ids.length}',
         questionIds: ids,
         nodeIds: const [],
         kind: widget.kind,
@@ -465,9 +468,17 @@ class EssayBrowserDialog extends StatelessWidget {
             AppBar(
               title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
               leading: IconButton(
-                icon: const Icon(Icons.close),
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                icon: const Icon(Icons.arrow_back),
                 onPressed: () => Navigator.of(context).pop(),
               ),
+              actions: [
+                IconButton(
+                  tooltip: l.actionClose,
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
             ),
             Expanded(
               child: ListView.separated(

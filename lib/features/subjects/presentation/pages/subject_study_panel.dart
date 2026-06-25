@@ -4067,28 +4067,32 @@ class _EssayViewState extends ConsumerState<_EssayView> {
     }
   }
 
+  /// Breadcrumb de la seleccion (TITULO › CAPITULO › Articulo X).
+  String? _breadcrumb() {
+    final id = _selectedNodeId;
+    if (id == null) return null;
+    final byId = {for (final n in widget.nodes) n.id: n};
+    final parts = <String>[];
+    var cur = byId[id];
+    while (cur != null) {
+      parts.insert(0, cur.title);
+      cur = cur.parentId == null ? null : byId[cur.parentId];
+    }
+    return parts.join(' › ');
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Loading non-blocking: LinearProgressIndicator dentro del config en
+    // lugar de un Center que oculta la pantalla entera.
     final l = context.l10n;
-    if (_busy) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: AppSpacing.sm),
-            Text(l.studyGenerating, style: context.textTheme.bodySmall),
-          ],
-        ),
-      );
-    }
-
     final scheme = context.colors;
     final bank =
         ref.watch(essayQuestionsProvider(widget.subjectId)).valueOrNull ??
             const <EssayQuestion>[];
-    final canGenerate = _selectedNodeId != null;
+    final canGenerate = _selectedNodeId != null && !_busy;
     final pool = _pool(bank);
+    final crumb = _breadcrumb();
 
     // Agrupar por sección, en el orden del índice (preservamos posición).
     final nodeOrder = <String, int>{
@@ -4111,6 +4115,16 @@ class _EssayViewState extends ConsumerState<_EssayView> {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
+        if (_busy) ...[
+          const LinearProgressIndicator(),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            l.studyGenerating,
+            style: context.textTheme.bodySmall
+                ?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
         // ─── Secciones ───
         // Solo seleccion unica de hoja del indice. Sin toggle "Todo".
         Text(
@@ -4118,6 +4132,17 @@ class _EssayViewState extends ConsumerState<_EssayView> {
           style: context.textTheme.titleSmall
               ?.copyWith(fontWeight: FontWeight.w700),
         ),
+        if (crumb != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 4),
+            child: Text(
+              crumb,
+              style: context.textTheme.labelSmall?.copyWith(
+                color: scheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         IndexLeafPicker(
           nodes: widget.nodes,
           selectedNodeId: _selectedNodeId,
