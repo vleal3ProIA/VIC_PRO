@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:formz/formz.dart';
 
+import 'package:myapp/core/config/env_config.dart';
 import 'package:myapp/core/observability/analytics_event.dart';
 import 'package:myapp/core/observability/analytics_service.dart';
 import 'package:myapp/core/storage/storage_providers.dart';
@@ -38,6 +40,7 @@ class LoginState {
     this.status = LoginStatus.initial,
     this.failure,
     this.showErrors = false,
+    this.captchaToken,
   });
 
   final Email email;
@@ -47,12 +50,29 @@ class LoginState {
   final AuthFailure? failure;
   final bool showErrors;
 
-  bool get isValid => Formz.validate([email, password]);
+  /// Token devuelto por Cloudflare Turnstile. Solo se exige en web con
+  /// sitekey configurada (ver [isCaptchaRequired]). Necesario porque
+  /// Supabase Auth aplica Bot protection a `/token` (login con password)
+  /// además de a `/signup`.
+  final String? captchaToken;
+
   bool get isSubmitting => status == LoginStatus.submitting;
 
   /// Error de input genérico — el del email se calcula con
   /// `ValidationMessages.email` en la UI. Para password sólo hay "vacío".
   bool get passwordIsEmpty => password.value.isEmpty;
+
+  /// Mismo criterio que en `RegisterState`: solo en builds web reales con
+  /// sitekey configurada. Tests (VM) y entornos sin sitekey lo saltan
+  /// para no romper login_flow_test ni login_form_test.
+  bool get isCaptchaRequired =>
+      kIsWeb && EnvConfig.turnstileSitekey.isNotEmpty;
+
+  bool get hasCaptchaToken => captchaToken != null && captchaToken!.isNotEmpty;
+
+  bool get isValid =>
+      Formz.validate([email, password]) &&
+      (!isCaptchaRequired || hasCaptchaToken);
 
   LoginState copyWith({
     Email? email,
@@ -61,7 +81,9 @@ class LoginState {
     LoginStatus? status,
     AuthFailure? failure,
     bool? showErrors,
+    String? captchaToken,
     bool clearFailure = false,
+    bool clearCaptchaToken = false,
   }) {
     return LoginState(
       email: email ?? this.email,
@@ -70,6 +92,8 @@ class LoginState {
       status: status ?? this.status,
       failure: clearFailure ? null : (failure ?? this.failure),
       showErrors: showErrors ?? this.showErrors,
+      captchaToken:
+          clearCaptchaToken ? null : (captchaToken ?? this.captchaToken),
     );
   }
 }
@@ -96,6 +120,18 @@ class LoginNotifier extends Notifier<LoginState> {
     state = state.copyWith(rememberMe: value, clearFailure: true);
   }
 
+  /// Llamado por `TurnstileWidget.onToken` cuando Cloudflare entrega el
+  /// token. Habilita el botón "Sign in" (si el resto del form es válido).
+  void captchaTokenChanged(String token) {
+    state = state.copyWith(captchaToken: token, clearFailure: true);
+  }
+
+  /// Llamado cuando el token caduca o el reto falla — deshabilita el
+  /// submit hasta que el usuario pase un nuevo reto.
+  void captchaTokenCleared() {
+    state = state.copyWith(clearCaptchaToken: true);
+  }
+
   Future<void> submit() async {
     state = state.copyWith(showErrors: true, clearFailure: true);
     if (!state.isValid) return;
@@ -120,6 +156,7 @@ class LoginNotifier extends Notifier<LoginState> {
         final result = await repo.signIn(
           email: state.email.value.trim(),
           password: state.password.value,
+          captchaToken: state.captchaToken,
         );
         result.match(
           (failure) {

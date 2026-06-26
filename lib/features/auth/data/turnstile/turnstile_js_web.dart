@@ -129,7 +129,20 @@ Future<TurnstileHandle> renderTurnstile({
   }
 
   // Esperar a que el HtmlElementView haya pintado el div en el DOM.
-  await Future<void>.delayed(const Duration(milliseconds: 32));
+  // CRITICO: el delay fijo de 32ms no es suficiente cuando Cloudflare/CDN
+  // sirve el bundle muy rapido y los frames se renderizan a destiempo
+  // (bug observado en prod tras N4: TurnstileError 'Unable to find a
+  // container for #cf-turnstile-div-...'). Polling explicito del DOM:
+  for (var i = 0; i < 50; i++) {
+    if (web.document.getElementById(containerId) != null) break;
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+  }
+  if (web.document.getElementById(containerId) == null) {
+    throw StateError(
+      'Container #$containerId no aparece en el DOM tras 2.5s. '
+      'HtmlElementView no se rendero - revisar lifecycle del widget.',
+    );
+  }
 
   // Construimos el objeto de opciones como JSObject "plano" porque
   // varias keys llevan guion ('error-callback', 'expired-callback') y

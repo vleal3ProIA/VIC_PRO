@@ -13,9 +13,14 @@ abstract class AuthRepository {
   Future<Either<AuthFailure, Unit>> resendVerificationEmail(String email);
 
   /// Login con email + password.
+  ///
+  /// [captchaToken]: token de Cloudflare Turnstile cuando Bot protection
+  /// está activado en Supabase Auth. Sin él, el endpoint `/token` devuelve
+  /// `captcha_failed`.
   Future<Either<AuthFailure, Unit>> signIn({
     required String email,
     required String password,
+    String? captchaToken,
   });
 
   /// Cierra sesión.
@@ -31,7 +36,13 @@ abstract class AuthRepository {
   Future<Either<AuthFailure, Unit>> signInWithApple();
 
   /// Envía el email de recuperación de contraseña.
-  Future<Either<AuthFailure, Unit>> sendPasswordReset(String email);
+  ///
+  /// [captchaToken]: token de Cloudflare Turnstile. El endpoint `/recover`
+  /// también requiere captcha si Bot protection está activado.
+  Future<Either<AuthFailure, Unit>> sendPasswordReset(
+    String email, {
+    String? captchaToken,
+  });
 
   /// Cambia la contraseña del usuario actual. Requiere sesión activa
   /// (se obtiene del callback de recovery o del panel privado).
@@ -39,10 +50,22 @@ abstract class AuthRepository {
 
   /// Envía un Magic Link al email indicado. El link abre sesión vía PKCE
   /// callback y redirige al usuario a `/home`.
-  Future<Either<AuthFailure, Unit>> signInWithMagicLink(String email);
+  ///
+  /// [captchaToken]: token de Cloudflare Turnstile. `/otp` (que cubre magic
+  /// link + OTP) está protegido por Bot protection en Supabase Auth.
+  Future<Either<AuthFailure, Unit>> signInWithMagicLink(
+    String email, {
+    String? captchaToken,
+  });
 
   /// Envía un código OTP de 6 dígitos al email indicado.
-  Future<Either<AuthFailure, Unit>> requestEmailOtp(String email);
+  ///
+  /// [captchaToken]: token de Cloudflare Turnstile. Mismo endpoint que el
+  /// magic link (`/otp`) — exige captcha si Bot protection está activado.
+  Future<Either<AuthFailure, Unit>> requestEmailOtp(
+    String email, {
+    String? captchaToken,
+  });
 
   /// Verifica el código OTP. Si es válido abre sesión activa.
   Future<Either<AuthFailure, Unit>> verifyEmailOtp({

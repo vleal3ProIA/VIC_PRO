@@ -65,9 +65,14 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<AuthFailure, Unit>> signIn({
     required String email,
     required String password,
+    String? captchaToken,
   }) async {
     try {
-      await _dataSource.signInWithPassword(email: email, password: password);
+      await _dataSource.signInWithPassword(
+        email: email,
+        password: password,
+        captchaToken: captchaToken,
+      );
       return const Right(unit);
     } on AuthException catch (e, st) {
       AppLogger.w('signIn AuthException: ${e.code} ${e.message}');
@@ -123,11 +128,15 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<AuthFailure, Unit>> sendPasswordReset(String email) async {
+  Future<Either<AuthFailure, Unit>> sendPasswordReset(
+    String email, {
+    String? captchaToken,
+  }) async {
     try {
       await _dataSource.sendPasswordReset(
         email: email,
         redirectTo: AuthRedirect.resolve(AuthRedirectType.recovery),
+        captchaToken: captchaToken,
       );
       return const Right(unit);
     } on AuthException catch (e, st) {
@@ -248,13 +257,17 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<AuthFailure, Unit>> signInWithMagicLink(String email) async {
+  Future<Either<AuthFailure, Unit>> signInWithMagicLink(
+    String email, {
+    String? captchaToken,
+  }) async {
     try {
       await _dataSource.sendMagicLink(
         email: email,
         redirectTo: AuthRedirect.resolve(AuthRedirectType.magiclink),
         // SOLO usuarios ya registrados: el magic link nunca crea cuenta nueva.
         shouldCreateUser: false,
+        captchaToken: captchaToken,
       );
       return const Right(unit);
     } on AuthException catch (e, st) {
@@ -265,7 +278,10 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<AuthFailure, Unit>> requestEmailOtp(String email) async {
+  Future<Either<AuthFailure, Unit>> requestEmailOtp(
+    String email, {
+    String? captchaToken,
+  }) async {
     try {
       await _dataSource.sendEmailOtp(
         email: email,
@@ -274,6 +290,7 @@ class AuthRepositoryImpl implements AuthRepository {
         redirectTo: AuthRedirect.resolve(AuthRedirectType.magiclink),
         // SOLO usuarios ya registrados: el OTP por email nunca crea cuenta.
         shouldCreateUser: false,
+        captchaToken: captchaToken,
       );
       return const Right(unit);
     } on AuthException catch (e, st) {

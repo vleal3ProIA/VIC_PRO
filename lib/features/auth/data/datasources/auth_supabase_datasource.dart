@@ -42,13 +42,20 @@ class AuthSupabaseDataSource {
   }
 
   /// Login email + password.
+  ///
+  /// [captchaToken]: token de Cloudflare Turnstile. Si Bot protection está
+  /// activado en Supabase Auth, este endpoint (`/token?grant_type=password`)
+  /// exige captcha igual que signUp. Sin token gotrue responde
+  /// `captcha_failed: request disallowed (no captcha_token found)`.
   Future<AuthResponse> signInWithPassword({
     required String email,
     required String password,
+    String? captchaToken,
   }) {
     return _client.auth.signInWithPassword(
       email: email,
       password: password,
+      captchaToken: captchaToken,
     );
   }
 
@@ -94,13 +101,18 @@ class AuthSupabaseDataSource {
   }
 
   /// Envía el email de recuperación de contraseña.
+  ///
+  /// [captchaToken]: token de Cloudflare Turnstile. El endpoint `/recover`
+  /// también está protegido por Bot protection en Supabase Auth.
   Future<void> sendPasswordReset({
     required String email,
     required String redirectTo,
+    String? captchaToken,
   }) {
     return _client.auth.resetPasswordForEmail(
       email,
       redirectTo: redirectTo,
+      captchaToken: captchaToken,
     );
   }
 
@@ -191,11 +203,13 @@ class AuthSupabaseDataSource {
     required String email,
     required String redirectTo,
     bool shouldCreateUser = false,
+    String? captchaToken,
   }) {
     return _client.auth.signInWithOtp(
       email: email,
       emailRedirectTo: redirectTo,
       shouldCreateUser: shouldCreateUser,
+      captchaToken: captchaToken,
     );
   }
 
@@ -212,11 +226,13 @@ class AuthSupabaseDataSource {
     required String email,
     required String redirectTo,
     bool shouldCreateUser = false,
+    String? captchaToken,
   }) {
     return _client.auth.signInWithOtp(
       email: email,
       emailRedirectTo: redirectTo,
       shouldCreateUser: shouldCreateUser,
+      captchaToken: captchaToken,
     );
   }
 

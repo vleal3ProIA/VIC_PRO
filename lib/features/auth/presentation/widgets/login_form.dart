@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
+import 'package:myapp/core/providers/locale_provider.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/validation/email.dart';
 import 'package:myapp/core/validation/validation_messages.dart';
@@ -13,6 +14,7 @@ import 'package:myapp/features/auth/application/oauth_notifier.dart';
 import 'package:myapp/features/auth/application/passkey_notifier.dart';
 import 'package:myapp/features/auth/presentation/widgets/auth_failure_message.dart';
 import 'package:myapp/features/auth/presentation/widgets/social_sign_in_button.dart';
+import 'package:myapp/features/auth/presentation/widgets/turnstile_widget.dart';
 import 'package:myapp/features/branding/application/branding_providers.dart';
 
 class LoginForm extends ConsumerStatefulWidget {
@@ -98,11 +100,25 @@ class _LoginFormState extends ConsumerState<LoginForm> {
       msg: l.errorRequired,
     );
 
-    final generalError = state.failure != null
-        ? authFailureMessage(context, state.failure!)
-        : oauthState.failure != null
-            ? authFailureMessage(context, oauthState.failure!)
-            : null;
+    // Causa local que bloquea el submit (captcha pendiente) solo se
+    // muestra si no hay error del backend que sea más informativo.
+    String? generalError;
+    if (state.failure != null) {
+      generalError = authFailureMessage(context, state.failure!);
+    } else if (oauthState.failure != null) {
+      generalError = authFailureMessage(context, oauthState.failure!);
+    } else if (showErrors &&
+        state.isCaptchaRequired &&
+        !state.hasCaptchaToken) {
+      generalError = l.registerCaptchaPending;
+    }
+
+    // Mismo gating que en RegisterForm: en web con sitekey configurada,
+    // exige token de Turnstile antes de habilitar el submit. En tests
+    // (VM) `isCaptchaRequired` es false → no rompe login_flow_test.
+    final captchaBlocks =
+        state.isCaptchaRequired && !state.hasCaptchaToken;
+    final submitDisabled = busy || captchaBlocks;
 
     // NOTA: NO usamos AutofillGroup ni autofillHints en el login. El
     // navegador autocompletaba la contraseña (a veces de otra cuenta) al
@@ -182,8 +198,19 @@ class _LoginFormState extends ConsumerState<LoginForm> {
         ),
         GeneralErrorSlot(message: generalError),
         const SizedBox(height: 8),
+        // Captcha Turnstile. SOLO renderiza en web con sitekey
+        // configurada; en tests devuelve SizedBox.shrink. Necesario
+        // porque Supabase Auth aplica Bot protection a `/token` (login
+        // con password), no solo a `/signup`.
+        TurnstileWidget(
+          languageCode: ref.watch(effectiveLocaleProvider).languageCode,
+          onToken: notifier.captchaTokenChanged,
+          onExpired: notifier.captchaTokenCleared,
+          onError: (_) => notifier.captchaTokenCleared(),
+        ),
+        if (state.isCaptchaRequired) const SizedBox(height: 8),
         FilledButton(
-          onPressed: busy ? null : notifier.submit,
+          onPressed: submitDisabled ? null : notifier.submit,
           style: FilledButton.styleFrom(
             minimumSize: const Size.fromHeight(48),
           ),

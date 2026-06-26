@@ -66,10 +66,14 @@ class FakeAuthRepository implements AuthRepository {
 
   String? lastSignInEmail;
   String? lastSignInPassword;
+  String? lastSignInCaptchaToken;
   String? lastResetEmail;
+  String? lastResetCaptchaToken;
   String? lastUpdatedPassword;
   String? lastMagicLinkEmail;
+  String? lastMagicLinkCaptchaToken;
   String? lastOtpRequestEmail;
+  String? lastOtpRequestCaptchaToken;
   String? lastOtpVerifyEmail;
   String? lastOtpVerifyToken;
   int signInWithGoogleCalls = 0;
@@ -89,9 +93,11 @@ class FakeAuthRepository implements AuthRepository {
   Future<Either<AuthFailure, Unit>> signIn({
     required String email,
     required String password,
+    String? captchaToken,
   }) async {
     lastSignInEmail = email;
     lastSignInPassword = password;
+    lastSignInCaptchaToken = captchaToken;
     return signInResult;
   }
 
@@ -111,8 +117,12 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<Either<AuthFailure, Unit>> sendPasswordReset(String email) async {
+  Future<Either<AuthFailure, Unit>> sendPasswordReset(
+    String email, {
+    String? captchaToken,
+  }) async {
     lastResetEmail = email;
+    lastResetCaptchaToken = captchaToken;
     return sendPasswordResetResult;
   }
 
@@ -123,14 +133,22 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<Either<AuthFailure, Unit>> signInWithMagicLink(String email) async {
+  Future<Either<AuthFailure, Unit>> signInWithMagicLink(
+    String email, {
+    String? captchaToken,
+  }) async {
     lastMagicLinkEmail = email;
+    lastMagicLinkCaptchaToken = captchaToken;
     return magicLinkResult;
   }
 
   @override
-  Future<Either<AuthFailure, Unit>> requestEmailOtp(String email) async {
+  Future<Either<AuthFailure, Unit>> requestEmailOtp(
+    String email, {
+    String? captchaToken,
+  }) async {
     lastOtpRequestEmail = email;
+    lastOtpRequestCaptchaToken = captchaToken;
     return requestOtpResult;
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:myapp/core/extensions/context_extensions.dart';
+import 'package:myapp/core/providers/locale_provider.dart';
 import 'package:myapp/core/router/route_names.dart';
 import 'package:myapp/core/validation/email.dart';
 import 'package:myapp/core/validation/validation_messages.dart';
@@ -10,6 +11,7 @@ import 'package:myapp/core/widgets/app_text_field.dart';
 import 'package:myapp/core/widgets/error_text_slot.dart';
 import 'package:myapp/features/auth/application/otp_request_notifier.dart';
 import 'package:myapp/features/auth/presentation/widgets/auth_failure_message.dart';
+import 'package:myapp/features/auth/presentation/widgets/turnstile_widget.dart';
 
 class OtpRequestForm extends ConsumerStatefulWidget {
   const OtpRequestForm({super.key});
@@ -58,9 +60,18 @@ class _OtpRequestFormState extends ConsumerState<OtpRequestForm> {
       msg: ValidationMessages.email(context, state.email.displayError),
     );
 
-    final generalError = state.failure != null
-        ? authFailureMessage(context, state.failure!)
-        : null;
+    String? generalError;
+    if (state.failure != null) {
+      generalError = authFailureMessage(context, state.failure!);
+    } else if (state.showErrors &&
+        state.isCaptchaRequired &&
+        !state.hasCaptchaToken) {
+      generalError = l.registerCaptchaPending;
+    }
+
+    final captchaBlocks =
+        state.isCaptchaRequired && !state.hasCaptchaToken;
+    final submitDisabled = state.isSubmitting || captchaBlocks;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -81,8 +92,18 @@ class _OtpRequestFormState extends ConsumerState<OtpRequestForm> {
         ),
         GeneralErrorSlot(message: generalError),
         const SizedBox(height: 8),
+        // Captcha Turnstile. Supabase aplica Bot protection a `/otp`
+        // (mismo endpoint que magic link). En tests devuelve
+        // SizedBox.shrink y no rompe los tests existentes.
+        TurnstileWidget(
+          languageCode: ref.watch(effectiveLocaleProvider).languageCode,
+          onToken: notifier.captchaTokenChanged,
+          onExpired: notifier.captchaTokenCleared,
+          onError: (_) => notifier.captchaTokenCleared(),
+        ),
+        if (state.isCaptchaRequired) const SizedBox(height: 8),
         FilledButton(
-          onPressed: state.isSubmitting ? null : notifier.submit,
+          onPressed: submitDisabled ? null : notifier.submit,
           style: FilledButton.styleFrom(
             minimumSize: const Size.fromHeight(48),
           ),
