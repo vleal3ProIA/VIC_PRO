@@ -56,7 +56,12 @@ jobs:
   deploy:
     name: Build · Generate SEO · FTP upload
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # 45 min: el FTP upload a Dondominio puede tardar 15-25 min para los
+    # ~14 MB del bundle Flutter; cuando se borra el sync-state (manual
+    # dispatch) hace re-upload completo y se acerca a 25 min. Subido
+    # de 25 a 45 tras timeout del deploy #328 (cef5140) que se canceled
+    # en el step "FTP upload" justo al exceder el limite.
+    timeout-minutes: 45
     # Para que requiera approval manual la primera vez (proteccion
     # extra), crea el environment "production" en Settings → Environments
     # con "Required reviewers". Mientras no lo crees, el deploy va auto.
