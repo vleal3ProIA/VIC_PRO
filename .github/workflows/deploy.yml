@@ -147,6 +147,7 @@ jobs:
           flutter build web --release --no-web-resources-cdn \
             --dart-define=ENV=prod \
             --dart-define=APP_VERSION=${{ github.sha }} \
+            --dart-define=APP_NAME="${{ secrets.APP_NAME_PROD || 'testexamen' }}" \
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL_PROD }} \
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY_PROD }} \
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN_PROD }} \
