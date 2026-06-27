@@ -1,6 +1,9 @@
 # ============================================================================
-# Deploy a producción (Dondominio hosting compartido via FTPS)
+# Deploy a producción (Cloudflare Pages)
 # ----------------------------------------------------------------------------
+# Migrado desde FTPS Dondominio (que tardaba 25-45 min y daba timeouts) a
+# Cloudflare Pages (deploy en 30-60 segundos via wrangler CLI).
+#
 # Triggers:
 #   - push a `main` (auto-deploy tras merge de PR)
 #   - workflow_dispatch (manual desde la UI de GitHub Actions)
@@ -12,30 +15,31 @@
 #   4. flutter analyze (gate)
 #   5. flutter test (gate)
 #   6. scripts/generate_seo.dart (rellena meta tags + sitemap + robots)
-#   7. flutter build web --release (con --dart-define-from-file=production.env)
-#   8. Sube build/web/ via FTPS a public_html/ de Dondominio
+#   7. flutter build web --release (con --dart-define=...)
+#   8. Sentry source maps upload (opcional)
+#   9. wrangler pages deploy build/web -> Cloudflare Pages
 #
 # **Secrets requeridos** en GitHub → Settings → Secrets → Actions:
-#   - FTP_HOST           ftp.tudominio.com (lo da Dondominio)
-#   - FTP_USERNAME       usuario FTP del cPanel
-#   - FTP_PASSWORD       password FTP
-#   - FTP_DIR            /public/  (docroot REAL de testexamen.es en Dondominio;
-#                        OJO: NO es /public_html/ — esa carpeta no se sirve)
-#   - SITE_URL           https://tudominio.com (sin slash final)
-#   - APP_NAME_PROD      nombre comercial (usado para meta tags)
-#   - SEO_DESCRIPTION    descripción para meta tags
-#   - SUPABASE_URL_PROD  URL del proyecto Supabase de produccion
-#   - SUPABASE_ANON_KEY_PROD  anon key del proyecto Supabase de produccion
-#   - SENTRY_DSN_PROD    (opcional) DSN de Sentry para errores en prod
-#   - POSTHOG_API_KEY_PROD  (opcional) Project API Key de PostHog para analytics
-#                            (publica, va en el bundle JS). Sin esto el
-#                            AnalyticsService cae al LoggingBackend en consola.
+#   - CLOUDFLARE_API_TOKEN     token con scopes Cloudflare Pages: Edit +
+#                              Account Settings: Read + User Details: Read.
+#                              Generado en dash.cloudflare.com/profile/api-tokens.
+#   - CLOUDFLARE_ACCOUNT_ID    32 chars hex (visible en la URL del dashboard
+#                              cloudflare.com/<ID>/...).
+#   - SITE_URL                 https://testexamen.es (sin slash final)
+#   - SUPABASE_URL_PROD        URL del proyecto Supabase de produccion
+#   - SUPABASE_ANON_KEY_PROD   anon key del proyecto Supabase de produccion
+#   - APP_NAME_PROD            (opcional) nombre comercial para meta tags
+#   - SEO_DESCRIPTION          (opcional) descripción para meta tags
+#   - SENTRY_DSN_PROD          (opcional) DSN de Sentry para errores en prod
+#   - SENTRY_AUTH_TOKEN        (opcional) para subir source maps
+#   - POSTHOG_API_KEY_PROD     (opcional) Project API Key de PostHog
 #
 # **Variables (no secrets)** en GitHub → Settings → Variables → Actions:
-#   - FLUTTER_VERSION    debe coincidir con el ci.yml (3.41.6)
+#   - FLUTTER_VERSION          debe coincidir con el ci.yml (3.41.6)
 #
-# Si falta algún secret obligatorio, el job falla rápido en el step
-# "Validate secrets" antes de gastar minutos en build/deploy.
+# Secrets FTP_HOST, FTP_USERNAME, FTP_PASSWORD, FTP_DIR ya NO se usan tras
+# la migracion. Pueden borrarse de GitHub Settings cuando se confirme que
+# Cloudflare Pages funciona estable durante 1-2 semanas.
 # ============================================================================
 
 name: Deploy
@@ -46,7 +50,7 @@ on:
   workflow_dispatch:
 
 # Solo permitir un deploy a la vez — si llega un push nuevo mientras
-# uno está en curso, espera (NO cancela, para no dejar producción
+# uno está en curso, espera (NO cancela, para no dejar produccion
 # en estado intermedio).
 concurrency:
   group: deploy-production
@@ -54,26 +58,11 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build · Generate SEO · FTP upload
+    name: Build · Generate SEO · Cloudflare Pages
     runs-on: ubuntu-latest
-    # 45 min: el FTP upload a Dondominio puede tardar 15-25 min para los
-    # ~14 MB del bundle Flutter; cuando se borra el sync-state (manual
-    # dispatch) hace re-upload completo y se acerca a 25 min. Subido
-    # de 25 a 45 tras timeout del deploy #328 (cef5140) que se canceled
-    # en el step "FTP upload" justo al exceder el limite.
-    timeout-minutes: 45
-    # Para que requiera approval manual la primera vez (proteccion
-    # extra), crea el environment "production" en Settings → Environments
-    # con "Required reviewers". Mientras no lo crees, el deploy va auto.
-    #
-    # NOTA: NO usar `url: ${{ secrets.SITE_URL }}` aqui. GitHub Actions
-    # rechaza el workflow ("Unrecognized named-value: 'secrets'")
-    # porque `environment.url` se evalua en parse-time, antes que el
-    # job tenga acceso al contexto de secrets. Si quieres mostrar la
-    # URL clickable en el dashboard de Environments, configura
-    # `SITE_URL` como REPOSITORY VARIABLE (Settings -> Variables, no
-    # Secrets) y usa `${{ vars.SITE_URL }}` -- las variables si son
-    # accesibles aqui porque son publicas.
+    # 15 min: build Flutter web ~7-10 min + wrangler deploy ~1-2 min.
+    # Subido vs el FTP antiguo (45 min) tras migracion a Cloudflare Pages.
+    timeout-minutes: 15
     environment:
       name: production
 
@@ -85,12 +74,11 @@ jobs:
       - name: Validate required secrets
         run: |
           missing=""
-          [ -z "${{ secrets.FTP_HOST }}" ]            && missing="$missing FTP_HOST"
-          [ -z "${{ secrets.FTP_USERNAME }}" ]        && missing="$missing FTP_USERNAME"
-          [ -z "${{ secrets.FTP_PASSWORD }}" ]        && missing="$missing FTP_PASSWORD"
-          [ -z "${{ secrets.SITE_URL }}" ]            && missing="$missing SITE_URL"
-          [ -z "${{ secrets.SUPABASE_URL_PROD }}" ]   && missing="$missing SUPABASE_URL_PROD"
-          [ -z "${{ secrets.SUPABASE_ANON_KEY_PROD }}" ] && missing="$missing SUPABASE_ANON_KEY_PROD"
+          [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]    && missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]   && missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          [ -z "${{ secrets.SITE_URL }}" ]                && missing="$missing SITE_URL"
+          [ -z "${{ secrets.SUPABASE_URL_PROD }}" ]       && missing="$missing SUPABASE_URL_PROD"
+          [ -z "${{ secrets.SUPABASE_ANON_KEY_PROD }}" ]  && missing="$missing SUPABASE_ANON_KEY_PROD"
           if [ -n "$missing" ]; then
             echo "❌ Missing required secrets:$missing"
             echo "   Configure them in Settings → Secrets → Actions."
@@ -151,9 +139,9 @@ jobs:
       # --no-web-resources-cdn: empaqueta y usa CanvasKit LOCAL (carpeta
       # canvaskit/) en vez de bajarlo de gstatic.com. Sin esto el bootstrap
       # hace fetch() del wasm de CanvasKit desde el CDN, lo que cae bajo
-      # `connect-src` de la CSP -> el navegador lo BLOQUEA (gstatic no estaba
-      # permitido) y la app se queda en la pantalla de carga (fondo, sin UI).
-      # Servirlo same-origin ademas elimina la dependencia de un tercero.
+      # `connect-src` de la CSP -> el navegador lo BLOQUEA y la app se queda
+      # en la pantalla de carga. Servirlo same-origin desde Cloudflare Pages
+      # ademas elimina la dependencia de un tercero.
       - name: Build web
         run: |
           flutter build web --release --no-web-resources-cdn \
@@ -165,12 +153,16 @@ jobs:
             --dart-define=POSTHOG_API_KEY=${{ secrets.POSTHOG_API_KEY_PROD }}
 
       # ─── Verificar que el build tiene los archivos esperados ───
+      # NOTA: Cloudflare Pages NO lee `.htaccess` (es Apache-only). Los
+      # headers HTTP (CSP, HSTS, cache-control) se configuran via fichero
+      # `_headers` en la raiz del proyecto si se necesitan. Por ahora la
+      # CSP la inyecta el index.html via <meta http-equiv> y Pages anyade
+      # SSL/HSTS automaticamente.
       - name: Smoke check build output
         run: |
           test -f build/web/index.html
           test -f build/web/main.dart.js
           test -f build/web/flutter_bootstrap.js
-          test -f build/web/.htaccess
           test -f build/web/robots.txt
           test -f build/web/sitemap.xml
           echo "✓ Build artifacts present"
@@ -179,10 +171,6 @@ jobs:
       # SOLO si SENTRY_AUTH_TOKEN esta configurado. Sin ese secret,
       # los errores capturados muestran nombres minificados (JI.gF) en
       # vez de funciones reales. Con upload, Sentry symbolicates al vuelo.
-      #
-      # Auth token: Sentry.io -> Settings -> Account -> API -> Auth Tokens
-      # -> Create New Token. Scope minimo: project:releases + org:read.
-      # Pegar como secret SENTRY_AUTH_TOKEN en GitHub.
       - name: Upload source maps to Sentry
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -191,7 +179,6 @@ jobs:
         run: |
           if [ -z "$SENTRY_AUTH_TOKEN" ]; then
             echo "SENTRY_AUTH_TOKEN no esta configurado - saltando upload de source maps."
-            echo "Para activarlo: anyade el secret SENTRY_AUTH_TOKEN en GitHub."
             exit 0
           fi
           curl -sL https://sentry.io/get-cli/ | bash
@@ -204,105 +191,32 @@ jobs:
           sentry-cli releases finalize "${{ github.sha }}"
           echo "Source maps uploaded for release ${{ github.sha }}"
 
-      # ─── Forzar re-subida completa (SOLO ejecucion manual) ───
-      # SOLO cuando se lanza a mano ("Run workflow" / workflow_dispatch):
-      #   1. borra la carpeta stray /public_html (de un deploy antiguo).
-      #   2. BORRA el sync-state de FTP-Deploy-Action
-      #      (`.ftp-deploy-sync-state.json`). Sin ese fichero, el step de
-      #      subida hace un "first publish" y re-sube TODO el bundle.
+      # ─── Deploy a Cloudflare Pages ───
+      # wrangler.toml NO necesario para Pages (no usa Workers config).
+      # `pages deploy` usa la API REST y sube los archivos con HTTP/2 +
+      # paralelizado: tipicamente 30-60 segundos para el bundle Flutter
+      # completo (~14 MB), vs los 25-45 min del FTP anterior.
       #
-      # IMPORTANTE — por que NO borramos /public/* a mano: lftp 4.9.2 no
-      # incluye dotfiles en `glob -a *`, asi que borraba los archivos pero
-      # dejaba el sync-state. Entonces FTP-Deploy-Action veia ese sync-state
-      # "al dia", se SALTABA re-subir index.html/canvaskit/... y /public
-      # quedaba sin index.html -> 403. Borrando solo el sync-state evitamos
-      # el borrado destructivo y forzamos una subida integra y segura.
-      # La password nunca se imprime: GitHub enmascara el secret en los logs.
-      - name: Force full re-upload (manual dispatch only)
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          FTP_DIR: ${{ secrets.FTP_DIR }}
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
-          DIR="${FTP_DIR:-/public/}"
-          lftp -c "
-            set cmd:fail-exit no;
-            set ssl:verify-certificate no;
-            set ftp:ssl-force true;
-            set ftp:ssl-protect-data true;
-            open -u \"$FTP_USERNAME\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
-            echo '--- estado de la carpeta icons (diagnostico) ---';
-            cls -la ${DIR}icons ;
-            rm -rf /public_html ;
-            rm -f ${DIR}.ftp-deploy-sync-state.json ;
-            rm -rf ${DIR}icons ;
-            bye
-          "
-          echo "✓ /public_html + sync-state + icons borrados (fuerza first-publish limpio)"
-
-      # ─── FTPS upload a Dondominio (lftp) ───
-      # NO usamos SamKirkland/FTP-Deploy-Action: en este hosting su conexion de
-      # DATOS FTPS (modo pasivo) hace timeout ("Timeout when trying to open data
-      # connection") y aborta el deploy. lftp SI abre conexiones de datos aqui
-      # (el paso de limpieza lo demuestra con `cls`), soporta FTPS + modo pasivo
-      # + reintentos, y es mucho mas robusto en hosting compartido.
+      # --branch=main hace que este deployment sea el "production" del
+      # proyecto (visible en testexamen-web.pages.dev y en el custom
+      # domain testexamen.es).
       #
-      # `mirror -R` = subida (reverse mirror) incremental: solo sube los ficheros
-      # nuevos/cambiados, comparando tamanyo+fecha. NO usamos `--delete`: la
-      # salida de Flutter web tiene nombres estables (se sobrescriben in situ) y
-      # asi NUNCA tocamos `uploads/` ni otros ficheros del usuario en el server.
-      # `ssl:verify-certificate no` = mismo motivo que `security: loose` antes
-      # (Dondominio presenta un cert wildcard que no casa con el FTP_HOST).
-      - name: Upload to Dondominio via FTPS (lftp)
+      # --commit-hash registra el SHA del commit en cloudflare para
+      # poder identificar el rollback target si hay que volver atras.
+      - name: Deploy to Cloudflare Pages
         env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          FTP_DIR: ${{ secrets.FTP_DIR }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
-          DIR="${FTP_DIR:-/public/}"
-          # La conexion de datos FTPS pasiva de Dondominio es intermitente: a
-          # veces un archivo agota los reintentos. Mitigacion:
-          #  - transferencias en SERIE (parallel=1): no competir por puertos
-          #    pasivos (la causa de los timeouts).
-          #  - muchos reintentos por archivo (net:max-retries 10).
-          #  - bucle externo: si lftp acaba en error, reintenta el mirror entero
-          #    (lftp se salta lo ya subido y solo reintenta lo que falte).
-          upload() {
-            lftp -c "
-              set cmd:fail-exit yes;
-              set ssl:verify-certificate no;
-              set ftp:ssl-force true;
-              set ftp:ssl-protect-data true;
-              set ftp:passive-mode on;
-              set net:timeout 30;
-              set net:max-retries 10;
-              set net:reconnect-interval-base 3;
-              set net:reconnect-interval-multiplier 1;
-              set mirror:parallel-transfer-count 1;
-              open -u \"$FTP_USERNAME\",\"$FTP_PASSWORD\" \"$FTP_HOST\";
-              mirror -R --verbose --exclude-glob .git* ./build/web/ \"$DIR\";
-              bye
-            "
-          }
-          n=0
-          until upload; do
-            n=$((n + 1))
-            if [ "$n" -ge 4 ]; then
-              echo "❌ La subida por FTPS falló tras $n intentos."
-              exit 1
-            fi
-            echo "⚠ Subida incompleta (fallo transitorio). Reintento #$n…"
-            sleep 8
-          done
-          echo "✓ Subida a $DIR completada (lftp mirror -R)"
+          npx --yes wrangler@latest pages deploy build/web \
+            --project-name=testexamen-web \
+            --branch=main \
+            --commit-hash="${{ github.sha }}" \
+            --commit-message="${{ github.event.head_commit.message || 'manual dispatch' }}"
 
       - name: Notify success
         if: success()
         run: |
-          echo "✅ Deployed to ${{ secrets.SITE_URL }}"
+          echo "✅ Deployed to ${{ secrets.SITE_URL }} via Cloudflare Pages"
           echo "Commit: ${{ github.sha }}"
+          echo "Preview: https://testexamen-web.pages.dev"
