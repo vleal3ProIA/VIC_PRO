@@ -77,6 +77,16 @@ class _TurnstileWidgetState extends State<TurnstileWidget> {
   @override
   void initState() {
     super.initState();
+    // CRITICO: registrar el view factory SINCRONICAMENTE aqui, antes
+    // del primer build. Sin esto, HtmlElementView(viewType: _viewType)
+    // no encuentra el factory y NO crea el div en el DOM, por lo que
+    // turnstile.render() falla con "Unable to find a container for #...".
+    // Bug confirmado en prod 2026-06-27 con Cloudflare Pages, donde
+    // los assets se sirven tan rapido que el post-frame callback ya
+    // tarda DEMASIADO para que el polling DOM lo cace.
+    if (kIsWeb && EnvConfig.turnstileSitekey.isNotEmpty) {
+      registerTurnstileView(_viewType, _divId);
+    }
     // El mount real (que toca JS) se hace cuando el HtmlElementView ya
     // está en el DOM. Esperamos al primer frame post-build.
     WidgetsBinding.instance.addPostFrameCallback((_) => _mount());

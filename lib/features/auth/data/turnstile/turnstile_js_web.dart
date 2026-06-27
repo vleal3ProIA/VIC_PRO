@@ -94,6 +94,19 @@ void _registerViewIfNeeded(String viewType, String divId) {
   );
 }
 
+/// API publica: registra el view factory SINCRONICAMENTE para que el
+/// primer build del HtmlElementView lo encuentre y cree el div en el
+/// DOM antes de que `renderTurnstile()` lo busque.
+///
+/// CRITICO: debe llamarse en initState del TurnstileWidget (no en async
+/// callback), antes de que Flutter renderice el primer frame con
+/// HtmlElementView(viewType: X). Si no se llama a tiempo, el div jamas
+/// llega al DOM y turnstile.render() falla con
+/// "Unable to find a container for #...".
+void registerTurnstileView(String viewType, String divId) {
+  _registerViewIfNeeded(viewType, divId);
+}
+
 /// Monta el widget de Turnstile dentro del div con id [containerId].
 /// El [HtmlElementView] con viewType [viewType] debe estar renderizado
 /// ANTES de llamar a este método (el caller espera un frame antes).
@@ -112,6 +125,10 @@ Future<TurnstileHandle> renderTurnstile({
   String? language,
   String? action,
 }) async {
+  // El widget Flutter (TurnstileWidget) ya llamo a registerTurnstileView
+  // en initState, asi que el factory esta registrado y el div esta en
+  // el DOM antes de llegar aqui. Esta llamada queda como safety net por
+  // si renderTurnstile se invoca sin pasar por el widget.
   _registerViewIfNeeded(viewType, containerId);
 
   // Esperar a que el SDK termine de cargar. `async defer` puede tardar

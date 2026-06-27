@@ -32,3 +32,11 @@ Future<TurnstileHandle> renderTurnstile({
 }) {
   throw UnsupportedError('Turnstile solo está disponible en Flutter web.');
 }
+
+/// Registra el view factory de Flutter web ANTES del primer build (debe
+/// llamarse en initState). Sin esto, HtmlElementView no encuentra el
+/// factory y el div nunca aparece en el DOM. Stub en VM (no-op).
+void registerTurnstileView(String viewType, String divId) {
+  // No-op en VM/tests; el TurnstileWidget tampoco llega aqui porque ya
+  // gatea con `!kIsWeb`.
+}
