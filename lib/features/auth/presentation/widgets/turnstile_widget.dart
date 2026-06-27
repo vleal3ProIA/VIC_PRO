@@ -30,7 +30,7 @@ class TurnstileWidget extends StatefulWidget {
     this.onExpired,
     this.onError,
     this.theme = 'auto',
-    this.size = 'normal',
+    this.size = 'invisible',
     this.languageCode,
   });
 
@@ -50,6 +50,7 @@ class TurnstileWidget extends StatefulWidget {
   /// `light` | `dark` | `auto` (default: sigue prefers-color-scheme).
   final String theme;
 
+  /// `invisible` (0×0, default - resuelve en background sin UI) |
   /// `normal` (300×65) | `compact` (150×140).
   final String size;
 
@@ -140,7 +141,13 @@ class _TurnstileWidgetState extends State<TurnstileWidget> {
 
     // Altura razonable según `size`. Damos algo de aire vertical para
     // que no salte el layout cuando Turnstile decide mostrar el reto.
-    final double height = widget.size == 'compact' ? 150 : 72;
+    // En modo invisible NO renderizamos UI - el widget existe en el
+    // DOM solo para que Turnstile pueda hacer su trabajo en background.
+    final double height = switch (widget.size) {
+      'invisible' => 0,
+      'compact' => 150,
+      _ => 72,
+    };
 
     if (_loadError != null) {
       return Padding(
