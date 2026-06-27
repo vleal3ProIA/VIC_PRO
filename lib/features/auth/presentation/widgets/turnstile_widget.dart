@@ -139,15 +139,12 @@ class _TurnstileWidgetState extends State<TurnstileWidget> {
       return const SizedBox.shrink();
     }
 
-    // Altura razonable según `size`. Damos algo de aire vertical para
-    // que no salte el layout cuando Turnstile decide mostrar el reto.
-    // En modo invisible NO renderizamos UI - el widget existe en el
-    // DOM solo para que Turnstile pueda hacer su trabajo en background.
-    final double height = switch (widget.size) {
-      'invisible' => 0,
-      'compact' => 150,
-      _ => 72,
-    };
+    // Altura segun `size`. CRITICO: el HtmlElementView debe tener
+    // tamano REAL para que Flutter lo monte y dispare el view factory
+    // (height=0 hace que el compositor lo skipe -> div jamas se crea
+    // en el DOM -> Turnstile falla). En modo invisible mantenemos
+    // height=72 pero envolvemos en Offstage para ocultarlo visualmente.
+    final double height = widget.size == 'compact' ? 150 : 72;
 
     if (_loadError != null) {
       return Padding(
@@ -162,15 +159,22 @@ class _TurnstileWidgetState extends State<TurnstileWidget> {
       );
     }
 
-    // `HtmlElementView` requiere que el viewType esté registrado. Eso
-    // sucede dentro de `renderTurnstile()` (que invoca al
-    // `_registerViewIfNeeded` interno). El primer frame todavía no lo
-    // tiene registrado, pero como pintamos UN frame antes que el mount
-    // pida el render, Flutter espera el factory sin error.
-    return SizedBox(
+    // HtmlElementView con viewType ya registrado en initState. Flutter
+    // crea el div en el DOM en el primer build, lo que permite a
+    // turnstile.render() encontrar el container y arrancar.
+    final view = SizedBox(
       width: double.infinity,
       height: height,
       child: HtmlElementView(viewType: _viewType),
     );
+
+    // En invisible: Offstage layout-tea al hijo (-> view factory se
+    // invoca, div se monta en el DOM) pero NO lo pinta ni ocupa
+    // espacio visible. El usuario no ve nada, Turnstile sigue
+    // verificando en background.
+    if (widget.size == 'invisible') {
+      return Offstage(child: view);
+    }
+    return view;
   }
 }
